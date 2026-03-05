@@ -184,7 +184,9 @@ Deno.serve(async (req) => {
     // 只需要更新订单状态为等待发货
     console.log(`Winner ${winnerUUID} - balance already deducted during participation, ready for delivery`);
 
-    // 9. 【关键逻辑】处理未中奖者 - 退回到余额（TJS）
+    // 9. 【关键逻辑】处理未中奖者 - 退回到积分钱包（LUCKY_COIN）
+    // 【业务规则】拼团成功时，未中奖用户的参与资金退还为积分（LUCKY_COIN），不是余额（TJS）
+    // 只有拼团超时（未成功）时才退回 TJS 余额（由 group-buy-timeout-check 处理）
     for (const order of orders) {
       if (order.id !== winnerOrder.id) {
         // 解析用户UUID
@@ -193,22 +195,23 @@ Deno.serve(async (req) => {
         if (userUUID) {
           const refundAmount = Number(order.amount);
           
-          // 获取用户的TJS余额钱包
-          let { data: tjsWallet } = await supabase
+          // 获取用户的积分钱包（type='LUCKY_COIN', currency='POINTS'）
+          let { data: lcWallet } = await supabase
             .from('wallets')
             .select('*')
             .eq('user_id', userUUID)
-            .eq('type', 'TJS')
+            .eq('type', 'LUCKY_COIN')
             .single();
 
-          // 如果TJS钱包不存在，创建一个
-          if (!tjsWallet) {
+          // 如果积分钱包不存在，创建一个
+          // 【重要】currency 必须为 'POINTS'，与 auth-telegram 创建钱包时保持一致
+          if (!lcWallet) {
             const { data: newWallet, error: createWalletError } = await supabase
               .from('wallets')
               .insert({
                 user_id: userUUID,
-                type: 'TJS',
-                currency: 'TJS',
+                type: 'LUCKY_COIN',
+                currency: 'POINTS',
                 balance: 0,
                 version: 1,
                 created_at: new Date().toISOString(),
@@ -218,41 +221,40 @@ Deno.serve(async (req) => {
               .single();
 
             if (createWalletError) {
-              console.error(`Failed to create TJS wallet for user ${userUUID}:`, createWalletError);
+              console.error(`Failed to create LUCKY_COIN wallet for user ${userUUID}:`, createWalletError);
               continue;
             }
-            tjsWallet = newWallet;
+            lcWallet = newWallet;
           }
 
-          if (tjsWallet) {
-            // 更新TJS钱包余额
-            const newBalance = Number(tjsWallet.balance) + refundAmount;
+          if (lcWallet) {
+            // 更新积分钱包余额（使用乐观锁）
+            const newBalance = Number(lcWallet.balance) + refundAmount;
             
             const { error: updateWalletError } = await supabase
               .from('wallets')
               .update({ 
                 balance: newBalance,
                 updated_at: new Date().toISOString(),
-                version: tjsWallet.version + 1
+                version: lcWallet.version + 1
               })
-              .eq('id', tjsWallet.id)
-              .eq('version', tjsWallet.version);
+              .eq('id', lcWallet.id)
+              .eq('version', lcWallet.version);
 
             if (updateWalletError) {
-              console.error(`Failed to update TJS wallet for user ${userUUID}:`, updateWalletError);
+              console.error(`Failed to update LUCKY_COIN wallet for user ${userUUID}:`, updateWalletError);
               continue;
             }
 
-            // 创建钱包交易记录
-            // 移除手动指定的 ID，让数据库自动生成 UUID
+            // 创建积分流水记录
             const { error: insertError } = await supabase.from('wallet_transactions').insert({
-              wallet_id: tjsWallet.id,
+              wallet_id: lcWallet.id,
               type: 'GROUP_BUY_REFUND',
               amount: refundAmount,
-              balance_before: Number(tjsWallet.balance),
+              balance_before: Number(lcWallet.balance),
               balance_after: newBalance,
               status: 'COMPLETED',
-              description: `拼团未中奖，退回余额`,
+              description: `拼团未中奖，退回积分`,
               reference_id: order.id,
               processed_at: new Date().toISOString(),
               created_at: new Date().toISOString(),
@@ -264,18 +266,18 @@ Deno.serve(async (req) => {
               await supabase
                 .from('wallets')
                 .update({ 
-                  balance: Number(tjsWallet.balance),
+                  balance: Number(lcWallet.balance),
                   updated_at: new Date().toISOString(),
-                  version: tjsWallet.version + 2  // 回滚时版本号再+1
+                  version: lcWallet.version + 2  // 回滚时版本号再+1
                 })
-                .eq('id', tjsWallet.id)
-                .eq('version', tjsWallet.version + 1);  // 乐观锁: 检查当前 version
+                .eq('id', lcWallet.id)
+                .eq('version', lcWallet.version + 1);  // 乐观锁: 检查当前 version
               continue;
             }
 
-            console.log(`Refunded ${refundAmount} TJS to balance for user ${userUUID}`);
+            console.log(`Refunded ${refundAmount} LUCKY_COIN (points) to user ${userUUID}`);
             
-            // 更新订单退款信息（只有在交易记录创建成功后才更新）
+            // 更新订单退款信息（使用 refund_lucky_coins 字段记录积分退款金额）
             await supabase
               .from('group_buy_orders')
               .update({
@@ -286,11 +288,11 @@ Deno.serve(async (req) => {
               })
               .eq('id', order.id);
           } else {
-            console.error(`TJS wallet not found for user ${userUUID}`);
+            console.error(`LUCKY_COIN wallet not found for user ${userUUID}`);
             continue;
           }
 
-          // 发送Telegram通知（未中奖，退回余额）
+          // 发送Telegram通知（未中奖，退回积分）
           try {
             const { data: product } = await supabase
               .from('group_buy_products')
@@ -298,11 +300,12 @@ Deno.serve(async (req) => {
               .eq('id', session.product_id)
               .single();
 
-            const { data: updatedWallet } = await supabase
+            // 获取更新后的积分钱包余额用于通知展示
+            const { data: updatedLcWallet } = await supabase
               .from('wallets')
               .select('balance')
               .eq('user_id', userUUID)
-              .eq('type', 'TJS')
+              .eq('type', 'LUCKY_COIN')
               .single();
 
             // 插入通知队列
@@ -313,17 +316,19 @@ Deno.serve(async (req) => {
                 product_name: product?.name || 'Unknown Product',
                 session_code: session.session_code,
                 refund_amount: refundAmount,
-                balance: Number(updatedWallet?.balance || 0),
+                refund_type: 'LUCKY_COIN',  // 标记退款类型为积分
+                points_balance: Number(updatedLcWallet?.balance || 0),
               },
               telegram_chat_id: null,
               notification_type: 'group_buy_refund',
-              title: '拼团退款通知',
+              title: '拼团积分退还通知',
               message: '',
               data: {
                 product_name: product?.name || 'Unknown Product',
                 session_code: session.session_code,
                 refund_amount: refundAmount,
-                balance: Number(updatedWallet?.balance || 0),
+                refund_type: 'LUCKY_COIN',
+                points_balance: Number(updatedLcWallet?.balance || 0),
               },
               priority: 2,
               status: 'pending',
