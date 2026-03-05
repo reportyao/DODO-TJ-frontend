@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
             balance_before: Number(currentWallet.balance),
             balance_after: Number(currentWallet.balance) + refundAmount,
             status: 'COMPLETED',
-            description: `Group Buy Timeout Refund (Balance) - ${session.session_code}`,
+            description: `拼团未成功退款（退回余额） - ${session.session_code}`,
             reference_id: order.id,  // ✅ 幂等键
             processed_at: new Date().toISOString(),
             created_at: new Date().toISOString(),
@@ -275,7 +275,7 @@ Deno.serve(async (req) => {
               },
               telegram_chat_id: null,
               notification_type: 'group_buy_timeout',
-              title: 'Group Buy Timeout Refund',
+              title: '拼团超时退款通知',
               message: '',
               data: {
                 product_name: product?.name || 'Unknown Product',

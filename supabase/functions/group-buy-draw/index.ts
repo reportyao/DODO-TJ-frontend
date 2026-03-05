@@ -254,7 +254,7 @@ Deno.serve(async (req) => {
               balance_before: Number(lcWallet.balance),
               balance_after: newBalance,
               status: 'COMPLETED',
-              description: `Group Buy Refund (Points) - ${session.session_code}`,
+              description: `拼团未中奖，退回积分 - ${session.session_code}`,
               reference_id: order.id,
               processed_at: new Date().toISOString(),
               created_at: new Date().toISOString(),
@@ -321,7 +321,7 @@ Deno.serve(async (req) => {
               },
               telegram_chat_id: null,
               notification_type: 'group_buy_points_refund',
-              title: 'Group Buy Points Refund',
+              title: '拼团积分退还通知',
               message: '',
               data: {
                 product_name: product?.name || 'Unknown Product',
@@ -364,7 +364,7 @@ Deno.serve(async (req) => {
         },
         telegram_chat_id: null,
         notification_type: 'group_buy_win',
-        title: 'Group Buy Win',
+        title: '拼团成功通知',
         message: '',
         data: {
           product_name: product?.name || 'Unknown Product',

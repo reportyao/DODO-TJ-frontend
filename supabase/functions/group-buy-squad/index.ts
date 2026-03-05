@@ -323,7 +323,7 @@ Deno.serve(async (req) => {
         balance_before: Number(tjsWallet.balance),
         balance_after: newBalance,
         status: 'COMPLETED',
-        description: `Squad Buy - ${productTitle?.en || productTitle?.zh || 'Squad Buy'}`,
+        description: `一键包团 - ${productTitle?.zh || productTitle?.en || '一键包团'}`,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
@@ -557,7 +557,7 @@ Deno.serve(async (req) => {
               balance_before: Number(lcWallet.balance),
               balance_after: newLcBalance,
               status: 'COMPLETED',
-              description: `Squad Buy Refund (Points) - ${productTitle?.en || productTitle?.zh || 'Squad Buy'}`,
+              description: `一键包团积分返还 - ${productTitle?.zh || productTitle?.en || '一键包团'}`,
               reference_id: userOrder.id,
               processed_at: now.toISOString(),
               created_at: now.toISOString(),
