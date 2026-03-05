@@ -255,7 +255,10 @@ Deno.serve(async (req) => {
             const winnerEntry = entries.find(e => e.id === update.id);
             if (winnerEntry) {
                 // 获取用户钱包
-                const winnerWalletResponse = await fetch(`${supabaseUrl}/rest/v1/wallets?user_id=eq.${winnerEntry.user_id}&type=eq.BALANCE&currency=eq.${lottery.currency}&select=*`, {
+                // 【资金安全修复 v3】修复钱包类型: BALANCE → TJS
+                // 数据库枚举 WalletType 只有 'TJS' 和 'LUCKY_COIN'，没有 'BALANCE'
+                // 现金钱包标准: type='TJS', currency='TJS'
+                const winnerWalletResponse = await fetch(`${supabaseUrl}/rest/v1/wallets?user_id=eq.${winnerEntry.user_id}&type=eq.TJS&currency=eq.${lottery.currency}&select=*`, {
                     headers: {
                         'Authorization': `Bearer ${serviceRoleKey}`,
                         'apikey': serviceRoleKey,
@@ -268,17 +271,19 @@ Deno.serve(async (req) => {
                     const winnerWallet = winnerWallets[0];
                     const newBalance = winnerWallet.balance + update.prize_amount;
 
+                    // 【资金安全修复 v3】添加乐观锁: 通过 version 条件确保并发安全
                     // 更新钱包余额
-                    await fetch(`${supabaseUrl}/rest/v1/wallets?id=eq.${winnerWallet.id}`, {
+                    await fetch(`${supabaseUrl}/rest/v1/wallets?id=eq.${winnerWallet.id}&version=eq.${winnerWallet.version}`, {
                         method: 'PATCH',
                         headers: {
                             'Authorization': `Bearer ${serviceRoleKey}`,
                             'apikey': serviceRoleKey,
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
                         },
                         body: JSON.stringify({
                             balance: newBalance,
-                            version: winnerWallet.version + 1,
+                            version: (winnerWallet.version || 1) + 1,
                             updated_at: new Date().toISOString()
                         })
                     });

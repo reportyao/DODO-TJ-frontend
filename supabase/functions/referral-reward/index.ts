@@ -159,25 +159,33 @@ serve(async (req) => {
        */
       const { data: wallet, error: walletError } = await supabaseClient
         .from('wallets')
-        .select('id, balance')
+        .select('id, balance, version')  // 修复 v3: 查询 version 字段用于乐观锁
         .eq('user_id', reward.referrer_id)
         .eq('type', 'TJS')             // 现金钱包类型
         .eq('currency', currency)      // 使用请求中的货币类型
         .single()
 
       if (wallet && !walletError) {
-        const { error: updateError } = await supabaseClient
+        // 【资金安全修复 v3】添加乐观锁防止并发更新导致余额错误
+        // 修复: 使用 wallet.id 而不是 user_id 来定位钱包，更精确
+        const currentBalance = parseFloat(wallet.balance || '0')
+        const newBalance = currentBalance + reward.amount
+        const currentVersion = wallet.version || 1
+
+        const { error: updateError, data: updatedWallet } = await supabaseClient
           .from('wallets')
           .update({
-            balance: wallet.balance + reward.amount,
+            balance: newBalance,
+            version: currentVersion + 1,  // 乐观锁: 版本号+1
             updated_at: new Date().toISOString()
           })
-          .eq('user_id', reward.referrer_id)
-          .eq('type', 'TJS')           // 现金钱包类型
-          .eq('currency', currency)
+          .eq('id', wallet.id)            // 修复: 使用 wallet.id 而不是 user_id
+          .eq('version', currentVersion)  // 乐观锁: 只有版本号匹配才能更新
+          .select()
+          .single()
 
-        if (updateError) {
-          console.error('Failed to update wallet:', updateError)
+        if (updateError || !updatedWallet) {
+          console.error('Failed to update wallet (possible concurrent conflict):', updateError)
           continue
         }
 

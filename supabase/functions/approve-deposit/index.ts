@@ -173,15 +173,18 @@ serve(async (req) => {
       }
 
       // 更新钱包余额（包含首充奖励）
+      // 【资金安全修复 v3】添加乐观锁防止并发更新导致余额错误
       console.log('更新钱包余额...')
       const depositAmount = Number(depositRequest.amount)
       const totalCredited = depositAmount + bonusAmount
-      const newBalance = Number(wallet.balance) + totalCredited
+      const currentBalance = Number(wallet.balance)
+      const newBalance = currentBalance + totalCredited
       const newTotalDeposits = Number(wallet.total_deposits || 0) + depositAmount
       
       const walletUpdateData: any = {
         balance: newBalance,
         total_deposits: newTotalDeposits,
+        version: (wallet.version || 1) + 1,  // 乐观锁: 版本号+1
         updated_at: new Date().toISOString(),
       }
 
@@ -191,27 +194,40 @@ serve(async (req) => {
         walletUpdateData.first_deposit_bonus_amount = bonusAmount
       }
 
-      const { error: updateWalletError } = await supabaseClient
+      // 【乐观锁】通过 version 字段确保并发安全
+      // 如果在查询钱包和更新钱包之间有其他操作修改了余额，
+      // version 不匹配会导致更新失败，从而防止资金错误
+      const { error: updateWalletError, data: updatedWallet } = await supabaseClient
         .from('wallets')
         .update(walletUpdateData)
         .eq('id', wallet.id)
+        .eq('version', wallet.version || 1)  // 乐观锁: 只有版本号匹配才能更新
+        .select()
+        .single()
 
-      console.log('更新钱包结果:', { updateWalletError })
+      console.log('更新钱包结果:', { updateWalletError, updatedWallet: updatedWallet ? 'ok' : 'null' })
 
-      if (updateWalletError) {
-        console.error('更新钱包余额失败:', updateWalletError)
-        throw new Error(`更新余额失败: ${updateWalletError.message}`)
+      if (updateWalletError || !updatedWallet) {
+        console.error('更新钱包余额失败(可能是并发冲突):', updateWalletError)
+        throw new Error(`更新余额失败，请重试（可能存在并发操作）`)
       }
 
       // 创建充值交易记录
+      // 【修复 v3】balance_after 使用正确的值（充值后的余额，不包含奖励）
+      // 原来的 balance_after = wallet.balance + depositAmount 没有包含奖励金额，
+      // 但实际上充值流水的 balance_after 应该是充值后、奖励前的余额
+      const balanceAfterDeposit = currentBalance + depositAmount
       console.log('创建交易记录...')
       const { error: txError } = await supabaseClient.from('wallet_transactions').insert({
         wallet_id: wallet.id,
         type: 'DEPOSIT',
         amount: depositAmount,
-        balance_after: Number(wallet.balance) + depositAmount,
+        balance_before: currentBalance,  // 新增: 记录充值前余额
+        balance_after: balanceAfterDeposit,  // 修复: 使用充值后的准确余额
+        status: 'COMPLETED',
         description: `充值审核通过 - 订单号: ${depositRequest.order_number}`,
         related_id: requestId,
+        processed_at: new Date().toISOString(),
       })
       console.log('交易记录结果:', { txError })
 
@@ -222,9 +238,12 @@ serve(async (req) => {
           wallet_id: wallet.id,
           type: 'BONUS',
           amount: bonusAmount,
-          balance_after: newBalance,
+          balance_before: balanceAfterDeposit,  // 奖励前余额 = 充值后余额
+          balance_after: newBalance,  // 奖励后余额 = 充值 + 奖励
+          status: 'COMPLETED',
           description: `首充奖励 (${bonusPercent}%) - 订单号: ${depositRequest.order_number}`,
           related_id: requestId,
+          processed_at: new Date().toISOString(),
         })
         console.log('首充奖励交易记录结果:', { bonusTxError })
       }

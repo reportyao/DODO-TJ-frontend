@@ -27,6 +27,9 @@
  * 变更历史:
  *   v1 (2026-01-xx): 初始版本，步骤 13-16 同步调用其他 Edge Functions
  *   v2 (2026-02-09): 解耦优化，步骤 13-16 改为写入事件队列异步处理
+ *   v3 (2026-03-05): 资金安全修复
+ *     - 修复: 佣金事件只为真实用户订单创建，不再为机器人订单创建（防止虚假佣金）
+ *     - 修复: 创建 LUCKY_COIN 钱包时 currency 从 'LUCKY_COIN' 改为 'POINTS'（与 auth-telegram 统一）
  *
  * API 契约 (与 v1 完全一致，前端无需修改):
  *   请求: POST { product_id: string, user_id: string }
@@ -504,12 +507,16 @@ Deno.serve(async (req) => {
 
       if (!lcWallet) {
         // 创建 LUCKY_COIN 钱包
+        // 【重要】currency 必须为 'POINTS'，与 auth-telegram 创建钱包时保持一致
+        // 数据库中钱包类型标准:
+        //   - 现金钱包: type='TJS', currency='TJS'
+        //   - 积分钱包: type='LUCKY_COIN', currency='POINTS'
         const { data: newLcWallet, error: createLcError } = await supabase
           .from('wallets')
           .insert({
             user_id: user_id,
             type: 'LUCKY_COIN',
-            currency: 'LUCKY_COIN',
+            currency: 'POINTS',  // 修复: 从 'LUCKY_COIN' 改为 'POINTS'，与 auth-telegram 统一
             balance: 0,
             version: 1,
             created_at: now.toISOString(),
@@ -622,24 +629,28 @@ Deno.serve(async (req) => {
       // ----------------------------------------
       // 13.1 推荐佣金事件 (COMMISSION)
       // 原逻辑: 先查询用户是否有推荐人，如果有则为每个订单调用 handle-purchase-commission
-      // 现逻辑: 为每个订单写入一个 COMMISSION 事件，Worker 处理时会检查推荐关系
+      // 现逻辑: 只为真实用户订单写入 COMMISSION 事件，Worker 处理时会检查推荐关系
       // 幂等性: 由 handle-purchase-commission 内部的防重复检查保证
       //         (检查 commissions 表中是否已存在 order_id + user_id + level 的记录)
+      //
+      // 【重要修复 v3】只为真实用户订单（userOrder）创建佣金事件
+      // 机器人订单（botOrders）不应产生佣金，因为:
+      //   1. 机器人没有真实付款，它们的订单状态直接是 REFUNDED
+      //   2. 用户实际只付了 totalCost（groupSize 份），但佣金应该只基于 1 份真实订单
+      //   3. 如果为 N 个机器人订单也创建佣金，会导致推荐人获得 N 倍虚假佣金
       // ----------------------------------------
-      for (const order of allOrders) {
-        events.push({
-          event_type: EventType.COMMISSION,
-          source: 'group-buy-squad',
-          payload: {
-            order_id: order.id,
-            user_id: user.id,
-            order_amount: pricePerPerson,
-          },
-          idempotency_key: generateIdempotencyKey('squad', EventType.COMMISSION, order.id),
-          session_id: sessionId,
+      events.push({
+        event_type: EventType.COMMISSION,
+        source: 'group-buy-squad',
+        payload: {
+          order_id: userOrder.id,  // 修复: 只使用真实用户订单，不包含机器人订单
           user_id: user.id,
-        });
-      }
+          order_amount: pricePerPerson,
+        },
+        idempotency_key: generateIdempotencyKey('squad', EventType.COMMISSION, userOrder.id),
+        session_id: sessionId,
+        user_id: user.id,
+      });
 
       // ----------------------------------------
       // 13.2 AI 对话奖励事件 (AI_REWARD)

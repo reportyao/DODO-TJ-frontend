@@ -144,10 +144,13 @@ serve(async (req) => {
 
     // 3. 冻结余额（增加frozen_balance，不减少balance）
     // 这样用户可以看到余额，但不能使用被冻结的部分
+    // 【资金安全修复 v3】添加乐观锁防止并发冻结导致超额冻结
+    // 场景: 用户快速点击两次提现，可能导致同一笔钱被冻结两次
+    const currentVersion = wallet.version || 1;
     const newFrozenBalance = currentFrozenBalance + withdrawAmount;
 
     const updateWalletResponse = await fetch(
-      `${supabaseUrl}/rest/v1/wallets?id=eq.${wallet.id}`,
+      `${supabaseUrl}/rest/v1/wallets?id=eq.${wallet.id}&version=eq.${currentVersion}`,
       {
         method: 'PATCH',
         headers: {
@@ -158,6 +161,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           frozen_balance: newFrozenBalance,
+          version: currentVersion + 1,  // 乐观锁: 版本号+1
           updated_at: new Date().toISOString()
         })
       }
@@ -167,6 +171,13 @@ serve(async (req) => {
       const errorText = await updateWalletResponse.text();
       console.error('冻结余额失败:', errorText);
       throw new Error('冻结余额失败');
+    }
+
+    // 【乐观锁校验】检查是否有行被更新（如果 version 不匹配，返回空数组）
+    const updatedWallets = await updateWalletResponse.json();
+    if (!updatedWallets || updatedWallets.length === 0) {
+      console.error('冻结余额失败: 乐观锁版本不匹配，可能存在并发操作');
+      throw new Error('操作失败，请重试（可能存在并发操作）');
     }
 
     // 4. 生成订单号
@@ -205,6 +216,7 @@ serve(async (req) => {
 
     if (!insertResponse.ok) {
       // 如果创建提现请求失败，需要回滚钱包冻结
+      // 【注意】回滚时使用新的 version+1，因为上面已经成功更新了 version
       await fetch(
         `${supabaseUrl}/rest/v1/wallets?id=eq.${wallet.id}`,
         {
@@ -216,6 +228,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             frozen_balance: currentFrozenBalance,
+            version: currentVersion + 2,  // 回滚时版本号再+1
             updated_at: new Date().toISOString()
           })
         }

@@ -103,6 +103,7 @@ serve(async (req) => {
     // 如果批准且有奖励，给用户增加积分
     if (action === 'APPROVED' && rewardCoins && rewardCoins > 0) {
       // 查询用户的积分钱包
+      // 【修复 v3】查询 version 字段用于乐观锁
       const { data: wallet, error: walletError } = await supabaseClient
         .from('wallets')
         .select('*')
@@ -116,28 +117,40 @@ serve(async (req) => {
       }
 
       // 更新钱包余额
-      const newBalance = parseFloat(wallet.balance) + rewardCoins
-      const { error: updateWalletError } = await supabaseClient
+      // 【资金安全修复 v3】添加乐观锁防止并发更新导致余额错误
+      const currentBalance = parseFloat(wallet.balance)
+      const newBalance = currentBalance + rewardCoins
+      const currentVersion = wallet.version || 1
+
+      const { error: updateWalletError, data: updatedWallet } = await supabaseClient
         .from('wallets')
         .update({
           balance: newBalance,
+          version: currentVersion + 1,  // 乐观锁: 版本号+1
           updated_at: new Date().toISOString(),
         })
         .eq('id', wallet.id)
+        .eq('version', currentVersion)  // 乐观锁: 只有版本号匹配才能更新
+        .select()
+        .single()
 
-      if (updateWalletError) {
-        console.error('更新积分余额失败:', updateWalletError)
-        throw new Error('更新积分余额失败')
+      if (updateWalletError || !updatedWallet) {
+        console.error('更新积分余额失败(可能是并发冲突):', updateWalletError)
+        throw new Error('更新积分余额失败，请重试')
       }
 
       // 创建交易记录
+      // 【修复 v3】添加 balance_before 和 status 字段
       await supabaseClient.from('wallet_transactions').insert({
         wallet_id: wallet.id,
         type: 'SHOWOFF_REWARD',
         amount: rewardCoins,
+        balance_before: currentBalance,  // 新增: 记录奖励前余额
         balance_after: newBalance,
+        status: 'COMPLETED',
         description: `晒单审核通过奖励 - ${rewardCoins} 积分`,
         related_id: showoffId,
+        processed_at: new Date().toISOString(),
       })
 
       // 发送通知给用户

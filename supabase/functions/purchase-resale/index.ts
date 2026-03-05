@@ -175,8 +175,9 @@ serve(async (req) => {
       throw new Error('积分余额不足')
     }
 
-    const buyerBalanceBefore = buyerWallet.balance
-    const buyerBalanceAfter = buyerWallet.balance - resaleItem.resale_price
+    const buyerBalanceBefore = parseFloat(buyerWallet.balance)
+    const buyerBalanceAfter = buyerBalanceBefore - resaleItem.resale_price
+    const buyerVersion = buyerWallet.version || 1
 
     /**
      * 查询卖家现金钱包
@@ -191,7 +192,7 @@ serve(async (req) => {
       .from('wallets')
       .select('*')
       .eq('user_id', resaleItem.seller_id)
-      .eq('type', 'TJS')  // 修复：现金钱包的type是'TJS'，不是'BALANCE'
+      .eq('type', 'TJS')  // 现金钱包的type是'TJS'，不是'BALANCE'
       .eq('currency', 'TJS')
       .single()
 
@@ -203,41 +204,56 @@ serve(async (req) => {
     // 计算卖家收入 (扣除5%手续费)
     const sellerAmount = resaleItem.resale_price * 0.95
     const fee = resaleItem.resale_price * 0.05
-    const sellerBalanceBefore = sellerWallet.balance
-    const sellerBalanceAfter = sellerWallet.balance + sellerAmount
+    const sellerBalanceBefore = parseFloat(sellerWallet.balance)
+    const sellerBalanceAfter = sellerBalanceBefore + sellerAmount
+    const sellerVersion = sellerWallet.version || 1
 
     // 开始事务处理
     // 1. 扣除买家积分余额
-    const { error: deductError } = await supabaseClient
+    // 【资金安全修复 v3】添加乐观锁防止并发购买导致余额错误
+    const { error: deductError, data: updatedBuyerWallet } = await supabaseClient
       .from('wallets')
       .update({ 
         balance: buyerBalanceAfter,
+        version: buyerVersion + 1,  // 乐观锁: 版本号+1
         updated_at: new Date().toISOString()
       })
       .eq('id', buyerWallet.id)
+      .eq('version', buyerVersion)  // 乐观锁: 只有版本号匹配才能更新
+      .select()
+      .single()
 
-    if (deductError) {
-      console.error('[PurchaseResale] Deduct buyer balance error:', deductError)
-      throw new Error('扣除余额失败: ' + deductError.message)
+    if (deductError || !updatedBuyerWallet) {
+      console.error('[PurchaseResale] Deduct buyer balance error (possible concurrent conflict):', deductError)
+      throw new Error('扣除余额失败，请重试')
     }
 
-    // 2. 增加卖家余额钱包
-    const { error: addError } = await supabaseClient
+    // 2. 增加卖家现金余额
+    // 【乐观锁】防止并发卖出导致余额错误
+    const { error: addError, data: updatedSellerWallet } = await supabaseClient
       .from('wallets')
       .update({ 
         balance: sellerBalanceAfter,
+        version: sellerVersion + 1,  // 乐观锁: 版本号+1
         updated_at: new Date().toISOString()
       })
       .eq('id', sellerWallet.id)
+      .eq('version', sellerVersion)  // 乐观锁
+      .select()
+      .single()
 
-    if (addError) {
+    if (addError || !updatedSellerWallet) {
       console.error('[PurchaseResale] Add seller balance error:', addError)
-      // 回滚买家余额
+      // 回滚买家余额（使用新的 version）
       await supabaseClient
         .from('wallets')
-        .update({ balance: buyerBalanceBefore })
+        .update({ 
+          balance: buyerBalanceBefore,
+          version: buyerVersion + 2,  // 回滚时版本号再+1
+          updated_at: new Date().toISOString()
+        })
         .eq('id', buyerWallet.id)
-      throw new Error('增加卖家余额失败: ' + addError.message)
+      throw new Error('增加卖家余额失败，请重试')
     }
 
     // 3. 更新转售商品状态
@@ -252,9 +268,17 @@ serve(async (req) => {
 
     if (updateResaleError) {
       console.error('[PurchaseResale] Update resale status error:', updateResaleError)
-      // 尝试回滚
-      await supabaseClient.from('wallets').update({ balance: buyerBalanceBefore }).eq('id', buyerWallet.id)
-      await supabaseClient.from('wallets').update({ balance: sellerBalanceBefore }).eq('id', sellerWallet.id)
+      // 尝试回滚（使用新的 version）
+      await supabaseClient.from('wallets').update({ 
+        balance: buyerBalanceBefore, 
+        version: buyerVersion + 2,
+        updated_at: new Date().toISOString()
+      }).eq('id', buyerWallet.id)
+      await supabaseClient.from('wallets').update({ 
+        balance: sellerBalanceBefore, 
+        version: sellerVersion + 2,
+        updated_at: new Date().toISOString()
+      }).eq('id', sellerWallet.id)
       throw new Error('更新转售商品状态失败: ' + updateResaleError.message)
     }
 
@@ -275,14 +299,18 @@ serve(async (req) => {
     }
 
     // 5. 记录钱包交易 (买家)
+    // 【修复 v3】添加 balance_before 和 status 字段
     await supabaseClient
       .from('wallet_transactions')
       .insert({
         wallet_id: buyerWallet.id,
         type: 'RESALE_PURCHASE',
         amount: -resaleItem.resale_price,
+        balance_before: buyerBalanceBefore,  // 新增: 记录购买前余额
         balance_after: buyerBalanceAfter,
+        status: 'COMPLETED',
         description: `购买转售: ${resaleItem.lotteries?.title || '商品'}`,
+        processed_at: new Date().toISOString(),
       })
 
     // 6. 记录钱包交易 (卖家)
@@ -292,8 +320,11 @@ serve(async (req) => {
         wallet_id: sellerWallet.id,
         type: 'RESALE_INCOME',
         amount: sellerAmount,
+        balance_before: sellerBalanceBefore,  // 新增: 记录卖出前余额
         balance_after: sellerBalanceAfter,
+        status: 'COMPLETED',
         description: `转售收入 (扣除${fee.toFixed(2)}TJS手续费)`,
+        processed_at: new Date().toISOString(),
       })
 
     // 交易记录已通过 wallet_transactions 表记录，不再使用已删除的 transactions 表

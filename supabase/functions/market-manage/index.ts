@@ -122,15 +122,16 @@ serve(async (req) => {
          * - 现金钱包: type='TJS', currency='TJS'
          * - 积分钱包: type='LUCKY_COIN', currency='POINTS'
          */
+        // 【资金安全修复 v3】查询钱包时包含 id 和 version 字段用于乐观锁
         const { data: buyerWallet } = await supabaseClient
           .from('wallets')
-          .select('balance')
+          .select('id, balance, version')
           .eq('user_id', user_id)
           .eq('type', 'TJS')           // 现金钱包类型
           .eq('currency', 'TJS')       // 现金货币单位
           .single()
 
-        if (!buyerWallet || buyerWallet.balance < listing.selling_price) {
+        if (!buyerWallet || parseFloat(buyerWallet.balance) < listing.selling_price) {
           return new Response(
             JSON.stringify({ error: 'Insufficient balance' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
@@ -140,35 +141,54 @@ serve(async (req) => {
         // 开始事务处理
 
         // 1. 扣除买家现金余额
-        await supabaseClient
+        // 【乐观锁】防止并发购买导致余额错误
+        const buyerCurrentBalance = parseFloat(buyerWallet.balance)
+        const buyerNewBalance = buyerCurrentBalance - listing.selling_price
+        const buyerVersion = buyerWallet.version || 1
+
+        const { error: buyerUpdateError, data: updatedBuyerWallet } = await supabaseClient
           .from('wallets')
           .update({
-            balance: buyerWallet.balance - listing.selling_price,
+            balance: buyerNewBalance,
+            version: buyerVersion + 1,  // 乐观锁: 版本号+1
             updated_at: new Date().toISOString()
           })
-          .eq('user_id', user_id)
-          .eq('type', 'TJS')           // 现金钱包类型
-          .eq('currency', 'TJS')
+          .eq('id', buyerWallet.id)       // 使用 wallet.id 精确定位
+          .eq('version', buyerVersion)    // 乐观锁: 只有版本号匹配才能更新
+          .select()
+          .single()
+
+        if (buyerUpdateError || !updatedBuyerWallet) {
+          return new Response(
+            JSON.stringify({ error: 'Failed to deduct balance, please try again' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+          )
+        }
 
         // 2. 查询并增加卖家现金余额
+        // 【乐观锁】防止并发卖出导致余额错误
         const { data: sellerWallet } = await supabaseClient
           .from('wallets')
-          .select('balance')
+          .select('id, balance, version')
           .eq('user_id', listing.seller_id)
           .eq('type', 'TJS')           // 现金钱包类型
           .eq('currency', 'TJS')
           .single()
 
         if (sellerWallet) {
+          const sellerCurrentBalance = parseFloat(sellerWallet.balance)
+          const sellerNewBalance = sellerCurrentBalance + listing.selling_price
+          const sellerVersion = sellerWallet.version || 1
+
           await supabaseClient
             .from('wallets')
             .update({
-              balance: sellerWallet.balance + listing.selling_price,
+              balance: sellerNewBalance,
+              version: sellerVersion + 1,  // 乐观锁: 版本号+1
               updated_at: new Date().toISOString()
             })
-            .eq('user_id', listing.seller_id)
-            .eq('type', 'TJS')         // 现金钱包类型
-            .eq('currency', 'TJS')
+            .eq('id', sellerWallet.id)       // 使用 wallet.id 精确定位
+            .eq('version', sellerVersion)    // 乐观锁
         }
 
         // 3. 转移彩票归属

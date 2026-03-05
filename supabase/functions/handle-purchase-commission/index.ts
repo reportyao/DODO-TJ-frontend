@@ -222,7 +222,7 @@ serve(async (req) => {
        */
       const { data: wallet, error: walletError } = await supabaseClient
         .from('wallets')
-        .select('id, balance')
+        .select('id, balance, version')  // 修复 v3: 查询 version 字段用于乐观锁
         .eq('user_id', currentUserId)
         .eq('type', 'LUCKY_COIN')
         .eq('currency', 'POINTS')
@@ -231,13 +231,15 @@ serve(async (req) => {
       if (walletError) {
         console.error('Failed to find wallet:', walletError)
         // 如果找不到积分钱包，尝试创建一个
+        // 【重要】currency 必须为 'POINTS'，与 auth-telegram 统一
         const { data: newWallet, error: createError } = await supabaseClient
           .from('wallets')
           .insert({
             user_id: currentUserId,
             type: 'LUCKY_COIN',
-            currency: 'POINTS',
+            currency: 'POINTS',  // 统一标准: 积分钱包 currency='POINTS'
             balance: commissionAmount,
+            version: 1,
           })
           .select()
           .single()
@@ -249,20 +251,58 @@ serve(async (req) => {
         console.log('Created new LUCKY_COIN wallet for user:', currentUserId, 'with balance:', commissionAmount)
       } else {
         // 更新积分钱包余额
-        const newBalance = parseFloat(wallet.balance || '0') + commissionAmount
-        const { error: updateError } = await supabaseClient
+        // 【资金安全修复 v3】添加乐观锁防止并发更新导致余额错误
+        // 场景: 多个下级同时购买，同时触发佣金发放，可能导致余额覆盖
+        const currentWalletBalance = parseFloat(wallet.balance || '0')
+        const newBalance = currentWalletBalance + commissionAmount
+        const currentVersion = wallet.version || 1
+
+        const { error: updateError, data: updatedWallet } = await supabaseClient
           .from('wallets')
           .update({
             balance: newBalance,
+            version: currentVersion + 1,  // 乐观锁: 版本号+1
             updated_at: new Date().toISOString(),
           })
           .eq('id', wallet.id)
+          .eq('version', currentVersion)  // 乐观锁: 只有版本号匹配才能更新
+          .select()
+          .single()
 
-        if (updateError) {
-          console.error('Failed to update wallet balance:', updateError)
-          throw updateError
+        if (updateError || !updatedWallet) {
+          // 乐观锁失败，重试一次（重新读取最新版本）
+          console.warn('Optimistic lock failed, retrying once...')
+          const { data: freshWallet } = await supabaseClient
+            .from('wallets')
+            .select('id, balance, version')
+            .eq('user_id', currentUserId)
+            .eq('type', 'LUCKY_COIN')
+            .eq('currency', 'POINTS')
+            .single()
+
+          if (freshWallet) {
+            const retryBalance = parseFloat(freshWallet.balance || '0') + commissionAmount
+            const { error: retryError } = await supabaseClient
+              .from('wallets')
+              .update({
+                balance: retryBalance,
+                version: (freshWallet.version || 1) + 1,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', freshWallet.id)
+              .eq('version', freshWallet.version || 1)
+
+            if (retryError) {
+              console.error('Failed to update wallet balance after retry:', retryError)
+              throw retryError
+            }
+            console.log('Updated LUCKY_COIN wallet (after retry) for user:', currentUserId, 'new balance:', retryBalance)
+          } else {
+            throw new Error('Failed to find wallet for retry')
+          }
+        } else {
+          console.log('Updated LUCKY_COIN wallet for user:', currentUserId, 'new balance:', newBalance)
         }
-        console.log('Updated LUCKY_COIN wallet for user:', currentUserId, 'new balance:', newBalance)
       }
 
       // 4. 推送 Telegram 消息

@@ -289,9 +289,10 @@ async function handleCommission(event: QueuedEvent): Promise<void> {
     commissions.push(commission);
 
     // 将佣金发放到上级用户的积分钱包（LUCKY_COIN）
+    // 【资金安全修复 v3】查询 version 字段用于乐观锁
     const { data: wallet, error: walletError } = await supabase
       .from('wallets')
-      .select('id, balance')
+      .select('id, balance, version')
       .eq('user_id', currentUserId)
       .eq('type', 'LUCKY_COIN')
       .eq('currency', 'POINTS')
@@ -299,14 +300,16 @@ async function handleCommission(event: QueuedEvent): Promise<void> {
 
     if (walletError) {
       // 如果找不到积分钱包，尝试创建一个
+      // 【重要】currency 必须为 'POINTS'，与 auth-telegram 统一
       console.log(`[Worker] No LUCKY_COIN wallet found for user ${currentUserId}, creating one`);
       const { error: createError } = await supabase
         .from('wallets')
         .insert({
           user_id: currentUserId,
           type: 'LUCKY_COIN',
-          currency: 'POINTS',
+          currency: 'POINTS',  // 统一标准: 积分钱包 currency='POINTS'
           balance: commissionAmount,
+          version: 1,
         });
 
       if (createError) {
@@ -315,19 +318,57 @@ async function handleCommission(event: QueuedEvent): Promise<void> {
       console.log(`[Worker] Created new LUCKY_COIN wallet for user ${currentUserId} with balance ${commissionAmount}`);
     } else {
       // 更新积分钱包余额
-      const newBalance = parseFloat(wallet.balance || '0') + commissionAmount;
-      const { error: updateError } = await supabase
+      // 【资金安全修复 v3】添加乐观锁防止并发更新导致余额错误
+      // 场景: 多个下级同时购买，同时触发佣金发放，可能导致余额覆盖
+      const currentBalance = parseFloat(wallet.balance || '0');
+      const newBalance = currentBalance + commissionAmount;
+      const currentVersion = wallet.version || 1;
+
+      const { error: updateError, data: updatedWallet } = await supabase
         .from('wallets')
         .update({
           balance: newBalance,
+          version: currentVersion + 1,  // 乐观锁: 版本号+1
           updated_at: new Date().toISOString(),
         })
-        .eq('id', wallet.id);
+        .eq('id', wallet.id)
+        .eq('version', currentVersion)  // 乐观锁: 只有版本号匹配才能更新
+        .select()
+        .single();
 
-      if (updateError) {
-        throw new Error(`Failed to update wallet balance: ${updateError.message}`);
+      if (updateError || !updatedWallet) {
+        // 乐观锁失败，重试一次（重新读取最新版本）
+        console.warn(`[Worker] Optimistic lock failed for wallet update, retrying once...`);
+        const { data: freshWallet } = await supabase
+          .from('wallets')
+          .select('id, balance, version')
+          .eq('user_id', currentUserId)
+          .eq('type', 'LUCKY_COIN')
+          .eq('currency', 'POINTS')
+          .single();
+
+        if (freshWallet) {
+          const retryBalance = parseFloat(freshWallet.balance || '0') + commissionAmount;
+          const { error: retryError } = await supabase
+            .from('wallets')
+            .update({
+              balance: retryBalance,
+              version: (freshWallet.version || 1) + 1,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', freshWallet.id)
+            .eq('version', freshWallet.version || 1);
+
+          if (retryError) {
+            throw new Error(`Failed to update wallet balance after retry: ${retryError.message}`);
+          }
+          console.log(`[Worker] Updated LUCKY_COIN wallet (after retry) for user ${currentUserId}, new balance: ${retryBalance}`);
+        } else {
+          throw new Error(`Failed to find wallet for retry`);
+        }
+      } else {
+        console.log(`[Worker] Updated LUCKY_COIN wallet for user ${currentUserId}, new balance: ${newBalance}`);
       }
-      console.log(`[Worker] Updated LUCKY_COIN wallet for user ${currentUserId}, new balance: ${newBalance}`);
     }
 
     // 发送 Telegram 佣金通知（失败不阻断流程）

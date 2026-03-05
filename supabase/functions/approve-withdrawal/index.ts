@@ -151,24 +151,29 @@ serve(async (req) => {
       }
       
       // 直接扣除余额，同时清除冻结金额
+      // 【资金安全修复 v3】添加乐观锁防止并发更新导致余额错误
       const newBalance = currentBalance - withdrawAmount
       // 从冻结余额中扣除（如果有冻结的话）
       const amountToUnfreeze = Math.min(currentFrozenBalance, withdrawAmount)
       const newFrozenBalance = Math.max(0, currentFrozenBalance - amountToUnfreeze)
       
-      const { error: deductError } = await supabaseClient
+      const { error: deductError, data: updatedWallet } = await supabaseClient
         .from('wallets')
         .update({
           balance: newBalance,
           frozen_balance: newFrozenBalance,
           total_withdrawals: currentTotalWithdrawals + withdrawAmount,
+          version: (wallet.version || 1) + 1,  // 乐观锁: 版本号+1
           updated_at: new Date().toISOString(),
         })
         .eq('id', wallet.id)
+        .eq('version', wallet.version || 1)  // 乐观锁: 只有版本号匹配才能更新
+        .select()
+        .single()
 
-      if (deductError) {
-        console.error('扣除余额失败:', deductError)
-        throw new Error('扣除余额失败')
+      if (deductError || !updatedWallet) {
+        console.error('扣除余额失败(可能是并发冲突):', deductError)
+        throw new Error('扣除余额失败，请重试（可能存在并发操作）')
       }
 
       const { error: updateError } = await supabaseClient
@@ -188,14 +193,17 @@ serve(async (req) => {
       }
 
       // 创建钱包交易记录 - 审核通过时就扣款
+      // 【修复 v3】添加 balance_before 字段，确保流水记录完整
       await supabaseClient.from('wallet_transactions').insert({
         wallet_id: wallet.id,
         type: 'WITHDRAWAL',
         amount: -withdrawAmount,
+        balance_before: currentBalance,  // 新增: 记录扣款前余额
         balance_after: newBalance,
         status: 'COMPLETED',
         description: `提现审核通过 - 订单号: ${withdrawalRequest.order_number}`,
         related_id: requestId,
+        processed_at: new Date().toISOString(),
       })
 
       // 发送通知给用户
@@ -226,19 +234,24 @@ serve(async (req) => {
       }
     } else if (action === 'REJECTED') {
       // 审核拒绝 - 解冻余额，返还给用户
+      // 【资金安全修复 v3】添加乐观锁防止并发更新
       const amountToUnfreeze = Math.min(currentFrozenBalance, withdrawAmount)
       
-      const { error: unfreezeError } = await supabaseClient
+      const { error: unfreezeError, data: unfrozenWallet } = await supabaseClient
         .from('wallets')
         .update({
           frozen_balance: Math.max(0, currentFrozenBalance - withdrawAmount),
+          version: (wallet.version || 1) + 1,  // 乐观锁: 版本号+1
           updated_at: new Date().toISOString(),
         })
         .eq('id', wallet.id)
+        .eq('version', wallet.version || 1)  // 乐观锁: 只有版本号匹配才能更新
+        .select()
+        .single()
 
-      if (unfreezeError) {
-        console.error('解冻余额失败:', unfreezeError)
-        throw new Error('解冻余额失败')
+      if (unfreezeError || !unfrozenWallet) {
+        console.error('解冻余额失败(可能是并发冲突):', unfreezeError)
+        throw new Error('解冻余额失败，请重试（可能存在并发操作）')
       }
 
       const { error: updateError } = await supabaseClient
