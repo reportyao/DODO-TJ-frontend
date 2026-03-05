@@ -550,7 +550,10 @@
     "totalValue": "Общая стоимость",
     "viewShowoffs": "Просмотреть выборы",
     "viewOrders": "Просмотреть все заказы",
-    "notifications": "Мои сообщения"
+    "notifications": "Мои сообщения",
+    "myIdCode": "Мой ID",
+    "tapToCopy": "Нажмите для копирования",
+    "idCopied": "ID скопирован"
   },
   "auth": {
     "welcome": "Добро пожаловать в TezBarakat",
@@ -1474,7 +1477,9 @@
     "noMembers": "Пока нет участников",
     "leaderboardTitle": "Рейтинг промоутеров",
     "noLeaderboard": "Нет данных рейтинга",
-    "me": "Я"
+    "me": "Я",
+    "depositForCustomer": "Пополнить для клиента",
+    "depositForCustomerHint": "Помочь клиенту пополнить баланс"
   },
   "language": "ru",
   "prizes": {
@@ -1562,5 +1567,47 @@
     "won": "Выиграл",
     "winCount": "Количество выигрышей",
     "lotteryNotFound": "Розыгрыш не найден"
+  },
+  "promoterDeposit": {
+    "title": "Пополнение для клиента",
+    "notLoggedIn": "Пожалуйста, войдите в систему",
+    "findUser": "Найти пользователя",
+    "findUserHint": "Отсканируйте QR-код или введите ID пользователя / Telegram ID",
+    "searchPlaceholder": "Введите ID пользователя или Telegram ID",
+    "searchUser": "Найти",
+    "searching": "Поиск...",
+    "userNotFound": "Пользователь не найден",
+    "searchFailed": "Ошибка поиска",
+    "cannotDepositSelf": "Нельзя пополнить свой счёт",
+    "invalidQrCode": "Недействительный QR-код",
+    "scanQrHint": "Отсканируйте QR-код пользователя",
+    "scanNotSupported": "Сканирование не поддерживается",
+    "selectAmount": "Выберите сумму",
+    "customAmountPlaceholder": "Введите сумму",
+    "amountRange": "Диапазон: 10 - 500 TJS",
+    "notePlaceholder": "Примечание (необязательно)",
+    "nextStep": "Далее",
+    "changeUser": "Изменить",
+    "confirmTitle": "Подтвердите данные",
+    "targetUser": "Пользователь",
+    "userId": "ID пользователя",
+    "depositAmountLabel": "Сумма пополнения",
+    "noteLabel": "Примечание",
+    "confirmDeposit": "Подтвердить",
+    "processing": "Обработка...",
+    "depositSuccess": "Пополнение выполнено",
+    "depositFailed": "Ошибка пополнения",
+    "firstDepositBonus": "Бонус за первое пополнение",
+    "todayRemaining": "Прогресс за сегодня",
+    "times": "раз",
+    "continueDeposit": "Продолжить",
+    "todayStats": "Статистика за сегодня",
+    "timesRemaining": "осталось",
+    "depositCount": "Количество",
+    "depositAmount": "Сумма",
+    "remainingLimit": "Остаток лимита",
+    "depositHistory": "История пополнений",
+    "noHistory": "Нет записей",
+    "bonus": "Бонус"
   }
 }

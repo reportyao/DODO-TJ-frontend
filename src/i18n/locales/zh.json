@@ -550,7 +550,10 @@
     "totalValue": "总价值",
     "viewShowoffs": "查看晒单",
     "viewOrders": "查看所有订单",
-    "myProfile": "我的资料"
+    "myProfile": "我的资料",
+    "myIdCode": "我的ID",
+    "tapToCopy": "点击复制",
+    "idCopied": "ID已复制"
   },
   "auth": {
     "welcome": "欢迎来到 TezBarakat",
@@ -1467,7 +1470,9 @@
     "noMembers": "暂无团队成员",
     "leaderboardTitle": "推广排行榜",
     "noLeaderboard": "暂无排行数据",
-    "me": "我"
+    "me": "我",
+    "depositForCustomer": "代客充值",
+    "depositForCustomerHint": "帮助客户完成线下充值"
   },
   "onboarding": {
     "title": "邀请好友，获得终身佣金",
@@ -1562,5 +1567,47 @@
     "won": "已中奖",
     "winCount": "中奖次数",
     "lotteryNotFound": "抽奖未找到"
+  },
+  "promoterDeposit": {
+    "title": "代客充值",
+    "notLoggedIn": "请先登录",
+    "findUser": "查找用户",
+    "findUserHint": "扫描用户二维码或输入用户ID / Telegram ID",
+    "searchPlaceholder": "输入用户ID或Telegram ID",
+    "searchUser": "搜索用户",
+    "searching": "搜索中...",
+    "userNotFound": "未找到该用户",
+    "searchFailed": "搜索失败",
+    "cannotDepositSelf": "不能给自己充值",
+    "invalidQrCode": "无效的二维码",
+    "scanQrHint": "请扫描用户的个人二维码",
+    "scanNotSupported": "当前环境不支持扫码",
+    "selectAmount": "选择充值金额",
+    "customAmountPlaceholder": "输入自定义金额",
+    "amountRange": "充值金额范围：10 - 500 TJS",
+    "notePlaceholder": "备注（可选）",
+    "nextStep": "下一步",
+    "changeUser": "更换",
+    "confirmTitle": "确认充值信息",
+    "targetUser": "目标用户",
+    "userId": "用户ID",
+    "depositAmountLabel": "充值金额",
+    "noteLabel": "备注",
+    "confirmDeposit": "确认充值",
+    "processing": "处理中...",
+    "depositSuccess": "充值成功",
+    "depositFailed": "充值失败",
+    "firstDepositBonus": "首充奖励",
+    "todayRemaining": "今日进度",
+    "times": "次",
+    "continueDeposit": "继续充值",
+    "todayStats": "今日充值统计",
+    "timesRemaining": "次剩余",
+    "depositCount": "充值笔数",
+    "depositAmount": "充值金额",
+    "remainingLimit": "剩余额度",
+    "depositHistory": "充值记录",
+    "noHistory": "暂无充值记录",
+    "bonus": "奖励"
   }
 }

@@ -225,6 +225,21 @@ const ProfilePage: React.FC = () => {
               <span className="px-2 py-1 rounded-full text-xs font-medium bg-white/20">
                 {user ? getKycLevelText('BASIC') : t('wallet.notSet')}
               </span>
+              {user?.id && (
+                <button
+                  onClick={async () => {
+                    const idShort = user.id.substring(0, 8)
+                    const success = await copyToClipboard(idShort)
+                    if (success) {
+                      toast.success(t('profile.idCopied'))
+                    }
+                  }}
+                  className="px-2 py-1 rounded-full text-xs font-medium bg-white/20 flex items-center space-x-1 active:bg-white/30 transition-colors"
+                >
+                  <span>{t('profile.myIdCode')}: {user.id.substring(0, 8)}</span>
+                  <ClipboardDocumentIcon className="w-3 h-3" />
+                </button>
+              )}
             </div>
           </div>
         </div>

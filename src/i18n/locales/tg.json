@@ -550,7 +550,10 @@
     "totalValue": "Арзиши умумӣ",
     "viewShowoffs": "Дидани намоишҳо",
     "viewOrders": "Дидани ҳамаи фармоишҳо",
-    "notifications": "Паёмҳои ман"
+    "notifications": "Паёмҳои ман",
+    "myIdCode": "ID-и ман",
+    "tapToCopy": "Барои нусхабардорӣ пахш кунед",
+    "idCopied": "ID нусхабардорӣ шуд"
   },
   "auth": {
     "welcome": "Хуш омадед ба TezBarakat",
@@ -1474,7 +1477,9 @@
     "noMembers": "Ҳоло аъзо нест",
     "leaderboardTitle": "Рейтинги промоутерҳо",
     "noLeaderboard": "Маълумот нест",
-    "me": "Ман"
+    "me": "Ман",
+    "depositForCustomer": "Пуркунӣ барои муштарӣ",
+    "depositForCustomerHint": "Ба муштарӣ барои пуркунии баланс кӯмак кунед"
   },
   "language": "tg",
   "prizes": {
@@ -1562,5 +1567,47 @@
     "won": "Ғолиб шуд",
     "winCount": "Шумораи ғалабаҳо",
     "lotteryNotFound": "Қуръакашӣ ёфт нашуд"
+  },
+  "promoterDeposit": {
+    "title": "Пуркунӣ барои муштарӣ",
+    "notLoggedIn": "Лутфан ворид шавед",
+    "findUser": "Ҷустуҷӯи корбар",
+    "findUserHint": "QR-кодро скан кунед ё ID-и корбар / Telegram ID-ро ворид кунед",
+    "searchPlaceholder": "ID-и корбар ё Telegram ID-ро ворид кунед",
+    "searchUser": "Ҷустуҷӯ",
+    "searching": "Ҷустуҷӯ...",
+    "userNotFound": "Корбар ёфт нашуд",
+    "searchFailed": "Хатои ҷустуҷӯ",
+    "cannotDepositSelf": "Ба худ пуркунӣ мумкин нест",
+    "invalidQrCode": "QR-коди нодуруст",
+    "scanQrHint": "QR-коди корбарро скан кунед",
+    "scanNotSupported": "Скан дастгирӣ намешавад",
+    "selectAmount": "Маблағро интихоб кунед",
+    "customAmountPlaceholder": "Маблағро ворид кунед",
+    "amountRange": "Диапазон: 10 - 500 TJS",
+    "notePlaceholder": "Тавзеҳот (ихтиёрӣ)",
+    "nextStep": "Қадами навбатӣ",
+    "changeUser": "Иваз кардан",
+    "confirmTitle": "Маълумотро тасдиқ кунед",
+    "targetUser": "Корбар",
+    "userId": "ID-и корбар",
+    "depositAmountLabel": "Маблағи пуркунӣ",
+    "noteLabel": "Тавзеҳот",
+    "confirmDeposit": "Тасдиқ кардан",
+    "processing": "Коркард...",
+    "depositSuccess": "Пуркунӣ муваффақ",
+    "depositFailed": "Хатои пуркунӣ",
+    "firstDepositBonus": "Ҷоизаи пуркунии аввал",
+    "todayRemaining": "Пешрафти имрӯза",
+    "times": "маротиба",
+    "continueDeposit": "Идома додан",
+    "todayStats": "Омори имрӯза",
+    "timesRemaining": "боқимонда",
+    "depositCount": "Шумора",
+    "depositAmount": "Маблағ",
+    "remainingLimit": "Лимити боқимонда",
+    "depositHistory": "Таърихи пуркуниҳо",
+    "noHistory": "Сабтҳо нестанд",
+    "bonus": "Ҷоиза"
   }
 }

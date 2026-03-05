@@ -38,6 +38,7 @@ import {
   MegaphoneIcon,
   StarIcon,
   BoltIcon,
+  BanknotesIcon,
 } from '@heroicons/react/24/outline'
 import {
   StarIcon as StarIconSolid,
@@ -361,9 +362,35 @@ const PromoterCenterPage: React.FC = () => {
       </div>
 
       {/* ============================================================ */}
+      {/* 代客充值入口按钮 */}
+      {/* ============================================================ */}
+      <div className="px-4 -mt-1 mb-2">
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          onClick={() => navigate('/promoter-deposit')}
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl p-4 shadow-lg shadow-blue-200 flex items-center justify-between"
+        >
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <BanknotesIcon className="w-6 h-6" />
+            </div>
+            <div className="text-left">
+              <p className="font-bold text-base">{t('promoter.depositForCustomer')}</p>
+              <p className="text-xs text-white/70">{t('promoter.depositForCustomerHint')}</p>
+            </div>
+          </div>
+          <div className="text-white/60">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
+        </motion.button>
+      </div>
+
+      {/* ============================================================ */}
       {/* 时间范围选择器 */}
       {/* ============================================================ */}
-      <div className="px-4 -mt-3">
+      <div className="px-4 -mt-1">
         <div className="bg-white rounded-xl p-1 shadow-sm flex">
           {(['today', 'week', 'month'] as const).map((range) => (
             <button

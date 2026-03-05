@@ -54,6 +54,7 @@ const OrderPage = lazyWithRetry(() => import("./pages/OrderPage"))
 const PendingPickupPage = lazyWithRetry(() => import("./pages/PendingPickupPage"))
 const SubsidyPlanPage = lazyWithRetry(() => import("./pages/SubsidyPlanPage"))
 const PromoterCenterPage = lazyWithRetry(() => import("./pages/PromoterCenterPage"))
+const PromoterDepositPage = lazyWithRetry(() => import("./pages/PromoterDepositPage"))
 
 // 设置与个人资料编辑
 const ProfileEditPage = lazyWithRetry(() => import("./pages/ProfileEditPage"))
@@ -126,6 +127,7 @@ function App() {
               <Route path="/order-detail/:id" element={<OrderDetailPage />} />
               <Route path="/showoff/my" element={<ShowoffPage />} />
               <Route path="/promoter-center" element={<PromoterCenterPage />} />
+              <Route path="/promoter-deposit" element={<PromoterDepositPage />} />
               <Route path="/market/my-resales" element={<MarketPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/debug" element={<DebugPage />} />

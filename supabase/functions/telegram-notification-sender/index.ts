@@ -48,6 +48,11 @@ interface NotificationData {
   // 开奖提醒相关
   lottery_title?: string;
   lottery_id?: string;
+
+  // 地推充值相关
+  promoter_name?: string;   // 地推人员名称
+  target_user_name?: string; // 目标用户名称
+  deposit_id?: string;       // 充值记录ID
 }
 
 // 多语言通知模板 - 根据用户确认的文案
@@ -245,11 +250,31 @@ const notificationTemplates = {
       `⏰ 开奖提醒\n\n🎰 商品: ${data.lottery_title || data.product_name || '未知商品'}\n🔢 您的参与码: ${data.ticket_number}\n⏰ 即将10分钟后开奖\n\n请留意开奖结果！`,
     ru: (data: NotificationData) => 
       `⏰ Напоминание о розыгрыше\n\n🎰 Товар: ${data.lottery_title || data.product_name || 'Неизвестный товар'}\n🔢 Ваш код участия: ${data.ticket_number}\n⏰ Розыгрыш через 10 минут\n\nСледите за результатами!`,
+    tg: (data: NotificationData) =>       `♐️ Огоҳӣ дар бораи бахтозмоӣ\n\n🎰 Мол: ${data.lottery_title || data.product_name || 'Моли номаълум'}\n🔢 Рамзи иштироки шумо: ${data.ticket_number}\n♐️ Бахтозмоӣ пас аз 10 дақиқа\n\nНатиҷаҳоро пайгирӣ кунед!`
+  },
+
+  // ==================== 8. 地推充值通知 ====================
+  
+  // 地推充值到账通知（发送给被充值用户）
+  promoter_deposit: {
+    zh: (data: NotificationData) => 
+      `💰 线下充值到账\n\n💵 充值金额: +${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 首充奖励: +${data.bonus_amount} TJS` : ''}\n👤 操作人: ${data.promoter_name || '地推人员'}\n🕒 时间: ${new Date().toLocaleString('zh-CN')}\n\n您的余额已更新，可以继续参与活动！`,
+    ru: (data: NotificationData) => 
+      `💰 Пополнение от промоутера\n\n💵 Сумма: +${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 Бонус: +${data.bonus_amount} TJS` : ''}\n👤 Оператор: ${data.promoter_name || 'Промоутер'}\n🕒 Время: ${new Date().toLocaleString('ru-RU')}\n\nВаш баланс обновлен, можете продолжать участие!`,
     tg: (data: NotificationData) => 
-      `⏰ Огоҳӣ дар бораи бахтозмоӣ\n\n🎰 Мол: ${data.lottery_title || data.product_name || 'Моли номаълум'}\n🔢 Рамзи иштироки шумо: ${data.ticket_number}\n⏰ Бахтозмоӣ пас аз 10 дақиқа\n\nНатиҷаҳоро пайгирӣ кунед!`
+      `💰 Пуркунӣ аз промоутер\n\n💵 Маблағ: +${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 Ҷоиза: +${data.bonus_amount} TJS` : ''}\n👤 Оператор: ${data.promoter_name || 'Промоутер'}\n🕒 Вақт: ${new Date().toLocaleString('tg-TJ')}\n\nБоқимондаи шумо навсозӣ шуд, метавонед дар фаъолият идома диҳед!`
+  },
+
+  // 地推充值确认通知（发送给地推人员自己）
+  promoter_deposit_confirm: {
+    zh: (data: NotificationData) => 
+      `✅ 代客充值成功\n\n👤 用户: ${data.target_user_name || '用户'}\n💵 金额: ${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 首充奖励: ${data.bonus_amount} TJS` : ''}\n🕒 时间: ${new Date().toLocaleString('zh-CN')}\n\n充值已成功到账！`,
+    ru: (data: NotificationData) => 
+      `✅ Пополнение выполнено\n\n👤 Пользователь: ${data.target_user_name || 'Пользователь'}\n💵 Сумма: ${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 Бонус: ${data.bonus_amount} TJS` : ''}\n🕒 Время: ${new Date().toLocaleString('ru-RU')}\n\nПополнение успешно зачислено!`,
+    tg: (data: NotificationData) => 
+      `✅ Пуркунӣ муваффақ\n\n👤 Корбар: ${data.target_user_name || 'Корбар'}\n💵 Маблағ: ${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 Ҷоиза: ${data.bonus_amount} TJS` : ''}\n🕒 Вақт: ${new Date().toLocaleString('tg-TJ')}\n\nПуркунӣ муваффақият гузошта шуд!`
   }
 };
-
 // 发送消息到 Telegram
 async function sendTelegramMessage(
   chatId: number, 
