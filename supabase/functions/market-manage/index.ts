@@ -92,218 +92,46 @@ serve(async (req) => {
       }
 
       case 'purchase': {
-        // 购买转售彩票
-        const { data: listing, error: listingError } = await supabaseClient
-          .from('market_listings')
-          .select('*, lottery_entry:lottery_entries(*)')
-          .eq('id', listing_id)
-          .eq('status', 'AVAILABLE')
-          .single()
+        // ========== 购买转售彩票 - 使用原子化 RPC 函数 ==========
+        // 替代原来的多步非原子操作，使用数据库事务保证：
+        // 资金转移 + 彩票转移 + 状态更新 全部在同一事务中完成
+        console.log('[Market] Purchase request:', { listing_id, user_id });
 
-        if (listingError || !listing) {
+        if (!listing_id || !user_id) {
           return new Response(
-            JSON.stringify({ error: 'Listing not found or already sold' }),
+            JSON.stringify({ error: 'Missing listing_id or user_id' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
           )
         }
 
-        // 不能购买自己的转售
-        if (listing.seller_id === user_id) {
+        const { data: result, error: rpcError } = await supabaseClient
+          .rpc('market_purchase_atomic', {
+            p_buyer_id: user_id,
+            p_listing_id: listing_id
+          });
+
+        if (rpcError) {
+          console.error('[Market] RPC error:', rpcError);
           return new Response(
-            JSON.stringify({ error: 'Cannot purchase your own listing' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-          )
-        }
-
-        /**
-         * 检查买家现金余额
-         * 
-         * 钱包类型说明（重要）：
-         * - 现金钱包: type='TJS', currency='TJS'
-         * - 积分钱包: type='LUCKY_COIN', currency='POINTS'
-         */
-        // 【资金安全修复 v3】查询钱包时包含 id 和 version 字段用于乐观锁
-        const { data: buyerWallet } = await supabaseClient
-          .from('wallets')
-          .select('id, balance, version')
-          .eq('user_id', user_id)
-          .eq('type', 'TJS')           // 现金钱包类型
-          .eq('currency', 'TJS')       // 现金货币单位
-          .single()
-
-        if (!buyerWallet || parseFloat(buyerWallet.balance) < listing.selling_price) {
-          return new Response(
-            JSON.stringify({ error: 'Insufficient balance' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-          )
-        }
-
-        // 开始事务处理
-
-        // 1. 扣除买家现金余额
-        // 【乐观锁】防止并发购买导致余额错误
-        const buyerCurrentBalance = parseFloat(buyerWallet.balance)
-        const buyerNewBalance = buyerCurrentBalance - listing.selling_price
-        const buyerVersion = buyerWallet.version || 1
-
-        const { error: buyerUpdateError, data: updatedBuyerWallet } = await supabaseClient
-          .from('wallets')
-          .update({
-            balance: buyerNewBalance,
-            version: buyerVersion + 1,  // 乐观锁: 版本号+1
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', buyerWallet.id)       // 使用 wallet.id 精确定位
-          .eq('version', buyerVersion)    // 乐观锁: 只有版本号匹配才能更新
-          .select()
-          .single()
-
-        if (buyerUpdateError || !updatedBuyerWallet) {
-          return new Response(
-            JSON.stringify({ error: 'Failed to deduct balance, please try again' }),
+            JSON.stringify({ error: 'Purchase failed, please try again' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
           )
         }
 
-        // 2. 查询并增加卖家现金余额
-        // 【乐观锁】防止并发卖出导致余额错误
-        const { data: sellerWallet } = await supabaseClient
-          .from('wallets')
-          .select('id, balance, version')
-          .eq('user_id', listing.seller_id)
-          .eq('type', 'TJS')           // 现金钱包类型
-          .eq('currency', 'TJS')
-          .single()
-
-        if (sellerWallet) {
-          const sellerCurrentBalance = parseFloat(sellerWallet.balance)
-          const sellerNewBalance = sellerCurrentBalance + listing.selling_price
-          const sellerVersion = sellerWallet.version || 1
-
-          // 【资金安全修复 v4】卖家钱包更新必须检查结果，失败时回滚买家扣款
-          const { error: sellerUpdateError, data: updatedSellerWallet } = await supabaseClient
-            .from('wallets')
-            .update({
-              balance: sellerNewBalance,
-              version: sellerVersion + 1,  // 乐观锁: 版本号+1
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', sellerWallet.id)       // 使用 wallet.id 精确定位
-            .eq('version', sellerVersion)    // 乐观锁: 只有版本号匹配才能更新
-            .select()
-            .single()
-
-          if (sellerUpdateError || !updatedSellerWallet) {
-            console.error('Failed to update seller wallet (possible concurrent conflict):', sellerUpdateError)
-            // 回滚买家扣款：使用更新后的 version
-            const buyerRollbackVersion = (buyerWallet.version || 1) + 1  // 买家已成功更新，当前 version 是 +1
-            await supabaseClient
-              .from('wallets')
-              .update({
-                balance: buyerCurrentBalance,  // 恢复原始余额
-                version: buyerRollbackVersion + 1,  // 回滚时版本号再+1
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', buyerWallet.id)
-              .eq('version', buyerRollbackVersion)
-            return new Response(
-              JSON.stringify({ error: 'Failed to credit seller, transaction rolled back. Please try again.' }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-            )
-          }
-        } else {
-          // 卖家钱包不存在，回滚买家扣款
-          console.error('Seller wallet not found, rolling back buyer deduction')
-          const buyerRollbackVersion = (buyerWallet.version || 1) + 1
-          await supabaseClient
-            .from('wallets')
-            .update({
-              balance: buyerCurrentBalance,
-              version: buyerRollbackVersion + 1,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', buyerWallet.id)
-            .eq('version', buyerRollbackVersion)
+        if (!result.success) {
+          console.error('[Market] RPC returned error:', result.error);
+          // 根据错误类型返回不同的 HTTP 状态码
+          const isClientError = ['Listing not found or already sold', 'Cannot purchase your own listing', 'Insufficient balance'].includes(result.error);
           return new Response(
-            JSON.stringify({ error: 'Seller wallet not found, transaction rolled back' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+            JSON.stringify({ error: result.error }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: isClientError ? 400 : 500 }
           )
         }
 
-        // 3. 转移彩票归属
-        await supabaseClient
-          .from('lottery_entries')
-          .update({
-            user_id: user_id,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', listing.lottery_entry_id)
-
-        // 4. 更新转售状态
-        await supabaseClient
-          .from('market_listings')
-          .update({
-            status: 'SOLD',
-            buyer_id: user_id,
-            sold_at: new Date().toISOString()
-          })
-          .eq('id', listing_id)
-
-        // 5. 创建交易记录
-        // 【修复 4.2】使用 wallet_id 而非 user_id，添加 balance_before/after
-        // wallet_transactions 表只有 wallet_id 列（外键指向 wallets.id），没有 user_id 和 currency 列
-        const sellerCurrentBalance = sellerWallet ? parseFloat(sellerWallet.balance) : 0
-        const sellerNewBalance = sellerCurrentBalance + listing.selling_price
-        await supabaseClient
-          .from('wallet_transactions')
-          .insert([
-            {
-              wallet_id: buyerWallet.id,  // 【修复 4.2】使用 wallet_id 而非 user_id
-              type: 'MARKET_PURCHASE',
-              amount: -listing.selling_price,
-              balance_before: buyerCurrentBalance,  // 【修复 4.1】新增
-              balance_after: buyerNewBalance,        // 【修复 4.1】新增
-              status: 'COMPLETED',
-              description: '购买转售彩票',
-              metadata: { listing_id },
-              processed_at: new Date().toISOString(),
-            },
-            {
-              wallet_id: sellerWallet.id,  // 【修复 4.2】使用 wallet_id 而非 user_id
-              type: 'MARKET_SALE',
-              amount: listing.selling_price,
-              balance_before: sellerCurrentBalance,  // 【修复 4.1】新增
-              balance_after: sellerNewBalance,        // 【修复 4.1】新增
-              status: 'COMPLETED',
-              description: '转售彩票收入',
-              metadata: { listing_id },
-              processed_at: new Date().toISOString(),
-            }
-          ])
-
-        // 6. 发送通知
-        await supabaseClient
-          .from('notifications')
-          .insert([
-            {
-              user_id: user_id,
-              type: 'MARKET_PURCHASED',
-              title: '购买成功',
-              content: `您已成功购买转售彩票,花费 ${listing.selling_price} TJS`,
-              related_id: listing_id,
-              related_type: 'market_listing',
-              is_read: false
-            },
-            {
-              user_id: listing.seller_id,
-              type: 'MARKET_SOLD',
-              title: '转售成功',
-              content: `您的彩票已售出,获得 ${listing.selling_price} TJS`,
-              related_id: listing_id,
-              related_type: 'market_listing',
-              is_read: false
-            }
-          ])
+        console.log('[Market] Purchase completed via RPC:', {
+          price: result.price,
+          buyer_new_balance: result.buyer_new_balance
+        });
 
         return new Response(
           JSON.stringify({ success: true, message: 'Purchase completed' }),
@@ -332,7 +160,7 @@ serve(async (req) => {
           .from('market_listings')
           .update({
             status: 'CANCELLED',
-            cancelled_at: new Date().toISOString()
+            updated_at: new Date().toISOString()
           })
           .eq('id', listing_id)
 

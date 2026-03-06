@@ -121,164 +121,35 @@ serve(async (req) => {
       }
     );
 
-    // 获取源钱包（TJS）
-    const { data: sourceWallet, error: sourceError } = await supabaseClient
-      .from('wallets')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('type', 'TJS')
-      .eq('currency', 'TJS')
-      .single()
+    // ========== 调用原子化 RPC 函数 ==========
+    // 替代原来的多步操作，使用数据库事务保证原子性
+    const { data: result, error: rpcError } = await supabaseClient
+      .rpc('exchange_balance_atomic', {
+        p_user_id: userId,
+        p_amount: amount
+      });
 
-    if (sourceError || !sourceWallet) {
-      console.error('[Exchange] Source wallet error:', sourceError);
-      throw new Error('未找到余额钱包');
+    if (rpcError) {
+      console.error('[Exchange] RPC error:', rpcError);
+      throw new Error('兑换操作失败，请稍后重试');
     }
 
-    // 获取目标钱包（LUCKY_COIN）
-    const { data: targetWallet, error: targetError } = await supabaseClient
-      .from('wallets')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('type', 'LUCKY_COIN')
-      .single()
-
-    if (targetError || !targetWallet) {
-      console.error('[Exchange] Target wallet error:', targetError);
-      throw new Error('未找到积分钱包');
+    if (!result.success) {
+      console.error('[Exchange] RPC returned error:', result.error);
+      throw new Error(result.error);
     }
 
-    // 检查源钱包可用余额（余额 - 冻结金额）
-    const availableBalance = Number(sourceWallet.balance) - Number(sourceWallet.frozen_balance || 0);
-    if (availableBalance < amount) {
-      throw new Error(`可用余额不足，当前可用余额: ${availableBalance.toFixed(2)} TJS`);
-    }
-
-    console.log('[Exchange] Wallets found, processing exchange...');
-    console.log('[Exchange] Source balance:', sourceWallet.balance, 'Frozen:', sourceWallet.frozen_balance, 'Available:', availableBalance, 'Amount:', amount);
-    console.log('[Exchange] Target balance:', targetWallet.balance);
-
-    // 记录兑换前余额
-    const sourceBalanceBefore = Number(sourceWallet.balance);
-    const targetBalanceBefore = Number(targetWallet.balance);
-
-    // 使用乐观锁更新源钱包余额
-    const { error: updateSourceError, data: updatedSource } = await supabaseClient
-      .from('wallets')
-      .update({
-        balance: sourceBalanceBefore - amount,
-        version: (sourceWallet.version || 1) + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', sourceWallet.id)
-      .eq('version', sourceWallet.version || 1)
-      .select()
-      .single()
-
-    if (updateSourceError || !updatedSource) {
-      console.error('[Exchange] Update source wallet error:', updateSourceError);
-      throw new Error('更新余额钱包失败，请重试（并发冲突）');
-    }
-
-    // 【资金安全修复 v4】更新目标钱包余额（添加乐观锁检查）
-    const targetVersion = targetWallet.version || 1;
-    const { error: updateTargetError, data: updatedTarget } = await supabaseClient
-      .from('wallets')
-      .update({
-        balance: targetBalanceBefore + amount,
-        version: targetVersion + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', targetWallet.id)
-      .eq('version', targetVersion)  // 乐观锁: 检查 version
-      .select()
-      .single()
-
-    if (updateTargetError || !updatedTarget) {
-      console.error('[Exchange] Update target wallet error (possible concurrent conflict):', updateTargetError);
-      // 【资金安全修复 v4】回滚源钱包（使用乐观锁检查 version）
-      await supabaseClient
-        .from('wallets')
-        .update({
-          balance: sourceBalanceBefore,
-          version: (sourceWallet.version || 1) + 2,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', sourceWallet.id)
-        .eq('version', (sourceWallet.version || 1) + 1)  // 乐观锁: 检查当前 version
-      throw new Error('更新积分钱包失败，请重试（可能存在并发操作）');
-    }
-
-    // 创建兑换记录 - 使用数据库中存在的字段
-    const { data: exchangeRecord, error: recordError } = await supabaseClient
-      .from('exchange_records')
-      .insert({
-        user_id: userId,
-        from_wallet_type: 'TJS',
-        to_wallet_type: 'LUCKY_COIN',
-        amount: amount,
-        exchange_rate: 1.0,
-        status: 'COMPLETED',
-        exchange_type: 'BALANCE_TO_COIN',
-        currency: 'TJS',
-        source_wallet_id: sourceWallet.id,
-        target_wallet_id: targetWallet.id,
-        source_balance_before: sourceBalanceBefore,
-        source_balance_after: sourceBalanceBefore - amount,
-        target_balance_before: targetBalanceBefore,
-        target_balance_after: targetBalanceBefore + amount,
-      })
-      .select()
-      .single()
-
-    if (recordError) {
-      console.error('[Exchange] Create exchange record error:', recordError);
-      // 不阻断流程，只记录错误
-    }
-
-    // 创建钱包交易记录 (使用正确的枚举值 COIN_EXCHANGE)
-    // 不指定 id，让数据库自动生成 UUID
-    const { error: txError } = await supabaseClient.from('wallet_transactions').insert([
-      {
-        wallet_id: sourceWallet.id,
-        type: 'COIN_EXCHANGE',
-        amount: -amount,
-        balance_before: sourceBalanceBefore,
-        balance_after: sourceBalanceBefore - amount,
-        status: 'COMPLETED',
-        description: `兑换${amount}TJS到积分`,
-        processed_at: new Date().toISOString(),
-      },
-      {
-        wallet_id: targetWallet.id,
-        type: 'COIN_EXCHANGE',
-        amount: amount,
-        balance_before: targetBalanceBefore,
-        balance_after: targetBalanceBefore + amount,
-        status: 'COMPLETED',
-        description: `从余额兑换${amount}TJS`,
-        processed_at: new Date().toISOString(),
-      },
-    ])
-
-    if (txError) {
-      console.error('[Exchange] Create wallet transaction error:', txError);
-      // 不阻断流程，只记录错误
-    } else {
-      console.log('[Exchange] Wallet transactions created successfully');
-    }
-
-    console.log('[Exchange] Success, new balances:', {
-      source: sourceBalanceBefore - amount,
-      target: targetBalanceBefore + amount
+    console.log('[Exchange] Success via RPC, new balances:', {
+      source: result.new_balance,
+      target: result.lucky_coin_balance
     });
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: '兑换成功',
-        new_balance: sourceBalanceBefore - amount,
-        lucky_coin_balance: targetBalanceBefore + amount
+        new_balance: result.new_balance,
+        lucky_coin_balance: result.lucky_coin_balance
       }),
       { headers: { "Content-Type": "application/json", ...corsHeaders }, status: 200 }
     )
