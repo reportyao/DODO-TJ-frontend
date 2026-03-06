@@ -5,19 +5,25 @@
  *
  * 功能概述:
  *   管理员批量将 pending 状态的佣金记录发放到用户钱包。
- *   佣金发放到 TJS 现金钱包。
+ *   【修复 v4】佣金发放到 LUCKY_COIN 积分钱包（而非 TJS 现金钱包）。
  *
  * 钱包类型标准（重要）:
  *   - 现金钱包: type='TJS', currency='TJS'
  *   - 积分钱包: type='LUCKY_COIN', currency='POINTS'
  *
+ * 业务规则:
+ *   - 余额(TJS)增加: 仅限用户充值、地推代充、首充奖励
+ *   - 积分(LUCKY_COIN)增加: 佣金、转盘抽奖、晒单奖励等
+ *
  * 变更历史:
  *   v1: 初始版本
  *   v3 (2026-03-05): 资金安全修复
- *     - 修复: 查询钱包时指定 type='TJS'，避免查到积分钱包
  *     - 修复: 添加乐观锁防止并发更新导致余额错误
  *     - 修复: wallet_transactions 使用 wallet_id 而非 user_id
  *     - 修复: 添加 balance_before 字段到交易记录
+ *   v4 (2026-03-07): 钱包类型修复
+ *     - 修复: 佣金发放从 TJS 现金钱包改为 LUCKY_COIN 积分钱包
+ *     - 新增: 如果用户没有 LUCKY_COIN 钱包则自动创建
  * ============================================================================
  */
 
@@ -79,20 +85,37 @@ serve(async (req) => {
           continue
         }
         
-        // 【修复 v3】查询钱包时必须指定 type='TJS'
-        // 原代码没有指定钱包类型，如果用户有多个钱包（TJS + LUCKY_COIN），
-        // 可能会查到积分钱包，导致佣金发放到错误的钱包
-        const { data: wallet, error: walletError } = await supabaseClient
+        // 【修复 v4】查询 LUCKY_COIN 积分钱包（而非 TJS 现金钱包）
+        // 佣金应发放到积分钱包，与 handle-purchase-commission 保持一致
+        let { data: wallet, error: walletError } = await supabaseClient
           .from('wallets')
-          .select('id, balance, version')  // 修复: 查询 id 和 version 用于乐观锁
+          .select('id, balance, version')
           .eq('user_id', beneficiaryId)
-          .eq('type', 'TJS')              // 修复: 指定现金钱包类型
+          .eq('type', 'LUCKY_COIN')
           .single()
 
+        // 【修复 v4】如果用户没有 LUCKY_COIN 钱包，自动创建
         if (walletError || !wallet) {
-          fail_count++
-          errors.push({ commission_id, error: 'TJS wallet not found for user' })
-          continue
+          console.log(`LUCKY_COIN wallet not found for user ${beneficiaryId}, creating...`)
+          const { data: newWallet, error: createError } = await supabaseClient
+            .from('wallets')
+            .insert({
+              user_id: beneficiaryId,
+              type: 'LUCKY_COIN',
+              currency: 'POINTS',
+              balance: 0,
+              version: 1,
+            })
+            .select('id, balance, version')
+            .single()
+
+          if (createError || !newWallet) {
+            fail_count++
+            errors.push({ commission_id, error: `Failed to create LUCKY_COIN wallet: ${createError?.message}` })
+            continue
+          }
+          wallet = newWallet
+          console.log(`Created LUCKY_COIN wallet for user ${beneficiaryId}`)
         }
 
         const currentBalance = parseFloat(wallet.balance || '0')
@@ -100,17 +123,16 @@ serve(async (req) => {
         const newBalance = currentBalance + commissionAmount
         const currentVersion = wallet.version || 1
 
-        // 【资金安全修复 v3】使用乐观锁更新钱包余额
-        // 使用 wallet.id 精确定位钱包，而非 user_id（用户可能有多个钱包）
+        // 使用乐观锁更新钱包余额
         const { error: updateWalletError, data: updatedWallet } = await supabaseClient
           .from('wallets')
           .update({ 
             balance: newBalance,
-            version: currentVersion + 1,  // 乐观锁: 版本号+1
+            version: currentVersion + 1,
             updated_at: new Date().toISOString()
           })
-          .eq('id', wallet.id)              // 修复: 使用 wallet.id 而非 user_id
-          .eq('version', currentVersion)    // 乐观锁: 只有版本号匹配才能更新
+          .eq('id', wallet.id)
+          .eq('version', currentVersion)
           .select()
           .single()
 
@@ -120,16 +142,14 @@ serve(async (req) => {
           continue
         }
 
-        // 【修复 v3】创建钱包交易记录
-        // - 使用 wallet_id 而非 user_id（wallet_transactions 表的外键是 wallet_id）
-        // - 添加 balance_before 字段
+        // 创建钱包交易记录
         const { error: transactionError } = await supabaseClient
           .from('wallet_transactions')
           .insert({
-            wallet_id: wallet.id,           // 修复: 使用 wallet_id 而非 user_id
-            type: 'COMMISSION_PAYOUT',      // 修复: 使用更明确的类型名
+            wallet_id: wallet.id,
+            type: 'COMMISSION_PAYOUT',
             amount: commissionAmount,
-            balance_before: currentBalance,  // 新增: 记录发放前余额
+            balance_before: currentBalance,
             balance_after: newBalance,
             status: 'COMPLETED',
             description: `L${commission.level} referral commission payout`,
@@ -139,16 +159,16 @@ serve(async (req) => {
           })
 
         if (transactionError) {
-          // 【资金安全修复 v4】回滚钱包余额（使用乐观锁检查 version）
+          // 回滚钱包余额（使用乐观锁检查 version）
           await supabaseClient
             .from('wallets')
             .update({ 
               balance: currentBalance,
-              version: currentVersion + 2,  // 回滚时版本号再+1
+              version: currentVersion + 2,
               updated_at: new Date().toISOString()
             })
             .eq('id', wallet.id)
-            .eq('version', currentVersion + 1)  // 乐观锁: 检查当前 version
+            .eq('version', currentVersion + 1)
 
           fail_count++
           errors.push({ commission_id, error: transactionError.message })
