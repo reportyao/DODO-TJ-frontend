@@ -27,6 +27,8 @@ serve(async (req) => {
     const status = url.searchParams.get('status')
     const startDate = url.searchParams.get('startDate')
     const endDate = url.searchParams.get('endDate')
+    // 【新增】钱包类型筛选：TJS / LUCKY_COIN / 空(全部)
+    const walletType = url.searchParams.get('walletType')
 
     if (!userId) {
       return new Response(
@@ -44,7 +46,7 @@ serve(async (req) => {
           action: `VIEW_USER_FINANCIAL_${action.toUpperCase()}`,
           target_type: 'user',
           target_id: userId,
-          details: { period, page, pageSize, transactionType, status, startDate, endDate }
+          details: { period, page, pageSize, transactionType, status, startDate, endDate, walletType }
         })
       } catch (logError) {
         console.error('Failed to log admin action:', logError)
@@ -52,25 +54,24 @@ serve(async (req) => {
     }
 
     if (action === 'summary') {
-      // 获取财务汇总数据
       return await getFinancialSummary(supabaseClient, userId, period)
     } else if (action === 'transactions') {
-      // 获取流水记录
       return await getTransactions(supabaseClient, userId, {
         page,
         pageSize,
         transactionType,
         status,
         startDate,
-        endDate
+        endDate,
+        walletType
       })
     } else if (action === 'export') {
-      // 导出流水记录
       return await exportTransactions(supabaseClient, userId, {
         transactionType,
         status,
         startDate,
-        endDate
+        endDate,
+        walletType
       })
     }
 
@@ -128,53 +129,87 @@ async function getFinancialSummary(supabaseClient: any, userId: string, period: 
     dateFilter = `created_at >= '${monthAgo.toISOString()}'`
   }
 
-  // 4. 获取时间段内的交易统计
+  // 4. 按钱包类型分别获取交易统计
+  const cashWalletId = cashWallet?.id
+  const luckyCoinsWalletId = luckyCoinsWallet?.id
   const walletIds = wallets.map((w: any) => w.id)
-  
-  let query = supabaseClient
+
+  // 获取全部交易（用于分类统计）
+  let allQuery = supabaseClient
     .from('wallet_transactions')
-    .select('type, amount, status')
+    .select('type, amount, wallet_id')
+    .in('wallet_id', walletIds)
+    .eq('status', 'COMPLETED')
+
+  const { data: allTransactions, error: allTransactionsError } = await allQuery
+  if (allTransactionsError) throw allTransactionsError
+
+  // 获取时间段内的交易
+  let periodQuery = supabaseClient
+    .from('wallet_transactions')
+    .select('type, amount, status, wallet_id')
     .in('wallet_id', walletIds)
     .eq('status', 'COMPLETED')
 
   if (dateFilter) {
     const dateValue = dateFilter.split("'")[1]
-    query = query.gte('created_at', dateValue)
+    periodQuery = periodQuery.gte('created_at', dateValue)
   }
 
-  const { data: transactions, error: transactionsError } = await query
+  const { data: periodTransactions, error: periodTransactionsError } = await periodQuery
+  if (periodTransactionsError) throw periodTransactionsError
 
-  if (transactionsError) throw transactionsError
+  // 【改进】分别按钱包类型计算统计数据
+  const tjsTransactions = allTransactions.filter((t: any) => t.wallet_id === cashWalletId)
+  const pointsTransactions = allTransactions.filter((t: any) => t.wallet_id === luckyCoinsWalletId)
 
-  const periodDeposits = transactions.filter((t: any) => ['DEPOSIT', 'PROMOTER_DEPOSIT'].includes(t.type)).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
-  const periodWithdrawals = transactions.filter((t: any) => t.type === 'WITHDRAWAL').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
-  const periodSpending = transactions.filter((t: any) => ['LOTTERY_PURCHASE', 'GROUP_BUY_PURCHASE', 'MARKET_PURCHASE'].includes(t.type)).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
-  const periodIncome = transactions.filter((t: any) => ['LOTTERY_PRIZE', 'GROUP_BUY_WIN', 'REFERRAL_BONUS', 'MARKET_SALE'].includes(t.type)).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
+  // TJS 钱包统计
+  const tjsSpending = tjsTransactions
+    .filter((t: any) => ['GROUP_BUY_PURCHASE', 'MARKET_PURCHASE'].includes(t.type))
+    .reduce((sum: number, t: any) => sum + Math.abs(parseFloat(t.amount)), 0)
+  const tjsIncome = tjsTransactions
+    .filter((t: any) => ['GROUP_BUY_WIN', 'GROUP_BUY_REFUND', 'GROUP_BUY_REFUND_TO_BALANCE', 'REFERRAL_BONUS', 'MARKET_SALE', 'COMMISSION', 'BONUS', 'FIRST_DEPOSIT_BONUS', 'FIRST_DEPOSIT_BONUS_ACTIVATION', 'FIRST_GROUP_BUY_REWARD', 'REFERRAL_FIRST_DEPOSIT_COMMISSION', 'REFERRAL_GROUP_BUY_COMMISSION', 'COIN_EXCHANGE'].includes(t.type))
+    .reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
 
-  // 5. 获取全部交易统计
-  const { data: allTransactions, error: allTransactionsError } = await supabaseClient
-    .from('wallet_transactions')
-    .select('type, amount')
-    .in('wallet_id', walletIds)
-    .eq('status', 'COMPLETED')
+  // LUCKY_COIN 钱包统计
+  const pointsSpending = pointsTransactions
+    .filter((t: any) => ['LOTTERY_PURCHASE', 'FULL_PURCHASE', 'SPIN_COST'].includes(t.type))
+    .reduce((sum: number, t: any) => sum + Math.abs(parseFloat(t.amount)), 0)
+  const pointsIncome = pointsTransactions
+    .filter((t: any) => ['SPIN_REWARD', 'NEW_USER_GIFT', 'SHOWOFF_REWARD', 'GROUP_BUY_REFUND', 'LOTTERY_PRIZE', 'LOTTERY_REFUND', 'GROUP_BUY_REFUND_TO_POINTS', 'COIN_EXCHANGE'].includes(t.type))
+    .reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
 
-  if (allTransactionsError) throw allTransactionsError
+  // 时间段统计（也按钱包类型分开）
+  const periodTjsTx = periodTransactions.filter((t: any) => t.wallet_id === cashWalletId)
+  const periodPointsTx = periodTransactions.filter((t: any) => t.wallet_id === luckyCoinsWalletId)
 
-  const totalSpending = allTransactions.filter((t: any) => ['LOTTERY_PURCHASE', 'GROUP_BUY_PURCHASE', 'MARKET_PURCHASE'].includes(t.type)).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
-  const totalIncome = allTransactions.filter((t: any) => ['LOTTERY_PRIZE', 'GROUP_BUY_WIN', 'REFERRAL_BONUS', 'MARKET_SALE'].includes(t.type)).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
+  const periodDeposits = periodTjsTx.filter((t: any) => ['DEPOSIT', 'deposit', 'PROMOTER_DEPOSIT'].includes(t.type)).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
+  const periodWithdrawals = periodTjsTx.filter((t: any) => t.type === 'WITHDRAWAL').reduce((sum: number, t: any) => sum + Math.abs(parseFloat(t.amount)), 0)
+  const periodTjsSpending = periodTjsTx.filter((t: any) => ['GROUP_BUY_PURCHASE', 'MARKET_PURCHASE'].includes(t.type)).reduce((sum: number, t: any) => sum + Math.abs(parseFloat(t.amount)), 0)
+  const periodTjsIncome = periodTjsTx.filter((t: any) => ['GROUP_BUY_WIN', 'GROUP_BUY_REFUND', 'GROUP_BUY_REFUND_TO_BALANCE', 'REFERRAL_BONUS', 'MARKET_SALE', 'COMMISSION', 'BONUS', 'FIRST_DEPOSIT_BONUS', 'FIRST_DEPOSIT_BONUS_ACTIVATION', 'FIRST_GROUP_BUY_REWARD', 'REFERRAL_FIRST_DEPOSIT_COMMISSION', 'REFERRAL_GROUP_BUY_COMMISSION', 'COIN_EXCHANGE'].includes(t.type)).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
+  const periodPointsSpending = periodPointsTx.filter((t: any) => ['LOTTERY_PURCHASE', 'FULL_PURCHASE', 'SPIN_COST'].includes(t.type)).reduce((sum: number, t: any) => sum + Math.abs(parseFloat(t.amount)), 0)
+  const periodPointsIncome = periodPointsTx.filter((t: any) => ['SPIN_REWARD', 'NEW_USER_GIFT', 'SHOWOFF_REWARD', 'GROUP_BUY_REFUND', 'LOTTERY_PRIZE', 'LOTTERY_REFUND', 'GROUP_BUY_REFUND_TO_POINTS', 'COIN_EXCHANGE'].includes(t.type)).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
 
-  // 6. 构建响应
+  // 6. 构建响应 - 分离两种钱包的数据
   const summary = {
-    // 余额信息
-    luckyCoinsBalance: luckyCoinsWallet ? parseFloat(luckyCoinsWallet.balance) : 0,
+    // TJS 余额信息
     cashBalance: cashWallet ? parseFloat(cashWallet.balance) : 0,
-    frozenBalance: (luckyCoinsWallet ? parseFloat(luckyCoinsWallet.frozen_balance) : 0) + (cashWallet ? parseFloat(cashWallet.frozen_balance) : 0),
-    
-    // 累计数据
+    cashFrozenBalance: cashWallet ? parseFloat(cashWallet.frozen_balance) : 0,
     totalDeposits: cashWallet ? parseFloat(cashWallet.total_deposits) : 0,
     totalWithdrawals: cashWallet ? parseFloat(cashWallet.total_withdrawals) : 0,
-    totalSpending,
-    totalIncome,
+    tjsSpending,
+    tjsIncome,
+
+    // LUCKY_COIN 积分信息
+    luckyCoinsBalance: luckyCoinsWallet ? parseFloat(luckyCoinsWallet.balance) : 0,
+    luckyFrozenBalance: luckyCoinsWallet ? parseFloat(luckyCoinsWallet.frozen_balance) : 0,
+    pointsSpending,
+    pointsIncome,
+
+    // 合计（向后兼容）
+    frozenBalance: (luckyCoinsWallet ? parseFloat(luckyCoinsWallet.frozen_balance) : 0) + (cashWallet ? parseFloat(cashWallet.frozen_balance) : 0),
+    totalSpending: tjsSpending + pointsSpending,
+    totalIncome: tjsIncome + pointsIncome,
     
     // 佣金数据
     level1Commission,
@@ -182,14 +217,23 @@ async function getFinancialSummary(supabaseClient: any, userId: string, period: 
     level3Commission,
     totalCommission: level1Commission + level2Commission + level3Commission,
     
-    // 时间段统计
+    // 时间段统计 - 分开两种钱包
     periodStats: {
       period,
       deposits: periodDeposits,
       withdrawals: periodWithdrawals,
-      spending: periodSpending,
-      income: periodIncome,
-      netChange: periodDeposits + periodIncome - periodWithdrawals - periodSpending
+      // TJS 时间段
+      tjsSpending: periodTjsSpending,
+      tjsIncome: periodTjsIncome,
+      tjsNetChange: periodDeposits + periodTjsIncome - periodWithdrawals - periodTjsSpending,
+      // LUCKY_COIN 时间段
+      pointsSpending: periodPointsSpending,
+      pointsIncome: periodPointsIncome,
+      pointsNetChange: periodPointsIncome - periodPointsSpending,
+      // 合计
+      spending: periodTjsSpending + periodPointsSpending,
+      income: periodTjsIncome + periodPointsIncome,
+      netChange: periodDeposits + periodTjsIncome + periodPointsIncome - periodWithdrawals - periodTjsSpending - periodPointsSpending
     }
   }
 
@@ -200,7 +244,7 @@ async function getFinancialSummary(supabaseClient: any, userId: string, period: 
 }
 
 async function getTransactions(supabaseClient: any, userId: string, options: any) {
-  const { page, pageSize, transactionType, status, startDate, endDate } = options
+  const { page, pageSize, transactionType, status, startDate, endDate, walletType } = options
 
   // 1. 获取用户钱包
   const { data: wallets, error: walletsError } = await supabaseClient
@@ -210,11 +254,30 @@ async function getTransactions(supabaseClient: any, userId: string, options: any
 
   if (walletsError) throw walletsError
 
-  const walletIds = wallets.map((w: any) => w.id)
+  // 【新增】按钱包类型筛选
+  let filteredWallets = wallets
+  if (walletType) {
+    filteredWallets = wallets.filter((w: any) => w.type === walletType)
+  }
+
+  const walletIds = filteredWallets.map((w: any) => w.id)
   const walletsMap = wallets.reduce((map: any, w: any) => {
     map[w.id] = w
     return map
   }, {})
+
+  if (walletIds.length === 0) {
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: {
+          transactions: [],
+          pagination: { page, pageSize, total: 0, totalPages: 0 }
+        }
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
 
   // 2. 构建查询
   let query = supabaseClient
@@ -255,7 +318,9 @@ async function getTransactions(supabaseClient: any, userId: string, options: any
       walletType: wallet.type,
       currency: wallet.currency,
       typeName: getTransactionTypeName(t.type),
-      isIncome: isIncomeType(t.type)
+      isIncome: isIncomeType(t.type),
+      // 【新增】单位标识
+      unit: wallet.type === 'TJS' ? 'TJS' : '积分'
     }
   })
 
@@ -277,7 +342,7 @@ async function getTransactions(supabaseClient: any, userId: string, options: any
 }
 
 async function exportTransactions(supabaseClient: any, userId: string, options: any) {
-  const { transactionType, status, startDate, endDate } = options
+  const { transactionType, status, startDate, endDate, walletType } = options
 
   // 获取所有交易记录(不分页)
   const { data: wallets } = await supabaseClient
@@ -285,7 +350,12 @@ async function exportTransactions(supabaseClient: any, userId: string, options: 
     .select('id, type, currency')
     .eq('user_id', userId)
 
-  const walletIds = wallets.map((w: any) => w.id)
+  let filteredWallets = wallets
+  if (walletType) {
+    filteredWallets = wallets.filter((w: any) => w.type === walletType)
+  }
+
+  const walletIds = filteredWallets.map((w: any) => w.id)
   const walletsMap = wallets.reduce((map: any, w: any) => {
     map[w.id] = w
     return map
@@ -305,19 +375,20 @@ async function exportTransactions(supabaseClient: any, userId: string, options: 
   const { data: transactions } = await query
 
   // 生成CSV
-  const headers = ['时间', '类型', '金额', '变化前余额', '变化后余额', '状态', '钱包类型', '货币', '描述', '关联订单ID']
-  const rows = transactions.map((t: any) => {
+  const headers = ['时间', '类型', '金额', '单位', '变化前余额', '变化后余额', '状态', '钱包类型', '描述', '关联订单ID']
+  const rows = (transactions || []).map((t: any) => {
     const wallet = walletsMap[t.wallet_id]
+    const unit = wallet.type === 'TJS' ? 'TJS' : '积分'
     return [
       t.created_at,
       getTransactionTypeName(t.type),
       t.amount,
-      t.balance_before,
-      t.balance_after,
+      unit,
+      t.balance_before ?? '',
+      t.balance_after ?? '',
       t.status,
-      wallet.type,
-      wallet.currency,
-      t.description || '',
+      getWalletTypeName(wallet.type),
+      (t.description || '').replace(/,/g, '，'),
       t.related_order_id || ''
     ]
   })
@@ -351,6 +422,7 @@ function getTransactionTypeName(type: string): string {
     'GROUP_BUY_PURCHASE': '拼团消费',
     'GROUP_BUY_REFUND': '拼团退款',
     'GROUP_BUY_REFUND_TO_POINTS': '拼团退款转积分',
+    'GROUP_BUY_REFUND_TO_BALANCE': '拼团退款转余额',
     'GROUP_BUY_WIN': '拼团中奖',
     'FULL_PURCHASE': '全款购买',
     'NEW_USER_GIFT': '新用户礼物',
@@ -370,6 +442,14 @@ function getTransactionTypeName(type: string): string {
   return typeNames[type] || type
 }
 
+function getWalletTypeName(type: string): string {
+  const names: Record<string, string> = {
+    'TJS': '余额 (TJS)',
+    'LUCKY_COIN': '积分'
+  }
+  return names[type] || type
+}
+
 function isIncomeType(type: string): boolean {
   return [
     'DEPOSIT',
@@ -379,6 +459,7 @@ function isIncomeType(type: string): boolean {
     'GROUP_BUY_WIN',
     'GROUP_BUY_REFUND',
     'GROUP_BUY_REFUND_TO_POINTS',
+    'GROUP_BUY_REFUND_TO_BALANCE',
     'REFERRAL_BONUS',
     'MARKET_SALE',
     'NEW_USER_GIFT',
@@ -392,6 +473,8 @@ function isIncomeType(type: string): boolean {
     'REFERRAL_FIRST_DEPOSIT_COMMISSION',
     'REFERRAL_GROUP_BUY_COMMISSION',
     'BONUS',
-    'PROMOTER_DEPOSIT'
+    'PROMOTER_DEPOSIT',
+    'COIN_EXCHANGE',
+    'POINTS_EXCHANGE'
   ].includes(type)
 }
