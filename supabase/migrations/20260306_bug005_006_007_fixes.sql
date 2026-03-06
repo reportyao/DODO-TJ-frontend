@@ -258,7 +258,8 @@ BEGIN
 
   v_buyer_balance_before := COALESCE(v_buyer_wallet.balance, 0);
 
-  IF v_buyer_balance_before < v_price THEN
+  -- 检查可用余额（扣除冻结金额），与 exchange_balance_atomic 保持一致
+  IF (v_buyer_balance_before - COALESCE(v_buyer_wallet.frozen_balance, 0)) < v_price THEN
     RETURN jsonb_build_object('success', false, 'error', 'Insufficient balance');
   END IF;
 

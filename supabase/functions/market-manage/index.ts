@@ -51,7 +51,7 @@ serve(async (req) => {
         const { data: existingListing } = await supabaseClient
           .from('market_listings')
           .select('id')
-          .eq('lottery_entry_id', lottery_entry_id)
+          .eq('ticket_id', lottery_entry_id)
           .eq('status', 'AVAILABLE')
           .single()
 
@@ -62,20 +62,19 @@ serve(async (req) => {
           )
         }
 
-        // 计算折扣
+        // 获取原始价格
         const originalPrice = entry.lottery.ticket_price
-        const discountPercentage = Math.round(((originalPrice - selling_price) / originalPrice) * 100)
 
         // 创建转售记录
+        // 注意: market_listings 表实际列名为 ticket_id (非 lottery_entry_id), price (非 selling_price)
         const { data: listing, error: listingError } = await supabaseClient
           .from('market_listings')
           .insert({
             seller_id: user_id,
-            lottery_entry_id,
+            ticket_id: lottery_entry_id,
             lottery_id: entry.lottery_id,
             original_price: originalPrice,
-            selling_price,
-            discount_percentage: discountPercentage,
+            price: selling_price,
             status: 'AVAILABLE'
           })
           .select()
