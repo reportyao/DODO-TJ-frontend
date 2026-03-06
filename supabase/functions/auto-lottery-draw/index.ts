@@ -18,28 +18,38 @@ function generateUUID(): string {
 }
 
 /**
- * 时间戳之和算法（7位数参与码版本）
+ * 时间戳之和算法（BigInt 精度安全版本）
  * 
  * 设计逻辑：
  * 1. 参与码为7位数连续分配（1000000, 1000001, 1000002, ...）
- * 2. 计算所有订单的时间戳总和
+ * 2. 使用 BigInt 精确计算所有订单的时间戳总和，避免 JS Number 精度溢出
  * 3. 使用公式：中奖号码索引 = 时间戳总和 % 总参与记录数
  * 4. 根据索引找到对应的参与记录，其参与码即为中奖号码
+ * 
+ * 精度保证：
+ * - 使用 BigInt 进行累加和取模运算，无精度上限
+ * - JS Number.MAX_SAFE_INTEGER = 9,007,199,254,740,991（约 9.0×10¹⁵）
+ * - 当前时间戳 ~1.77×10¹² ms，超过 5,091 个条目时 Number 会溢出
+ * - BigInt 版本无此限制，支持任意规模的活动
  * 
  * 公平性保证：
  * - 每个参与记录（每个7位数号码）都有相同的概率被选中
  * - 时间戳由服务器生成，用户无法操纵
  * - 所有数据公开可查，平台无法作弊
+ * 
+ * 向后兼容：
+ * - 对于现有规模（<5,091 条目），BigInt 和 Number 的计算结果完全一致
+ * - algorithm_data 中 timestamp_sum 以字符串形式存储，确保大数值不丢失精度
  */
 function calculateWinningNumberByTimestamp(entries: any[]) {
-  // 计算所有订单的时间戳总和
-  let timestampSum = 0;
+  // 使用 BigInt 精确计算所有订单的时间戳总和
+  let timestampSum = BigInt(0);
   const timestampDetails: { entry_id: string; numbers: string; timestamp: number }[] = [];
 
   for (const entry of entries) {
     // 将 ISO 时间字符串转换为毫秒时间戳
     const timestamp = new Date(entry.created_at).getTime();
-    timestampSum += timestamp;
+    timestampSum += BigInt(timestamp);
     timestampDetails.push({
       entry_id: entry.id,
       numbers: entry.participation_code || entry.numbers,
@@ -47,20 +57,24 @@ function calculateWinningNumberByTimestamp(entries: any[]) {
     });
   }
 
-  // 计算中奖索引: 时间戳总和 % 总参与记录数
-  const winningIndex = timestampSum % entries.length;
+  // 使用 BigInt 计算中奖索引: 时间戳总和 % 总参与记录数
+  const totalEntries = BigInt(entries.length);
+  const winningIndex = Number(timestampSum % totalEntries);
   
   // 获取中奖参与记录
   const winningEntry = entries[winningIndex];
   const winningNumber = winningEntry.participation_code || winningEntry.numbers;
 
+  // 将 BigInt 转换为字符串用于 JSON 序列化（BigInt 不能直接 JSON.stringify）
+  const timestampSumStr = timestampSum.toString();
+
   return {
     winningNumber,
     winningIndex,
-    timestampSum,
+    timestampSum: timestampSumStr,
     timestampDetails,
     totalEntries: entries.length,
-    formula: `中奖索引 = ${timestampSum} % ${entries.length} = ${winningIndex}，对应号码: ${winningNumber}`,
+    formula: `中奖索引 = ${timestampSumStr} % ${entries.length} = ${winningIndex}，对应号码: ${winningNumber}`,
   };
 }
 
