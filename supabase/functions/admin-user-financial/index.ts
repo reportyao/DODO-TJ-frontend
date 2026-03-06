@@ -165,18 +165,32 @@ async function getFinancialSummary(supabaseClient: any, userId: string, period: 
 
   // TJS 钱包统计
   const tjsSpending = tjsTransactions
-    .filter((t: any) => ['GROUP_BUY_PURCHASE', 'MARKET_PURCHASE'].includes(t.type))
+    .filter((t: any) => ['GROUP_BUY_PURCHASE', 'WITHDRAWAL', 'WITHDRAWAL_FREEZE'].includes(t.type))
     .reduce((sum: number, t: any) => sum + Math.abs(parseFloat(t.amount)), 0)
   const tjsIncome = tjsTransactions
-    .filter((t: any) => ['GROUP_BUY_WIN', 'GROUP_BUY_REFUND', 'GROUP_BUY_REFUND_TO_BALANCE', 'REFERRAL_BONUS', 'MARKET_SALE', 'COMMISSION', 'BONUS', 'FIRST_DEPOSIT_BONUS', 'FIRST_DEPOSIT_BONUS_ACTIVATION', 'FIRST_GROUP_BUY_REWARD', 'REFERRAL_FIRST_DEPOSIT_COMMISSION', 'REFERRAL_GROUP_BUY_COMMISSION', 'COIN_EXCHANGE'].includes(t.type))
+    .filter((t: any) => [
+      'DEPOSIT', 'deposit', 'PROMOTER_DEPOSIT',
+      'GROUP_BUY_WIN', 'GROUP_BUY_REFUND', 'GROUP_BUY_REFUND_TO_BALANCE',
+      'REFERRAL_BONUS', 'MARKET_SALE', 'COMMISSION', 'BONUS',
+      'FIRST_DEPOSIT_BONUS', 'FIRST_DEPOSIT_BONUS_ACTIVATION',
+      'FIRST_GROUP_BUY_REWARD', 'REFERRAL_FIRST_DEPOSIT_COMMISSION',
+      'REFERRAL_GROUP_BUY_COMMISSION', 'COIN_EXCHANGE', 'WITHDRAWAL_UNFREEZE'
+    ].includes(t.type))
     .reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
 
   // LUCKY_COIN 钱包统计
   const pointsSpending = pointsTransactions
-    .filter((t: any) => ['LOTTERY_PURCHASE', 'FULL_PURCHASE', 'SPIN_COST'].includes(t.type))
+    .filter((t: any) => ['LOTTERY_PURCHASE', 'FULL_PURCHASE', 'SPIN_COST', 'MARKET_PURCHASE', 'RESALE_PURCHASE'].includes(t.type))
     .reduce((sum: number, t: any) => sum + Math.abs(parseFloat(t.amount)), 0)
   const pointsIncome = pointsTransactions
-    .filter((t: any) => ['SPIN_REWARD', 'NEW_USER_GIFT', 'SHOWOFF_REWARD', 'GROUP_BUY_REFUND', 'LOTTERY_PRIZE', 'LOTTERY_REFUND', 'GROUP_BUY_REFUND_TO_POINTS', 'COIN_EXCHANGE'].includes(t.type))
+    .filter((t: any) => [
+      'SPIN_REWARD', 'NEW_USER_GIFT', 'SHOWOFF_REWARD',
+      'GROUP_BUY_REFUND', 'GROUP_BUY_REFUND_TO_POINTS',
+      'LOTTERY_PRIZE', 'LOTTERY_REFUND',
+      'COIN_EXCHANGE', 'COMMISSION', 'COMMISSION_PAYOUT',
+      'REFERRAL_REWARD', 'FIRST_GROUP_BUY_REWARD',
+      'MARKET_SALE', 'RESALE_INCOME'
+    ].includes(t.type))
     .reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
 
   // 时间段统计（也按钱包类型分开）
@@ -184,11 +198,25 @@ async function getFinancialSummary(supabaseClient: any, userId: string, period: 
   const periodPointsTx = periodTransactions.filter((t: any) => t.wallet_id === luckyCoinsWalletId)
 
   const periodDeposits = periodTjsTx.filter((t: any) => ['DEPOSIT', 'deposit', 'PROMOTER_DEPOSIT'].includes(t.type)).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
-  const periodWithdrawals = periodTjsTx.filter((t: any) => t.type === 'WITHDRAWAL').reduce((sum: number, t: any) => sum + Math.abs(parseFloat(t.amount)), 0)
-  const periodTjsSpending = periodTjsTx.filter((t: any) => ['GROUP_BUY_PURCHASE', 'MARKET_PURCHASE'].includes(t.type)).reduce((sum: number, t: any) => sum + Math.abs(parseFloat(t.amount)), 0)
-  const periodTjsIncome = periodTjsTx.filter((t: any) => ['GROUP_BUY_WIN', 'GROUP_BUY_REFUND', 'GROUP_BUY_REFUND_TO_BALANCE', 'REFERRAL_BONUS', 'MARKET_SALE', 'COMMISSION', 'BONUS', 'FIRST_DEPOSIT_BONUS', 'FIRST_DEPOSIT_BONUS_ACTIVATION', 'FIRST_GROUP_BUY_REWARD', 'REFERRAL_FIRST_DEPOSIT_COMMISSION', 'REFERRAL_GROUP_BUY_COMMISSION', 'COIN_EXCHANGE'].includes(t.type)).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
-  const periodPointsSpending = periodPointsTx.filter((t: any) => ['LOTTERY_PURCHASE', 'FULL_PURCHASE', 'SPIN_COST'].includes(t.type)).reduce((sum: number, t: any) => sum + Math.abs(parseFloat(t.amount)), 0)
-  const periodPointsIncome = periodPointsTx.filter((t: any) => ['SPIN_REWARD', 'NEW_USER_GIFT', 'SHOWOFF_REWARD', 'GROUP_BUY_REFUND', 'LOTTERY_PRIZE', 'LOTTERY_REFUND', 'GROUP_BUY_REFUND_TO_POINTS', 'COIN_EXCHANGE'].includes(t.type)).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
+  const periodWithdrawals = periodTjsTx.filter((t: any) => ['WITHDRAWAL', 'WITHDRAWAL_FREEZE'].includes(t.type)).reduce((sum: number, t: any) => sum + Math.abs(parseFloat(t.amount)), 0)
+  const periodTjsSpending = periodTjsTx.filter((t: any) => ['GROUP_BUY_PURCHASE', 'WITHDRAWAL', 'WITHDRAWAL_FREEZE'].includes(t.type)).reduce((sum: number, t: any) => sum + Math.abs(parseFloat(t.amount)), 0)
+  const periodTjsIncome = periodTjsTx.filter((t: any) => [
+    'DEPOSIT', 'deposit', 'PROMOTER_DEPOSIT',
+    'GROUP_BUY_WIN', 'GROUP_BUY_REFUND', 'GROUP_BUY_REFUND_TO_BALANCE',
+    'REFERRAL_BONUS', 'MARKET_SALE', 'COMMISSION', 'BONUS',
+    'FIRST_DEPOSIT_BONUS', 'FIRST_DEPOSIT_BONUS_ACTIVATION',
+    'FIRST_GROUP_BUY_REWARD', 'REFERRAL_FIRST_DEPOSIT_COMMISSION',
+    'REFERRAL_GROUP_BUY_COMMISSION', 'COIN_EXCHANGE', 'WITHDRAWAL_UNFREEZE'
+  ].includes(t.type)).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
+  const periodPointsSpending = periodPointsTx.filter((t: any) => ['LOTTERY_PURCHASE', 'FULL_PURCHASE', 'SPIN_COST', 'MARKET_PURCHASE', 'RESALE_PURCHASE'].includes(t.type)).reduce((sum: number, t: any) => sum + Math.abs(parseFloat(t.amount)), 0)
+  const periodPointsIncome = periodPointsTx.filter((t: any) => [
+    'SPIN_REWARD', 'NEW_USER_GIFT', 'SHOWOFF_REWARD',
+    'GROUP_BUY_REFUND', 'GROUP_BUY_REFUND_TO_POINTS',
+    'LOTTERY_PRIZE', 'LOTTERY_REFUND',
+    'COIN_EXCHANGE', 'COMMISSION', 'COMMISSION_PAYOUT',
+    'REFERRAL_REWARD', 'FIRST_GROUP_BUY_REWARD',
+    'MARKET_SALE', 'RESALE_INCOME'
+  ].includes(t.type)).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0)
 
   // 6. 构建响应 - 分离两种钱包的数据
   const summary = {
@@ -437,7 +465,11 @@ function getTransactionTypeName(type: string): string {
     'REFERRAL_GROUP_BUY_COMMISSION': '邀请拼团佣金',
     'BONUS': '奖励',
     'POINTS_EXCHANGE': '积分兑换',
-    'PROMOTER_DEPOSIT': '地推代充'
+    'PROMOTER_DEPOSIT': '地推代充',
+    'COMMISSION_PAYOUT': '批量佣金发放',
+    'RESALE_PURCHASE': '转售购买',
+    'RESALE_INCOME': '转售收入',
+    'REFERRAL_REWARD': '邀请奖励'
   }
   return typeNames[type] || type
 }
@@ -467,6 +499,7 @@ function isIncomeType(type: string): boolean {
     'SPIN_REWARD',
     'WITHDRAWAL_UNFREEZE',
     'COMMISSION',
+    'COMMISSION_PAYOUT',
     'FIRST_DEPOSIT_BONUS',
     'FIRST_DEPOSIT_BONUS_ACTIVATION',
     'FIRST_GROUP_BUY_REWARD',
@@ -475,6 +508,9 @@ function isIncomeType(type: string): boolean {
     'BONUS',
     'PROMOTER_DEPOSIT',
     'COIN_EXCHANGE',
-    'POINTS_EXCHANGE'
+    'POINTS_EXCHANGE',
+    'RESALE_INCOME',
+    'REFERRAL_REWARD',
+    'MARKET_SALE'
   ].includes(type)
 }
