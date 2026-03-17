@@ -158,12 +158,24 @@ serve(async (req) => {
 
       if (rpcError) {
         console.error('process_deposit_with_bonus RPC 调用失败:', rpcError)
+        // 【P5修复】RPC 失败时回滚 deposit_request 状态为 PENDING
+        await supabaseClient
+          .from('deposit_requests')
+          .update({ status: 'PENDING', processed_by: null, processed_at: null, updated_at: new Date().toISOString() })
+          .eq('id', requestId)
+        console.log('已回滚 deposit_request 状态为 PENDING')
         throw new Error(`充值处理失败: ${rpcError.message}`)
       }
 
       if (!rpcResult || !rpcResult.success) {
         const errorMsg = rpcResult?.error || '未知错误'
         console.error('process_deposit_with_bonus 业务错误:', errorMsg)
+        // 【P5修复】RPC 业务失败时回滚 deposit_request 状态为 PENDING
+        await supabaseClient
+          .from('deposit_requests')
+          .update({ status: 'PENDING', processed_by: null, processed_at: null, updated_at: new Date().toISOString() })
+          .eq('id', requestId)
+        console.log('已回滚 deposit_request 状态为 PENDING')
         throw new Error(`充值处理失败: ${errorMsg}`)
       }
 

@@ -329,7 +329,7 @@ serve(async (req) => {
         order_number: orderNumber,
         total_amount: fullPrice,
         currency: lottery.currency,
-        status: 'COMPLETED',
+        status: 'PENDING',
         pickup_point_id: pickup_point_id || null,
         pickup_code: pickupCode,
         metadata: {
@@ -370,20 +370,26 @@ serve(async (req) => {
 
     if (paymentError) {
       console.error('[CreateFullPurchaseOrder] process_mixed_payment RPC error:', paymentError);
-      // 回滚订单
-      await supabase.from('full_purchase_orders').delete().eq('id', order.id);
+      // 【P20修复】回滚订单状态为 CANCELLED（保留记录以便追踪）
+      await supabase.from('full_purchase_orders').update({ status: 'CANCELLED', updated_at: new Date().toISOString() }).eq('id', order.id);
       throw new Error(`支付失败: ${paymentError.message}`);
     }
 
     if (!paymentResult || !paymentResult.success) {
       const errorMsg = paymentResult?.error || 'UNKNOWN_PAYMENT_ERROR';
       console.error('[CreateFullPurchaseOrder] process_mixed_payment business error:', errorMsg);
-      // 回滚订单
-      await supabase.from('full_purchase_orders').delete().eq('id', order.id);
+      // 【P20修复】回滚订单状态为 CANCELLED
+      await supabase.from('full_purchase_orders').update({ status: 'CANCELLED', updated_at: new Date().toISOString() }).eq('id', order.id);
       throw new Error(`支付失败: ${errorMsg}`);
     }
 
     console.log('[CreateFullPurchaseOrder] Payment successful:', paymentResult);
+
+    // 【P17修复】支付成功后更新订单状态为 COMPLETED
+    await supabase.from('full_purchase_orders').update({
+      status: 'COMPLETED',
+      updated_at: new Date().toISOString(),
+    }).eq('id', order.id);
 
     // 12. 更新库存（关键修改：从库存商品扣减，不影响一元购物份数）
     if (inventoryProduct) {
@@ -402,13 +408,33 @@ serve(async (req) => {
 
       if (updateInventoryError) {
         console.error('[CreateFullPurchaseOrder] Update inventory error:', updateInventoryError);
-        throw new Error('库存更新失败，请重试');
+        // 【P18修复】库存更新失败时，支付已完成，标记订单为 REFUND_PENDING 等待人工处理退款
+        await supabase.from('full_purchase_orders').update({
+          status: 'REFUND_PENDING',
+          metadata: {
+            ...order.metadata,
+            refund_reason: 'INVENTORY_UPDATE_FAILED',
+            refund_detail: updateInventoryError.message,
+          },
+          updated_at: new Date().toISOString(),
+        }).eq('id', order.id);
+        console.error('[CreateFullPurchaseOrder] Order marked as REFUND_PENDING due to inventory error');
+        throw new Error('库存更新失败，订单已标记为待退款，请联系客服');
       }
 
       if (!updatedInventory) {
-        // 乐观锁冲突：库存已被其他请求修改
+        // 【P18修复】乐观锁冲突：库存已被其他请求修改，标记订单为 REFUND_PENDING
         console.error('[CreateFullPurchaseOrder] Optimistic lock conflict: inventory stock changed by another request');
-        throw new Error('库存已变动，请重新购买');
+        await supabase.from('full_purchase_orders').update({
+          status: 'REFUND_PENDING',
+          metadata: {
+            ...order.metadata,
+            refund_reason: 'INVENTORY_OPTIMISTIC_LOCK_CONFLICT',
+          },
+          updated_at: new Date().toISOString(),
+        }).eq('id', order.id);
+        console.error('[CreateFullPurchaseOrder] Order marked as REFUND_PENDING due to optimistic lock conflict');
+        throw new Error('库存已变动，订单已标记为待退款，请联系客服');
       }
 
       // 记录库存变动
