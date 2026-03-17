@@ -357,7 +357,8 @@ Deno.serve(async (req) => {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             });
-          } catch (error) {
+          } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
             console.error('Failed to queue notification:', error);
           }
         }
@@ -398,7 +399,8 @@ Deno.serve(async (req) => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
-    } catch (error) {
+    } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
       console.error('Failed to queue win notification:', error);
     }
 
@@ -418,7 +420,8 @@ Deno.serve(async (req) => {
           console.log(`Incremented sold_quantity for product ${session.product_id}`);
           break;
         }
-      } catch (error) {
+      } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
         console.error(`increment_sold_quantity exception (attempt ${stockRetry + 1}/3):`, error);
       }
 
@@ -442,8 +445,9 @@ Deno.serve(async (req) => {
         result,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Group buy draw error:', error);
-    return createResponse({ success: false, error: error.message }, 500);
+    return createResponse({ success: false, error: errMsg }, 500);
   }
 });

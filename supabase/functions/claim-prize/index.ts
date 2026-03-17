@@ -336,7 +336,7 @@ serve(async (req) => {
     // ✨ 新增：验证字段完整性
     try {
       validatePrizeFields(prize, tableName);
-    } catch (validationError) {
+    } catch (validationError: unknown) {
       console.error('[ClaimPrize] Field validation failed:', validationError);
       throw validationError;
     }
@@ -475,12 +475,13 @@ serve(async (req) => {
         status: 200,
       }
     )
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('[ClaimPrize] Error:', error);
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: errMsg
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

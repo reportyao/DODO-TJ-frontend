@@ -87,7 +87,7 @@ serve(async (req) => {
     if (error) {
       console.error('Query error:', error)
       return new Response(
-        JSON.stringify({ success: false, error: '查询失败: ' + error.message }),
+        JSON.stringify({ success: false, error: '查询失败: ' + (error as any)?.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -125,7 +125,8 @@ serve(async (req) => {
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
     console.error('Unexpected error:', error)
     return new Response(
       JSON.stringify({ success: false, error: '服务器内部错误' }),

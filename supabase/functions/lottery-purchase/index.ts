@@ -520,7 +520,7 @@ Deno.serve(async (req) => {
         if (!commissionResponse.ok) {
           console.error('Failed to process commission:', await commissionResponse.text());
         }
-      } catch (commissionError) {
+      } catch (commissionError: unknown) {
         console.error('Commission processing error:', commissionError);
       }
     }

@@ -348,7 +348,7 @@ Deno.serve(async (req) => {
         } else {
           console.log('[GroupBuyJoin] Wallet deduction reverted successfully via RPC');
         }
-      } catch (revertEx) {
+      } catch (revertEx: unknown) {
         console.error('[GroupBuyJoin] CRITICAL: Exception during wallet revert:', revertEx);
       }
       return createResponse({ success: false, error: 'Failed to create order: ' + createOrderError.message }, 500);
@@ -385,7 +385,7 @@ Deno.serve(async (req) => {
         if (drawResponse.data?.success) {
           drawResult = drawResponse.data;
         }
-      } catch (drawError) {
+      } catch (drawError: unknown) {
         console.error('Failed to trigger draw:', drawError);
         // 开奖失败不中断流程，会由超时检查或手动触发处理
       }
@@ -484,7 +484,7 @@ Deno.serve(async (req) => {
         // 事件入队失败不影响主流程（与 v1 中 try-catch 的行为一致）
         console.error(`[GroupBuyJoin] ⚠️ Failed to enqueue some events:`, enqueueResult.errors);
       }
-    } catch (enqueueError) {
+    } catch (enqueueError: unknown) {
       // 事件入队的整体异常处理
       // 即使全部入队失败，主流程（扣款、创建订单）已经完成
       // 这些异步事件可以后续通过人工方式补偿
@@ -511,8 +511,9 @@ Deno.serve(async (req) => {
       }
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Group buy join error:', error);
-    return createResponse({ success: false, error: error.message }, 500);
+    return createResponse({ success: false, error: errMsg }, 500);
   }
 });

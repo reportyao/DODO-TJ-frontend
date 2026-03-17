@@ -221,12 +221,13 @@ serve(async (req) => {
       }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('创建运营晒单错误:', error)
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || '创建运营晒单失败',
+        error: errMsg || '创建运营晒单失败',
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

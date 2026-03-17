@@ -175,12 +175,13 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Get spin data error:', error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || 'Internal server error'
+        error: errMsg || 'Internal server error'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

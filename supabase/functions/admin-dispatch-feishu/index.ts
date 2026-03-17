@@ -123,13 +123,14 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error) {
-    console.error('[admin-dispatch-feishu] 错误:', error.message)
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
+    console.error('[admin-dispatch-feishu] 错误:', errMsg)
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: errMsg,
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

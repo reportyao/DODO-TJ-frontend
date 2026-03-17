@@ -112,7 +112,8 @@ const commands: BotCommand[] = [
         }
 
         return messages[lang as keyof typeof messages]?.welcome || messages.zh.welcome;
-      } catch (error) {
+      } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
         console.error('Error in /start command:', error);
         return messages[lang as keyof typeof messages]?.error || messages.zh.error;
       }
@@ -174,7 +175,8 @@ const commands: BotCommand[] = [
         };
 
         return balanceText[lang as keyof typeof balanceText] || balanceText.zh;
-      } catch (error) {
+      } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
         console.error('Error in /balance command:', error);
         return messages[lang as keyof typeof messages]?.balance_error || messages.zh.balance_error;
       }
@@ -237,7 +239,8 @@ const commands: BotCommand[] = [
         });
 
         return response;
-      } catch (error) {
+      } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
         console.error('Error in /tickets command:', error);
         return messages[lang as keyof typeof messages]?.error || messages.zh.error;
       }
@@ -282,7 +285,8 @@ async function sendTelegramMessage(chatId: number, text: string, botToken: strin
     });
 
     return response.ok;
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Error sending Telegram message:', error);
     return false;
   }
@@ -315,7 +319,8 @@ async function logBotMessage(
         response_content: responseContent,
         error_message: errorMessage
       });
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Error logging bot message:', error);
   }
 }
@@ -348,7 +353,8 @@ async function updateCommandStats(supabase: any, userId: string, command: string
           usage_count: 1
         });
     }
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Error updating command stats:', error);
   }
 }
@@ -424,9 +430,10 @@ serve(async (req) => {
       // 发送回复
       responseSent = await sendTelegramMessage(chatId, responseText, botToken);
       
-    } catch (error) {
+    } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
       console.error('Error processing message:', error);
-      errorMessage = error.message;
+      errorMessage = errMsg;
       const lang = await getUserLanguage(chatId, supabase);
       responseText = messages[lang as keyof typeof messages]?.error || messages.zh.error;
       responseSent = await sendTelegramMessage(chatId, responseText, botToken);
@@ -450,11 +457,12 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Webhook error:', error);
     return new Response(JSON.stringify({ 
       error: 'Internal server error',
-      message: error.message 
+      message: errMsg 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

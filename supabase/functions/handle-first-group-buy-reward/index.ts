@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
       if (telegramIdData && telegramIdData.length > 0) {
         userTelegramId = telegramIdData[0].telegram_id;
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('Failed to get telegram_id:', e);
     }
 
@@ -222,12 +222,13 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Handle first group buy reward error:', error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || 'Internal server error'
+        error: errMsg || 'Internal server error'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

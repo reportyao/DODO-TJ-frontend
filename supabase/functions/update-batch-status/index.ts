@@ -200,7 +200,7 @@ serve(async (req) => {
           if (sent) {
             notificationsSent++
           }
-        } catch (notifyError) {
+        } catch (notifyError: unknown) {
           console.error('Failed to send notification:', notifyError)
         }
       }
@@ -215,7 +215,7 @@ serve(async (req) => {
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Unexpected error:', error)
     return new Response(
       JSON.stringify({ success: false, error: '服务器内部错误' }),

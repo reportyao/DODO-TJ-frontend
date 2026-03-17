@@ -154,9 +154,10 @@ serve(async (req) => {
       { headers: { "Content-Type": "application/json", ...corsHeaders }, status: 200 }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('[Exchange] Error:', error)
-    const errorMessage = error.message || '兑换失败，请稍后重试';
+    const errorMessage = errMsg || '兑换失败，请稍后重试';
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
       { headers: { "Content-Type": "application/json", ...corsHeaders }, status: 200 }

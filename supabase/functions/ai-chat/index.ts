@@ -221,7 +221,8 @@ async function saveChatHistory(userId: string, userMessage: string, aiResponse: 
         })
       }
     );
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('[AI-Chat] Failed to save history:', error);
   }
 }
@@ -347,7 +348,8 @@ serve(async (req) => {
     let aiResponse: string;
     try {
       aiResponse = await callQwenAI(trimmedMessage);
-    } catch (error) {
+    } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
       console.error('[AI-Chat] AI call failed:', error);
       return new Response(
         JSON.stringify({ 
@@ -389,10 +391,11 @@ serve(async (req) => {
       { headers: { "Content-Type": "application/json", ...corsHeaders }, status: 200 }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('[AI-Chat] Error:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: errMsg }),
       { headers: { "Content-Type": "application/json", ...corsHeaders }, status: 400 }
     );
   }

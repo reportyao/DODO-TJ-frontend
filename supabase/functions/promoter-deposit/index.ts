@@ -277,7 +277,7 @@ serve(async (req) => {
           },
           p_status: 'success',
           p_error_message: null,
-        }).catch((logErr: any) => console.error('Failed to write audit log:', logErr))
+        }).then(({ error: logErr }) => { if (logErr) console.error('Failed to write audit log:', logErr); })
         return new Response(JSON.stringify(result), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })

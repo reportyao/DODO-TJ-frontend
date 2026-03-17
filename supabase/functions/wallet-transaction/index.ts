@@ -148,13 +148,14 @@ Deno.serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
 
-    } catch (error) {
+    } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
         console.error('Wallet transaction error:', error);
 
         const errorResponse = {
             error: {
                 code: 'TRANSACTION_FAILED',
-                message: error.message
+                message: errMsg
             }
         };
 
@@ -527,7 +528,8 @@ async function createBotNotification(
                 body: JSON.stringify(notificationData)
             });
         }
-    } catch (error) {
+    } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
         console.error('Error creating bot notification:', error);
         // 不抛出错误，避免影响主业务流程
     }

@@ -259,7 +259,7 @@ serve(async (req) => {
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Unexpected error:', error)
     return new Response(
       JSON.stringify({ success: false, error: '服务器内部错误' }),

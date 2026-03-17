@@ -23,7 +23,8 @@ async function callNotificationSender(supabaseUrl: string, serviceKey: string): 
     }
 
     return await response.json();
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Error calling notification sender:', error);
     throw error;
   }
@@ -42,7 +43,8 @@ async function cleanupExpiredSessions(supabase: any): Promise<number> {
     }
 
     return data?.length || 0;
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Error cleaning up expired sessions:', error);
     return 0;
   }
@@ -63,7 +65,8 @@ async function cleanupOldMessages(supabase: any): Promise<number> {
     }
 
     return data?.length || 0;
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Error cleaning up old messages:', error);
     return 0;
   }
@@ -85,7 +88,8 @@ async function cleanupFailedNotifications(supabase: any): Promise<number> {
     }
 
     return data?.length || 0;
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Error cleaning up failed notifications:', error);
     return 0;
   }
@@ -165,7 +169,8 @@ async function checkLotteryDrawReminders(supabase: any): Promise<number> {
     }
 
     return notificationsCreated;
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Error checking lottery draw reminders:', error);
     return 0;
   }
@@ -211,7 +216,7 @@ async function generateDailySummary(supabase: any): Promise<number> {
         .gte('created_at', yesterday.toISOString())
         .lt('created_at', today.toISOString());
 
-      const totalSpent = userStats?.reduce((sum, entry) => sum + parseFloat(entry.purchase_price), 0) || 0;
+      const totalSpent = userStats?.reduce((sum: number, entry: any) => sum + parseFloat(entry.purchase_price), 0) || 0;
       const ticketCount = userStats?.length || 0;
 
       if (ticketCount > 0) {
@@ -238,7 +243,8 @@ async function generateDailySummary(supabase: any): Promise<number> {
     }
 
     return summariesCreated;
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Error generating daily summary:', error);
     return 0;
   }
@@ -276,9 +282,10 @@ serve(async (req) => {
       const notificationResult = await callNotificationSender(supabaseUrl, supabaseServiceKey);
       results.tasks.notifications = notificationResult;
       console.log('Notification processing result:', notificationResult);
-    } catch (error) {
+    } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
       console.error('Failed to process notifications:', error);
-      results.tasks.notifications = { error: error.message };
+      results.tasks.notifications = { error: errMsg };
     }
 
     // 2. 检查彩票开奖提醒
@@ -287,9 +294,10 @@ serve(async (req) => {
       const remindersCreated = await checkLotteryDrawReminders(supabase);
       results.tasks.lotteryReminders = { created: remindersCreated };
       console.log(`Created ${remindersCreated} lottery draw reminders`);
-    } catch (error) {
+    } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
       console.error('Failed to check lottery reminders:', error);
-      results.tasks.lotteryReminders = { error: error.message };
+      results.tasks.lotteryReminders = { error: errMsg };
     }
 
     // 3. 清理任务 (每小时执行一次)
@@ -320,9 +328,10 @@ serve(async (req) => {
         };
         
         console.log(`Cleanup completed: ${expiredSessions} sessions, ${oldMessages} messages, ${failedNotifications} notifications`);
-      } catch (error) {
+      } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
         console.error('Failed to run cleanup tasks:', error);
-        results.tasks.cleanup = { error: error.message };
+        results.tasks.cleanup = { error: errMsg };
       }
     }
 
@@ -333,9 +342,10 @@ serve(async (req) => {
         const summariesCreated = await generateDailySummary(supabase);
         results.tasks.dailySummary = { created: summariesCreated };
         console.log(`Created ${summariesCreated} daily summaries`);
-      } catch (error) {
+      } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
         console.error('Failed to generate daily summaries:', error);
-        results.tasks.dailySummary = { error: error.message };
+        results.tasks.dailySummary = { error: errMsg };
       }
     }
 
@@ -349,13 +359,14 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Cron job error:', error);
     
     return new Response(JSON.stringify({ 
       success: false,
       error: 'Cron job failed',
-      message: error.message,
+      message: errMsg,
       timestamp: new Date().toISOString()
     }), {
       status: 500,

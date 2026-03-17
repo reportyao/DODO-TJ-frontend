@@ -48,7 +48,7 @@ serve(async (req) => {
           target_id: userId,
           details: { period, page, pageSize, transactionType, status, startDate, endDate, walletType }
         })
-      } catch (logError) {
+      } catch (logError: unknown) {
         console.error('Failed to log admin action:', logError)
       }
     }
@@ -80,10 +80,11 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Error in admin-user-financial:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errMsg }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }

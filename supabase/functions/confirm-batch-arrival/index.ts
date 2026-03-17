@@ -216,12 +216,12 @@ serve(async (req) => {
                   updateItemData.notification_sent_at = new Date().toISOString()
                   results.notifications_sent++
                 }
-              } catch (notifyError) {
+              } catch (notifyError: unknown) {
                 console.error('Failed to send arrival notification:', notifyError)
               }
             }
 
-          } catch (pickupCodeError) {
+          } catch (pickupCodeError: unknown) {
             console.error('Failed to generate pickup code:', pickupCodeError)
             results.errors.push(`订单 ${orderItem.order_id} 生成提货码失败`)
           }
@@ -243,7 +243,7 @@ serve(async (req) => {
                 updateItemData.notification_sent_at = new Date().toISOString()
                 results.notifications_sent++
               }
-            } catch (notifyError) {
+            } catch (notifyError: unknown) {
               console.error('Failed to send missing notification:', notifyError)
             }
           }
@@ -265,7 +265,7 @@ serve(async (req) => {
                 updateItemData.notification_sent_at = new Date().toISOString()
                 results.notifications_sent++
               }
-            } catch (notifyError) {
+            } catch (notifyError: unknown) {
               console.error('Failed to send damaged notification:', notifyError)
             }
           }
@@ -277,7 +277,7 @@ serve(async (req) => {
           .update(updateItemData)
           .eq('id', orderStatus.order_item_id)
 
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error processing order status:', error)
         results.errors.push(`处理订单项 ${orderStatus.order_item_id} 失败`)
       }
@@ -315,7 +315,7 @@ serve(async (req) => {
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Unexpected error:', error)
     return new Response(
       JSON.stringify({ success: false, error: '服务器内部错误' }),

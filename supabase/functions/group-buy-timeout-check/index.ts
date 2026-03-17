@@ -291,13 +291,15 @@ Deno.serve(async (req) => {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             });
-          } catch (error) {
+          } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
             console.error('Failed to queue notification:', error);
           }
         }
 
         processedCount++;
-      } catch (error) {
+      } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
         console.error(`Failed to process timeout session ${session.id}:`, error);
       }
     }
@@ -310,8 +312,9 @@ Deno.serve(async (req) => {
       refund_results: refundResults,
       skipped_results: skippedResults,
     });
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Group buy timeout check error:', error);
-    return createResponse({ success: false, error: error.message }, 500);
+    return createResponse({ success: false, error: errMsg }, 500);
   }
 });

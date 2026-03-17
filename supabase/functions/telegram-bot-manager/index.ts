@@ -41,7 +41,8 @@ async function callTelegramAPI(method: string, params: any, botToken: string) {
     }
 
     return result;
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error(`Error calling Telegram API ${method}:`, error);
     throw error;
   }
@@ -130,9 +131,10 @@ async function createNotification(
     }
 
     return { success: true };
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Error creating notification:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: errMsg };
   }
 }
 
@@ -178,7 +180,8 @@ async function getBotStats(supabase: any) {
       activeUsers: activeUsers || 0,
       topCommands: topCommands || []
     };
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Error getting bot stats:', error);
     return null;
   }
@@ -243,10 +246,11 @@ serve(async (req) => {
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
              });
-        } catch (error) {
+        } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
           return new Response(JSON.stringify({
             success: false,
-            error: error.message
+            error: errMsg
            }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -264,10 +268,11 @@ serve(async (req) => {
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
-        } catch (error) {
+        } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
           return new Response(JSON.stringify({
             success: false,
-            error: error.message
+            error: errMsg
           }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -286,10 +291,11 @@ serve(async (req) => {
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
-        } catch (error) {
+        } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
           return new Response(JSON.stringify({
             success: false,
-            error: error.message
+            error: errMsg
           }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -320,10 +326,11 @@ serve(async (req) => {
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
-        } catch (error) {
+        } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
           return new Response(JSON.stringify({
             success: false,
-            error: error.message
+            error: errMsg
           }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -402,10 +409,11 @@ serve(async (req) => {
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
-        } catch (error) {
+        } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
           return new Response(JSON.stringify({
             success: false,
-            error: error.message
+            error: errMsg
           }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -433,11 +441,12 @@ serve(async (req) => {
         });
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Bot manager error:', error);
     return new Response(JSON.stringify({ 
       error: 'Internal server error',
-      message: error.message 
+      message: errMsg 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -527,12 +527,13 @@ serve(async (req) => {
         status: 200,
       }
     )
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('[GetMyOrders] Error:', error);
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: errMsg
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

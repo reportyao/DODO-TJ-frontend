@@ -57,7 +57,7 @@ async function sendTelegramMessage(userId: string, type: string, data: { amount?
         parse_mode: 'HTML'
       })
     })
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('Failed to send Telegram message:', err)
   }
 }
@@ -337,7 +337,7 @@ serve(async (req) => {
           amount: commissionAmount,
           level: level
         })
-      } catch (msgError) {
+      } catch (msgError: unknown) {
         console.error('Failed to send telegram message:', msgError)
         // 不阻断流程
       }
@@ -364,10 +364,11 @@ serve(async (req) => {
       { headers: { "Content-Type": "application/json", 'Access-Control-Allow-Origin': '*' }, status: 200 }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('handle_purchase_commission error:', error)
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: errMsg }),
       { headers: { "Content-Type": "application/json", 'Access-Control-Allow-Origin': '*' }, status: 400 }
     )
   }

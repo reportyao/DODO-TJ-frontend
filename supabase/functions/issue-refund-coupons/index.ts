@@ -50,6 +50,32 @@ serve(async (req) => {
 
     console.log(`[IssueRefundCoupons] Starting coupon issuance for lottery: ${lottery_id}, ${losers.length} users`);
 
+    // [B2修复] 幂等性检查：检查是否已为该活动发过抵扣券
+    const { count: existingCoupons } = await supabase
+      .from('coupons')
+      .select('*', { count: 'exact', head: true })
+      .eq('related_lottery_id', lottery_id)
+      .eq('source', 'LOTTERY_REFUND');
+
+    if (existingCoupons && existingCoupons > 0) {
+      console.log(`[IssueRefundCoupons] Coupons already issued for lottery ${lottery_id} (${existingCoupons} coupons found). Skipping.`);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          alreadyIssued: true,
+          data: {
+            lottery_id: lottery_id,
+            existing_coupons: existingCoupons,
+            message: 'Coupons already issued for this lottery',
+          },
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+
     // 计算过期时间：当前时间 + 30 天
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);

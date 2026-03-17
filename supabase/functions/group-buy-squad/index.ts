@@ -376,7 +376,7 @@ Deno.serve(async (req) => {
         } else {
           console.log('[SquadBuy] Wallet deduction reverted successfully via RPC');
         }
-      } catch (revertEx) {
+      } catch (revertEx: unknown) {
         console.error('[SquadBuy] CRITICAL: Exception during wallet revert:', revertEx);
       }
       return createResponse({ success: false, error: 'Failed to create session: ' + createSessionError.message }, 500);
@@ -427,7 +427,7 @@ Deno.serve(async (req) => {
         } else {
           console.log('[SquadBuy] Wallet deduction reverted successfully via RPC');
         }
-      } catch (revertEx) {
+      } catch (revertEx: unknown) {
         console.error('[SquadBuy] CRITICAL: Exception during wallet revert:', revertEx);
       }
       return createResponse({ success: false, error: 'Failed to create order: ' + userOrderError.message }, 500);
@@ -592,7 +592,7 @@ Deno.serve(async (req) => {
           console.log(`[SquadBuy] Refunded ${refundPoints} LUCKY_COIN to user`);
         }
       }
-    } catch (lcError) {
+    } catch (lcError: unknown) {
       console.error('[SquadBuy] Failed to process LUCKY_COIN refund:', lcError);
       // 积分返还失败不影响主流程
     }
@@ -615,7 +615,7 @@ Deno.serve(async (req) => {
           console.log(`[SquadBuy] Incremented sold_quantity for product ${product.id}`);
           break;
         }
-      } catch (stockError) {
+      } catch (stockError: unknown) {
         console.error(`[SquadBuy] increment_sold_quantity exception (attempt ${stockRetry + 1}/3):`, stockError);
       }
 
@@ -752,7 +752,7 @@ Deno.serve(async (req) => {
         // 但需要记录错误，便于排查
         console.error(`[SquadBuy] ⚠️ Failed to enqueue some events:`, enqueueResult.errors);
       }
-    } catch (enqueueError) {
+    } catch (enqueueError: unknown) {
       // 事件入队的整体异常处理
       // 即使全部入队失败，主流程（扣款、创建订单、返还积分）已经完成
       // 这些异步事件可以后续通过人工方式补偿
@@ -777,8 +777,9 @@ Deno.serve(async (req) => {
         result_id: result?.id,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('[SquadBuy] Unexpected error:', error);
-    return createResponse({ success: false, error: error.message }, 500);
+    return createResponse({ success: false, error: errMsg }, 500);
   }
 });

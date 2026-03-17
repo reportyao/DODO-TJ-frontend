@@ -99,11 +99,12 @@ Deno.serve(async (req) => {
       message: 'Notification queued successfully'
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Send telegram notification error:', error);
     return createResponse({ 
       success: false, 
-      error: error.message 
+      error: errMsg 
     }, 500);
   }
 });

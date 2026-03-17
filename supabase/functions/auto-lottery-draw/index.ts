@@ -342,7 +342,7 @@ serve(async (req) => {
         created_at: drawTime,
         updated_at: drawTime,
       });
-    } catch (notifError) {
+    } catch (notifError: unknown) {
       console.error('[AutoLotteryDraw] Failed to send winner notification:', notifError);
       // 通知失败不影响开奖结果
     }
@@ -378,7 +378,7 @@ serve(async (req) => {
       if (announcements.length > 0) {
         await supabaseClient.from('notifications').insert(announcements);
       }
-    } catch (notifError) {
+    } catch (notifError: unknown) {
       console.error('[AutoLotteryDraw] Failed to send participant notifications:', notifError);
       // 通知失败不影响开奖结果
     }
@@ -426,7 +426,7 @@ serve(async (req) => {
       } else {
         console.log('[AutoLotteryDraw] No non-winning users to issue coupons to');
       }
-    } catch (couponError) {
+    } catch (couponError: unknown) {
       console.error('[AutoLotteryDraw] Failed to prepare coupon data:', couponError);
       // 抵扣券发放失败不影响开奖结果
     }

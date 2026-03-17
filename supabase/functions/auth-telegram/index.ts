@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
                                         avatarUrl = tgFileUrl; // Fallback to direct TG URL
                                     }
                                 }
-                            } catch (storageError) {
+                            } catch (storageError: unknown) {
                                 console.error(`[Avatar] Storage process failed:`, storageError);
                                 avatarUrl = tgFileUrl;
                             }
@@ -198,8 +198,9 @@ Deno.serve(async (req) => {
                     }
                 }
             }
-        } catch (avatarError) {
-            console.error('[Avatar] Failed to fetch avatar via Bot API (using fallback):', avatarError.message);
+        } catch (avatarError: unknown) {
+    const avatarErrorMsg = avatarError instanceof Error ? avatarErrorMsg : String(avatarError);
+            console.error('[Avatar] Failed to fetch avatar via Bot API (using fallback):', avatarErrorMsg);
             // 保持使用 userData.photo_url
         }
 
@@ -548,7 +549,7 @@ Deno.serve(async (req) => {
                         });
                         
                         console.log(`[Invite Reward] Awarded 5 AI chats to both inviter ${referredById} and invitee ${user.id}`);
-                    } catch (aiRewardError) {
+                    } catch (aiRewardError: unknown) {
                         console.error('Failed to process AI invite reward:', aiRewardError);
                     }
                     
@@ -635,10 +636,10 @@ Deno.serve(async (req) => {
                                 console.log(`[Invite Bot Notification] Queued notification for inviter ${referredById}`);
                             }
                         }
-                    } catch (notificationError) {
+                    } catch (notificationError: unknown) {
                         console.error('Failed to create invite notification:', notificationError);
                     }
-                } catch (inviteError) {
+                } catch (inviteError: unknown) {
                     console.error('Failed to process invite reward:', inviteError);
                     // 邀请奖励失败不影响用户注册
                 }
@@ -722,13 +723,14 @@ Deno.serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
 
-    } catch (error) {
+    } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
         console.error('Authentication error:', error);
 
         const errorResponse = {
             error: {
                 code: 'AUTH_FAILED',
-                message: error.message
+                message: errMsg
             }
         };
 

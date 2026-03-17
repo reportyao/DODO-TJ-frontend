@@ -147,7 +147,7 @@ serve(async (req) => {
     try {
       const body = await req.json();
       session_token = body.session_token;
-    } catch (e) {
+    } catch (e: unknown) {
       // 兼容某些请求可能不带body的情况
       console.warn('[AI-GetQuota] Failed to parse JSON body');
     }
@@ -184,10 +184,11 @@ serve(async (req) => {
       { headers: { "Content-Type": "application/json", ...corsHeaders }, status: 200 }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('[AI-GetQuota] Error:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: errMsg }),
       { headers: { "Content-Type": "application/json", ...corsHeaders }, status: 400 }
     );
   }

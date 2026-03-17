@@ -349,7 +349,7 @@ serve(async (req) => {
       },
       p_status: 'success',
       p_error_message: null,
-    }).catch((logErr: any) => console.error('Failed to write audit log:', logErr))
+    }).then(({ error: logErr }) => { if (logErr) console.error('Failed to write audit log:', logErr); })
     return new Response(
       JSON.stringify({
         success: true,
@@ -360,8 +360,9 @@ serve(async (req) => {
         status: 200,
       }
     )
-  } catch (error) {
-    console.error('审核充值申请错误:', error)
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('审核充值申请错误:', errMsg)
     // 记录失败日志（尽力而为）
     try {
       const logClient = createClient(
@@ -376,13 +377,13 @@ serve(async (req) => {
         p_target_id: null,
         p_details: {},
         p_status: 'error',
-        p_error_message: error.message,
+        p_error_message: errMsg,
       })
     } catch (_) { /* 日志写入失败不影响响应 */ }
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: errMsg,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

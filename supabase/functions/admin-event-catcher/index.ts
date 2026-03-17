@@ -145,15 +145,16 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     const duration = Date.now() - startTime
-    console.error('[admin-event-catcher] 错误:', error.message)
+    console.error('[admin-event-catcher] 错误:', errMsg)
     console.error('[admin-event-catcher] 堆栈:', error.stack)
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: errMsg,
         duration_ms: duration,
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

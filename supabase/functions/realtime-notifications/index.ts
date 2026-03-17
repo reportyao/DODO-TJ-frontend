@@ -106,7 +106,8 @@ Deno.serve(async (req) => {
         const heartbeatInterval = setInterval(() => {
           try {
             controller.enqueue(encoder.encode(`: heartbeat\n\n`));
-          } catch (error) {
+          } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
             console.error('Heartbeat error:', error);
             clearInterval(heartbeatInterval);
           }
@@ -131,9 +132,10 @@ Deno.serve(async (req) => {
       },
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Realtime notifications error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: errMsg }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -37,7 +37,7 @@ serve(async (req) => {
         limit = body.limit || 20
         offset = body.offset || 0
         sortBy = body.sortBy || 'latest'
-      } catch (e) {
+      } catch (e: unknown) {
         // 忽略 body 解析错误，使用默认值
       }
     }
@@ -106,12 +106,13 @@ serve(async (req) => {
         status: 200,
       }
     )
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('[ListResale] Error:', error)
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: errMsg,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

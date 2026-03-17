@@ -147,7 +147,8 @@ async function sendCommissionTelegramNotification(
         parse_mode: 'HTML',
       }),
     });
-  } catch (err) {
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? errMsg : String(err);
     console.error('[Worker] Failed to send Telegram commission notification:', err);
     // 不抛出异常，通知失败不影响佣金发放
   }
@@ -754,8 +755,9 @@ Deno.serve(async (req) => {
         await markEventCompleted(supabase, event.id);
         results.push({ id: event.id, type: event.event_type, status: 'completed' });
         succeeded++;
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
+      } catch (err: unknown) {
+    const errMsg = err instanceof Error ? errMsg : String(err);
+        const errorMessage = err instanceof Error ? errMsg : String(err);
         console.error(`[Worker] Failed to process event ${event.id} (${event.event_type}): ${errorMessage}`);
         await markEventFailed(supabase, event.id, errorMessage);
         results.push({ id: event.id, type: event.event_type, status: 'failed', error: errorMessage });
@@ -778,8 +780,9 @@ Deno.serve(async (req) => {
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? errMsg : String(err);
+    const errorMessage = err instanceof Error ? errMsg : String(err);
     console.error(`[Worker] ${workerId} fatal error: ${errorMessage}`);
 
     return new Response(

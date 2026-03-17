@@ -206,7 +206,8 @@ Deno.serve(async (req) => {
           
           newBalance = await addCoinsResponse.json();
           console.log(`[Spin Lottery] Successfully added ${selectedReward.reward_amount} coins to user ${user_id}, new balance: ${newBalance}`);
-        } catch (error) {
+        } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
           console.error('[Spin Lottery] Error in add_user_lucky_coins:', error);
           // 积分发放失败，但不影响抽奖记录，只是newBalance为null
           // 前端会显示中奖，但余额可能不会立即更新
@@ -227,7 +228,7 @@ Deno.serve(async (req) => {
             })
           });
           console.log(`[Spin Lottery] Awarded ${selectedReward.reward_amount} AI chats to user ${user_id}`);
-        } catch (aiError) {
+        } catch (aiError: unknown) {
           console.error('Failed to award AI chats:', aiError);
         }
       }
@@ -309,7 +310,7 @@ Deno.serve(async (req) => {
             }
           );
         }
-      } catch (notifError) {
+      } catch (notifError: unknown) {
         console.error('Failed to send spin win notification:', notifError);
       }
     }
@@ -347,12 +348,13 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     console.error('Spin lottery error:', error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || 'Internal server error'
+        error: errMsg || 'Internal server error'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -169,8 +169,9 @@ serve(async (req) => {
           ...dispatchResult,
         })
 
-      } catch (dispatchError) {
-        console.error(`[admin-notification-hub] 发送到 ${channel.name} 失败:`, dispatchError.message)
+      } catch (dispatchError: unknown) {
+    const dispatchErrorMsg = dispatchError instanceof Error ? dispatchErrorMsg : String(dispatchError);
+        console.error(`[admin-notification-hub] 发送到 ${channel.name} 失败:`, dispatchErrorMsg)
         
         // 记录失败日志
         await supabase
@@ -183,14 +184,14 @@ serve(async (req) => {
             channel_name: channel.name,
             message: formattedMessage,
             status: 'failed',
-            error_message: dispatchError.message,
+            error_message: dispatchErrorMsg,
           })
 
         dispatchResults.push({
           channel_name: channel.name,
           channel_type: channel.channel_type,
           success: false,
-          error: dispatchError.message,
+          error: dispatchErrorMsg,
         })
       }
     }
@@ -229,14 +230,15 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     const duration = Date.now() - startTime
-    console.error('[admin-notification-hub] 错误:', error.message)
+    console.error('[admin-notification-hub] 错误:', errMsg)
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: errMsg,
         duration_ms: duration,
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

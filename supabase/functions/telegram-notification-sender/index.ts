@@ -15,6 +15,7 @@ interface NotificationData {
   won_at?: string;
   refund_amount?: number;
   balance?: number;
+  points_balance?: number;  // 拼团积分退款后的积分余额
   
   // 钱包相关
   transaction_amount?: number;
@@ -128,13 +129,15 @@ const notificationTemplates = {
   },
   
   // 首充奖励到账通知
+  // [业务重构] 从“首充奖励”改为“充值赠送”，匹配新的每次充值都赠送的业务逻辑
+  // 保持 key 为 first_deposit_bonus 以兼容现有通知队列中的记录
   first_deposit_bonus: {
     zh: (data: NotificationData) => 
-      `🎁 首充奖励到账\n\n💵 充值金额: ${data.deposit_amount} TJS\n🎉 首充奖励: +${data.bonus_amount} TJS（${data.bonus_percent}%）\n💰 实际到账: ${data.total_amount} TJS\n\n感谢您对 TezBarakatTJ 的支持！`,
+      `🎁 充值赠送到账\n\n💵 充值金额: ${data.deposit_amount} TJS\n🎉 赠送积分: +${data.bonus_amount} 积分（${data.bonus_percent}%）\n💰 充值到账: ${data.deposit_amount} TJS\n\n赠送积分已打入您的积分钱包，可在积分商城使用！`,
     ru: (data: NotificationData) => 
-      `🎁 Бонус за первое пополнение\n\n💵 Сумма пополнения: ${data.deposit_amount} TJS\n🎉 Бонус: +${data.bonus_amount} TJS (${data.bonus_percent}%)\n💰 Итого зачислено: ${data.total_amount} TJS\n\nСпасибо за поддержку TezBarakatTJ!`,
+      `🎁 Бонус за пополнение\n\n💵 Сумма пополнения: ${data.deposit_amount} TJS\n🎉 Бонус баллов: +${data.bonus_amount} баллов (${data.bonus_percent}%)\n💰 Зачислено: ${data.deposit_amount} TJS\n\nБонусные баллы зачислены в кошелек баллов!`,
     tg: (data: NotificationData) => 
-      `🎁 Ҷоизаи пурсозии аввал\n\n💵 Маблағи пурсозӣ: ${data.deposit_amount} TJS\n🎉 Ҷоиза: +${data.bonus_amount} TJS (${data.bonus_percent}%)\n💰 Ҳамагӣ гузошта шуд: ${data.total_amount} TJS\n\nТашаккур барои дастгирии TezBarakatTJ!`
+      `🎁 Ҷоизаи пурсозӣ\n\n💵 Маблағи пурсозӣ: ${data.deposit_amount} TJS\n🎉 Ҷоизаи холҳо: +${data.bonus_amount} хол (${data.bonus_percent}%)\n💰 Гузошта шуд: ${data.deposit_amount} TJS\n\nҶоизаи холҳо ба ҳамёни холҳои шумо гузошта шуд!`
   },
   
   // 提现申请已提交
@@ -466,8 +469,9 @@ async function processNotification(supabase: any, notification: any, botToken: s
       throw new Error('Failed to send Telegram message');
     }
 
-  } catch (error) {
-    console.error(`Error processing notification ${notification.id}:`, error);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error(`Error processing notification ${notification.id}:`, errMsg);
     
     // 更新重试计数
     const newRetryCount = (notification.retry_count || notification.attempts || 0) + 1;
@@ -479,7 +483,7 @@ async function processNotification(supabase: any, notification: any, botToken: s
         .from('notification_queue')
         .update({ 
           status: 'failed',
-          error_message: error.message,
+          error_message: errMsg,
           retry_count: newRetryCount,
           attempts: newRetryCount,
           last_attempt_at: new Date().toISOString(),
@@ -495,7 +499,7 @@ async function processNotification(supabase: any, notification: any, botToken: s
         .update({ 
           retry_count: newRetryCount,
           attempts: newRetryCount,
-          error_message: error.message,
+          error_message: errMsg,
           scheduled_at: nextRetryTime.toISOString(),
           last_attempt_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -503,7 +507,7 @@ async function processNotification(supabase: any, notification: any, botToken: s
         .eq('id', notification.id);
     }
     
-    return { success: false, error: error.message };
+    return { success: false, error: errMsg };
   }
 }
 
@@ -591,10 +595,11 @@ serve(async (req) => {
         if (result.sent) results.sent++;
         else if (!result.success) results.failed++;
         
-      } catch (error) {
+      } catch (error: unknown) {
+        const errMsg = error instanceof Error ? error.message : String(error);
         results.failed++;
-        results.errors.push(`Notification ${notification.id}: ${error.message}`);
-        console.error(`Failed to process notification ${notification.id}:`, error);
+        results.errors.push(`Notification ${notification.id}: ${errMsg}`);
+        console.error(`Failed to process notification ${notification.id}:`, errMsg);
       }
     }
 
@@ -602,11 +607,12 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
-  } catch (error) {
-    console.error('Notification processor error:', error);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('Notification processor error:', errMsg);
     return new Response(JSON.stringify({ 
       error: 'Internal server error',
-      message: error.message 
+      message: errMsg 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

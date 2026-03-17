@@ -113,7 +113,7 @@ async function sendBatchShippedNotification(
 
     console.log(`Notification sent to user ${userId}`)
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error sending notification:', error)
     return false
   }
@@ -439,12 +439,12 @@ serve(async (req) => {
                     .eq('id', insertedItem.id)
                   results.notifications_sent++
                 }
-              } catch (notifyError) {
+              } catch (notifyError: unknown) {
                 console.error('Failed to send arrival notification:', notifyError)
               }
             }
 
-          } catch (pickupCodeError) {
+          } catch (pickupCodeError: unknown) {
             console.error('Failed to generate pickup code:', pickupCodeError)
             results.failed.push({ order_id: order.order_id, error: '生成提货码失败' })
             // 即使提货码生成失败，订单已加入批次，不回滚
@@ -486,7 +486,7 @@ serve(async (req) => {
               if (sent) {
                 results.notifications_sent++
               }
-            } catch (notifyError) {
+            } catch (notifyError: unknown) {
               console.error('Failed to send notification:', notifyError)
             }
           }
@@ -494,7 +494,7 @@ serve(async (req) => {
 
         results.success.push(order.order_id)
 
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error processing order:', order.order_id, error)
         results.failed.push({ order_id: order.order_id, error: '处理失败' })
       }
@@ -525,7 +525,7 @@ serve(async (req) => {
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Unexpected error:', error)
     return new Response(
       JSON.stringify({ success: false, error: '服务器内部错误' }),

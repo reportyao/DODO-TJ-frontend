@@ -193,9 +193,10 @@ serve(async (req) => {
 
         success_count++
 
-      } catch (error) {
+      } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
         fail_count++
-        errors.push({ commission_id, error: error.message })
+        errors.push({ commission_id, error: errMsg })
       }
     }
 
@@ -208,9 +209,10 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errMsg }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

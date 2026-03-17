@@ -441,10 +441,9 @@ Deno.serve(async (req) => {
 
       const { data: orders, error } = await ordersQuery;
 
-      if (error) {
+       if (error) {
         return createResponse({ success: false, error: error.message }, 500);
       }
-
       // 将product从session中提取出来，保持返回格式与前端兼容
       const mappedOrders = orders?.map(order => {
         const product = order.session?.product || null;
@@ -458,15 +457,16 @@ Deno.serve(async (req) => {
     } else {
       return createResponse({ success: false, error: 'Invalid type parameter' }, 400);
     }
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
     console.error('Group buy list error:', error);
     console.error('Error details:', JSON.stringify(error, null, 2));
     return createResponse({ 
       success: false, 
-      error: error.message || 'Unknown error',
-      details: error.details || null,
-      hint: error.hint || null,
-      code: error.code || null
+      error: errMsg || 'Unknown error',
+      details: (error as any)?.details || null,
+      hint: (error as any)?.hint || null,
+      code: (error as any)?.code || null
     }, 500);
   }
 });

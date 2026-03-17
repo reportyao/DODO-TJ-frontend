@@ -257,7 +257,7 @@ serve(async (req) => {
     setCache(cacheKey, result)
     return new Response(JSON.stringify(result), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'MISS' } })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }

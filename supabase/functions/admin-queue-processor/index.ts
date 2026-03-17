@@ -170,7 +170,8 @@ serve(async (req) => {
           console.log(`[admin-queue-processor] 任务 ${task.id} 处理失败: ${errorMsg}`)
         }
 
-      } catch (taskError) {
+      } catch (taskError: unknown) {
+    const taskErrorMsg = taskError instanceof Error ? taskErrorMsg : String(taskError);
         // 任务处理异常
         const newRetryCount = task.retry_count + 1
         const newStatus = newRetryCount >= task.max_retries ? 'failed' : 'pending'
@@ -180,7 +181,7 @@ serve(async (req) => {
           .update({
             status: newStatus,
             retry_count: newRetryCount,
-            error_message: taskError.message,
+            error_message: taskErrorMsg,
             scheduled_at: newStatus === 'pending' 
               ? new Date(Date.now() + 5 * 60 * 1000).toISOString() 
               : task.scheduled_at,
@@ -189,8 +190,8 @@ serve(async (req) => {
           .eq('id', task.id)
 
         results.failed++
-        results.details.push({ id: task.id, status: newStatus, error: taskError.message })
-        console.error(`[admin-queue-processor] 任务 ${task.id} 异常:`, taskError.message)
+        results.details.push({ id: task.id, status: newStatus, error: taskErrorMsg })
+        console.error(`[admin-queue-processor] 任务 ${task.id} 异常:`, taskErrorMsg)
       }
 
       results.processed++
@@ -209,14 +210,15 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? errMsg : String(error);
     const duration = Date.now() - startTime
-    console.error('[admin-queue-processor] 错误:', error.message)
+    console.error('[admin-queue-processor] 错误:', errMsg)
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: errMsg,
         duration_ms: duration,
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
