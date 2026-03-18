@@ -17,6 +17,7 @@ import { formatCurrency, formatDateTime } from '../lib/utils'
 import toast from 'react-hot-toast'
 import { DepositModal } from '../components/wallet/DepositModal'
 import { WithdrawModal } from '../components/wallet/WithdrawModal'
+import { SubsidyPoolCard } from '../components/wallet/SubsidyPoolCard'
 import { useSupabase } from '../contexts/SupabaseContext'
 
 const WalletPage: React.FC = () => {
@@ -190,6 +191,9 @@ const WalletPage: React.FC = () => {
       'GROUP_BUY_PRIZE': t('wallet.transactionType.groupBuyPrize'),
       'SPIN_REWARD': t('wallet.transactionType.spinReward'),
       'PROMOTER_DEPOSIT': t('wallet.transactionType.promoterDeposit'),
+      'DEPOSIT_BONUS': t('wallet.transactionType.depositBonus'),
+      'FIRST_DEPOSIT_BONUS': t('wallet.transactionType.firstDepositBonus'),
+      'COUPON_DEDUCTION': t('wallet.transactionType.couponDeduction'),
       'BONUS': t('wallet.transactionType.bonus')
     }
     return typeMap[type] || type
@@ -240,7 +244,11 @@ const WalletPage: React.FC = () => {
       case 'BONUS':
       case 'REFERRAL_BONUS':
       case 'FRIEND_CASHBACK':
+      case 'DEPOSIT_BONUS':
+      case 'FIRST_DEPOSIT_BONUS':
         return <ArrowDownIcon className="w-5 h-5 text-purple-600" />
+      case 'COUPON_DEDUCTION':
+        return <ArrowDownIcon className="w-5 h-5 text-orange-500" />
       default:
         return <ClockIcon className="w-5 h-5 text-gray-600" />
     }
@@ -294,6 +302,11 @@ const WalletPage: React.FC = () => {
           onRefresh={handleRefresh}
           isLoading={isRefreshing}
         />
+      </div>
+
+      {/* 补贴资金池 */}
+      <div className="px-4 mt-4">
+        <SubsidyPoolCard />
       </div>
 
       {/* 快捷操作 */}

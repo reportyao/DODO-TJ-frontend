@@ -368,7 +368,10 @@
       "spinReward": "Приглашение награда-волшебные колеса",
       "fullPurchase": "Полная покупка",
       "promoterDeposit": "Пополнение от промоутера",
-      "bonus": "Бонус"
+      "bonus": "Бонус",
+      "depositBonus": "Бонус пополнения",
+      "firstDepositBonus": "Бонус первого пополнения",
+      "couponDeduction": "Скидка по купону"
     },
     "transactionStatus": {
       "completed": "Завершено",

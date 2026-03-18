@@ -368,7 +368,10 @@
       "spinReward": "Мукофоти дават - чархи ҷодуӣ",
       "fullPurchase": "Хариди пурра",
       "promoterDeposit": "Пуркунии аз промоутер",
-      "bonus": "Бонус"
+      "bonus": "Бонус",
+      "depositBonus": "Бонуси пуркунӣ",
+      "firstDepositBonus": "Бонуси пуркунии аввал",
+      "couponDeduction": "Тахфифи купон"
     },
     "transactionStatus": {
       "completed": "Анҷом ёфт",

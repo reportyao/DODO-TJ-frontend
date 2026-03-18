@@ -367,7 +367,10 @@
       "spinReward": "邀请奖励-转盘抽奖",
       "fullPurchase": "全款购买",
       "promoterDeposit": "线下充值",
-      "bonus": "奖励"
+      "bonus": "奖励",
+      "depositBonus": "充值赠送",
+      "firstDepositBonus": "首充奖励",
+      "couponDeduction": "抵扣券抵扣"
     },
     "transactionStatus": {
       "completed": "已完成",
