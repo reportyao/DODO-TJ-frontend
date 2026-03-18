@@ -92,7 +92,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({
 
         </div>
 
-        {/* 积分钱包 */}
+        {/* 积分钱包 - 强化积分可当钱花认知 */}
         <div className="bg-white/20 rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -102,13 +102,16 @@ export const WalletCard: React.FC<WalletCardProps> = ({
               <p className="text-2xl font-bold">
                 {luckyCoinWallet ? (showBalance ? luckyCoinWallet.balance.toString() : '****') : '0'}
               </p>
+              {luckyCoinWallet && showBalance && (
+                <p className="text-xs text-white/60 mt-1">
+                  ≈ {formatCurrency('TJS', luckyCoinWallet.balance)} · {t('payment.pointsAsValue')}
+                </p>
+              )}
             </div>
             <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
               <span className="text-lg">🍀</span>
             </div>
           </div>
-          
-
         </div>
       </div>
     </motion.div>

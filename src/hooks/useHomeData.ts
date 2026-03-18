@@ -18,7 +18,7 @@ interface GroupBuyProduct {
 }
 
 /**
- * 首页积分商城数据 hook
+ * 首页商城数据 hook
  * 使用 react-query 管理缓存、自动重试和后台刷新
  */
 export function useLotteries() {

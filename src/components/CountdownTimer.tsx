@@ -1,5 +1,5 @@
 // 180秒倒计时组件
-// 用于积分商城售罄后显示开奖倒计时
+// 用于商城售罄后显示开奖倒计时
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';

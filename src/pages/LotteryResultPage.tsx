@@ -93,7 +93,7 @@ const LotteryResultPage: React.FC = () => {
     return text[i18n.language] || text.zh || text.ru || text.tg || '';
   };
 
-  // 获取积分商城信息
+  // 获取商城信息
   const fetchLottery = useCallback(async () => {
     if (!id) return;
     
@@ -472,7 +472,7 @@ const LotteryResultPage: React.FC = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* 积分商城信息卡片 */}
+        {/* 商城信息卡片 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

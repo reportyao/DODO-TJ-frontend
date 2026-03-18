@@ -61,7 +61,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
       // 刷新钱包余额
       await refreshWallets()
 
-      // 触发外部刷新，例如刷新积分商城列表
+      // 触发外部刷新，例如刷新商城列表
       onConfirm(lottery.id, quantity) 
     } catch (error: any) {
       console.error('Purchase failed:', error)
@@ -211,6 +211,16 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
                     TJS{totalPrice.toFixed(2)}
                   </span>
                 </div>
+              </div>
+
+              {/* 补贴保障提示 */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <p className="text-xs text-amber-700 text-center">
+                  ✅ {t('subsidyPool.paymentSubsidy')}
+                </p>
+                <p className="text-xs text-amber-600 text-center mt-1 font-medium">
+                  🛡️ {t('coupon.refundNotice')}
+                </p>
               </div>
                 </>
               )}

@@ -10,14 +10,14 @@ import { motion } from 'framer-motion';
 
 interface PendingPickupItem {
   id: string;
-  type: 'lottery' | 'groupbuy' | 'full_purchase' | 'prize'; // 类型：积分商城抽奖、拼团、全款购买、中奖
+  type: 'lottery' | 'groupbuy' | 'full_purchase' | 'prize'; // 类型：商城抽奖、拼团、全款购买、中奖
   productId: string;
   productTitle: string;
   productImage: string;
   price: number;
   currency: string;
   quantity: number;
-  participationCode?: string; // 参与码（积分商城）
+  participationCode?: string; // 参与码（商城）
   sessionCode?: string; // 会话码（拼团）
   pickupCode?: string; // 提货码
   createdAt: string;

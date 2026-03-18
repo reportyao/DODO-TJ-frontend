@@ -512,7 +512,7 @@ export default function GroupBuyResultPage() {
               )}
             </div>
             
-            {/* 引导去积分商城 */}
+            {/* 引导去商城 */}
             <button
               onClick={() => navigate('/lottery')}
               className="mt-4 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-shadow"

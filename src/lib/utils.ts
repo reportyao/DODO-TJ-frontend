@@ -214,7 +214,7 @@ export function shareToTelegram(text: string, url?: string): void {
   window.open(telegramUrl, '_blank');
 }
 
-// 处理多语言 JSONB 字段，用于获取积分商城标题、描述等
+// 处理多语言 JSONB 字段，用于获取商城标题、描述等
 export function getLocalizedText(
   jsonb: Record<string, string> | null | undefined | any,
   language: string,

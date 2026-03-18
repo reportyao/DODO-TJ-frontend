@@ -55,7 +55,7 @@ const MyTicketsPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // 获取积分商城信息
+      // 获取商城信息
       const { data: lotteryData, error: lotteryError } = await supabase
         .from('lotteries')
         .select('*')
@@ -158,7 +158,7 @@ const MyTicketsPage: React.FC = () => {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-        {/* 积分商城信息卡片 */}
+        {/* 商城信息卡片 */}
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex space-x-4">
             <div style={{ position: 'relative', width: '96px', height: '96px', flexShrink: 0, borderRadius: '0.75rem', overflow: 'hidden' }}>

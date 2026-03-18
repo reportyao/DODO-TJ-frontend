@@ -1651,7 +1651,8 @@
     "freeShippingTag": "中国直邮 · 全场 0 运费",
     "paymentSubsidy": "您正在使用千万索莫尼补贴计划，享受极致低价",
     "shippingFee": "运费",
-    "platformSubsidy": "平台补贴"
+    "platformSubsidy": "平台补贴",
+    "subsidyPrice": "补贴价"
   },
   "payment": {
     "detail": "支付明细",

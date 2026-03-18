@@ -1,9 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LazyImage } from '../LazyImage';
 import { formatCurrency, getLocalizedText } from '../../lib/utils';
-import { UserGroupIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { UserGroupIcon } from '@heroicons/react/24/outline';
 
 interface BaseProduct {
   id: string;
@@ -40,8 +39,8 @@ interface ProductListProps {
 }
 
 /**
- * 首页商品列表组件
- * 完整展示商品列表，按新到旧排序
+ * 首页商品列表组件 - 双列网格布局
+ * 上图下文卡片样式，突出商品图片和补贴价
  */
 export const ProductList: React.FC<ProductListProps> = ({
   title,
@@ -59,40 +58,41 @@ export const ProductList: React.FC<ProductListProps> = ({
   };
 
   return (
-    <div className="space-y-3">
-      <h2 className="text-lg font-bold text-gray-800 px-1">{title}</h2>
+    <div className="space-y-3 px-4 mt-4">
+      <h2 className="text-lg font-bold text-gray-800">{title}</h2>
       
       {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex space-x-3 animate-pulse">
-              <div className="w-24 h-24 flex-shrink-0 rounded-lg bg-gray-200"></div>
-              <div className="flex-1 space-y-2">
+        /* 骨架屏 - 双列网格 */
+        <div className="grid grid-cols-2 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
+              <div style={{ paddingBottom: '100%', position: 'relative' }}>
+                <div style={{ position: 'absolute', inset: 0, backgroundColor: '#e5e7eb' }} />
+              </div>
+              <div className="p-3 space-y-2">
                 <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                <div className="h-5 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-3 bg-gray-200 rounded w-2/3"></div>
               </div>
             </div>
           ))}
         </div>
       ) : products.length > 0 ? (
-        <div className="space-y-3">
+        /* 双列网格布局 */
+        <div className="grid grid-cols-2 gap-3">
           {products.map((product) => (
             <Link
               key={product.id}
               to={`${linkPrefix}/${product.id}`}
-              className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex space-x-3 hover:shadow-md transition-shadow"
+              className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
             >
-              {/* 商品图片 - 使用内联样式确保兼容性 */}
+              {/* 商品图片 - 1:1 比例容器，使用原生 img + loading="lazy" */}
               <div
                 style={{
-                  width: '96px',
-                  height: '96px',
-                  flexShrink: 0,
-                  borderRadius: '0.5rem',
-                  overflow: 'hidden',
-                  backgroundColor: '#f3f4f6',
+                  paddingBottom: '100%',
                   position: 'relative',
+                  backgroundColor: '#f3f4f6',
+                  overflow: 'hidden',
                 }}
               >
                 {product.image_url ? (
@@ -110,14 +110,14 @@ export const ProductList: React.FC<ProductListProps> = ({
                       objectPosition: 'center',
                     }}
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="96" height="96"%3E%3Crect fill="%23f0f0f0" width="96" height="96"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-size="12"%3ENo Image%3C/text%3E%3C/svg%3E';
+                      (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23f0f0f0" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-size="14"%3ENo Image%3C/text%3E%3C/svg%3E';
                     }}
                   />
                 ) : (
                   <div
                     style={{
-                      width: '100%',
-                      height: '100%',
+                      position: 'absolute',
+                      inset: 0,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -131,33 +131,26 @@ export const ProductList: React.FC<ProductListProps> = ({
               </div>
 
               {/* 商品信息 */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-medium text-gray-800 line-clamp-2 mb-1">
+              <div className="p-3">
+                <h3 className="text-sm font-medium text-gray-800 line-clamp-2 leading-tight mb-2" style={{ minHeight: '2.5rem' }}>
                   {getProductTitle(product)}
                 </h3>
-                <p className="text-lg font-bold text-red-500">
-                  {formatCurrency('TJS', product.price)}
-                </p>
+                
+                {/* 价格区域 - 突出补贴价 */}
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className="text-lg font-bold text-red-500">
+                    {formatCurrency('TJS', product.price)}
+                  </span>
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-50 text-red-500 border border-red-100 whitespace-nowrap">
+                    {t('subsidyPool.subsidyPrice', '补贴价')}
+                  </span>
+                </div>
+
+                {/* 进度信息 */}
                 {product.type === 'lottery' && (
-                  <div className="flex items-center space-x-3 mt-1 text-xs text-gray-500">
-                    <span className="flex items-center">
-                      <UserGroupIcon className="w-3.5 h-3.5 mr-1" />
-                      {product.sold_tickets}/{product.total_tickets}
-                    </span>
-                  </div>
-                )}
-                {product.type === 'groupbuy' && (
-                  <div className="flex items-center space-x-3 mt-1 text-xs text-gray-500">
-                    <span className="flex items-center">
-                      <UserGroupIcon className="w-3.5 h-3.5 mr-1" />
-                      {product.group_size}{t('common.people', '人')}
-                    </span>
-                    {product.active_sessions_count !== undefined && product.active_sessions_count > 0 && (
-                      <span className="flex items-center">
-                        <ClockIcon className="w-3.5 h-3.5 mr-1" />
-                        {product.active_sessions_count}{t('groupBuy.activeGroups', '个进行中')}
-                      </span>
-                    )}
+                  <div className="flex items-center text-xs text-gray-500">
+                    <UserGroupIcon className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                    <span>{product.sold_tickets}/{product.total_tickets}</span>
                   </div>
                 )}
               </div>

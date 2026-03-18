@@ -26,6 +26,8 @@ const FullPurchaseConfirmPage: React.FC = () => {
   const [selectedPointId, setSelectedPointId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [useCoupon, setUseCoupon] = useState<boolean>(true);
+  const [validCouponCount, setValidCouponCount] = useState<number>(0);
 
   const fetchLottery = useCallback(async () => {
     if (!lotteryId) return;
@@ -83,12 +85,29 @@ const FullPurchaseConfirmPage: React.FC = () => {
     }
   }, [supabase, t]);
 
+  const fetchCouponCount = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { count, error } = await supabase
+        .from('coupons')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'VALID');
+      if (!error && count !== null) {
+        setValidCouponCount(count);
+        setUseCoupon(count > 0);
+      }
+    } catch (e) {
+      console.error('Failed to fetch coupon count:', e);
+    }
+  }, [user, supabase]);
+
   useEffect(() => {
     setIsLoading(true);
-    Promise.all([fetchLottery(), fetchPickupPoints()]).finally(() => {
+    Promise.all([fetchLottery(), fetchPickupPoints(), fetchCouponCount()]).finally(() => {
       setIsLoading(false);
     });
-  }, [fetchLottery, fetchPickupPoints]);
+  }, [fetchLottery, fetchPickupPoints, fetchCouponCount]);
 
   const handleConfirm = async () => {
     if (!user || !lottery || !selectedPointId) {
@@ -115,6 +134,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
           user_id: user.id,
           session_token: sessionToken,
           idempotency_key: idempotencyKey,
+          useCoupon: useCoupon && validCouponCount > 0, // 传递抵扣券使用状态
         },
       });
 
@@ -302,20 +322,73 @@ const FullPurchaseConfirmPage: React.FC = () => {
             <div className="flex justify-between">
               <span className="text-gray-600">{t('lottery.productPrice')}</span>
               <span className="text-gray-900 font-medium">
-                {formatCurrency(lottery.currency, (lottery as any).original_price || (lottery.ticket_price * lottery.total_tickets))}
+                {formatCurrency(lottery.currency, fullPurchasePrice)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">{t('lottery.quantity')}</span>
               <span className="text-gray-900 font-medium">1</span>
             </div>
+            {/* 运费与补贴明细 */}
+            <div className="flex justify-between">
+              <span className="text-gray-600">🚚 {t('subsidyPool.shippingFee')}</span>
+              <span className="text-gray-900 font-medium">{formatCurrency(lottery.currency, 15)}</span>
+            </div>
+            <div className="flex justify-between text-green-600">
+              <span>🎁 {t('subsidyPool.platformSubsidy')}</span>
+              <span className="font-medium">-{formatCurrency(lottery.currency, 15)}</span>
+            </div>
+            {/* 抵扣券开关 */}
+            {validCouponCount > 0 && (
+              <div className="flex items-center justify-between py-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">{t('coupon.switchLabel')}</span>
+                  <span className="text-xs text-gray-400">{t('coupon.remaining', { count: validCouponCount })}</span>
+                </div>
+                <button
+                  onClick={() => setUseCoupon(!useCoupon)}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                    useCoupon ? "bg-green-500" : "bg-gray-300"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                      useCoupon ? "translate-x-6" : "translate-x-1"
+                    )}
+                  />
+                </button>
+              </div>
+            )}
+            {useCoupon && validCouponCount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>{t('payment.couponDeduction')}</span>
+                <span className="font-medium">-{formatCurrency(lottery.currency, 1)}</span>
+              </div>
+            )}
+            {/* 支付明细 */}
+            <div className="flex justify-between text-gray-600">
+              <span>🍀 {t('payment.pointsPayment')}</span>
+              <span className="font-medium">
+                {formatCurrency(lottery.currency, Math.max(0, fullPurchasePrice - (useCoupon && validCouponCount > 0 ? 1 : 0)))}
+              </span>
+            </div>
             <div className="border-t pt-2 flex justify-between">
               <span className="text-gray-900 font-semibold">{t('lottery.totalAmount')}</span>
               <span className="text-lg font-bold text-red-500">
-                {formatCurrency(lottery.currency, (lottery as any).original_price || (lottery.ticket_price * lottery.total_tickets))}
+                {formatCurrency(lottery.currency, fullPurchasePrice)}
               </span>
             </div>
+            <p className="text-xs text-blue-500">🍀 {t('payment.pointsAsValue')}</p>
           </div>
+        </div>
+
+        {/* 补贴提示 */}
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+          <p className="text-xs text-green-700 text-center">
+            ✅ {t('subsidyPool.paymentSubsidy')}
+          </p>
         </div>
 
         {/* Confirm Button */}

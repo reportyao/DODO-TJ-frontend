@@ -54,7 +54,7 @@ export type Showoff = Tables<'showoffs'>;
 export type ShowoffWithDetails = Showoff & {
   user: UserProfile | null;
   lottery: Lottery | null;
-  inventory_product: { id: string; name: string; name_i18n: Record<string, string> | null; image_url: string | null } | null; // 关联的库存商品（用于未上架到积分商城的商品）
+  inventory_product: { id: string; name: string; name_i18n: Record<string, string> | null; image_url: string | null } | null; // 关联的库存商品（用于未上架到商城的商品）
   is_liked: boolean;
   likes_count: number;
   lottery_title?: string;
@@ -289,11 +289,11 @@ export const authService = {
 };
 
 /**
- * 积分商城/产品服务
+ * 商城/产品服务
  */
 export const lotteryService: any = {
   /**
-   * 获取所有积分商城列表
+   * 获取所有商城列表
    */
   async getAllLotteries(): Promise<Lottery[]> {
     const { data, error } = await supabase
@@ -303,14 +303,14 @@ export const lotteryService: any = {
     
     if (error) {
       console.error('Failed to fetch all lotteries:', error);
-      throw new Error(`获取所有积分商城列表失败: ${error.message}`);
+      throw new Error(`获取所有商城列表失败: ${error.message}`);
     }
     return data;
   },
 
   /**
-   * 根据状态获取积分商城列表
-   * @param status 积分商城状态 (ACTIVE, DRAWN, CANCELLED)
+   * 根据状态获取商城列表
+   * @param status 商城状态 (ACTIVE, DRAWN, CANCELLED)
    */
   async getLotteriesByStatus(status: string): Promise<Lottery[]> {
     const { data, error } = await supabase
@@ -321,13 +321,13 @@ export const lotteryService: any = {
     
     if (error) {
       console.error(`Failed to fetch lotteries with status ${status}:`, error);
-      throw new Error(`获取积分商城列表失败: ${error.message}`);
+      throw new Error(`获取商城列表失败: ${error.message}`);
     }
     return data;
   },
 
   /**
-   * 获取所有活跃的积分商城列表
+   * 获取所有活跃的商城列表
    */
   async getActiveLotteries(): Promise<Lottery[]> {
     const { data, error } = await supabase
@@ -338,14 +338,14 @@ export const lotteryService: any = {
     
     if (error) {
       console.error('Failed to fetch lotteries:', error);
-      throw new Error(`获取积分商城列表失败: ${error.message}`);
+      throw new Error(`获取商城列表失败: ${error.message}`);
     }
     return data;
   },
 
   /**
-   * 获取单个积分商城详情
-   * @param lotteryId 积分商城 ID
+   * 获取单个商城详情
+   * @param lotteryId 商城 ID
    */
   async getLotteryDetails(lotteryId: string): Promise<Lottery | null> {
     const { data, error } = await supabase
@@ -356,17 +356,17 @@ export const lotteryService: any = {
 
     if (error && error.code !== 'PGRST116') { // PGRST116: No rows found
       console.error('Failed to fetch lottery details:', error);
-      throw new Error(`获取积分商城详情失败: ${error.message}`);
+      throw new Error(`获取商城详情失败: ${error.message}`);
     }
     return data;
   },
 
   /**
-   * 购买积分商城门票
-   * @param lotteryId 积分商城 ID
+   * 购买商城门票
+   * @param lotteryId 商城 ID
    * @param ticketCount 购买数量
    */
-  async purchaseTickets(lotteryId: string, ticketCount: number, userId?: string): Promise<Order> {
+  async purchaseTickets(lotteryId: string, ticketCount: number, userId?: string, useCoupon?: boolean): Promise<Order> {
     // 从 localStorage 获取 session token
     const sessionToken = localStorage.getItem('custom_session_token');
     if (!sessionToken) {
@@ -383,7 +383,8 @@ export const lotteryService: any = {
         quantity: ticketCount,
         paymentMethod: 'LUCKY_COIN_WALLET', // 默认使用积分支付
         session_token: sessionToken,
-        idempotency_key: idempotencyKey
+        idempotency_key: idempotencyKey,
+        useCoupon: useCoupon ?? false // 是否使用抵扣券混合支付
       }
     });
 
@@ -400,7 +401,7 @@ export const lotteryService: any = {
   },
 
   /**
-   * 获取用户的积分商城订单记录
+   * 获取用户的商城订单记录
    * @param userId 用户 ID
    */
     async getLotteryResult(lotteryId: string): Promise<any> {
@@ -429,7 +430,7 @@ export const lotteryService: any = {
 
   /**
    * 执行开奖 - 统一使用 auto-lottery-draw Edge Function
-   * @param lotteryId 积分商城 ID
+   * @param lotteryId 商城 ID
    */
   async drawLottery(lotteryId: string): Promise<any> {
     const { data, error } = await supabase.functions.invoke('auto-lottery-draw', {
@@ -510,7 +511,7 @@ export const walletService = {
 
   /**
    * 余额兑换（例如：佣金兑换为余额）
-   * 余额兑换（单向：余额 -> 积分商城币）
+   * 余额兑换（单向：余额 -> 商城币）
    * @param amount 兑换金额
    */
   async exchangeRealToBonus(amount: number): Promise<{ success: boolean; new_balance?: number }> {
@@ -676,7 +677,7 @@ export const referralService = {
       });
     }
 
-    // 4. 批量查询积分商城信息（包括直接的 lottery_id 和通过 prize 查询到的）
+    // 4. 批量查询商城信息（包括直接的 lottery_id 和通过 prize 查询到的）
     const directLotteryIds = showoffs.map(s => s.lottery_id).filter(Boolean);
     const prizeLotteryIds = Array.from(prizeToLotteryMap.values());
     const allLotteryIds = [...new Set([...directLotteryIds, ...prizeLotteryIds])];

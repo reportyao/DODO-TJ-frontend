@@ -66,6 +66,26 @@ const LotteryDetailPage: React.FC = () => {
   const [isFullPurchasing, setIsFullPurchasing] = useState<boolean>(false);
   const [myTickets, setMyTickets] = useState<string[]>([]);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState<boolean>(false);
+  const [useCoupon, setUseCoupon] = useState<boolean>(true);
+  const [validCouponCount, setValidCouponCount] = useState<number>(0);
+
+  // 获取用户有效抵扣券数量
+  const fetchCouponCount = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { count, error } = await supabase
+        .from('coupons')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'VALID');
+      if (!error && count !== null) {
+        setValidCouponCount(count);
+        setUseCoupon(count > 0);
+      }
+    } catch (e) {
+      console.error('Failed to fetch coupon count:', e);
+    }
+  }, [user, supabase]);
 
   const fetchMyTickets = useCallback(async () => {
     if (!id || !user) return;
@@ -186,7 +206,8 @@ const LotteryDetailPage: React.FC = () => {
   useEffect(() => {
     fetchLottery();
     fetchRandomShowoffs();
-  }, [fetchLottery, fetchRandomShowoffs]);
+    fetchCouponCount();
+  }, [fetchLottery, fetchRandomShowoffs, fetchCouponCount]);
 
   // 移除活动结束时间倒计时，只保留售罄后的 180 秒开奖倒计时
 
@@ -299,8 +320,8 @@ const LotteryDetailPage: React.FC = () => {
     setIsPurchasing(true);
     
     try {
-      // 调用购买 API，传入 user.id
-      const order = await lotteryService.purchaseTickets(lottery.id, quantity, user.id);
+      // 调用购买 API，传入 user.id 和 useCoupon 参数
+      const order = await lotteryService.purchaseTickets(lottery.id, quantity, user.id, useCoupon && validCouponCount > 0);
       
       console.log('Purchase successful:', order);
       toast.success(t('lottery.purchaseSuccess'));
@@ -655,6 +676,16 @@ const LotteryDetailPage: React.FC = () => {
             </span>
           </div>
 
+          {/* 补贴标签与免运费标签 */}
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-100">
+              🎁 {t('subsidyPool.subsidyTag')}
+            </span>
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-600 border border-green-100">
+              🚚 {t('subsidyPool.freeShippingTag')}
+            </span>
+          </div>
+
           {/* 商品介绍 - 智能分段 + 折叠展开 */}
           {description && (
             <div className="space-y-2">
@@ -813,6 +844,12 @@ const LotteryDetailPage: React.FC = () => {
                   <p className="text-xs text-center text-gray-500 border-t border-gray-100 pt-2 mt-2">
                     {t('lottery.remainingTickets')}: {lottery ? lottery.total_tickets - lottery.sold_tickets : 0}
                   </p>
+                  {/* 未中奖返券提示 */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                    <p className="text-xs text-amber-700 font-medium text-center">
+                      🛡️ {t('coupon.refundNotice')}
+                    </p>
+                  </div>
                 </div>
 
                 {/* 右侧：全款购买信息 */}
@@ -828,9 +865,71 @@ const LotteryDetailPage: React.FC = () => {
                     </p>
                   </div>
 
+                  {/* 补贴标签 */}
+                  <div className="bg-red-50 border border-red-200 rounded-lg px-2 py-1.5">
+                    <p className="text-xs text-red-600 font-medium text-center">
+                      🎁 {t('subsidyPool.subsidyTag')}
+                    </p>
+                  </div>
                 </div>
               </div>
               
+              {/* 支付明细区域 - 抵扣券开关与动态计算 */}
+              {isActive && (
+                <div className="bg-gray-50 rounded-xl p-4 space-y-3 border border-gray-200">
+                  <h4 className="text-sm font-semibold text-gray-700">{t('payment.detail')}</h4>
+                  
+                  {/* 抵扣券开关 */}
+                  {validCouponCount > 0 && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">{t('coupon.switchLabel')}</span>
+                        <span className="text-xs text-gray-400">{t('coupon.remaining', { count: validCouponCount })}</span>
+                      </div>
+                      <button
+                        onClick={() => setUseCoupon(!useCoupon)}
+                        className={cn(
+                          "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                          useCoupon ? "bg-green-500" : "bg-gray-300"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                            useCoupon ? "translate-x-6" : "translate-x-1"
+                          )}
+                        />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 支付明细计算 - 一元购模式 */}
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex justify-between text-gray-600">
+                      <span>{t('payment.totalAmount')}</span>
+                      <span className="font-medium">{formatCurrency('TJS', lottery.ticket_price * quantity)}</span>
+                    </div>
+                    {useCoupon && validCouponCount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>{t('payment.couponDeduction')}</span>
+                        <span className="font-medium">-{formatCurrency('TJS', 1)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-gray-600">
+                      <span>🍀 {t('payment.pointsPayment')}</span>
+                      <span className="font-medium">
+                        {formatCurrency('TJS', Math.max(0, lottery.ticket_price * quantity - (useCoupon && validCouponCount > 0 ? 1 : 0)))}
+                      </span>
+                    </div>
+                    <div className="border-t border-gray-200 pt-1.5 flex justify-between font-semibold text-gray-900">
+                      <span>{t('payment.totalAmount')}</span>
+                      <span>{formatCurrency('TJS', lottery.ticket_price * quantity)}</span>
+                    </div>
+                    <p className="text-xs text-blue-500">🍀 {t('payment.pointsAsValue')}</p>
+                  </div>
+                </div>
+              )}
+
               {/* 底部按钮 - 水平对齐 */}
               <div className="grid grid-cols-2 gap-4">
                 <motion.button

@@ -213,7 +213,7 @@ const NotificationPage: React.FC = () => {
         console.error('Failed to fetch group buy results:', e);
       }
 
-      // 6. 获取积分商城记录（购买、中奖、未中）
+      // 6. 获取商城记录（购买、中奖、未中）
       try {
         const { data: ordersData, error: ordersError } = await supabase
           .from('orders')
