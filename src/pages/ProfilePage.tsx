@@ -20,7 +20,8 @@ import {
   LanguageIcon,
   SparklesIcon,
   MegaphoneIcon,
-  QrCodeIcon
+  QrCodeIcon,
+  TicketIcon
 } from '@heroicons/react/24/outline'
 import { copyToClipboard } from '../lib/utils'
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase'
@@ -154,6 +155,13 @@ const ProfilePage: React.FC = () => {
 
   // 精简后的菜单项
   const menuItems = [
+    {
+      icon: TicketIcon,
+      title: t('coupon.title'),
+      subtitle: t('coupon.noCouponsHint'),
+      action: () => navigate('/coupons'),
+      highlight: true,
+    },
     {
       icon: SparklesIcon,
       title: t('subsidy.menuTitle'),
