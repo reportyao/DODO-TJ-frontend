@@ -147,7 +147,9 @@ const InvitePage: React.FC = () => {
         toast.success(t('invite.shareSuccess'));
       }).catch(err => console.log(t('common.error') + ':', err));
     } else {
-      copyInviteLink();
+      // 回退到 WhatsApp 分享
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text + '\n' + inviteLink)}`;
+      window.open(whatsappUrl, '_blank');
     }
   };
 
