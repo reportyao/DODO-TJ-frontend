@@ -277,13 +277,128 @@ export const authService = {
   },
 
   /**
-   * 登出
+   * 使用手机号+密码登录（PWA 模式）
+   */
+  async loginWithPhone(phone_number: string, password: string) {
+    const { data, error } = await supabase.functions.invoke('auth-login', {
+      body: { phone_number, password }
+    });
+
+    if (error) {
+      const errMsg = await extractEdgeFunctionError(error);
+      throw new Error(errMsg);
+    }
+
+    if (!data || !data.data) {
+      throw new Error('登录失败：服务器响应异常');
+    }
+
+    const user = {
+      ...data.data.user,
+      invite_code: data.data.user.referral_code
+    };
+
+    return {
+      user,
+      session: data.data.session,
+      wallets: data.data.wallets,
+      is_new_user: false
+    };
+  },
+
+  /**
+   * 使用手机号+密码注册（PWA 模式）
+   */
+  async registerWithPhone(phone_number: string, password: string, first_name?: string, last_name?: string, referral_code?: string) {
+    const { data, error } = await supabase.functions.invoke('auth-register', {
+      body: { phone_number, password, first_name, last_name, referral_code }
+    });
+
+    if (error) {
+      const errMsg = await extractEdgeFunctionError(error);
+      throw new Error(errMsg);
+    }
+
+    if (!data || !data.data) {
+      throw new Error('注册失败：服务器响应异常');
+    }
+
+    const user = {
+      ...data.data.user,
+      invite_code: data.data.user.referral_code
+    };
+
+    // 如果是新用户且有礼物，存储到 localStorage 以便弹窗显示
+    if (data.data.is_new_user && data.data.new_user_gift) {
+      localStorage.setItem('new_user_gift_data', JSON.stringify(data.data.new_user_gift));
+    }
+
+    return {
+      user,
+      session: data.data.session,
+      wallets: data.data.wallets || [],
+      is_new_user: data.data.is_new_user,
+      new_user_gift: data.data.new_user_gift
+    };
+  },
+
+  /**
+   * 请求密码重置
+   */
+  async requestPasswordReset(phone_number: string) {
+    const { data, error } = await supabase.functions.invoke('auth-reset-password', {
+      body: { phone_number }
+    });
+
+    if (error) {
+      const errMsg = await extractEdgeFunctionError(error);
+      throw new Error(errMsg);
+    }
+
+    return data;
+  },
+
+  /**
+   * 验证重置 Token 并设置新密码
+   */
+  async resetPassword(token: string, new_password: string) {
+    const { data, error } = await supabase.functions.invoke('auth-reset-password', {
+      body: { action: 'verify', token, new_password }
+    });
+
+    if (error) {
+      const errMsg = await extractEdgeFunctionError(error);
+      throw new Error(errMsg);
+    }
+
+    return data;
+  },
+
+  /**
+   * 登出（清除自定义 session）
    */
   async signOut() {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Sign out failed:', error);
-      throw new Error(`登出失败: ${error.message}`);
+    // 清除自定义 session
+    const sessionToken = localStorage.getItem('custom_session_token');
+    if (sessionToken) {
+      try {
+        // 尝试在服务端失效 session
+        await supabase
+          .from('user_sessions')
+          .update({ is_active: false })
+          .eq('session_token', sessionToken);
+      } catch (e) {
+        console.warn('[Auth] Failed to invalidate session on server:', e);
+      }
+    }
+    localStorage.removeItem('custom_session_token');
+    localStorage.removeItem('custom_user');
+    
+    // 同时清除 Supabase auth session（向后兼容）
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      // 忽略，可能没有 Supabase auth session
     }
   }
 };
