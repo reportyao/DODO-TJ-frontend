@@ -38,7 +38,7 @@ serve(async (req) => {
     // 修复: 兼容 referred_by_id 和 referrer_id 两个字段，并排除当前用户
     const { data: level1Users, error: level1Error } = await supabase
       .from('users')
-      .select('id, first_name, telegram_username, avatar_url, created_at')
+      .select('id, first_name, phone_number, avatar_url, created_at')
       .or(`referred_by_id.eq.${user_id},referrer_id.eq.${user_id}`)
       .neq('id', user_id) // 排除当前用户自己
 
@@ -59,7 +59,7 @@ serve(async (req) => {
           appearedUserIds.add(u.id)
           allInvitedUsers.push({
             id: u.id,
-            telegram_username: u.telegram_username,
+            phone_number: u.phone_number,
             first_name: u.first_name,
             avatar_url: u.avatar_url || null,
             created_at: u.created_at,
@@ -79,13 +79,13 @@ serve(async (req) => {
         
         const { data: level2ByReferred } = await supabase
           .from('users')
-          .select('id, first_name, telegram_username, avatar_url, created_at')
+          .select('id, first_name, phone_number, avatar_url, created_at')
           .in('referred_by_id', level1Ids)
           .not('id', 'in', `(${appearedIdsArray.join(',')})`) // 排除已出现的用户
         
         const { data: level2ByReferrer } = await supabase
           .from('users')
-          .select('id, first_name, telegram_username, avatar_url, created_at')
+          .select('id, first_name, phone_number, avatar_url, created_at')
           .in('referrer_id', level1Ids)
           .not('id', 'in', `(${appearedIdsArray.join(',')})`) // 排除已出现的用户
         
@@ -116,7 +116,7 @@ serve(async (req) => {
               appearedUserIds.add(u.id)
               allInvitedUsers.push({
                 id: u.id,
-                telegram_username: u.telegram_username,
+                phone_number: u.phone_number,
                 first_name: u.first_name,
                 avatar_url: u.avatar_url || null,
                 created_at: u.created_at,
@@ -136,13 +136,13 @@ serve(async (req) => {
             
             const { data: level3ByReferred } = await supabase
               .from('users')
-              .select('id, first_name, telegram_username, avatar_url, created_at')
+              .select('id, first_name, phone_number, avatar_url, created_at')
               .in('referred_by_id', level2Ids)
               .not('id', 'in', `(${appearedIdsArray.join(',')})`) // 排除已出现的用户
             
             const { data: level3ByReferrer } = await supabase
               .from('users')
-              .select('id, first_name, telegram_username, avatar_url, created_at')
+              .select('id, first_name, phone_number, avatar_url, created_at')
               .in('referrer_id', level2Ids)
               .not('id', 'in', `(${appearedIdsArray.join(',')})`) // 排除已出现的用户
             
@@ -173,7 +173,7 @@ serve(async (req) => {
                   appearedUserIds.add(u.id)
                   allInvitedUsers.push({
                     id: u.id,
-                    telegram_username: u.telegram_username,
+                    phone_number: u.phone_number,
                     first_name: u.first_name,
                     avatar_url: u.avatar_url || null,
                     created_at: u.created_at,

@@ -51,7 +51,7 @@ const getCurrentTelegramUserId = (): string | null => {
 // 合并 Supabase auth user 和 profile
 export type User = UserProfile & { 
   email?: string;
-  telegram_username?: string;
+  phone_number?: string;
   is_verified?: boolean;
   kyc_level?: string;
   invite_code?: string;  // 兼容旧字段
@@ -64,7 +64,7 @@ interface UserContextType {
   wallets: Wallet[];
   isLoading: boolean;
   isAuthenticated: boolean;
-  telegramUser: any;
+  telegramUser: any; // 【迁移修复】保留字段以兼容已有组件，始终为 null
   sessionToken: string | null;
   authenticate: () => Promise<void>;
   refreshWallets: () => Promise<void>;
@@ -137,23 +137,25 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         console.log('[Session] Found stored session, validating...');
         const parsedUser = JSON.parse(storedUser);
         
-        // 【安全修复】验证缓存的用户身份是否与当前 Telegram 账号一致
-        // 这是修复身份串号 Bug 的核心逻辑
+        // 【迁移修复】验证缓存的用户身份一致性
+        // PWA 模式下不再依赖 Telegram WebApp，通过 session token 验证即可
         const currentTelegramId = getCurrentTelegramUserId();
-        const cachedTelegramId = parsedUser.telegram_id?.toString();
+        const cachedUserId = parsedUser.id?.toString();
         
-        if (currentTelegramId && cachedTelegramId && currentTelegramId !== cachedTelegramId) {
-          console.log('[Security] Identity mismatch detected!');
-          console.log(`[Security] Cached telegram_id: ${cachedTelegramId}, Current telegram_id: ${currentTelegramId}`);
-          console.log('[Security] Clearing cached data and forcing re-authentication...');
-          localStorage.removeItem('custom_session_token');
-          localStorage.removeItem('custom_user');
-          setSessionToken(null);
-          setUser(null);
-          setProfile(null);
-          setWallets([]);
-          setIsLoading(false);
-          return; // 退出，让自动认证流程处理新账号
+        if (currentTelegramId && cachedUserId) {
+          // 如果在 Telegram 环境中，仍然检查身份一致性（向后兼容）
+          const cachedTelegramId = parsedUser.telegram_id?.toString();
+          if (cachedTelegramId && currentTelegramId !== cachedTelegramId) {
+            console.log('[Security] Identity mismatch detected, clearing cache');
+            localStorage.removeItem('custom_session_token');
+            localStorage.removeItem('custom_user');
+            setSessionToken(null);
+            setUser(null);
+            setProfile(null);
+            setWallets([]);
+            setIsLoading(false);
+            return;
+          }
         }
         
         try {

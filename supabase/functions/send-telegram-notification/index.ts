@@ -36,10 +36,10 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    // Get user information (telegram_id and language preference)
+    // 【迁移修复】查询 phone_number 和语言偏好（替代原来的 telegram_id）
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('telegram_id, language_code')
+      .select('phone_number, preferred_language, language_code')
       .eq('id', user_id)
       .single();
 
@@ -51,37 +51,36 @@ Deno.serve(async (req) => {
       }, 404);
     }
 
-    if (!user.telegram_id) {
-      console.log(`User ${user_id} has no telegram_id, skipping notification`);
+    if (!user.phone_number) {
+      console.log(`User ${user_id} has no phone_number, skipping notification`);
       return createResponse({ 
         success: true, 
-        message: 'User has no telegram_id, notification skipped' 
+        message: 'User has no phone_number, notification skipped' 
       });
     }
 
-    // Insert notification into queue with correct table structure
+    // 【迁移修复】写入通知队列，使用 phone_number 替代 telegram_chat_id
+    const now = new Date().toISOString();
     const { error: insertError } = await supabase
       .from('notification_queue')
       .insert({
-        // Required fields
         user_id: user_id,
-        type: type,  // Required NOT NULL field
-        payload: data || {},  // Required NOT NULL field
-        // Optional fields
-        telegram_chat_id: parseInt(user.telegram_id),
+        phone_number: user.phone_number,
+        type: type,
         notification_type: type,
+        payload: data || {},
         title: '',
         message: '',
         data: data || {},
         priority: priority,
-        scheduled_at: new Date().toISOString(),
+        scheduled_at: now,
         status: 'pending',
         retry_count: 0,
         max_retries: 3,
         attempts: 0,
-        channel: 'telegram',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        channel: 'whatsapp',
+        created_at: now,
+        updated_at: now,
       });
 
     if (insertError) {
@@ -101,7 +100,7 @@ Deno.serve(async (req) => {
 
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error('Send telegram notification error:', error);
+    console.error('Send notification error:', error);
     return createResponse({ 
       success: false, 
       error: errMsg 

@@ -122,10 +122,10 @@ const PromoterCenterPage: React.FC = () => {
   const [copied, setCopied] = useState(false)
   const [notPromoter, setNotPromoter] = useState(false)
 
-  // 邀请链接
+  // 【迁移修复】邀请链接 - 使用 PWA 域名
   const inviteCode = user?.referral_code || user?.invite_code || ''
-  const sharePrefix = import.meta.env.VITE_TELEGRAM_SHARE_LINK || 't.me/tezbarakatbot/shoppp'
-  const inviteLink = `https://${sharePrefix}?startapp=${inviteCode}`
+  const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin
+  const inviteLink = `${appDomain}?ref=${inviteCode}`
 
   // ========== 数据获取 ==========
   const fetchData = useCallback(async (showRefresh = false) => {
@@ -235,20 +235,19 @@ const PromoterCenterPage: React.FC = () => {
     }
   }
 
-  // ========== 分享到Telegram ==========
+  // 【迁移修复】分享功能 - 优先使用 Web Share API，回退到 WhatsApp
   const handleShare = () => {
     const shareText = t('promoter.shareText', { code: inviteCode })
-    if (window.Telegram?.WebApp?.openTelegramLink) {
-      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`
-      window.Telegram.WebApp.openTelegramLink(shareUrl)
-    } else if (navigator.share) {
+    if (navigator.share) {
       navigator.share({
         title: 'TezBarakat',
         text: shareText,
         url: inviteLink,
       }).catch(console.error)
     } else {
-      handleCopyLink()
+      // 回退到 WhatsApp 分享
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + '\n' + inviteLink)}`
+      window.open(whatsappUrl, '_blank')
     }
   }
 

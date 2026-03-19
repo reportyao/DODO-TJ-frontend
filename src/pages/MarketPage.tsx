@@ -71,7 +71,7 @@ interface MarketListing {
       const formattedListings: MarketListing[] = result.data.map((item: any) => ({
         id: item.id,
         seller_id: item.seller_id,
-        seller_name: item.seller?.telegram_username || item.seller?.first_name || `User***${item.seller_id?.slice(-3) || '***'}`,
+        seller_name: item.seller?.first_name || `User***${item.seller_id?.slice(-3) || '***'}`,
         lottery_entry_id: item.ticket_id,
         lottery_id: item.lottery_id,
         lottery_title: item.lotteries?.title || item.lotteries?.title_i18n?.zh || t('common.unknown'),

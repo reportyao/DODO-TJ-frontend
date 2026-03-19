@@ -159,10 +159,9 @@ const NotificationPage: React.FC = () => {
         const supabaseUrl = SUPABASE_URL;
         const supabaseKey = SUPABASE_ANON_KEY;
         
-        // 同时查询user.id和telegram_id
-        const userTelegramId = (user as any).telegram_id;
+        // 【迁移修复】统一使用 user.id 查询
         const groupBuyResponse = await fetch(
-          `${supabaseUrl}/rest/v1/group_buy_orders?or=(user_id.eq.${user.id},user_id.eq.${userTelegramId || user.id})&select=*,session:group_buy_sessions(id,status,winner_id,session_code,product:group_buy_products(name_i18n))&order=created_at.desc&limit=20`,
+          `${supabaseUrl}/rest/v1/group_buy_orders?user_id=eq.${user.id}&select=*,session:group_buy_sessions(id,status,winner_id,session_code,product:group_buy_products(name_i18n))&order=created_at.desc&limit=20`,
           {
             headers: {
               'Authorization': `Bearer ${supabaseKey}`,
@@ -175,7 +174,7 @@ const NotificationPage: React.FC = () => {
           const groupBuyResults = await groupBuyResponse.json();
           groupBuyResults.forEach((order: any) => {
             const sessionStatus = order.session?.status;
-            const isWinner = order.session?.winner_id === user.id || order.session?.winner_id === userTelegramId;
+            const isWinner = order.session?.winner_id === user.id;
             const productTitle = order.session?.product?.name_i18n?.[i18n.language] || order.session?.product?.name_i18n?.tg || t('notifications.groupBuyProduct');
             
             if (sessionStatus === 'SUCCESS' || sessionStatus === 'COMPLETED') {

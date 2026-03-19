@@ -181,7 +181,7 @@ export default function DebugPage() {
             <p style={{ fontSize: '14px' }}>✅ 已登录</p>
             <p style={{ fontSize: '14px' }}>ID: {user.id}</p>
             <p style={{ fontSize: '14px' }}>UID: {(user as any).uid || 'N/A'}</p>
-            <p style={{ fontSize: '14px' }}>用户名: {user.telegram_username || 'N/A'}</p>
+            <p style={{ fontSize: '14px' }}>用户名: {user.first_name || 'N/A'}</p>
           </>
         ) : (
           <p style={{ fontSize: '14px', color: '#f59e0b' }}>⚠️ 未登录</p>

@@ -178,7 +178,7 @@ const LotteryDetailPage: React.FC = () => {
         if (userIds.length > 0) {
           const { data: usersData, error: usersError } = await supabase
             .from('users')
-            .select('id, telegram_username, first_name, avatar_url')
+            .select('id, phone_number, first_name, avatar_url')
             .in('id', userIds);
 
           if (!usersError && usersData) {
@@ -189,7 +189,7 @@ const LotteryDetailPage: React.FC = () => {
         }
 
         // 合并数据：优先使用运营晒单的 display_username/display_avatar_url，
-        // 其次使用真实用户的 telegram_username/first_name/avatar_url
+        // 其次使用真实用户的 first_name/phone_number/avatar_url
         const enrichedShowoffs = showoffsData.map((showoff: any) => ({
           ...showoff,
           image_urls: showoff.image_urls || showoff.images || [],
@@ -1018,9 +1018,8 @@ const LotteryDetailPage: React.FC = () => {
           {randomShowoffs.length > 0 ? (
             <div className="space-y-4">
               {randomShowoffs.map((showoff, index) => {
-                // 优先级：运营晒单的 display_username > 真实用户的 telegram_username > first_name > 匿名
+                // 优先级：运营晒单的 display_username > 真实用户的 first_name > 匿名
                 const displayName = (showoff as any).display_username 
-                  || showoff.user?.telegram_username 
                   || (showoff.user as any)?.first_name 
                   || t('errors.anonymousUser');
                 const displayAvatar = (showoff as any).display_avatar_url 

@@ -206,7 +206,7 @@ const LotteryResultPage: React.FC = () => {
           picked_up_at
         `)
         .eq('lottery_id', id)
-        .eq('user_id', currentUser.id) // 修复: 使用 UUID 而不是 telegram_id
+        .eq('user_id', currentUser.id)
         .maybeSingle(); // 使用maybeSingle()而不是single()，允许没有记录
 
       const data = prizesData;
@@ -567,12 +567,12 @@ const LotteryResultPage: React.FC = () => {
                 }`}>
                   <img
                     src={winningUser.user.avatar_url || '/default-avatar.png'}
-                    alt={winningUser.user.telegram_username || winningUser.user.first_name || 'Winner'}
+                    alt={winningUser.user.first_name || 'Winner'}
                     style={{ width: '48px', height: '48px', borderRadius: '9999px', border: '4px solid white', objectFit: 'cover', maxWidth: 'none' }}
                   />
                   <div className={`text-left ${isCurrentUserWinner ? 'text-white' : 'text-gray-900'}`}>
                     <p className="font-semibold">
-                      {winningUser.user.telegram_username || winningUser.user.first_name || winningUser.user.telegram_id}
+                      {winningUser.user.first_name || winningUser.user.id?.slice(0, 8)}
                     </p>
                     <p className={`text-sm ${isCurrentUserWinner ? 'text-white/70' : 'text-gray-600'}`}>
                       {t('lottery.winner')}
@@ -705,7 +705,7 @@ const LotteryResultPage: React.FC = () => {
                 <div className="relative">
                   <img
                     src={participant.user.avatar_url || '/default-avatar.png'}
-                    alt={participant.user.telegram_username || participant.user.first_name || 'User'}
+                    alt={participant.user.first_name || 'User'}
                     style={{ width: '32px', height: '32px', borderRadius: '9999px', objectFit: 'cover', maxWidth: 'none', ...(participant.user.id === lottery.winning_user_id ? { boxShadow: '0 0 0 2px #facc15' } : {}) }}
                   />
                   {participant.user.id === lottery.winning_user_id && (
@@ -713,7 +713,7 @@ const LotteryResultPage: React.FC = () => {
                   )}
                 </div>
                 <p className="text-xs text-gray-700 text-center truncate max-w-[60px]">
-                  {participant.user.telegram_username || participant.user.first_name || participant.user.telegram_id}
+                  {participant.user.first_name || participant.user.id?.slice(0, 8)}
                 </p>
                 <p className="text-[10px] text-gray-400">
                   {participant.ticketCount}{t('lottery.tickets')}

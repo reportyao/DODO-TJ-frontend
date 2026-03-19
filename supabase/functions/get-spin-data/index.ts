@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
     // 3. 获取用户邀请记录（被邀请人信息）
     // 修复: 同时查询 referred_by_id 和 referrer_id 以兼容旧数据
     const inviteRecordsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/users?or=(referred_by_id.eq.${user_id},referrer_id.eq.${user_id})&select=id,telegram_username,first_name,created_at&order=created_at.desc&limit=20`,
+      `${supabaseUrl}/rest/v1/users?or=(referred_by_id.eq.${user_id},referrer_id.eq.${user_id})&select=id,phone_number,first_name,created_at&order=created_at.desc&limit=20`,
       {
         headers: {
           'Authorization': `Bearer ${serviceRoleKey}`,
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
           },
           invite_records: invitedUsers.map((user: any) => ({
             id: user.id,
-            username: user.telegram_username || user.first_name || '用户',
+            username: user.first_name || (user.phone_number ? user.phone_number.slice(0, 3) + '****' + user.phone_number.slice(-4) : '用户'),
             created_at: user.created_at,
             status: 'registered'
           })),

@@ -85,7 +85,7 @@ export interface InviteStats {
 }
 export interface InvitedUser {
   id: string;
-  telegram_username: string | null;
+  phone_number: string | null;
   avatar_url: string | null;
   created_at: string;
   level: number; // 1, 2, or 3
@@ -204,7 +204,7 @@ export const authService = {
         
         // Edge Function 返回的数据结构是 { data: { user, wallets, session, ... } }
         if (!data || !data.data) {
-          lastError = new Error('Invalid response from auth-telegram function');
+          lastError = new Error('Invalid response from auth function');
           if (attempt < maxRetries) {
             const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
             console.log(`[Auth] Invalid response, waiting ${delay}ms before retry...`);
@@ -651,7 +651,7 @@ export const referralService = {
     const userIds = [...new Set(showoffs.map(s => s.user_id))];
     const { data: users } = await supabase
       .from('users')
-      .select('id, telegram_username, avatar_url')
+      .select('id, phone_number, first_name, avatar_url')
       .in('id', userIds);
     const userMap = new Map(users?.map(u => [u.id, u]) || []);
 

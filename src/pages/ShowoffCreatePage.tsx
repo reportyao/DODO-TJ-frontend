@@ -517,10 +517,10 @@ const ShowoffCreatePage: React.FC = () => {
             <div className="border border-gray-200 rounded-lg p-4">
               <div className="flex items-center space-x-3 mb-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white font-bold">
-                  {user?.telegram_username?.charAt(0) || user?.telegram_username?.charAt(0) || 'U'}
+                  {user?.first_name?.charAt(0) || 'U'}
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{user?.telegram_username || t('common.user')}</p>
+                  <p className="font-medium text-gray-900">{user?.first_name || t('common.user')}</p>
                   <p className="text-xs text-gray-500">{t('common.justNow')}</p>
                 </div>
               </div>

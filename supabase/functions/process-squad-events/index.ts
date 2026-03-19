@@ -60,8 +60,7 @@ import type { QueuedEvent } from '../_shared/eventQueue.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-// Telegram Bot Token 用于发送佣金通知
-const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
+// 【迁移修复】佣金通知已迁移到通知队列，不再需要 Telegram Bot Token
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('Missing required Supabase environment variables');
@@ -87,12 +86,12 @@ function createServiceClient(): SupabaseClient {
 }
 
 // ============================================================================
-// 辅助函数：Telegram 消息发送
+// 辅助函数：佣金通知发送
+// 【迁移修复】从 Telegram 直发迁移到写入 notification_queue
 // ============================================================================
 
 /**
  * 佣金通知的多语言翻译模板
- * 与 handle-purchase-commission 中的翻译保持一致
  */
 const commissionTranslations: Record<string, (amount: number, level: number) => string> = {
   zh: (amount: number, level: number) => `🎉 恭喜！您获得了 ${amount} 积分的佣金。来自您的 L${level} 朋友的购买。`,
@@ -101,9 +100,9 @@ const commissionTranslations: Record<string, (amount: number, level: number) => 
 };
 
 /**
- * 发送 Telegram 佣金通知消息
+ * 发送佣金通知消息（写入通知队列）
+ * 【迁移修复】从 Telegram 直发改为写入 notification_queue
  * 
- * 与 handle-purchase-commission 中的 sendTelegramMessage 功能完全一致。
  * 失败时只记录日志，不抛出异常（不阻断佣金发放流程）。
  *
  * @param supabase - Supabase 客户端
@@ -111,26 +110,22 @@ const commissionTranslations: Record<string, (amount: number, level: number) => 
  * @param amount - 佣金金额
  * @param level - 佣金级别（1/2/3）
  */
-async function sendCommissionTelegramNotification(
+async function sendCommissionNotification(
   supabase: SupabaseClient,
   userId: string,
   amount: number,
   level: number,
 ): Promise<void> {
   try {
-    if (!TELEGRAM_BOT_TOKEN) {
-      console.log('[Worker] No TELEGRAM_BOT_TOKEN, skipping notification');
-      return;
-    }
-
+    // 查询用户的 phone_number 和语言偏好
     const { data: userData, error } = await supabase
       .from('users')
-      .select('telegram_id, preferred_language')
+      .select('phone_number, preferred_language')
       .eq('id', userId)
       .single();
 
-    if (error || !userData?.telegram_id) {
-      console.log(`[Worker] User not found or no telegram_id: ${userId}`);
+    if (error || !userData?.phone_number) {
+      console.log(`[Worker] User not found or no phone_number: ${userId}`);
       return;
     }
 
@@ -138,18 +133,34 @@ async function sendCommissionTelegramNotification(
     const messageFunc = commissionTranslations[lang] || commissionTranslations['ru'];
     const message = messageFunc(amount, level);
 
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: userData.telegram_id,
-        text: message,
-        parse_mode: 'HTML',
-      }),
-    });
+    const now = new Date().toISOString();
+    // 写入通知队列
+    const { error: insertError } = await supabase
+      .from('notification_queue')
+      .insert({
+        user_id: userId,
+        phone_number: userData.phone_number,
+        type: 'commission_earned',
+        notification_type: 'commission_earned',
+        title: '',
+        message: message,
+        payload: { amount, level },
+        data: { amount, level },
+        status: 'pending',
+        priority: 2,
+        scheduled_at: now,
+        created_at: now,
+        updated_at: now,
+      });
+
+    if (insertError) {
+      console.error('[Worker] Failed to queue commission notification:', insertError);
+    } else {
+      console.log(`[Worker] Commission notification queued for user ${userId}`);
+    }
   } catch (err: unknown) {
-    const errMsg = err instanceof Error ? errMsg : String(err);
-    console.error('[Worker] Failed to send Telegram commission notification:', err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error('[Worker] Failed to queue commission notification:', errMsg);
     // 不抛出异常，通知失败不影响佣金发放
   }
 }
@@ -167,7 +178,7 @@ async function sendCommissionTelegramNotification(
  *   3. 检查是否已发放过佣金（防重复）
  *   4. 计算佣金金额并写入 commissions 表
  *   5. 更新推荐人的积分钱包余额（LUCKY_COIN 钱包）
- *   6. 发送 Telegram 通知
+   *   6. 发送佣金通知（写入通知队列）
  *
  * 幂等性: 通过 commissions 表的 order_id + user_id + level 唯一性检查
  *
@@ -301,7 +312,7 @@ async function handleCommission(event: QueuedEvent): Promise<void> {
 
     if (walletError) {
       // 如果找不到积分钱包，尝试创建一个
-      // 【重要】currency 必须为 'POINTS'，与 auth-telegram 统一
+      // 【重要】currency 必须为 'POINTS'，与 auth-register 统一
       console.log(`[Worker] No LUCKY_COIN wallet found for user ${currentUserId}, creating one`);
       const { error: createError } = await supabase
         .from('wallets')
@@ -382,7 +393,7 @@ async function handleCommission(event: QueuedEvent): Promise<void> {
     }
 
     // 发送 Telegram 佣金通知（失败不阻断流程）
-    await sendCommissionTelegramNotification(supabase, currentUserId, commissionAmount, level);
+    await sendCommissionNotification(supabase, currentUserId, commissionAmount, level);
 
     // 查找下一级推荐人
     const { data: nextUser, error: nextUserError } = await supabase
@@ -519,7 +530,7 @@ async function handleFirstGroupBuy(event: QueuedEvent): Promise<void> {
   // 兼容旧数据：同时查询 referred_by_id 和 referrer_id
   const { data: userData, error: userError } = await supabase
     .from('users')
-    .select('id, referred_by_id, referrer_id, telegram_id')
+    .select('id, referred_by_id, referrer_id')
     .eq('id', user_id)
     .single();
 
@@ -550,19 +561,13 @@ async function handleFirstGroupBuy(event: QueuedEvent): Promise<void> {
   }
 
   // 步骤 3: 检查用户的拼团订单数量（确认是否为首次）
-  // 兼容历史数据：同时匹配 UUID 和 telegram_id
-  const userTelegramId = userData.telegram_id;
+  // 查询用户的拼团订单
   let ordersQuery = supabase
     .from('group_buy_orders')
     .select('id')
     .eq('status', 'PAID')
+    .eq('user_id', user_id)
     .limit(3);
-
-  if (userTelegramId && userTelegramId !== user_id) {
-    ordersQuery = ordersQuery.or(`user_id.eq.${user_id},user_id.eq.${userTelegramId}`);
-  } else {
-    ordersQuery = ordersQuery.eq('user_id', user_id);
-  }
 
   const { data: orders } = await ordersQuery;
 
@@ -615,7 +620,7 @@ async function handleFirstGroupBuy(event: QueuedEvent): Promise<void> {
  * 处理中奖通知事件
  *
  * 直接写入 notification_queue 表（与原 group-buy-squad v1 的逻辑完全一致）。
- * notification_queue 表中的记录会被 telegram-notification-sender 消费并发送。
+ * notification_queue 表中的记录会被通知发送器消费并发送。
  *
  * 幂等性: 通过 session_code 检查 notification_queue 防重复
  *
@@ -654,7 +659,7 @@ async function handleNotification(event: QueuedEvent): Promise<void> {
       won_at,
       is_squad_buy,
     },
-    telegram_chat_id: null,
+    phone_number: null,  // 由通知发送器查询用户的 phone_number
     notification_type: 'group_buy_win',
     title: '包团成功通知',
     message: '',

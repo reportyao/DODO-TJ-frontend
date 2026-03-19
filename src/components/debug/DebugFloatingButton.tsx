@@ -47,13 +47,14 @@ interface DebugInfo {
   // 用户信息
   user: {
     id: string | null
-    telegramId: number | null
+    phoneNumber: string | null
     username: string | null
     balance?: number
     lucky_coins?: number
   }
-  // Telegram环境
-  telegram: {
+  // 平台环境
+  platform: {
+    isPWA: boolean
     isInTelegram: boolean
     initDataAvailable: boolean
     webAppVersion?: string
@@ -107,7 +108,7 @@ export const DebugFloatingButton: React.FC = () => {
   const [routes, setRoutes] = useState<RouteChange[]>([])
   const [authChecks, setAuthChecks] = useState<AuthCheck[]>([])
   const [isVisible, setIsVisible] = useState(false)
-  const { user, telegramUser } = useUser()
+  const { user } = useUser()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -352,12 +353,13 @@ export const DebugFloatingButton: React.FC = () => {
       },
       user: {
         id: user?.id || null,
-        telegramId: telegramUser?.id || null,
-        username: user?.telegram_username || telegramUser?.username || null,
+        phoneNumber: (user as any)?.phone_number || null,
+        username: user?.first_name || null,
         balance: (user as any)?.balance,
         lucky_coins: (user as any)?.lucky_coins
       },
-      telegram: {
+      platform: {
+        isPWA: window.matchMedia('(display-mode: standalone)').matches,
         isInTelegram,
         initDataAvailable: !!telegramWebApp?.initData,
         webAppVersion: telegramWebApp?.version
@@ -469,19 +471,16 @@ export const DebugFloatingButton: React.FC = () => {
                 </div>
               </div>
 
-              {/* Telegram环境 */}
+              {/* 平台环境 */}
               <div className="bg-gray-800 rounded p-3">
-                <h3 className="font-bold mb-2 text-purple-400">🤖 Telegram环境</h3>
+                <h3 className="font-bold mb-2 text-purple-400">📱 平台环境</h3>
                 <div className="text-xs space-y-1">
-                  <div>在Telegram中: <span className={getDebugInfo().telegram.isInTelegram ? 'text-green-400' : 'text-red-400'}>
-                    {getDebugInfo().telegram.isInTelegram ? '是 ✅' : '否 ❌'}
+                  <div>PWA模式: <span className={getDebugInfo().platform.isPWA ? 'text-green-400' : 'text-red-400'}>
+                    {getDebugInfo().platform.isPWA ? '是 ✅' : '否 ❌'}
                   </span></div>
-                  <div>InitData可用: <span className={getDebugInfo().telegram.initDataAvailable ? 'text-green-400' : 'text-red-400'}>
-                    {getDebugInfo().telegram.initDataAvailable ? '是 ✅' : '否 ❌'}
+                  <div>Telegram环境: <span className={getDebugInfo().platform.isInTelegram ? 'text-green-400' : 'text-red-400'}>
+                    {getDebugInfo().platform.isInTelegram ? '是 ✅' : '否 ❌'}
                   </span></div>
-                  {getDebugInfo().telegram.webAppVersion && (
-                    <div>WebApp版本: {getDebugInfo().telegram.webAppVersion}</div>
-                  )}
                 </div>
               </div>
 
@@ -493,7 +492,7 @@ export const DebugFloatingButton: React.FC = () => {
                     {getDebugInfo().auth.hasUser ? '是 ✅' : '否 ❌'}
                   </span></div>
                   <div>用户ID: {user?.id || '无'}</div>
-                  <div>Telegram ID: {telegramUser?.id || '无'}</div>
+                  <div>手机号: {(user as any)?.phone_number || '无'}</div>
                 </div>
               </div>
 
@@ -598,8 +597,8 @@ export const DebugFloatingButton: React.FC = () => {
                 <h3 className="font-bold mb-2">👤 用户信息</h3>
                 <div className="text-xs space-y-1">
                   <div>ID: {user?.id || '未登录'}</div>
-                  <div>Telegram ID: {telegramUser?.id || '无'}</div>
-                  <div>用户名: {user?.telegram_username || telegramUser?.username || '无'}</div>
+                  <div>手机号: {(user as any)?.phone_number || '无'}</div>
+                  <div>用户名: {user?.first_name || '无'}</div>
                   <div>余额: {(user as any)?.balance || 0}</div>
                   <div>积分: {(user as any)?.lucky_coins || 0}</div>
                 </div>

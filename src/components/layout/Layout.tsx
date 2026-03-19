@@ -21,7 +21,7 @@ export const Layout: React.FC<LayoutProps> = ({
   showHeader = true,
   showBottomNav = true
 }) => {
-  const { user, telegramUser, isAuthenticated } = useUser()
+  const { user, isAuthenticated } = useUser()
   const { t } = useTranslation()
   
   // 新人礼物弹窗状态
@@ -155,9 +155,9 @@ export const Layout: React.FC<LayoutProps> = ({
                   <p className="text-xs font-semibold text-emerald-600">{t('home.freeShippingLine1')}</p>
                   <p className="text-xs font-bold text-red-500">{t('home.freeShippingLine2')}</p>
                 </div>
-                {user && telegramUser?.photo_url && (
+                {user?.avatar_url && (
                   <img 
-                    src={telegramUser.photo_url} 
+                    src={user.avatar_url} 
                     alt="Avatar"
                     style={{ width: '40px', height: '40px', borderRadius: '9999px', objectFit: 'cover', maxWidth: 'none' }}
                   />

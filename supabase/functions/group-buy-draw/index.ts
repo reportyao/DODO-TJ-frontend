@@ -338,7 +338,7 @@ Deno.serve(async (req) => {
                 refund_type: 'LUCKY_COIN',  // 标记退款类型为积分
                 points_balance: Number(updatedLcWallet?.balance || 0),
               },
-              telegram_chat_id: null,
+              phone_number: null,  // 由通知发送器查询用户的 phone_number
               notification_type: 'group_buy_points_refund',
               title: '拼团积分退还通知',
               message: '',
@@ -382,7 +382,7 @@ Deno.serve(async (req) => {
           session_code: session.session_code,
           won_at: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Dushanbe' }),
         },
-        telegram_chat_id: null,
+        phone_number: null,  // 由通知发送器查询用户的 phone_number
         notification_type: 'group_buy_win',
         title: '拼团成功通知',
         message: '',

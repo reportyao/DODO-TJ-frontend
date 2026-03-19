@@ -28,9 +28,9 @@ const InvitePage: React.FC = () => {
   const [commissionRates, setCommissionRates] = useState<Record<number, number>>({ 1: 0.03, 2: 0.01, 3: 0.005 });
 
   const inviteCode = user?.referral_code || user?.invite_code || 'LOADING...'; // 优先使用 referral_code，兼容旧的 invite_code
-  // 从环境变量读取 Telegram 分享链接前缀（BotFather Direct Links）
-  const sharePrefix = import.meta.env.VITE_TELEGRAM_SHARE_LINK || 't.me/tezbarakatbot/shoppp';
-  const inviteLink = `https://${sharePrefix}?startapp=${inviteCode}`;
+  // 【迁移修复】使用 PWA 域名生成分享链接（替代原来的 Telegram Bot 链接）
+  const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
+  const inviteLink = `${appDomain}?ref=${inviteCode}`;
 
   // 加载佣金配置 - 独立于用户登录状态
   const loadCommissionConfig = useCallback(async () => {
@@ -419,12 +419,12 @@ const InvitePage: React.FC = () => {
                       ) : null}
                       {!invitedUser.avatar_url && (
                         <span className="text-lg">
-                          {(invitedUser.telegram_username || 'U').charAt(0).toUpperCase()}
+                          {(invitedUser.first_name || 'U').charAt(0).toUpperCase()}
                         </span>
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{invitedUser.telegram_username || t('invite.anonymousUser')}</p>
+                      <p className="font-medium text-gray-900">{invitedUser.first_name || (invitedUser.phone_number ? invitedUser.phone_number.slice(0, 3) + '****' : t('invite.anonymousUser'))}</p>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getLevelBadge(invitedUser.level)}`}>
                         {t('invite.levelXFriend', { level: invitedUser.level })}
                       </span>

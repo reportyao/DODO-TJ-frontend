@@ -92,9 +92,9 @@ const ProfilePage: React.FC = () => {
   const handleCopyReferralLink = async () => {
     const code = user?.referral_code || user?.invite_code;
     if (code) {
-      // 复制完整的邀请链接
-      const sharePrefix = import.meta.env.VITE_TELEGRAM_SHARE_LINK || 't.me/tezbarakatbot/shoppp';
-      const inviteLink = `https://${sharePrefix}?startapp=${code}`
+      // 【迁移修复】使用 PWA 域名生成分享链接
+      const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
+      const inviteLink = `${appDomain}?ref=${code}`;
       const success = await copyToClipboard(inviteLink)
       if (success) {
         toast.success(t('profile.copyReferralCode'))
@@ -108,23 +108,22 @@ const ProfilePage: React.FC = () => {
     const code = user?.referral_code || user?.invite_code;
     if (!code) return;
     
-    const sharePrefix = import.meta.env.VITE_TELEGRAM_SHARE_LINK || 't.me/tezbarakatbot/shoppp';
-    const inviteLink = `https://${sharePrefix}?startapp=${code}`;
+    // 【迁移修复】使用 PWA 域名生成分享链接
+    const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
+    const inviteLink = `${appDomain}?ref=${code}`;
     const shareText = `🎁 Барои Шумо 10 сомонӣ тӯҳфа!\nБо истиноди ман ворид шавед ва бонус гиред. Дар TezBarakat арзон харед ва бурд кунед!`;
     
-    // 使用 Telegram WebApp 的 openTelegramLink 打开分享页面
-    if (window.Telegram?.WebApp?.openTelegramLink) {
-      // 使用 Telegram 的分享链接
-      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
-      window.Telegram.WebApp.openTelegramLink(shareUrl);
-    } else if (navigator.share) {
+    // 【迁移修复】优先使用 WhatsApp 分享，其次使用 Web Share API
+    if (navigator.share) {
       navigator.share({
         title: t('invite.shareInvite'),
         text: shareText,
         url: inviteLink
       }).catch(console.error);
     } else {
-      handleCopyReferralLink();
+      // 回退到 WhatsApp 分享
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + '\n' + inviteLink)}`;
+      window.open(whatsappUrl, '_blank');
     }
   }
 
@@ -232,7 +231,7 @@ const ProfilePage: React.FC = () => {
 	            ) : null}
               <div className={`w-16 h-16 bg-white/20 rounded-full flex items-center justify-center avatar-placeholder ${user?.avatar_url ? 'hidden' : ''}`}>
                 <span className="text-2xl font-bold">
-                  {user?.telegram_username?.[0] || user?.first_name?.[0] || 'U'}
+                  {user?.first_name?.[0] || 'U'}
                 </span>
               </div>
             
@@ -246,7 +245,7 @@ const ProfilePage: React.FC = () => {
           {/* 用户信息 - 显示用户ID */}
           <div className="flex-1">
             <h2 className="text-xl font-bold">
-              {user?.first_name || user?.telegram_username || 'User'}
+              {user?.first_name || 'User'}
             </h2>
             <div className="flex items-center space-x-2 mt-2">
               <span className="px-2 py-1 rounded-full text-xs font-medium bg-white/20 font-mono">

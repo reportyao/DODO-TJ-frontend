@@ -27,8 +27,7 @@ interface ErrorLogData {
   error_message: string;
   error_stack?: string;
   user_id?: string;
-  telegram_id?: number;
-  telegram_username?: string;
+  phone_number?: string;
   page_url?: string;
   page_route?: string;
   component_name?: string;
@@ -46,8 +45,8 @@ interface ErrorLogData {
   screen_height?: number;
   network_type?: string;
   app_version?: string;
-  is_telegram_mini_app?: boolean;
-  telegram_platform?: string;
+  is_pwa?: boolean;
+  platform_type?: string;
   api_endpoint?: string;
   api_method?: string;
   api_status_code?: number;
@@ -165,29 +164,36 @@ function getNetworkType(): string {
   return 'unknown';
 }
 
-// 获取Telegram信息
-function getTelegramInfo(): {
-  isTelegramMiniApp: boolean;
-  telegramPlatform?: string;
-  telegramId?: number;
-  telegramUsername?: string;
+// 【迁移修复】获取平台信息
+function getPlatformInfo(): {
+  isPWA: boolean;
+  platformType?: string;
+  phoneNumber?: string;
 } {
   const result = {
-    isTelegramMiniApp: false,
-    telegramPlatform: undefined as string | undefined,
-    telegramId: undefined as number | undefined,
-    telegramUsername: undefined as string | undefined,
+    isPWA: false,
+    platformType: undefined as string | undefined,
+    phoneNumber: undefined as string | undefined,
   };
 
   try {
+    // 检查是否为 PWA 模式
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as any).standalone === true;
+    result.isPWA = isStandalone;
+    result.platformType = isStandalone ? 'pwa' : 'browser';
+
+    // 尝试从缓存用户数据获取手机号
+    const storedUser = localStorage.getItem('custom_user');
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      result.phoneNumber = parsedUser.phone_number;
+    }
+
+    // 向后兼容：检查 Telegram WebApp
     const tg = (window as any).Telegram?.WebApp;
     if (tg) {
-      result.isTelegramMiniApp = true;
-      result.telegramPlatform = tg.platform;
-      if (tg.initDataUnsafe?.user) {
-        result.telegramId = tg.initDataUnsafe.user.id;
-        result.telegramUsername = tg.initDataUnsafe.user.username;
-      }
+      result.platformType = 'telegram_miniapp';
     }
   } catch (e) {
     // 忽略错误
@@ -344,15 +350,14 @@ class ErrorMonitorService {
     try {
       const ua = navigator.userAgent;
       const deviceInfo = parseUserAgent(ua);
-      const telegramInfo = getTelegramInfo();
+      const platformInfo = getPlatformInfo();
 
       const logData: ErrorLogData = {
         error_type: errorData.error_type || ErrorType.JS_ERROR,
         error_message: errorData.error_message || 'Unknown error',
         error_stack: errorData.error_stack,
         user_id: getCurrentUserId(),
-        telegram_id: telegramInfo.telegramId,
-        telegram_username: telegramInfo.telegramUsername,
+        phone_number: platformInfo.phoneNumber,
         page_url: window.location.href,
         page_route: window.location.pathname,
         component_name: errorData.component_name,
@@ -370,8 +375,8 @@ class ErrorMonitorService {
         screen_height: window.screen.height,
         network_type: getNetworkType(),
         app_version: this.appVersion,
-        is_telegram_mini_app: telegramInfo.isTelegramMiniApp,
-        telegram_platform: telegramInfo.telegramPlatform,
+        is_pwa: platformInfo.isPWA,
+        platform_type: platformInfo.platformType,
         api_endpoint: errorData.api_endpoint,
         api_method: errorData.api_method,
         api_status_code: errorData.api_status_code,

@@ -36,8 +36,7 @@ import toast from 'react-hot-toast'
 // ============================================================
 interface TargetUser {
   id: string
-  telegram_id: string | null
-  telegram_username: string | null
+  phone_number: string | null
   first_name: string | null
   last_name: string | null
   avatar_url: string | null
@@ -336,7 +335,7 @@ const PromoterDepositPage: React.FC = () => {
   const getUserDisplayName = (u: TargetUser | null) => {
     if (!u) return '---'
     if (u.first_name) return u.first_name + (u.last_name ? ' ' + u.last_name : '')
-    if (u.telegram_username) return '@' + u.telegram_username
+    if (u.phone_number) return u.phone_number.slice(0, 3) + '****'
     return u.id.substring(0, 8)
   }
 
@@ -554,7 +553,7 @@ const PromoterDepositPage: React.FC = () => {
                 </p>
                 <p className="text-xs text-gray-500 font-mono">
                   ID: {targetUser.id.substring(0, 8)}
-                  {targetUser.telegram_id && ` · TG: ${targetUser.telegram_id}`}
+                  {targetUser.phone_number && ` · ${targetUser.phone_number.slice(0, 3)}****`}
                 </p>
               </div>
               <button

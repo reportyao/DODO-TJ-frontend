@@ -5,7 +5,7 @@
  * 
  * 功能：
  *   1. 验证地推人员身份（通过 session_token）
- *   2. 搜索目标用户（兼容 UUID / Telegram ID / 用户名）
+ *   2. 搜索目标用户（兼容 UUID / 手机号 / 用户名）
  *   3. 执行充值操作（调用 perform_promoter_deposit RPC 事务函数）
  *   4. 获取充值统计数据
  * 
@@ -353,7 +353,7 @@ serve(async (req) => {
           .select(`
             id, amount, currency, status, note, bonus_amount, created_at,
             target_user:users!promoter_deposits_target_user_id_fkey(
-              id, telegram_id, telegram_username, first_name, last_name, avatar_url
+              id, phone_number, first_name, last_name, avatar_url
             )
           `)
           .eq('promoter_id', userId)

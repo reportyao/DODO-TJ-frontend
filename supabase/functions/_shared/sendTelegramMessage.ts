@@ -1,11 +1,20 @@
+/**
+ * 通知消息发送共享模块
+ * 【迁移修复】从 Telegram Bot 迁移到 WhatsApp 通知队列
+ * 
+ * 改动说明：
+ * - 移除 Telegram Bot Token 和直接发送逻辑
+ * - 改为写入 notification_queue 表，由 whatsapp-notification-sender 统一消费
+ * - 用户标识从 telegram_id 改为 phone_number
+ * - 保留原有的函数签名和多语言模板以保持向后兼容
+ * 
+ * 注意：函数名保持为 sendTelegramMessage 以避免修改所有调用方，
+ * 但实际已改为写入通知队列。
+ */
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0'
-// import { Database } from '../_shared/database.types.ts' // 移除，避免部署错误
 
-// 假设 Telegram Bot Token 存储在环境变量中
-const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
-
-// 假设 i18n 翻译资源存储在某个地方，这里简化为硬编码或从共享文件导入
-// 实际项目中，应该从共享的 i18n 资源中加载
+// 多语言翻译模板
 const translations = {
   zh: {
     commission_earned: (amount: number, level: number) => `恭喜！您获得了 ${amount} TJS 的佣金。来自您的 L${level} 朋友的购买。`,
@@ -32,36 +41,36 @@ interface NotificationData {
 }
 
 /**
- * 根据用户 ID 获取其 Telegram Chat ID 和首选语言
- * @param userId 
- * @returns { chat_id: number, preferred_language: string } | null
+ * 根据用户 ID 获取其 phone_number 和首选语言
+ * 【迁移修复】从 telegram_id 改为 phone_number
  */
-async function getUserNotificationInfo(userId: string): Promise<{ chat_id: number, preferred_language: string } | null> {
+async function getUserNotificationInfo(userId: string): Promise<{ phone_number: string, preferred_language: string } | null> {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   )
 
-  // 使用 users 表替代已删除的 profiles 表
   const { data, error } = await supabase
     .from('users')
-    .select('telegram_id, preferred_language')
+    .select('phone_number, preferred_language')
     .eq('id', userId)
     .single()
 
-  if (error || !data || !data.telegram_id) {
+  if (error || !data || !data.phone_number) {
     console.error(`Failed to get notification info for user ${userId}:`, error)
     return null
   }
 
   return {
-    chat_id: parseInt(data.telegram_id) || 0, // telegram_id 作为 chat_id
-    preferred_language: data.preferred_language || 'zh', // 默认中文
+    phone_number: data.phone_number,
+    preferred_language: data.preferred_language || 'tg',
   }
 }
 
 /**
- * 发送 Telegram 消息
+ * 发送通知消息（写入通知队列）
+ * 【迁移修复】原为直接发送 Telegram 消息，现改为写入 notification_queue
+ * 
  * @param userId 目标用户 ID
  * @param type 消息类型
  * @param data 消息数据
@@ -71,18 +80,19 @@ export async function sendTelegramMessage(
   type: NotificationType,
   data: NotificationData = {}
 ): Promise<void> {
-  if (!BOT_TOKEN) {
-    console.warn('TELEGRAM_BOT_TOKEN is not set. Skipping Telegram message.')
-    return
-  }
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  )
 
   const userInfo = await getUserNotificationInfo(userId)
   if (!userInfo) {
+    console.log(`[sendTelegramMessage] User ${userId} has no phone_number, skipping notification`)
     return
   }
 
-  const { chat_id, preferred_language } = userInfo
-  const lang = preferred_language in translations ? preferred_language as keyof typeof translations : 'zh'
+  const { phone_number, preferred_language } = userInfo
+  const lang = preferred_language in translations ? preferred_language as keyof typeof translations : 'tg'
   const t = translations[lang]
 
   let messageText = ''
@@ -102,28 +112,33 @@ export async function sendTelegramMessage(
       return
   }
 
-  const telegramApiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`
+  const now = new Date().toISOString()
 
   try {
-    const response = await fetch(telegramApiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        chat_id: chat_id,
-        text: messageText,
-        parse_mode: 'Markdown', // 使用 Markdown 格式
-      }),
-    })
+    const { error } = await supabase
+      .from('notification_queue')
+      .insert({
+        user_id: userId,
+        phone_number: phone_number,
+        type: type,
+        notification_type: type,
+        title: '',
+        message: messageText,
+        payload: data,
+        data: data,
+        status: 'pending',
+        priority: 2,
+        scheduled_at: now,
+        created_at: now,
+        updated_at: now,
+      })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.error(`Failed to send Telegram message to ${chat_id}:`, response.status, errorData)
+    if (error) {
+      console.error(`Failed to queue notification for user ${userId}:`, error)
     } else {
-      console.log(`Telegram message sent successfully to ${chat_id} for type ${type}.`)
+      console.log(`Notification queued for user ${userId}, type: ${type}`)
     }
   } catch (error) {
-    console.error('Error sending Telegram message:', error)
+    console.error('Error queuing notification:', error)
   }
 }

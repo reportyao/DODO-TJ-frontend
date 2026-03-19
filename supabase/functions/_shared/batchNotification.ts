@@ -1,12 +1,15 @@
 /**
  * 批次通知共享模块
- * 用于发送批次到货通知给用户
+ * 【迁移修复】从 Telegram Bot 迁移到 WhatsApp 通知队列
+ * 
+ * 改动说明：
+ * - 移除 Telegram Bot Token 和直接发送逻辑
+ * - 改为写入 notification_queue 表，由 whatsapp-notification-sender 统一消费
+ * - 用户标识从 telegram_id 改为 phone_number
+ * - 保留多语言模板用于队列消息格式化
  */
 
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0'
-
-// Telegram Bot Token
-const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 
 // 多语言通知模板
 const notificationTemplates = {
@@ -102,74 +105,80 @@ const notificationTemplates = {
 
 type NotificationLanguage = 'zh' | 'ru' | 'tg'
 
-interface UserInfo {
-  telegram_id: string
+interface UserNotificationInfo {
+  phone_number: string
   preferred_language: string
   first_name?: string
 }
 
 /**
  * 获取用户通知信息
+ * 【迁移修复】从 telegram_id 改为 phone_number
  */
 async function getUserNotificationInfo(
   supabase: SupabaseClient,
   userId: string
-): Promise<UserInfo | null> {
+): Promise<UserNotificationInfo | null> {
   const { data, error } = await supabase
     .from('users')
-    .select('telegram_id, preferred_language, first_name')
+    .select('phone_number, preferred_language, first_name')
     .eq('id', userId)
     .single()
 
-  if (error || !data || !data.telegram_id) {
+  if (error || !data || !data.phone_number) {
     console.error(`Failed to get notification info for user ${userId}:`, error)
     return null
   }
 
   return {
-    telegram_id: data.telegram_id,
-    preferred_language: data.preferred_language || 'zh',
+    phone_number: data.phone_number,
+    preferred_language: data.preferred_language || 'tg',
     first_name: data.first_name,
   }
 }
 
 /**
- * 发送Telegram消息
+ * 写入通知队列
+ * 【迁移修复】替代原来的直接发送 Telegram 消息
+ * 通知将由 whatsapp-notification-sender 统一消费和发送
  */
-async function sendTelegramMessage(
-  chatId: string,
-  message: string
+async function queueNotification(
+  supabase: SupabaseClient,
+  userId: string,
+  phoneNumber: string,
+  notificationType: string,
+  message: string,
+  data: Record<string, any> = {}
 ): Promise<boolean> {
-  if (!BOT_TOKEN) {
-    console.warn('TELEGRAM_BOT_TOKEN is not set. Skipping Telegram message.')
-    return false
-  }
-
-  const telegramApiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`
-
   try {
-    const response = await fetch(telegramApiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
-        parse_mode: 'HTML',
-      }),
-    })
+    const now = new Date().toISOString()
+    const { error } = await supabase
+      .from('notification_queue')
+      .insert({
+        user_id: userId,
+        phone_number: phoneNumber,
+        type: notificationType,
+        notification_type: notificationType,
+        title: '',
+        message: message,
+        payload: data,
+        data: data,
+        status: 'pending',
+        priority: 2,
+        scheduled_at: now,
+        created_at: now,
+        updated_at: now,
+      })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.error(`Failed to send Telegram message to ${chatId}:`, response.status, errorData)
+    if (error) {
+      console.error(`Failed to queue notification for user ${userId}:`, error)
       return false
     }
 
-    console.log(`Telegram message sent successfully to ${chatId}`)
+    console.log(`Notification queued for user ${userId}, type: ${notificationType}`)
     return true
-  } catch (error) {
-    console.error('Error sending Telegram message:', error)
+  } catch (err) {
+    console.error('Error queuing notification:', err)
     return false
   }
 }
@@ -203,7 +212,7 @@ function formatDate(dateStr: string, language: string): string {
     tg: 'tg-TJ',
   }
   
-  return date.toLocaleDateString(localeMap[language] || 'zh-CN', options)
+  return date.toLocaleDateString(localeMap[language] || 'tg-TJ', options)
 }
 
 /**
@@ -220,12 +229,15 @@ export async function sendBatchShippedNotification(
 
   const lang = (userInfo.preferred_language in notificationTemplates 
     ? userInfo.preferred_language 
-    : 'zh') as NotificationLanguage
+    : 'tg') as NotificationLanguage
   
   const formattedDate = formatDate(estimatedArrivalDate, lang)
   const message = notificationTemplates[lang].batch_shipped(batchNo, formattedDate)
   
-  return sendTelegramMessage(userInfo.telegram_id, message)
+  return queueNotification(supabase, userId, userInfo.phone_number, 'batch_shipped', message, {
+    batch_no: batchNo,
+    estimated_arrival_date: estimatedArrivalDate,
+  })
 }
 
 /**
@@ -241,11 +253,13 @@ export async function sendBatchInTransitTJNotification(
 
   const lang = (userInfo.preferred_language in notificationTemplates 
     ? userInfo.preferred_language 
-    : 'zh') as NotificationLanguage
+    : 'tg') as NotificationLanguage
   
   const message = notificationTemplates[lang].batch_in_transit_tj(batchNo)
   
-  return sendTelegramMessage(userInfo.telegram_id, message)
+  return queueNotification(supabase, userId, userInfo.phone_number, 'batch_in_transit_tj', message, {
+    batch_no: batchNo,
+  })
 }
 
 /**
@@ -268,7 +282,7 @@ export async function sendBatchArrivedNotification(
 
   const lang = (userInfo.preferred_language in notificationTemplates 
     ? userInfo.preferred_language 
-    : 'zh') as NotificationLanguage
+    : 'tg') as NotificationLanguage
   
   const localizedProductName = getLocalizedText(productNameI18n, lang, productName)
   const localizedPickupPointName = getLocalizedText(pickupPointNameI18n, lang, pickupPointName)
@@ -283,7 +297,13 @@ export async function sendBatchArrivedNotification(
     formattedExpiresAt
   )
   
-  return sendTelegramMessage(userInfo.telegram_id, message)
+  return queueNotification(supabase, userId, userInfo.phone_number, 'batch_arrived', message, {
+    product_name: localizedProductName,
+    pickup_code: pickupCode,
+    pickup_point_name: localizedPickupPointName,
+    pickup_point_address: localizedPickupPointAddress,
+    expires_at: expiresAt,
+  })
 }
 
 /**
@@ -300,12 +320,14 @@ export async function sendBatchItemMissingNotification(
 
   const lang = (userInfo.preferred_language in notificationTemplates 
     ? userInfo.preferred_language 
-    : 'zh') as NotificationLanguage
+    : 'tg') as NotificationLanguage
   
   const localizedProductName = getLocalizedText(productNameI18n, lang, productName)
   const message = notificationTemplates[lang].batch_item_missing(localizedProductName)
   
-  return sendTelegramMessage(userInfo.telegram_id, message)
+  return queueNotification(supabase, userId, userInfo.phone_number, 'batch_item_missing', message, {
+    product_name: localizedProductName,
+  })
 }
 
 /**
@@ -322,12 +344,14 @@ export async function sendBatchItemDamagedNotification(
 
   const lang = (userInfo.preferred_language in notificationTemplates 
     ? userInfo.preferred_language 
-    : 'zh') as NotificationLanguage
+    : 'tg') as NotificationLanguage
   
   const localizedProductName = getLocalizedText(productNameI18n, lang, productName)
   const message = notificationTemplates[lang].batch_item_damaged(localizedProductName)
   
-  return sendTelegramMessage(userInfo.telegram_id, message)
+  return queueNotification(supabase, userId, userInfo.phone_number, 'batch_item_damaged', message, {
+    product_name: localizedProductName,
+  })
 }
 
 /**

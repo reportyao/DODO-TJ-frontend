@@ -309,12 +309,12 @@ const SpinLotteryPage: React.FC = () => {
     }
   };
 
-  // 复制邀请链接
+  // 【迁移修复】复制邀请链接
   const copyInviteLink = async () => {
     if (!spinData?.referral_code) return;
     
-    const sharePrefix = import.meta.env.VITE_TELEGRAM_SHARE_LINK || 't.me/tezbarakatbot/shoppp';
-    const inviteLink = `https://${sharePrefix}?startapp=${spinData.referral_code}`;
+    const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
+    const inviteLink = `${appDomain}?ref=${spinData.referral_code}`;
     const success = await copyToClipboard(inviteLink);
     if (success) {
       setCopied(true);
@@ -325,28 +325,24 @@ const SpinLotteryPage: React.FC = () => {
     }
   };
 
-  // 分享邀请
+  // 【迁移修复】分享邀请 - 使用 Web Share API 或 WhatsApp
   const shareInvite = () => {
     if (!spinData?.referral_code) return;
     
-    const sharePrefix = import.meta.env.VITE_TELEGRAM_SHARE_LINK || 't.me/tezbarakatbot/shoppp';
-    const inviteLink = `https://${sharePrefix}?startapp=${spinData.referral_code}`;
+    const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
+    const inviteLink = `${appDomain}?ref=${spinData.referral_code}`;
     const shareText = `🎁 Барои Шумо 10 сомонӣ тӯҳфа!\nБо истиноди ман ворид шавед ва бонус гиред. Дар TezBarakat арзон харед ва бурд кунед!`;
     
-    // 使用 Telegram WebApp 的 openTelegramLink 打开分享页面
-    // switchInlineQuery 需要 bot 启用 inline mode，我们改用直接分享链接
-    if (window.Telegram?.WebApp?.openTelegramLink) {
-      // 使用 Telegram 的分享链接
-      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
-      window.Telegram.WebApp.openTelegramLink(shareUrl);
-    } else if (navigator.share) {
+    if (navigator.share) {
       navigator.share({
         title: t('spin.shareTitle'),
         text: shareText,
         url: inviteLink
       }).catch(console.error);
     } else {
-      copyInviteLink();
+      // 回退到 WhatsApp 分享
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + '\n' + inviteLink)}`;
+      window.open(whatsappUrl, '_blank');
     }
   };
 

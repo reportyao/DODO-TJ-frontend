@@ -144,7 +144,7 @@ const ShowoffPage: React.FC = () => {
       let usersMap: Record<string, any> = {};
       if (userIds.length > 0) {
         const usersResponse = await fetch(
-          `${supabaseUrl}/rest/v1/users?id=in.(${userIds.join(',')})&select=id,telegram_username,first_name,avatar_url`,
+          `${supabaseUrl}/rest/v1/users?id=in.(${userIds.join(',')})&select=id,phone_number,first_name,avatar_url`,
           {
             headers: {
               'Authorization': `Bearer ${supabaseKey}`,
@@ -340,23 +340,26 @@ const ShowoffPage: React.FC = () => {
       return;
     }
     
-    const sharePrefix = import.meta.env.VITE_TELEGRAM_SHARE_LINK || 't.me/tezbarakatbot/shoppp';
-    const inviteLink = `https://${sharePrefix}?startapp=${code}`;
+    // 【迁移修复】使用 PWA 域名生成分享链接
+    const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
+    const inviteLink = `${appDomain}?ref=${code}`;
     const shareText = `🎁 Барои Шумо 10 сомонӣ тӯҳфа!\nБо истиноди ман ворид шавед ва бонус гиред. Дар TezBarakat арзон харед ва бурд кунед!`;
     
-    // 使用 Telegram WebApp 的 openTelegramLink 打开分享页面
-    if (window.Telegram?.WebApp?.openTelegramLink) {
-      // 使用 Telegram 的分享链接
-      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
-      window.Telegram.WebApp.openTelegramLink(shareUrl);
-    } else {
-      // 降级方案：复制链接
-      const success = await copyToClipboard(inviteLink);
-      if (success) {
-        toast.success(t('common.linkCopied'));
-      } else {
-        toast.error(t('common.copyFailed'));
+    // 【迁移修复】优先使用 Web Share API，回退到 WhatsApp
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'TezBarakat',
+          text: shareText,
+          url: inviteLink
+        });
+      } catch (e) {
+        console.error('Share failed:', e);
       }
+    } else {
+      // 回退到 WhatsApp 分享
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + '\n' + inviteLink)}`;
+      window.open(whatsappUrl, '_blank');
     }
   };
 
@@ -438,17 +441,17 @@ const ShowoffPage: React.FC = () => {
                                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxWidth: 'none' }}
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).style.display = 'none';
-                                  const displayName = showoff.display_username || showoff.user?.telegram_username;
+                                  const displayName = showoff.display_username || showoff.user?.first_name;
                                   (e.target as HTMLImageElement).parentElement!.innerText = displayName?.charAt(0) || 'U';
                                 }}
                               />
                             ) : (
-		                      (showoff.display_username || showoff.user?.telegram_username) ? (showoff.display_username || showoff.user?.telegram_username)?.charAt(0) : 'U'
+		                      (showoff.display_username || showoff.user?.first_name) ? (showoff.display_username || showoff.user?.first_name)?.charAt(0) : 'U'
                             )}
 	                      </div>
                       <div>
                         {/* 优先使用运营晒单的虚拟用户昵称 */}
-	                      <p className="font-medium text-gray-900">{showoff.display_username || showoff.user?.telegram_username || 'Anonymous'}</p>
+	                      <p className="font-medium text-gray-900">{showoff.display_username || showoff.user?.first_name || 'Anonymous'}</p>
                         <p className="text-xs text-gray-500">{formatDateTime(showoff.created_at)}</p>
                       </div>
                     </div>

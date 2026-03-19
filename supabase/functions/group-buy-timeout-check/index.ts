@@ -273,7 +273,7 @@ Deno.serve(async (req) => {
                 refund_amount: refundAmount,
                 balance: Number(updatedWallet?.balance || 0),
               },
-              telegram_chat_id: null,
+              phone_number: null,  // 由通知发送器查询用户的 phone_number
               notification_type: 'group_buy_timeout',
               title: '拼团超时退款通知',
               message: '',

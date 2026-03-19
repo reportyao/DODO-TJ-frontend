@@ -208,11 +208,15 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-// 分享到Telegram
-export function shareToTelegram(text: string, url?: string): void {
-  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(url || window.location.href)}&text=${encodeURIComponent(text)}`;
-  window.open(telegramUrl, '_blank');
+// 【迁移修复】分享到 WhatsApp
+export function shareToWhatsApp(text: string, url?: string): void {
+  const fullText = url ? `${text} ${url}` : text;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(fullText)}`;
+  window.open(whatsappUrl, '_blank');
 }
+
+// 保留旧函数名以兼容已有调用
+export const shareToTelegram = shareToWhatsApp;
 
 // 处理多语言 JSONB 字段，用于获取商城标题、描述等
 export function getLocalizedText(

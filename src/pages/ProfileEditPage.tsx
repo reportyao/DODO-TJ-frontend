@@ -13,11 +13,11 @@ import toast from 'react-hot-toast'
 const ProfileEditPage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, telegramUser } = useUser()
+  const { user } = useUser()
   
-	  const [formData, setFormData] = useState({
-	    telegram_username: user?.telegram_username || '',
-	  })
+  const [formData, setFormData] = useState({
+    first_name: user?.first_name || '',
+  })
   
   const [isSaving, setIsSaving] = useState(false)
 
@@ -77,9 +77,9 @@ const ProfileEditPage: React.FC = () => {
       <div className="bg-white mx-4 mt-4 rounded-2xl p-6 shadow-sm">
         <div className="flex flex-col items-center">
           <div className="relative">
-            {telegramUser?.photo_url ? (
+            {user?.avatar_url ? (
               <img 
-                src={telegramUser.photo_url} 
+                src={user.avatar_url} 
                 alt="Avatar"
                 style={{ width: '96px', height: '96px', borderRadius: '9999px', border: '4px solid #f3f4f6', objectFit: 'cover', maxWidth: 'none' }}
               />
@@ -102,65 +102,46 @@ const ProfileEditPage: React.FC = () => {
       <div className="mx-4 mt-4">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           {/* 名字 */}
-	          {/* 用户名 */}
-	          <div className="p-4 border-b border-gray-100">
-	            <label className="block text-sm font-medium text-gray-700 mb-2">
-	              {t('invite.telegram_username')}
-	            </label>
-	            <input
-	              type="text"
-	              name="telegram_username"
-	              value={formData.telegram_username}
-	              onChange={handleChange}
-	              placeholder={t('invite.telegram_username')}
-	              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-	            />
-	          </div>
-
-	          {/* Telegram 用户名 */}
-	          <div className="p-4 border-b border-gray-100">
-	            <label className="block text-sm font-medium text-gray-700 mb-2">
-	              Telegram {t('invite.telegram_username')}
-	            </label>
-	            <div className="flex items-center">
-	              <span className="text-gray-500 mr-1">@</span>
-	              <input
-	                type="text"
-	                name="telegram_username"
-	                value={formData.telegram_username}
-	                onChange={handleChange}
-	                placeholder={t('invite.telegram_username')}
-	                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-	              />
-	            </div>
-	          </div>
-
-          {/* Telegram ID (只读) */}
           <div className="p-4 border-b border-gray-100">
-	            <label className="block text-sm font-medium text-gray-700 mb-2">
-	              Telegram ID
-	            </label>
-	            <input
-	              type="text"
-	              value={telegramUser?.id || ''}
-	              disabled
-	              className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
-	            />
-	            <p className="text-xs text-gray-500 mt-1">Telegram ID</p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('profile.name') || t('common.name') || '名字'}
+            </label>
+            <input
+              type="text"
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleChange}
+              placeholder={t('profile.namePlaceholder') || '请输入您的名字'}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* 手机号 (只读) */}
+          <div className="p-4 border-b border-gray-100">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('auth.phoneNumber') || '手机号'}
+            </label>
+            <input
+              type="text"
+              value={(user as any)?.phone_number || ''}
+              disabled
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+            />
+            <p className="text-xs text-gray-500 mt-1">{t('profile.phoneReadonly') || '手机号不可修改'}</p>
           </div>
 
           {/* 推荐码 (只读) */}
           <div className="p-4">
-	            <label className="block text-sm font-medium text-gray-700 mb-2">
-	              {t('invite.myInviteCode')}
-	            </label>
-	            <input
-	              type="text"
-	              value={user?.referral_code || user?.invite_code || ''}
-	              disabled
-	              className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed font-mono text-center text-lg"
-	            />
-	            <p className="text-xs text-gray-500 mt-1">{t('home.referralCode')}</p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('invite.myInviteCode')}
+            </label>
+            <input
+              type="text"
+              value={user?.referral_code || user?.invite_code || ''}
+              disabled
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed font-mono text-center text-lg"
+            />
+            <p className="text-xs text-gray-500 mt-1">{t('home.referralCode')}</p>
           </div>
         </div>
       </div>
@@ -169,7 +150,7 @@ const ProfileEditPage: React.FC = () => {
       <div className="mx-4 mt-4">
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
           <p className="text-sm text-blue-800">
-            💡 <strong>{t('common.note')}:</strong> Telegram account info will not be affected.
+            💡 <strong>{t('common.note')}:</strong> {t('profile.editNote') || '修改信息后请点击保存按钮。'}
           </p>
         </div>
       </div>

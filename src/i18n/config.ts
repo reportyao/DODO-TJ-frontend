@@ -13,37 +13,48 @@ import tgTranslation from './locales/tg.json'
 declare const __APP_VERSION__: string
 const I18N_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : Date.now().toString()
 
-// 自定义 Telegram 语言检测器
-// 注册为 i18next-browser-languagedetector 的自定义检测器插件
-// 通过 addDetector() 注册后，在 detection.order 中通过 name 引用
-const telegramDetector = {
-  name: 'telegram',
+// 【迁移修复】自定义语言检测器
+// 优先从用户缓存的配置中读取语言偏好，其次尝试 Telegram WebApp（向后兼容）
+const userPreferenceDetector = {
+  name: 'userPreference',
   lookup: (): string | undefined => {
     try {
-      const tgLang = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code
-
-      if (tgLang) {
-        if (tgLang.startsWith('zh')) return 'zh'
-        if (tgLang.startsWith('ru')) return 'ru'
-        if (tgLang.startsWith('tg') || tgLang.startsWith('fa')) return 'tg'
+      // 优先从缓存的用户数据中读取语言偏好
+      const storedUser = localStorage.getItem('custom_user');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        const lang = parsedUser.preferred_language || parsedUser.language_code;
+        if (lang) {
+          if (lang.startsWith('zh')) return 'zh';
+          if (lang.startsWith('ru')) return 'ru';
+          if (lang.startsWith('tg') || lang.startsWith('fa')) return 'tg';
+        }
       }
 
-      return undefined
+      // 向后兼容：尝试从 Telegram WebApp 获取
+      const tgLang = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code;
+      if (tgLang) {
+        if (tgLang.startsWith('zh')) return 'zh';
+        if (tgLang.startsWith('ru')) return 'ru';
+        if (tgLang.startsWith('tg') || tgLang.startsWith('fa')) return 'tg';
+      }
+
+      return undefined;
     } catch (error) {
-      console.error('Error detecting Telegram language:', error)
-      return undefined
+      console.error('Error detecting user language:', error);
+      return undefined;
     }
   },
   cacheUserLanguage: () => {}
-}
+};
 
-// 创建 LanguageDetector 实例并注册自定义 Telegram 检测器
-const languageDetector = new LanguageDetector()
-languageDetector.addDetector(telegramDetector)
+// 创建 LanguageDetector 实例并注册自定义检测器
+const languageDetector = new LanguageDetector();
+languageDetector.addDetector(userPreferenceDetector);
 
 i18n
   .use(HttpBackend) // HTTP 后端按需加载翻译文件
-  .use(languageDetector) // 浏览器语言检测器（已包含自定义 Telegram 检测器）
+  .use(languageDetector) // 浏览器语言检测器（已包含自定义用户偏好检测器）
   .use(initReactI18next) // 集成 React
   .init({
     // 内联 tg 翻译，确保塔吉克语用户首次加载时不会看到其他语言闪烁
@@ -54,7 +65,7 @@ i18n
     partialBundledLanguages: true,
     backend: {
       // 在 URL 中加入构建版本号，每次部署后强制浏览器重新加载翻译文件
-      // 避免 Telegram WebApp 缓存旧的翻译文件导致文案不更新
+      // 避免缓存旧的翻译文件导致文案不更新
       loadPath: `/locales/{{lng}}.json?v=${I18N_VERSION}`
     },
     fallbackLng: 'tg',
@@ -65,9 +76,9 @@ i18n
     },
     detection: {
       // localStorage 优先（用户手动切换的语言应被尊重），
-      // 其次是 Telegram 检测器（首次使用时从 Telegram 获取语言偏好），
+      // 其次是用户偏好检测器（从缓存用户数据或 Telegram WebApp 获取），
       // 最后是浏览器语言
-      order: ['localStorage', 'telegram', 'navigator'],
+      order: ['localStorage', 'userPreference', 'navigator'],
       caches: ['localStorage']
     },
     saveMissing: false,

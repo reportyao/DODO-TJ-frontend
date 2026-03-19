@@ -131,7 +131,7 @@ serve(async (req) => {
 
     // 3. 获取用户信息
     const userResponse = await fetch(
-      `${supabaseUrl}/rest/v1/users?id=eq.${userId}&select=id,telegram_username`,
+      `${supabaseUrl}/rest/v1/users?id=eq.${userId}&select=id,phone_number,first_name`,
       {
         headers: {
           'Authorization': `Bearer ${serviceRoleKey}`,

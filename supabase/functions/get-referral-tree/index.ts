@@ -8,10 +8,9 @@ const corsHeaders = {
 
 interface ReferralNode {
   id: string
-  telegram_username: string
+  phone_number: string
   first_name: string
   last_name: string
-  telegram_id: string
   referral_code: string  // 统一使用 referral_code
   referred_by_id: string | null  // 统一使用 referred_by_id
   created_at: string
@@ -123,10 +122,9 @@ serve(async (req) => {
 
       return {
         id: currentUser.id,
-        telegram_username: currentUser.telegram_username,
+        phone_number: currentUser.phone_number || '',
         first_name: currentUser.first_name,
         last_name: currentUser.last_name,
-        telegram_id: currentUser.telegram_id,
         referral_code: currentUser.referral_code || currentUser.invite_code || '',  // 统一使用 referral_code，兼容 invite_code
         referred_by_id: currentUser.referred_by_id || currentUser.referrer_id,  // 统一使用 referred_by_id，兼容 referrer_id
         created_at: currentUser.created_at,
