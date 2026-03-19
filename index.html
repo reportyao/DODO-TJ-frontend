@@ -4,9 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#2B5D3A" />
-  <title>TezBarakat - WhatsApp & PWA</title>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="TezBarakat" />
+  <link rel="apple-touch-icon" href="/tezbarakat-logo.png" />
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#2B5D3A" />
+  <title>TezBarakat - WhatsApp & PWA</title>
   <!-- Build: __BUILD_TIME__ -->
   
   <style>
@@ -16,13 +19,20 @@
       background-color: #f9fafb;
     }
     
-    /* 确保 Telegram 主题变量可用 */
+    /* 应用主题变量 */
     :root {
+      --app-bg-color: #ffffff;
+      --app-text-color: #000000;
+      --app-hint-color: #999999;
+      --app-link-color: #2B5D3A;
+      --app-button-color: #2B5D3A;
+      --app-button-text-color: #ffffff;
+      /* 向后兼容：保留 tg 前缀变量以防组件仍在引用 */
       --tg-theme-bg-color: #ffffff;
       --tg-theme-text-color: #000000;
       --tg-theme-hint-color: #999999;
-      --tg-theme-link-color: #2481cc;
-      --tg-theme-button-color: #2481cc;
+      --tg-theme-link-color: #2B5D3A;
+      --tg-theme-button-color: #2B5D3A;
       --tg-theme-button-text-color: #ffffff;
     }
   </style>
