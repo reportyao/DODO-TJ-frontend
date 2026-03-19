@@ -75,7 +75,6 @@ async function validateSession(sessionToken: string) {
 
   return {
     userId: session.user_id,
-    telegramId: users[0].telegram_id,
     user: users[0],
     session: session
   };
@@ -105,9 +104,9 @@ serve(async (req) => {
     }
 
     // 验证用户 session
-    const { userId, telegramId } = await validateSession(session_token);
+    const { userId } = await validateSession(session_token);
     
-    console.log('[GetMyOrders] User validated:', { userId, telegramId });
+    console.log('[GetMyOrders] User validated:', { userId });
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -124,9 +123,9 @@ serve(async (req) => {
 
     // 1. 获取拼团订单
     if (!order_type || order_type === 'all' || order_type === 'group_buy') {
-      console.log('[GetMyOrders] Fetching group buy orders for telegramId:', telegramId, 'and userId:', userId);
+      console.log('[GetMyOrders] Fetching group buy orders for userId:', userId);
       
-      // 同时使用 telegramId 和 userId 查询，因为 group_buy_orders 中的 user_id 可能是两者之一
+      // 【迁移修复】统一使用 UUID 查询
       const { data: groupBuyOrders, error: groupBuyError } = await supabase
         .from('group_buy_orders')
         .select(`
@@ -141,7 +140,7 @@ serve(async (req) => {
           refund_lucky_coins,
           created_at
         `)
-        .or(`user_id.eq.${telegramId},user_id.eq.${userId}`)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (groupBuyError) {
@@ -165,14 +164,14 @@ serve(async (req) => {
           .select('id, title, image_url, original_price, price_per_person')
           .in('id', productIds);
         
-        // 批量查询中奖结果（同时使用 telegramId 和 userId 匹配 winner_id）
+        // 【迁移修复】统一使用 UUID 匹配 winner_id
         const { data: groupBuyResults } = await supabase
           .from('group_buy_results')
           .select(`
             id, session_id, winner_id, pickup_code, pickup_status, 
             pickup_point_id, expires_at, claimed_at, picked_up_at
           `)
-          .or(`winner_id.eq.${telegramId},winner_id.eq.${userId}`);
+          .eq('winner_id', userId);
         
         // 如果有中奖结果，批量查询自提点
         let pickupPoints: any[] = [];

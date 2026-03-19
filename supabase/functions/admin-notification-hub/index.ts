@@ -134,8 +134,9 @@ serve(async (req) => {
             )
             break
 
-          case 'telegram':
-            dispatchResult = await dispatchToTelegram(
+          case 'whatsapp':
+          case 'external':
+            dispatchResult = await dispatchToExternalChannel(
               supabaseUrl,
               supabaseServiceKey,
               channel,
@@ -267,12 +268,12 @@ async function formatMessage(
       if (eventData.user_id) {
         const { data: user } = await supabase
           .from('users')
-          .select('username, telegram_username, phone')
+          .select('username, first_name, phone_number')
           .eq('id', eventData.user_id)
           .single()
         
         if (user) {
-          userName = user.username || user.telegram_username || user.phone || eventData.user_id
+          userName = user.username || user.first_name || user.phone_number || eventData.user_id
         }
       }
 
@@ -281,7 +282,7 @@ async function formatMessage(
       message += `💳 支付方式: ${eventData.payment_method || '未知'}\n`
       message += `📋 订单号: ${eventData.order_number || '无'}\n`
       message += `⏰ 时间: ${timestamp}\n`
-      message += `\n👉 请及时登录后台审核: https://tezbarakat.com/admin`
+      message += `\n👉 请及时登录后台审核`
       break
     }
 
@@ -291,12 +292,12 @@ async function formatMessage(
       if (eventData.user_id) {
         const { data: user } = await supabase
           .from('users')
-          .select('username, telegram_username, phone')
+          .select('username, first_name, phone_number')
           .eq('id', eventData.user_id)
           .single()
         
         if (user) {
-          userName = user.username || user.telegram_username || user.phone || eventData.user_id
+          userName = user.username || user.first_name || user.phone_number || eventData.user_id
         }
       }
 
@@ -305,7 +306,7 @@ async function formatMessage(
       message += `🏦 提现方式: ${eventData.withdrawal_method || '未知'}\n`
       message += `📋 订单号: ${eventData.order_number || '无'}\n`
       message += `⏰ 时间: ${timestamp}\n`
-      message += `\n👉 请及时登录后台审核: https://tezbarakat.com/admin`
+      message += `\n👉 请及时登录后台审核`
       break
     }
 
@@ -318,12 +319,12 @@ async function formatMessage(
       if (eventData.user_id) {
         const { data: user } = await supabase
           .from('users')
-          .select('username, telegram_username')
+          .select('username, first_name')
           .eq('id', eventData.user_id)
           .single()
         
         if (user) {
-          userName = user.username || user.telegram_username || eventData.user_id
+          userName = user.username || user.first_name || eventData.user_id
         }
       }
 
@@ -362,12 +363,12 @@ async function formatMessage(
       if (eventData.user_id) {
         const { data: user } = await supabase
           .from('users')
-          .select('username, telegram_username')
+          .select('username, first_name')
           .eq('id', eventData.user_id)
           .single()
         
         if (user) {
-          userName = user.username || user.telegram_username || eventData.user_id
+          userName = user.username || user.first_name || eventData.user_id
         }
       }
 
@@ -432,43 +433,16 @@ async function dispatchToFeishu(
 }
 
 /**
- * 发送到 Telegram
+ * 发送到外部消息渠道（预留接口，后续对接 WhatsApp 等）
  */
-async function dispatchToTelegram(
+async function dispatchToExternalChannel(
   supabaseUrl: string,
   supabaseServiceKey: string,
   channel: any,
   message: string
 ): Promise<{ success: boolean; error?: string; response?: any }> {
-  // 直接调用 Telegram API
-  const botToken = channel.bot_token || Deno.env.get('TELEGRAM_BOT_TOKEN')
-  const chatId = channel.chat_id
-
-  if (!botToken || !chatId) {
-    return { success: false, error: 'Missing Telegram bot_token or chat_id' }
-  }
-
-  const telegramApiUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
-
-  const response = await fetch(telegramApiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: message,
-      parse_mode: 'HTML',
-    }),
-  })
-
-  const result = await response.json()
-
-  if (!response.ok || !result.ok) {
-    return { 
-      success: false, 
-      error: result.description || 'Telegram API error',
-      response: result 
-    }
-  }
-
-  return { success: true, response: result }
+  // 预留接口：后续对接 WhatsApp Business API 或其他消息渠道
+  console.log(`[admin-notification-hub] 外部消息渠道待对接: ${channel.name}`)
+  console.log(`[admin-notification-hub] 消息内容: ${message}`)
+  return { success: true, response: { message: 'External channel pending integration' } }
 }

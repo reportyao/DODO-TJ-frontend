@@ -484,7 +484,7 @@ async function handleExchange(supabaseUrl: string, serviceRoleKey: string, userI
     };
 }
 
-// 创建 Bot 通知的辅助函数
+// 创建通知的辅助函数
 async function createBotNotification(
     supabaseUrl: string, 
     serviceRoleKey: string, 
@@ -493,8 +493,8 @@ async function createBotNotification(
     data: any
 ): Promise<void> {
     try {
-        // 获取用户的 Bot 设置
-        const botSettingsResponse = await fetch(`${supabaseUrl}/rest/v1/bot_user_settings?user_id=eq.${userId}&select=telegram_chat_id`, {
+        // 获取用户的手机号
+        const userResponse = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${userId}&select=phone_number`, {
             headers: {
                 'Authorization': `Bearer ${serviceRoleKey}`,
                 'apikey': serviceRoleKey,
@@ -502,20 +502,23 @@ async function createBotNotification(
             }
         });
 
-        const botSettings = await botSettingsResponse.json();
-        if (botSettings.length > 0) {
-            const chatId = botSettings[0].telegram_chat_id;
-
+        const users = await userResponse.json();
+        if (users.length > 0 && users[0].phone_number) {
             // 创建通知
             const notificationData = {
                 user_id: userId,
-                telegram_chat_id: chatId,
+                phone_number: users[0].phone_number,
                 notification_type: notificationType,
                 title: getNotificationTitle(notificationType),
                 message: getNotificationMessage(notificationType),
                 data: data,
-                priority: 2, // 中等优先级
-                created_at: new Date().toISOString()
+                priority: 2,
+                status: 'pending',
+                scheduled_at: new Date().toISOString(),
+                retry_count: 0,
+                max_retries: 3,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
             };
 
             await fetch(`${supabaseUrl}/rest/v1/notification_queue`, {
@@ -530,7 +533,7 @@ async function createBotNotification(
         }
     } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
-        console.error('Error creating bot notification:', error);
+        console.error('Error creating notification:', error);
         // 不抛出错误，避免影响主业务流程
     }
 }

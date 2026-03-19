@@ -31,7 +31,6 @@ interface AddOrdersRequest {
 }
 
 // 内联通知功能（用于运输中批次的发货通知）
-const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 
 const notificationTemplates = {
   zh: {
@@ -60,17 +59,12 @@ async function sendBatchShippedNotification(
     // 获取用户信息
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('telegram_id, preferred_language, first_name')
+      .select('phone_number, preferred_language, first_name')
       .eq('id', userId)
       .single()
 
-    if (userError || !userData || !userData.telegram_id) {
+    if (userError || !userData || !userData.phone_number) {
       console.error(`Failed to get user info for ${userId}:`, userError)
-      return false
-    }
-
-    if (!BOT_TOKEN) {
-      console.warn('TELEGRAM_BOT_TOKEN is not set. Skipping notification.')
       return false
     }
 
@@ -93,25 +87,27 @@ async function sendBatchShippedNotification(
 
     const message = notificationTemplates[lang].batch_shipped(batchNo, formattedDate)
 
-    // 发送Telegram消息
-    const telegramApiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`
-    const response = await fetch(telegramApiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: userData.telegram_id,
-        text: message,
-        parse_mode: 'HTML',
-      }),
+    // 通过 notification_queue 发送通知
+    await supabase.from('notification_queue').insert({
+      user_id: userId,
+      phone_number: userData.phone_number,
+      notification_type: 'batch_shipped',
+      title: '订单已发货',
+      message: message,
+      data: {
+        batch_no: batchNo,
+        estimated_arrival_date: estimatedArrivalDate,
+      },
+      priority: 2,
+      status: 'pending',
+      scheduled_at: new Date().toISOString(),
+      retry_count: 0,
+      max_retries: 3,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.error(`Failed to send Telegram message:`, response.status, errorData)
-      return false
-    }
-
-    console.log(`Notification sent to user ${userId}`)
+    console.log(`Notification queued for user ${userId}`)
     return true
   } catch (error: unknown) {
     console.error('Error sending notification:', error)
@@ -212,7 +208,6 @@ serve(async (req) => {
         let productImage = ''
         let productSku = ''
         let userId = ''
-        let userTelegramId = ''
         let userName = ''
 
         if (order.order_type === 'FULL_PURCHASE') {
@@ -221,7 +216,7 @@ serve(async (req) => {
             .select(`
               id, user_id, metadata, batch_id,
               lotteries:lottery_id (title, title_i18n, image_url, inventory_product_id),
-              users:user_id (first_name, telegram_username, telegram_id)
+              users:user_id (first_name, phone_number)
             `)
             .eq('id', order.order_id)
             .single()
@@ -244,8 +239,7 @@ serve(async (req) => {
           productImage = lottery?.image_url || data.metadata?.product_image
           productSku = lottery?.inventory_product_id
           userId = data.user_id
-          userName = user?.first_name || user?.telegram_username
-          userTelegramId = user?.telegram_id
+          userName = user?.first_name || user?.phone_number
 
         } else if (order.order_type === 'LOTTERY_PRIZE') {
           const { data, error } = await supabase
@@ -253,7 +247,7 @@ serve(async (req) => {
             .select(`
               id, user_id, prize_name, batch_id,
               lotteries:lottery_id (title, title_i18n, image_url, inventory_product_id),
-              users:user_id (first_name, telegram_username, telegram_id)
+              users:user_id (first_name, phone_number)
             `)
             .eq('id', order.order_id)
             .single()
@@ -276,8 +270,7 @@ serve(async (req) => {
           productImage = lottery?.image_url
           productSku = lottery?.inventory_product_id
           userId = data.user_id
-          userName = user?.first_name || user?.telegram_username
-          userTelegramId = user?.telegram_id
+          userName = user?.first_name || user?.phone_number
 
         } else if (order.order_type === 'GROUP_BUY') {
           // 先查询拼团结果
@@ -305,7 +298,7 @@ serve(async (req) => {
           if (data.winner_id) {
             const { data: userData } = await supabase
               .from('users')
-              .select('first_name, telegram_username, telegram_id')
+              .select('first_name, phone_number')
               .eq('id', data.winner_id)
               .single()
             user = userData
@@ -323,8 +316,7 @@ serve(async (req) => {
           productImage = product?.image_urls?.[0]
           productSku = data.product_id
           userId = data.winner_id
-          userName = user?.first_name || user?.telegram_username
-          userTelegramId = user?.telegram_id
+          userName = user?.first_name || user?.phone_number
         }
 
         // 创建批次订单关联记录
@@ -341,7 +333,6 @@ serve(async (req) => {
             product_image: productImage,
             quantity: 1,
             user_id: userId,
-            user_telegram_id: userTelegramId ? parseInt(userTelegramId) : null,
             user_name: userName,
             arrival_status: isArrivedBatch ? 'NORMAL' : 'PENDING',
           })

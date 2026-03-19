@@ -180,14 +180,14 @@ serve(async (req) => {
         related_type: 'SHOWOFF',
       })
 
-      // 发送Bot通知
+      // 发送通知到队列
       const { data: user } = await supabaseClient
         .from('users')
-        .select('telegram_id')
+        .select('phone_number')
         .eq('id', showoff.user_id)
         .single()
 
-      if (user?.telegram_id) {
+      if (user?.phone_number) {
         await supabaseClient
           .from('notification_queue')
           .insert({
@@ -196,7 +196,7 @@ serve(async (req) => {
             payload: {
               reward_amount: rewardCoins
             },
-            telegram_chat_id: parseInt(user.telegram_id),
+            phone_number: user.phone_number,
             notification_type: 'showoff_approved',
             title: '晒单审核通过',
             message: `您的晒单已审核通过`,
@@ -233,14 +233,14 @@ serve(async (req) => {
         related_type: 'SHOWOFF',
       })
 
-      // 发送Bot通知
+      // 发送通知到队列
       const { data: user } = await supabaseClient
         .from('users')
-        .select('telegram_id')
+        .select('phone_number')
         .eq('id', showoff.user_id)
         .single()
 
-      if (user?.telegram_id) {
+      if (user?.phone_number) {
         await supabaseClient
           .from('notification_queue')
           .insert({
@@ -249,7 +249,7 @@ serve(async (req) => {
             payload: {
               reward_amount: 0
             },
-            telegram_chat_id: parseInt(user.telegram_id),
+            phone_number: user.phone_number,
             notification_type: 'showoff_approved',
             title: '晒单审核通过',
             message: `您的晒单已审核通过`,
@@ -286,19 +286,19 @@ serve(async (req) => {
         related_type: 'SHOWOFF',
       })
 
-      // 发送Bot通知
+      // 发送通知到队列
       const { data: user } = await supabaseClient
         .from('users')
-        .select('telegram_id')
+        .select('phone_number')
         .eq('id', showoff.user_id)
         .single()
 
-      if (user?.telegram_id) {
+      if (user?.phone_number) {
         await supabaseClient
           .from('notification_queue')
           .insert({
             user_id: showoff.user_id,
-            telegram_chat_id: parseInt(user.telegram_id),
+            phone_number: user.phone_number,
             notification_type: 'showoff_rejected',
             title: '晒单审核未通过',
             message: `您的晒单审核未通过`,

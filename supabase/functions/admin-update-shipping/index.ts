@@ -50,7 +50,7 @@ serve(async (req) => {
         const { data: userData } = await supabaseClient
           .from('users')
           .select('role')
-          .eq('telegram_id', user.id)
+          .eq('id', user.id)
           .single()
         
         if (userData?.role === 'admin') {
@@ -129,14 +129,14 @@ serve(async (req) => {
 
     // 发送Bot通知
     if (shipping.user_id) {
-      // 获取用户telegram_id
+      // 获取用户手机号
       const { data: user } = await supabaseClient
         .from('users')
-        .select('telegram_id')
+        .select('phone_number')
         .eq('id', shipping.user_id)
         .single()
 
-      if (user?.telegram_id) {
+      if (user?.phone_number) {
         let notificationType = ''
         const notificationData: any = {
           order_id: shipping.id,
@@ -167,7 +167,7 @@ serve(async (req) => {
               user_id: shipping.user_id,
               type: notificationType,
               payload: notificationData,
-              telegram_chat_id: parseInt(user.telegram_id),
+              phone_number: user.phone_number,
               notification_type: notificationType,
               title: '订单物流更新',
               message: `您的订单状态已更新`,

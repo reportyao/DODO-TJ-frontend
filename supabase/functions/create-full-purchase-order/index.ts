@@ -75,7 +75,7 @@ async function validateSession(sessionToken: string) {
 
   return {
     userId: session.user_id,
-    telegramId: users[0].telegram_id,
+    phoneNumber: users[0].phone_number,
     user: users[0],
     session: session
   };

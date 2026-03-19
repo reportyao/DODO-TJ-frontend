@@ -129,7 +129,6 @@ async function validateSession(sessionToken: string) {
 
   return {
     userId: session.user_id,
-    telegramId: users[0].telegram_id,
     user: users[0],
     session: session
   };
@@ -205,9 +204,9 @@ serve(async (req) => {
     }
 
     // 验证用户 session
-    const { userId, telegramId } = await validateSession(session_token);
+    const { userId } = await validateSession(session_token);
     
-    console.log('[ClaimPrize] User validated:', { userId, telegramId });
+    console.log('[ClaimPrize] User validated:', { userId });
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -241,47 +240,26 @@ serve(async (req) => {
     
     if (prize_id) {
       // 如果有 prize_id，直接查询
-      // 【修复】拼团类型同时兼容UUID和telegram_id，防止历史数据不一致
-      if (order_type === 'group_buy') {
-        const result = await supabase
-          .from(tableName)
-          .select('*')
-          .eq('id', prize_id)
-          .or(`${userIdField}.eq.${userId},${userIdField}.eq.${telegramId}`)
-          .single();
-        prizeData = result.data;
-        prizeError = result.error;
-      } else {
-        const result = await supabase
-          .from(tableName)
-          .select('*')
-          .eq('id', prize_id)
-          .eq(userIdField, userIdValue)
-          .single();
-        prizeData = result.data;
-        prizeError = result.error;
-      }
+      // 【迁移修复】统一使用 UUID 匹配，不再兼容 telegram_id
+      const result = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('id', prize_id)
+        .eq(userIdField, userIdValue)
+        .single();
+      prizeData = result.data;
+      prizeError = result.error;
     } else if (lottery_id) {
       // 如果只有 lottery_id，通过 lottery_id 查找
-      if (order_type === 'group_buy') {
-        const result = await supabase
-          .from(tableName)
-          .select('*')
-          .eq('lottery_id', lottery_id)
-          .or(`${userIdField}.eq.${userId},${userIdField}.eq.${telegramId}`)
-          .maybeSingle();
-        prizeData = result.data;
-        prizeError = result.error;
-      } else {
-        const result = await supabase
-          .from(tableName)
-          .select('*')
-          .eq('lottery_id', lottery_id)
-          .eq(userIdField, userIdValue)
-          .maybeSingle();
-        prizeData = result.data;
-        prizeError = result.error;
-      }
+      // 【迁移修复】统一使用 UUID 匹配
+      const result = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('lottery_id', lottery_id)
+        .eq(userIdField, userIdValue)
+        .maybeSingle();
+      prizeData = result.data;
+      prizeError = result.error;
       
       // 如果没有找到，需要创建一个新的 prize 记录
       if (!prizeData && !prizeError) {
@@ -298,7 +276,7 @@ serve(async (req) => {
           throw new Error('抽奖不存在');
         }
         
-        if (lotteryData.winning_user_id !== telegramId) {
+        if (lotteryData.winning_user_id !== userId) {
           throw new Error('您不是该抽奖的中奖者');
         }
         

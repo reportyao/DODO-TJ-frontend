@@ -2,24 +2,21 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 /**
- * 内联的 Telegram 消息发送功能
- * 避免外部依赖导致的部署问题
+ * 通知发送功能：通过 notification_queue 发送佣金到账通知
  */
-const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
-
 const translations: Record<string, Record<string, (amount: number, level: number) => string>> = {
   zh: {
-    commission_earned: (amount: number, level: number) => `🎉 恭喜！您获得了 ${amount} 积分的佣金。来自您的 L${level} 朋友的购买。`,
+    commission_earned: (amount: number, level: number) => `恭喜！您获得了 ${amount} 积分的佣金。来自您的 L${level} 朋友的购买。`,
   },
   ru: {
-    commission_earned: (amount: number, level: number) => `🎉 Поздравляем! Вы получили комиссию ${amount} баллов от покупки вашего друга уровня L${level}.`,
+    commission_earned: (amount: number, level: number) => `Поздравляем! Вы получили комиссию ${amount} баллов от покупки вашего друга уровня L${level}.`,
   },
   tg: {
-    commission_earned: (amount: number, level: number) => `🎉 Табрик! Шумо аз хариди дӯсти сатҳи L${level} комиссияи ${amount} балл гирифтед.`,
+    commission_earned: (amount: number, level: number) => `Табрик! Шумо аз хариди дӯсти сатҳи L${level} комиссияи ${amount} балл гирифтед.`,
   },
 }
 
-async function sendTelegramMessage(userId: string, type: string, data: { amount?: number, level?: number }) {
+async function sendCommissionNotification(userId: string, type: string, data: { amount?: number, level?: number }) {
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -28,12 +25,12 @@ async function sendTelegramMessage(userId: string, type: string, data: { amount?
     
     const { data: userData, error } = await supabase
       .from('users')
-      .select('telegram_id, preferred_language')
+      .select('phone_number, preferred_language')
       .eq('id', userId)
       .single()
     
-    if (error || !userData?.telegram_id) {
-      console.log('User not found or no telegram_id:', userId)
+    if (error || !userData?.phone_number) {
+      console.log('User not found or no phone_number:', userId)
       return
     }
     
@@ -41,24 +38,33 @@ async function sendTelegramMessage(userId: string, type: string, data: { amount?
     const langTranslations = translations[lang] || translations['ru']
     const messageFunc = langTranslations[type]
     
-    if (!messageFunc || !BOT_TOKEN) {
-      console.log('No message template or bot token')
+    if (!messageFunc) {
+      console.log('No message template for type:', type)
       return
     }
     
     const message = messageFunc(data.amount || 0, data.level || 1)
     
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: userData.telegram_id,
-        text: message,
-        parse_mode: 'HTML'
-      })
+    // 通过 notification_queue 发送通知
+    await supabase.from('notification_queue').insert({
+      user_id: userId,
+      type: 'commission_earned',
+      phone_number: userData.phone_number,
+      notification_type: 'commission_earned',
+      title: '佣金到账',
+      message: message,
+      payload: { amount: data.amount, level: data.level },
+      data: { amount: data.amount, level: data.level },
+      priority: 1,
+      status: 'pending',
+      scheduled_at: new Date().toISOString(),
+      retry_count: 0,
+      max_retries: 3,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     })
   } catch (err: unknown) {
-    console.error('Failed to send Telegram message:', err)
+    console.error('Failed to send commission notification:', err)
   }
 }
 
@@ -231,7 +237,7 @@ serve(async (req) => {
       if (walletError) {
         console.error('Failed to find wallet:', walletError)
         // 如果找不到积分钱包，尝试创建一个
-        // 【重要】currency 必须为 'POINTS'，与 auth-telegram 统一
+        // 【重要】currency 必须为 'POINTS'，与注册流程统一
         const { data: newWallet, error: createError } = await supabaseClient
           .from('wallets')
           .insert({
@@ -331,14 +337,14 @@ serve(async (req) => {
         }
       }
 
-      // 4. 推送 Telegram 消息
+      // 4. 发送佣金到账通知
       try {
-        await sendTelegramMessage(currentUserId, 'commission_earned', {
+        await sendCommissionNotification(currentUserId, 'commission_earned', {
           amount: commissionAmount,
           level: level
         })
       } catch (msgError: unknown) {
-        console.error('Failed to send telegram message:', msgError)
+        console.error('Failed to send commission notification:', msgError)
         // 不阻断流程
       }
 

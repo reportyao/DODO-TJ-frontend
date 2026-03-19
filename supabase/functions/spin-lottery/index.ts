@@ -260,11 +260,11 @@ Deno.serve(async (req) => {
       }
     );
 
-    // 7. 发送Bot通知（只在中奖时发送）
+    // 7. 发送通知（只在中奖时发送）
     if (isWinner) {
       try {
         const userResponse = await fetch(
-          `${supabaseUrl}/rest/v1/users?id=eq.${user_id}&select=telegram_id`,
+          `${supabaseUrl}/rest/v1/users?id=eq.${user_id}&select=phone_number`,
           {
             headers: {
               'Authorization': `Bearer ${serviceRoleKey}`,
@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
         );
         const userData = await userResponse.json();
         
-        if (userData.length > 0 && userData[0].telegram_id) {
+        if (userData.length > 0 && userData[0].phone_number) {
           await fetch(
             `${supabaseUrl}/rest/v1/notification_queue`,
             {
@@ -291,7 +291,7 @@ Deno.serve(async (req) => {
                   prize_name: selectedReward.reward_name,
                   prize_amount: selectedReward.reward_amount
                 },
-                telegram_chat_id: parseInt(userData[0].telegram_id),
+                phone_number: userData[0].phone_number,
                 notification_type: 'spin_win',
                 title: '转盘中奖',
                 message: `恭喜您在转盘抽奖中获得奖励`,

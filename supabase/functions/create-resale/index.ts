@@ -80,31 +80,8 @@ serve(async (req) => {
       const { userId: validatedUserId } = await validateSession(session_token)
       userId = validatedUserId
     } else {
-      // 兼容旧的认证方式
-      const authHeader = req.headers.get('Authorization')
-      if (!authHeader) {
-        throw new Error('未授权：缺少认证信息')
-      }
-
-      const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
-        authHeader.replace('Bearer ', '')
-      )
-      if (authError || !user) {
-        throw new Error('未授权')
-      }
-      
-      // 通过 telegram_id 找到用户
-      const { data: userData, error: userError } = await supabaseClient
-        .from('users')
-        .select('id')
-        .eq('telegram_id', user.id)
-        .single()
-      
-      if (userError || !userData) {
-        throw new Error('用户不存在')
-      }
-      
-      userId = userData.id
+      // session_token 是必须的认证方式
+      throw new Error('未授权：缺少 session_token')
     }
 
     console.log('[CreateResale] Validated user:', userId)

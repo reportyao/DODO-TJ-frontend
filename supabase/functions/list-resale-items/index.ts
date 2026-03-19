@@ -52,7 +52,7 @@ serve(async (req) => {
         lotteries (*),
         seller:users!resales_seller_id_fkey (
           id,
-          telegram_username,
+          phone_number,
           first_name,
           last_name,
           avatar_url

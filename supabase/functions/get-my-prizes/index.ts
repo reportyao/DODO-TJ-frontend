@@ -74,7 +74,6 @@ async function validateSession(sessionToken: string) {
 
   return {
     userId: session.user_id,
-    telegramId: users[0].telegram_id,
     user: users[0],
     session: session
   };
@@ -116,16 +115,15 @@ serve(async (req) => {
     }
 
     // 验证用户 session
-    const { userId, telegramId } = await validateSession(session_token);
+    const { userId } = await validateSession(session_token);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-    console.log('[GetMyPrizes] Fetching prizes for userId:', userId, 'and telegramId:', telegramId);
+    console.log('[GetMyPrizes] Fetching prizes for userId:', userId);
 
-    // 获取用户的所有中奖记录（同时查询 userId 和 telegramId）
-    // 先用 userId (UUID) 查询
-    const prizesResponse1 = await fetch(
+    // 【迁移修复】统一使用 UUID 查询，不再兼容 telegram_id
+    const prizesResponse = await fetch(
       `${supabaseUrl}/rest/v1/prizes?user_id=eq.${userId}&select=*&order=won_at.desc`,
       {
         headers: {
@@ -136,43 +134,15 @@ serve(async (req) => {
       }
     );
 
-    // 再用 telegramId 查询（兼容旧数据）
-    const prizesResponse2 = await fetch(
-      `${supabaseUrl}/rest/v1/prizes?user_id=eq.${telegramId}&select=*&order=won_at.desc`,
-      {
-        headers: {
-          'Authorization': `Bearer ${serviceRoleKey}`,
-          'apikey': serviceRoleKey,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    let prizes: any[] = [];
 
-    let prizesByUserId = [];
-    let prizesByTelegramId = [];
-
-    if (prizesResponse1.ok) {
-      prizesByUserId = await prizesResponse1.json();
+    if (prizesResponse.ok) {
+      prizes = await prizesResponse.json();
     } else {
-      console.error('[GetMyPrizes] Failed to fetch prizes by userId:', await prizesResponse1.text());
+      console.error('[GetMyPrizes] Failed to fetch prizes:', await prizesResponse.text());
     }
 
-    if (prizesResponse2.ok) {
-      prizesByTelegramId = await prizesResponse2.json();
-    } else {
-      console.error('[GetMyPrizes] Failed to fetch prizes by telegramId:', await prizesResponse2.text());
-    }
-
-    // 合并两个查询结果，去重
-    const allPrizes = [...prizesByUserId, ...prizesByTelegramId];
-    const prizeIds = new Set();
-    const prizes = allPrizes.filter((prize: any) => {
-      if (prizeIds.has(prize.id)) return false;
-      prizeIds.add(prize.id);
-      return true;
-    });
-
-    console.log('[GetMyPrizes] Found prizes:', prizes.length, '(byUserId:', prizesByUserId.length, ', byTelegramId:', prizesByTelegramId.length, ')');
+    console.log('[GetMyPrizes] Found prizes:', prizes.length);
 
     // 如果有奖品，获取关联的 lottery 信息
     if (prizes.length > 0) {

@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
       // 查询用户信息
       supabase
         .from('users')
-        .select('id, telegram_id')
+        .select('id')
         .eq('id', user_id)
         .single(),
       // 查询 TJS 钱包
@@ -225,12 +225,12 @@ Deno.serve(async (req) => {
       }
 
       // 检查用户是否已加入此会话
-      // 【修复】同时检查UUID和telegram_id，兼容历史数据和新数据
+      // 【迁移修复】统一使用 UUID 检查
       const { data: existingOrders } = await supabase
         .from('group_buy_orders')
         .select('id')
         .eq('session_id', existingSession.id)
-        .or(`user_id.eq.${user.id},user_id.eq.${user.telegram_id}`);
+        .eq('user_id', user.id);
 
       if (existingOrders && existingOrders.length > 0) {
         return createResponse({ success: false, error: 'You have already joined this session' }, 400);

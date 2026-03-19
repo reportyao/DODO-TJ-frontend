@@ -38,7 +38,7 @@ serve(async (req) => {
     const { data: userData, error: userError } = await supabaseClient
       .from('users')
       .select('role')
-      .eq('telegram_id', user.id)
+      .eq('id', user.id)
       .single()
 
     if (userError || !userData || userData.role !== 'admin') {
@@ -58,8 +58,8 @@ serve(async (req) => {
       .select(`
         *,
         user:users!withdrawal_requests_user_id_fkey(
-          telegram_id,
-          telegram_username,
+          id,
+          phone_number,
           first_name,
           last_name
         )

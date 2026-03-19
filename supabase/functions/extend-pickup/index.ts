@@ -72,7 +72,6 @@ async function validateSession(sessionToken: string) {
 
   return {
     userId: session.user_id,
-    telegramId: users[0].telegram_id,
     user: users[0],
     session: session
   };
@@ -108,9 +107,9 @@ serve(async (req) => {
     }
 
     // 验证用户 session
-    const { userId, telegramId } = await validateSession(session_token);
+    const { userId } = await validateSession(session_token);
     
-    console.log('[ExtendPickup] User validated:', { userId, telegramId });
+    console.log('[ExtendPickup] User validated:', { userId });
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -131,7 +130,7 @@ serve(async (req) => {
     if (order_type === 'group_buy') {
       tableName = 'group_buy_results';
       userIdField = 'winner_id';
-      userIdValue = telegramId; // 拼团使用telegram_id
+      userIdValue = userId; // 【迁移修复】统一使用 UUID
     } else {
       tableName = 'prizes';
       userIdField = 'user_id';

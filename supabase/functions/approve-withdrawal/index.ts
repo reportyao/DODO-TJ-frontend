@@ -246,21 +246,36 @@ serve(async (req) => {
         related_type: 'WITHDRAWAL_REQUEST',
       })
 
-      // Send Telegram notification
+      // 发送通知到队列
       try {
-        await supabaseClient.functions.invoke('send-telegram-notification', {
-          body: {
+        const { data: notifyUser } = await supabaseClient
+          .from('users')
+          .select('phone_number')
+          .eq('id', withdrawalRequest.user_id)
+          .single()
+
+        if (notifyUser?.phone_number) {
+          await supabaseClient.from('notification_queue').insert({
             user_id: withdrawalRequest.user_id,
-            type: 'wallet_withdraw_pending',
+            phone_number: notifyUser.phone_number,
+            notification_type: 'wallet_withdraw_pending',
+            title: '提现审核通过',
+            message: `您的提现申请已审核通过，金额 ${withdrawalRequest.amount} ${withdrawalRequest.currency}`,
             data: {
               transaction_amount: withdrawalRequest.amount,
               current_balance: newBalance,
             },
             priority: 2,
-          },
-        });
+            status: 'pending',
+            scheduled_at: new Date().toISOString(),
+            retry_count: 0,
+            max_retries: 3,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+        }
       } catch (error) {
-        console.error('Failed to send Telegram notification:', error);
+        console.error('Failed to send notification:', error);
       }
     } else if (action === 'REJECTED') {
       // 审核拒绝 - 解冻余额，返还给用户
@@ -341,22 +356,37 @@ serve(async (req) => {
         related_type: 'WITHDRAWAL_REQUEST',
       })
 
-      // Send Telegram notification
+      // 发送通知到队列
       try {
-        await supabaseClient.functions.invoke('send-telegram-notification', {
-          body: {
+        const { data: notifyUser } = await supabaseClient
+          .from('users')
+          .select('phone_number')
+          .eq('id', withdrawalRequest.user_id)
+          .single()
+
+        if (notifyUser?.phone_number) {
+          await supabaseClient.from('notification_queue').insert({
             user_id: withdrawalRequest.user_id,
-            type: 'wallet_withdraw_failed',
+            phone_number: notifyUser.phone_number,
+            notification_type: 'wallet_withdraw_failed',
+            title: '提现申请被拒绝',
+            message: `您的提现申请已被拒绝${adminNote ? `，原因: ${adminNote}` : ''}，金额已解冻`,
             data: {
               transaction_amount: withdrawalRequest.amount,
               failure_reason: adminNote || '审核未通过',
               current_balance: currentBalance,
             },
             priority: 2,
-          },
-        });
+            status: 'pending',
+            scheduled_at: new Date().toISOString(),
+            retry_count: 0,
+            max_retries: 3,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+        }
       } catch (error) {
-        console.error('Failed to send Telegram notification:', error);
+        console.error('Failed to send notification:', error);
       }
     } else if (action === 'COMPLETED') {
       /**
@@ -410,21 +440,36 @@ serve(async (req) => {
         related_type: 'WITHDRAWAL_REQUEST',
       })
 
-      // Send Telegram notification
+      // 发送通知到队列
       try {
-        await supabaseClient.functions.invoke('send-telegram-notification', {
-          body: {
+        const { data: notifyUser } = await supabaseClient
+          .from('users')
+          .select('phone_number')
+          .eq('id', withdrawalRequest.user_id)
+          .single()
+
+        if (notifyUser?.phone_number) {
+          await supabaseClient.from('notification_queue').insert({
             user_id: withdrawalRequest.user_id,
-            type: 'wallet_withdraw_completed',
+            phone_number: notifyUser.phone_number,
+            notification_type: 'wallet_withdraw_completed',
+            title: '提现已完成',
+            message: `您的提现已完成，金额 ${withdrawalRequest.amount} ${withdrawalRequest.currency} 已转账到账`,
             data: {
               transaction_amount: withdrawalRequest.amount,
               estimated_arrival: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Dushanbe' }),
             },
             priority: 2,
-          },
-        });
+            status: 'pending',
+            scheduled_at: new Date().toISOString(),
+            retry_count: 0,
+            max_retries: 3,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+        }
       } catch (error) {
-        console.error('Failed to send Telegram notification:', error);
+        console.error('Failed to send notification:', error);
       }
     }
 
