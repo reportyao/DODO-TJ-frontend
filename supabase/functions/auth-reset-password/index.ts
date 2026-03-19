@@ -17,9 +17,17 @@ async function hashPassword(password: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// 标准化手机号
+// 标准化手机号：与 auth-register/auth-login 保持一致
 function normalizePhone(phone: string): string {
-  return phone.replace(/[\s\-\(\)]/g, '').replace(/^\+/, '');
+  let cleaned = phone.replace(/[\s\-\(\)]/g, '');
+  if (!cleaned.startsWith('+')) {
+    if (/^\d{9}$/.test(cleaned)) {
+      cleaned = '+992' + cleaned;
+    } else if (/^992\d{9}$/.test(cleaned)) {
+      cleaned = '+' + cleaned;
+    }
+  }
+  return cleaned;
 }
 
 Deno.serve(async (req) => {
@@ -135,13 +143,15 @@ Deno.serve(async (req) => {
       }
 
       const normalizedPhone = normalizePhone(phone_number);
+      const phoneWithoutPlus = normalizedPhone.replace(/^\+/, '');
 
-      // 查找用户（尝试多种格式匹配）
+      // 查找用户（尝试多种格式匹配，与 auth-login 保持一致）
       const { data: user } = await supabase
         .from('users')
         .select('id, phone_number')
-        .or(`phone_number.eq.${normalizedPhone},phone_number.eq.+${normalizedPhone}`)
-        .single();
+        .or(`phone_number.eq.${normalizedPhone},phone_number.eq.${phoneWithoutPlus},phone_number.eq.+${phoneWithoutPlus}`)
+        .limit(1)
+        .maybeSingle();
 
       if (!user) {
         // 安全起见，即使用户不存在也返回成功，防止手机号枚举
