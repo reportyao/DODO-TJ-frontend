@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
       .select('id, phone_number, password_hash, first_name, last_name, referral_code, status, is_blocked, deleted_at')
       .or(`phone_number.eq.${normalizedPhone},phone_number.eq.${phoneWithoutPlus},phone_number.eq.+${phoneWithoutPlus}`)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (userError || !user) {
       // 安全起见：不区分"用户不存在"和"密码错误"

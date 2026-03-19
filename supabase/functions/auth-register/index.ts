@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
       .select('id')
       .or(`phone_number.eq.${normalizedPhone},phone_number.eq.${phoneWithoutPlus},phone_number.eq.+${phoneWithoutPlus}`)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (existingUser) {
       return new Response(JSON.stringify({ error: { message: '该手机号已被注册' } }), {
