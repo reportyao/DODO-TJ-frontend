@@ -170,7 +170,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
           // 异步验证，不阻塞 UI
           fetch(
-            `${supabaseUrl}/rest/v1/user_sessions?session_token=eq.${storedToken}&user_id=eq.${parsedUser.id}&select=*`,
+            `${supabaseUrl}/rest/v1/user_sessions?session_token=eq.${storedToken}&user_id=eq.${parsedUser.id}&is_active=eq.true&select=*`,
             {
               headers: {
                 'apikey': supabaseKey,
