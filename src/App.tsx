@@ -1,7 +1,7 @@
 import { Suspense, useEffect } from "react"
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import { Toaster } from "react-hot-toast"
-import { BotFollowModal, useBotFollowModal } from "./components/BotFollowModal"
+
 import { Layout } from "./components/layout/Layout"
 import { RealtimeNotificationsProvider } from "./components/RealtimeNotificationsProvider"
 import { PageLoadingFallback } from "./components/PageLoadingFallback"
@@ -45,7 +45,7 @@ const MarketPage = lazyWithRetry(() => import("./pages/MarketPage"))
 const MarketCreatePage = lazyWithRetry(() => import("./pages/MarketCreatePage"))
 const MyTicketsPage = lazyWithRetry(() => import("./pages/MyTicketsPage"))
 const MyPrizesPage = lazyWithRetry(() => import("./pages/MyPrizesPage"))
-const BotPage = lazyWithRetry(() => import("./pages/BotPage"))
+
 const OrderPage = lazyWithRetry(() => import("./pages/OrderPage"))
 const PendingPickupPage = lazyWithRetry(() => import("./pages/PendingPickupPage"))
 const SubsidyPlanPage = lazyWithRetry(() => import("./pages/SubsidyPlanPage"))
@@ -66,8 +66,6 @@ const DebugPage = lazyWithRetry(() => import("./pages/DebugPage"))
 
 
 function App() {
-  const { showModal, closeModal, handleSuccess } = useBotFollowModal()
-
   // 应用成功挂载后：清除 chunk reload 标记 + 静默预加载核心页面
   useEffect(() => {
     clearChunkReloadFlag()
@@ -108,7 +106,7 @@ function App() {
               <Route path="/exchange" element={<ExchangePage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/subsidy-plan" element={<SubsidyPlanPage />} />
-              <Route path="/bot" element={<BotPage />} />
+
               <Route path="/orders" element={<OrderManagementPage />} />
               <Route path="/notifications" element={<NotificationPage />} />
               <Route path="/invite" element={<InvitePage />} />
@@ -149,13 +147,7 @@ function App() {
         <DebugFloatingButton />
       </Suspense>
       
-      {/* Bot关注引导弹窗 */}
-      {showModal && (
-        <BotFollowModal
-          onClose={closeModal}
-          onSuccess={handleSuccess}
-        />
-      )}
+
     </div>
       </Router>
     </RealtimeNotificationsProvider>
