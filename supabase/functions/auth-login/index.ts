@@ -17,6 +17,19 @@ async function hashPassword(password: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// 标准化手机号：与 auth-register 保持一致
+function normalizePhone(phone: string): string {
+  let cleaned = phone.replace(/[\s\-\(\)]/g, '');
+  if (!cleaned.startsWith('+')) {
+    if (/^\d{9}$/.test(cleaned)) {
+      cleaned = '+992' + cleaned;
+    } else if (/^992\d{9}$/.test(cleaned)) {
+      cleaned = '+' + cleaned;
+    }
+  }
+  return cleaned;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -33,30 +46,71 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 1. 查找用户
+    // ============================================================
+    // 1. 标准化手机号并查找用户（兼容多种格式）
+    // ============================================================
+    const normalizedPhone = normalizePhone(phone_number);
+    const phoneWithoutPlus = normalizedPhone.replace(/^\+/, '');
+
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('*')
-      .eq('phone_number', phone_number)
+      .select('id, phone_number, password_hash, first_name, last_name, referral_code, status, is_blocked, deleted_at')
+      .or(`phone_number.eq.${normalizedPhone},phone_number.eq.${phoneWithoutPlus},phone_number.eq.+${phoneWithoutPlus}`)
+      .limit(1)
       .single();
 
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: { message: '用户不存在' } }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // 2. 验证密码
-    const hashedPassword = await hashPassword(password);
-    if (user.password_hash !== hashedPassword) {
-      return new Response(JSON.stringify({ error: { message: '密码错误' } }), {
+      // 安全起见：不区分"用户不存在"和"密码错误"
+      return new Response(JSON.stringify({ error: { message: '手机号或密码错误' } }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // 3. 创建会话
+    // ============================================================
+    // 2. 检查用户状态（封禁/删除检查）
+    // ============================================================
+    if (user.is_blocked === true) {
+      return new Response(JSON.stringify({ error: { message: '您的账户已被封禁，请联系客服' } }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (user.deleted_at) {
+      return new Response(JSON.stringify({ error: { message: '该账户已被注销' } }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ============================================================
+    // 3. 验证密码
+    // ============================================================
+    if (!user.password_hash) {
+      // 用户可能是从 Telegram 迁移过来的，尚未设置密码
+      return new Response(JSON.stringify({
+        error: {
+          message: '该账户尚未设置密码，请使用"忘记密码"功能设置新密码',
+          code: 'PASSWORD_NOT_SET'
+        }
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const hashedPassword = await hashPassword(password);
+    if (user.password_hash !== hashedPassword) {
+      return new Response(JSON.stringify({ error: { message: '手机号或密码错误' } }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ============================================================
+    // 4. 创建会话
+    // ============================================================
     const sessionToken = crypto.randomUUID();
     const { data: session, error: sessionError } = await supabase
       .from('user_sessions')
@@ -70,17 +124,21 @@ Deno.serve(async (req) => {
       .select()
       .single();
 
-    if (sessionError) {
-      throw new Error('创建会话失败: ' + sessionError.message);
+    if (sessionError || !session) {
+      throw new Error('创建会话失败: ' + sessionError?.message);
     }
 
-    // 4. 获取钱包信息
+    // ============================================================
+    // 5. 获取钱包信息
+    // ============================================================
     const { data: wallets } = await supabase
       .from('wallets')
-      .select('*')
+      .select('id, type, currency, balance')
       .eq('user_id', user.id);
 
-    // 5. 返回结果 (保持与 auth-telegram 兼容的结构)
+    // ============================================================
+    // 6. 返回结果 (保持与 auth-telegram 兼容的结构)
+    // ============================================================
     const result = {
       success: true,
       user: {
