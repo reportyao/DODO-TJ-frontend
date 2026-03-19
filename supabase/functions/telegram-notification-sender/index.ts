@@ -128,9 +128,9 @@ const notificationTemplates = {
       `💰 Пурсозӣ гузошта шуд\n\n💵 Маблағ: +${data.transaction_amount} TJS\n🕒 Вақт: ${new Date().toLocaleString('tg-TJ')}\n\nБоқимондаи шумо навсозӣ шуд, метавонед дар фаъолият идома диҳед!`
   },
   
-  // 首充奖励到账通知
-  // [业务重构] 从“首充奖励”改为“充值赠送”，匹配新的每次充值都赠送的业务逻辑
-  // 保持 key 为 first_deposit_bonus 以兼容现有通知队列中的记录
+  // 充值赠送到账通知
+  // [业务重构] 已从"首充奖励"改为"充值赠送"，匹配每次充值都赠送的业务逻辑
+  // 保持 key 为 first_deposit_bonus 以兼容现有通知队列中的历史记录
   first_deposit_bonus: {
     zh: (data: NotificationData) => 
       `🎁 充值赠送到账\n\n💵 充值金额: ${data.deposit_amount} TJS\n🎉 赠送积分: +${data.bonus_amount} 积分（${data.bonus_percent}%）\n💰 充值到账: ${data.deposit_amount} TJS\n\n赠送积分已打入您的积分钱包，可在积分商城使用！`,
@@ -285,7 +285,7 @@ const notificationTemplates = {
   // 地推充值到账通知（发送给被充值用户）
   promoter_deposit: {
     zh: (data: NotificationData) => 
-      `💰 线下充值到账\n\n💵 充值金额: +${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 首充奖励: +${data.bonus_amount} TJS` : ''}\n👤 操作人: ${data.promoter_name || '地推人员'}\n🕒 时间: ${new Date().toLocaleString('zh-CN')}\n\n您的余额已更新，可以继续参与活动！`,
+      `💰 线下充值到账\n\n💵 充值金额: +${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 充值赠送: +${data.bonus_amount} 积分` : ''}\n👤 操作人: ${data.promoter_name || '地推人员'}\n🕒 时间: ${new Date().toLocaleString('zh-CN')}\n\n您的余额已更新，可以继续参与活动！`,
     ru: (data: NotificationData) => 
       `💰 Пополнение от промоутера\n\n💵 Сумма: +${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 Бонус: +${data.bonus_amount} TJS` : ''}\n👤 Оператор: ${data.promoter_name || 'Промоутер'}\n🕒 Время: ${new Date().toLocaleString('ru-RU')}\n\nВаш баланс обновлен, можете продолжать участие!`,
     tg: (data: NotificationData) => 

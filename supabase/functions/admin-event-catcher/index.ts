@@ -149,7 +149,7 @@ serve(async (req) => {
     const errMsg = error instanceof Error ? error.message : String(error);
     const duration = Date.now() - startTime
     console.error('[admin-event-catcher] 错误:', errMsg)
-    console.error('[admin-event-catcher] 堆栈:', error.stack)
+    console.error('[admin-event-catcher] 堆栈:', error instanceof Error ? error.stack : '')
 
     return new Response(
       JSON.stringify({

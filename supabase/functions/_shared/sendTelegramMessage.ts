@@ -10,17 +10,17 @@ const translations = {
   zh: {
     commission_earned: (amount: number, level: number) => `恭喜！您获得了 ${amount} TJS 的佣金。来自您的 L${level} 朋友的购买。`,
     purchase_success: (amount: number) => `您成功购买了价值 ${amount} TJS 的彩票份额。祝您好运！`,
-    first_deposit_bonus: (amount: number) => `🎉 您的首充奖励 ${amount} TJS 已成功激活并到账！`,
+    first_deposit_bonus: (amount: number) => `🎉 您的充值赠送 ${amount} 积分已成功到账！`,
   },
   ru: {
     commission_earned: (amount: number, level: number) => `Поздравляем! Вы получили комиссию ${amount} TJS от покупки вашего друга уровня L${level}.`,
     purchase_success: (amount: number) => `Вы успешно приобрели долю лотереи на сумму ${amount} TJS. Удачи!`,
-    first_deposit_bonus: (amount: number) => `🎉 Ваш бонус за первый депозит ${amount} TJS успешно активирован и зачислен!`,
+    first_deposit_bonus: (amount: number) => `🎉 Ваш бонус за пополнение ${amount} баллов успешно зачислен!`,
   },
   tg: {
     commission_earned: (amount: number, level: number) => `Табрик! Шумо аз хариди дӯсти сатҳи L${level} комиссияи ${amount} TJS гирифтед.`,
     purchase_success: (amount: number) => `Шумо бомуваффақият ҳиссаи лотореяро ба маблағи ${amount} TJS харидед. Барори кор!`,
-    first_deposit_bonus: (amount: number) => `🎉 Бонуси аввалин пасандози шумо ${amount} TJS бомуваффақият фаъол ва ба ҳисоб гузаронида шуд!`,
+    first_deposit_bonus: (amount: number) => `🎉 Ҷоизаи пуркунии шумо ${amount} хол бомуваффақият ба ҳисоб гузошта шуд!`,
   },
 }
 

@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * get-subsidy-pool: 获取补贴资金池数据
  * 
- * 统计已发放的总赠送积分（充值赠送 + 首充奖励等），
+ * 统计已发放的总赠送积分（充值赠送等），
  * 前端用 10,000,000 TJS 减去已发放总额，得到剩余资金池。
  * 
  * 数据来源：wallet_transactions 表中 type 为 BONUS / DEPOSIT_BONUS / FIRST_DEPOSIT_BONUS 的记录
@@ -53,7 +53,7 @@ serve(async (req: Request) => {
       // 统计 LUCKY_COIN 钱包中所有赠送类型的交易总额
       // BONUS: 充值赠送（process_deposit_with_bonus 写入的类型）
       // DEPOSIT_BONUS: 充值赠送（历史兼容）
-      // FIRST_DEPOSIT_BONUS: 首充奖励（已废弃，但历史数据需要统计）
+      // FIRST_DEPOSIT_BONUS: 充值赠送(历史)（已废弃，但历史数据需要统计）
       const { data, error } = await supabase
         .from("wallet_transactions")
         .select("amount")

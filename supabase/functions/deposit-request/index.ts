@@ -164,7 +164,7 @@ serve(async (req) => {
     )
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error('[deposit-request] 充值申请错误:', errMsg, error.stack)
+    console.error('[deposit-request] 充值申请错误:', errMsg, error instanceof Error ? error.stack : '')
     return new Response(
       JSON.stringify({
         success: false,
