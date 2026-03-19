@@ -86,6 +86,23 @@ serve(async (req) => {
     let totalUsersProcessed = 0;
     let errors: string[] = [];
 
+    // 批量查询所有用户的 phone_number，用于通知
+    const allUserIds = losers.map((l: any) => l.user_id).filter(Boolean);
+    const userPhoneMap: Record<string, string | null> = {};
+    if (allUserIds.length > 0) {
+      // 分批查询用户 phone_number（每批最多 100 个）
+      for (let k = 0; k < allUserIds.length; k += 100) {
+        const batchIds = allUserIds.slice(k, k + 100);
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, phone_number')
+          .in('id', batchIds);
+        usersData?.forEach((u: any) => {
+          userPhoneMap[u.id] = u.phone_number || null;
+        });
+      }
+    }
+
     // 分批处理用户，每批最多 50 个用户（避免单次 INSERT 过大）
     const BATCH_SIZE = 50;
 
@@ -124,6 +141,7 @@ serve(async (req) => {
         const lotteryTitleDisplay = lottery_title || 'Unknown';
         notificationRecords.push({
           user_id: user_id,
+          phone_number: userPhoneMap[user_id] || null,
           type: 'coupon_issued',
           payload: {
             lottery_id: lottery_id,

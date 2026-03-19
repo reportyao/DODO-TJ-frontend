@@ -86,6 +86,8 @@ export interface InviteStats {
 export interface InvitedUser {
   id: string;
   phone_number: string | null;
+  first_name: string | null;
+  display_name: string | null;
   avatar_url: string | null;
   created_at: string;
   level: number; // 1, 2, or 3
