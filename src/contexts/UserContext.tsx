@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useSupabase } from './SupabaseContext';
 import { UserProfile, Wallet, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 
-// 扩展 Window 接口以支持 Telegram WebApp
+// 扩展 Window 接口以支持 Telegram WebApp（向后兼容）
 declare global {
   interface Window {
     Telegram?: {
@@ -20,7 +20,7 @@ const getWebApp = () => {
       return window.Telegram.WebApp;
     }
   } catch (e) {
-    console.warn('[Telegram] Failed to access WebApp:', e);
+    console.warn('[Platform] Not in Telegram WebApp environment');
   }
   // 返回一个安全的模拟对象
   return {
@@ -32,9 +32,23 @@ const getWebApp = () => {
 };
 
 /**
+ * 检测当前运行环境
+ */
+const detectPlatform = (): 'telegram' | 'pwa' => {
+  try {
+    const WebApp = getWebApp();
+    if (WebApp.initData && WebApp.initData.length > 0) {
+      return 'telegram';
+    }
+  } catch (e) {
+    // ignore
+  }
+  return 'pwa';
+};
+
+/**
  * 【安全修复】获取当前 Telegram 用户的 ID
- * 用于验证 localStorage 缓存的用户身份是否与当前 Telegram 账号一致
- * 修复身份串号 Bug：防止切换 Telegram 账号后显示上一个账号的数据
+ * 仅在 Telegram 环境中使用，用于验证 localStorage 缓存的用户身份
  */
 const getCurrentTelegramUserId = (): string | null => {
   try {
@@ -43,7 +57,7 @@ const getCurrentTelegramUserId = (): string | null => {
       return WebApp.initDataUnsafe.user.id.toString();
     }
   } catch (e) {
-    console.warn('[Telegram] Failed to get current user ID:', e);
+    // Not in Telegram environment
   }
   return null;
 };
@@ -66,9 +80,13 @@ interface UserContextType {
   isAuthenticated: boolean;
   telegramUser: any; // 【迁移修复】保留字段以兼容已有组件，始终为 null
   sessionToken: string | null;
+  platform: 'telegram' | 'pwa';
   authenticate: () => Promise<void>;
+  loginWithPhone: (phone: string, password: string) => Promise<void>;
+  registerWithPhone: (phone: string, password: string, firstName?: string, referralCode?: string) => Promise<void>;
   refreshWallets: () => Promise<void>;
   logout: () => Promise<void>;
+  setAuthResult: (result: { user: any; session: any; wallets?: any[] }) => Promise<void>;
 }
 
 const defaultContextValue: UserContextType = {
@@ -79,13 +97,23 @@ const defaultContextValue: UserContextType = {
   isAuthenticated: false,
   telegramUser: null,
   sessionToken: null,
+  platform: 'pwa',
   authenticate: async () => {
+    throw new Error('UserProvider not initialized');
+  },
+  loginWithPhone: async () => {
+    throw new Error('UserProvider not initialized');
+  },
+  registerWithPhone: async () => {
     throw new Error('UserProvider not initialized');
   },
   refreshWallets: async () => {
     throw new Error('UserProvider not initialized');
   },
   logout: async () => {
+    throw new Error('UserProvider not initialized');
+  },
+  setAuthResult: async () => {
     throw new Error('UserProvider not initialized');
   },
 };
@@ -112,6 +140,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [telegramUser] = useState<any>(null);
   const [hasAttemptedAuth, setHasAttemptedAuth] = useState(false);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [platform] = useState<'telegram' | 'pwa'>(detectPlatform);
 
   const fetchWallets = useCallback(async (userId: string) => {
     try {
@@ -128,7 +157,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       const timeoutId = setTimeout(() => {
         console.warn('[Session] Check session timeout, forcing isLoading to false');
         setIsLoading(false);
-      }, 15000); // 15秒超时（延长以适应网络较慢的情况）
+      }, 15000);
 
       const storedToken = localStorage.getItem('custom_session_token');
       const storedUser = localStorage.getItem('custom_user');
@@ -137,16 +166,12 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         console.log('[Session] Found stored session, validating...');
         const parsedUser = JSON.parse(storedUser);
         
-        // 【迁移修复】验证缓存的用户身份一致性
-        // PWA 模式下不再依赖 Telegram WebApp，通过 session token 验证即可
-        const currentTelegramId = getCurrentTelegramUserId();
-        const cachedUserId = parsedUser.id?.toString();
-        
-        if (currentTelegramId && cachedUserId) {
-          // 如果在 Telegram 环境中，仍然检查身份一致性（向后兼容）
+        // 【安全检查】如果在 Telegram 环境中，验证身份一致性（向后兼容）
+        if (platform === 'telegram') {
+          const currentTelegramId = getCurrentTelegramUserId();
           const cachedTelegramId = parsedUser.telegram_id?.toString();
-          if (cachedTelegramId && currentTelegramId !== cachedTelegramId) {
-            console.log('[Security] Identity mismatch detected, clearing cache');
+          if (currentTelegramId && cachedTelegramId && currentTelegramId !== cachedTelegramId) {
+            console.log('[Security] Telegram identity mismatch detected, clearing cache');
             localStorage.removeItem('custom_session_token');
             localStorage.removeItem('custom_user');
             setSessionToken(null);
@@ -154,21 +179,21 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
             setProfile(null);
             setWallets([]);
             setIsLoading(false);
+            clearTimeout(timeoutId);
             return;
           }
         }
         
         try {
-          // 使用导出的配置，而不是直接读取环境变量
           const supabaseUrl = SUPABASE_URL;
           const supabaseKey = SUPABASE_ANON_KEY;
           
-          // 身份验证通过，继续恢复会话
+          // 先恢复本地状态，不阻塞 UI
           console.log('[Session] Identity verified, restoring user from localStorage...');
           setUser(parsedUser as User);
           setSessionToken(storedToken);
 
-          // 异步验证，不阻塞 UI
+          // 异步验证 session 有效性
           fetch(
             `${supabaseUrl}/rest/v1/user_sessions?session_token=eq.${storedToken}&user_id=eq.${parsedUser.id}&is_active=eq.true&select=*`,
             {
@@ -182,13 +207,13 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
               const sessions = await response.json();
               if (!sessions || sessions.length === 0) {
                 console.log('[Session] Session token invalid on server, clearing...');
-                logout(false); // 不显示提示，静默清理
+                logout(false);
               } else {
                 const sessionData = sessions[0];
                 const expiresAt = new Date(sessionData.expires_at);
                 if (expiresAt < new Date()) {
                   console.log('[Session] Session expired on server, clearing...');
-                  logout(false); // 不显示提示，静默清理
+                  logout(false);
                 }
               }
             }
@@ -196,9 +221,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
             console.warn('[Session] Network validation failed, keeping local session:', err);
           });
           
-          // 已在上方恢复，此处仅保留日志
-          console.log('[Session] Session restoration initiated');
-          
+          // 获取最新的用户 profile
           const { data: profileData, error: profileError } = await supabase
             .from('users')
             .select('*')
@@ -209,8 +232,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
             console.error('Failed to fetch profile:', profileError);
           } else if (profileData) {
             setProfile(profileData as UserProfile);
-          } else {
-            console.log('[Session] No profile found for user, will be created on first interaction');
+            // 更新本地缓存的用户数据
+            const updatedUser = { ...parsedUser, ...profileData };
+            setUser(updatedUser as User);
+            localStorage.setItem('custom_user', JSON.stringify(updatedUser));
           }
 
           await fetchWallets(parsedUser.id);
@@ -226,69 +251,107 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         console.log('[Session] No stored session found');
       }
       
-      // 清除超时定时器
       clearTimeout(timeoutId);
     } catch (error) {
       console.error('Failed to check session:', error);
     } finally {
-      // 确保无论如何都结束加载状态
       setIsLoading(false);
     }
-  }, [fetchWallets, supabase]);
+  }, [fetchWallets, supabase, platform]);
 
+  /**
+   * 通用方法：处理认证结果并更新状态
+   */
+  const setAuthResult = useCallback(async (result: { user: any; session: any; wallets?: any[] }) => {
+    const { user: authUser, session } = result;
+    
+    setUser(authUser as User);
+    
+    if (session && session.token) {
+      setSessionToken(session.token);
+      localStorage.setItem('custom_session_token', session.token);
+      localStorage.setItem('custom_user', JSON.stringify(authUser));
+    }
+    
+    if (authUser) {
+      await fetchWallets(authUser.id);
+    }
+  }, [fetchWallets]);
+
+  /**
+   * Telegram 自动认证（向后兼容）
+   * 仅在 Telegram Mini App 环境中使用
+   */
   const authenticate = useCallback(async () => {
     const WebApp = getWebApp();
     
-    console.log('[Auth] Starting authentication...');
-    console.log('[Auth] WebApp.initData:', WebApp.initData ? `${WebApp.initData.substring(0, 50)}...` : 'null');
+    console.log('[Auth] Starting Telegram authentication...');
     
     if (!WebApp.initData) {
-      console.error('[Auth] Telegram initData is not available');
+      console.log('[Auth] Not in Telegram environment, skipping Telegram auth');
       return;
     }
     
     try {
       setIsLoading(true);
       
-      // 设置认证超时保护
       const authTimeout = setTimeout(() => {
         console.warn('[Auth] Authentication timeout');
         setIsLoading(false);
         toast.error(t('error.networkError'));
-      }, 15000); // 15秒超时（延长以适应网络较慢的情况）
+      }, 15000);
       
       const startParam = WebApp.initDataUnsafe?.start_param;
       console.log('[Auth] Calling authenticateWithTelegram...');
       const result = await authService.authenticateWithTelegram(WebApp.initData, startParam);
       
       clearTimeout(authTimeout);
-      console.log('[Auth] Authentication result:', result);
       
-      const { user, session } = result;
-      
-      console.log('[Auth] User data from server:', user);
-      console.log('[Auth] Avatar URL from server:', user?.avatar_url);
-      
-      setUser(user as User);
-      
-      if (session && session.token) {
-        console.log('[Auth] Saving session token to localStorage');
-        setSessionToken(session.token);
-        localStorage.setItem('custom_session_token', session.token);
-        localStorage.setItem('custom_user', JSON.stringify(user));
-      }
-      
-      if (user) {
-        await fetchWallets(user.id);
-      }
+      await setAuthResult(result);
       toast.success(t('auth.loginSuccess'));
     } catch (error: any) {
-      console.error('Authentication failed:', error);
+      console.error('Telegram authentication failed:', error);
       toast.error(error.message || t('auth.loginFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [authService, fetchWallets, t]);
+  }, [authService, setAuthResult, t]);
+
+  /**
+   * 手机号+密码登录（PWA 模式）
+   */
+  const loginWithPhone = useCallback(async (phone: string, password: string) => {
+    try {
+      setIsLoading(true);
+      
+      const result = await authService.loginWithPhone(phone, password);
+      await setAuthResult(result);
+      toast.success(t('auth.loginSuccess'));
+    } catch (error: any) {
+      console.error('Phone login failed:', error);
+      throw error; // 向上抛出让页面处理具体错误消息
+    } finally {
+      setIsLoading(false);
+    }
+  }, [authService, setAuthResult, t]);
+
+  /**
+   * 手机号+密码注册（PWA 模式）
+   */
+  const registerWithPhone = useCallback(async (phone: string, password: string, firstName?: string, referralCode?: string) => {
+    try {
+      setIsLoading(true);
+      
+      const result = await authService.registerWithPhone(phone, password, firstName, undefined, referralCode);
+      await setAuthResult(result);
+      toast.success(t('auth.registerSuccess', '注册成功！'));
+    } catch (error: any) {
+      console.error('Phone registration failed:', error);
+      throw error; // 向上抛出让页面处理具体错误消息
+    } finally {
+      setIsLoading(false);
+    }
+  }, [authService, setAuthResult, t]);
 
   useEffect(() => {
     checkSession();
@@ -302,25 +365,24 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     };
   }, [checkSession, supabase]);
 
-  // 自动认证：如果有 initData 但没有用户，尝试自动登录
+  // 自动认证：仅在 Telegram 环境中，如果有 initData 但没有用户，尝试自动登录
   useEffect(() => {
     const autoAuthenticate = async () => {
-      const WebApp = getWebApp();
+      if (isLoading) return;
       
-      if (isLoading) {
-        return;
+      if (platform === 'telegram') {
+        const WebApp = getWebApp();
+        if (WebApp.initData && !user && !sessionToken && !hasAttemptedAuth) {
+          console.log('[Auto Auth] Telegram environment detected, attempting auto authentication...');
+          setHasAttemptedAuth(true);
+          await authenticate();
+        }
       }
-      
-      // 如果有 initData 但没有用户且没有 session token，尝试认证
-      if (WebApp.initData && !user && !sessionToken && !hasAttemptedAuth) {
-        console.log('[Auto Auth] No user or session, attempting authentication...');
-        setHasAttemptedAuth(true);
-        await authenticate();
-      }
+      // PWA 模式下不自动认证，用户需要手动登录或注册
     };
 
     autoAuthenticate();
-  }, [user, sessionToken, isLoading, hasAttemptedAuth, authenticate]);
+  }, [user, sessionToken, isLoading, hasAttemptedAuth, authenticate, platform]);
 
   const refreshWallets = useCallback(async () => {
     if (user) {
@@ -349,9 +411,13 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     isAuthenticated: !!user,
     telegramUser,
     sessionToken,
+    platform,
     authenticate,
+    loginWithPhone,
+    registerWithPhone,
     refreshWallets,
     logout,
+    setAuthResult,
   };
 
   return (

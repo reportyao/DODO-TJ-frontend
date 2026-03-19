@@ -1,0 +1,245 @@
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { useSupabase } from '../contexts/SupabaseContext'
+import {
+  PhoneIcon,
+  LockClosedIcon,
+  UserIcon,
+  TicketIcon,
+  EyeIcon,
+  EyeSlashIcon,
+} from '@heroicons/react/24/outline'
+import toast from 'react-hot-toast'
+
+const RegisterPage: React.FC = () => {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const { authService } = useSupabase()
+
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [referralCode, setReferralCode] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  // 从 URL 参数中获取邀请码
+  useEffect(() => {
+    const ref = searchParams.get('ref')
+    if (ref) {
+      setReferralCode(ref)
+    }
+  }, [searchParams])
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!phoneNumber.trim()) {
+      toast.error(t('auth.phoneRequired', '请输入手机号'))
+      return
+    }
+    if (!password) {
+      toast.error(t('auth.passwordRequired', '请输入密码'))
+      return
+    }
+    if (password.length < 6) {
+      toast.error(t('auth.passwordTooShort', '密码长度至少6位'))
+      return
+    }
+    if (password !== confirmPassword) {
+      toast.error(t('auth.passwordMismatch', '两次输入的密码不一致'))
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const result = await authService.registerWithPhone(
+        phoneNumber.trim(),
+        password,
+        firstName.trim() || undefined,
+        undefined,
+        referralCode.trim() || undefined
+      )
+
+      if (result.session?.token) {
+        localStorage.setItem('custom_session_token', result.session.token)
+        localStorage.setItem('custom_user', JSON.stringify(result.user))
+      }
+
+      toast.success(t('auth.registerSuccess', '注册成功！'))
+      navigate('/', { replace: true })
+
+      // 刷新页面以重新初始化 UserContext
+      window.location.reload()
+    } catch (error: any) {
+      console.error('Registration failed:', error)
+      toast.error(error.message || t('auth.registerFailed', '注册失败'))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md">
+        {/* Logo / Brand */}
+        <div className="text-center mb-6">
+          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
+            <span className="text-white text-3xl font-bold">TB</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">TezBarakat</h1>
+          <p className="text-gray-500 mt-1">{t('auth.registerSubtitle', '创建新账户')}</p>
+        </div>
+
+        {/* Register Form */}
+        <form onSubmit={handleRegister} className="bg-white rounded-2xl shadow-lg p-6 space-y-4">
+          {/* Phone Number */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {t('auth.phoneNumber', '手机号')} <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <PhoneIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="+992 XXX XXX XXX"
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                autoComplete="tel"
+              />
+            </div>
+          </div>
+
+          {/* Name (optional) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {t('auth.firstName', '姓名')}
+            </label>
+            <div className="relative">
+              <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder={t('auth.firstNamePlaceholder', '请输入您的姓名')}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                autoComplete="given-name"
+              />
+            </div>
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {t('auth.password', '密码')} <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={t('auth.passwordPlaceholder', '至少6位')}
+                className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {t('auth.confirmPassword', '确认密码')} <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder={t('auth.confirmPasswordPlaceholder', '再次输入密码')}
+                className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showConfirmPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Referral Code */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {t('auth.referralCode', '邀请码')}
+              <span className="text-gray-400 ml-1 text-xs">({t('common.optional', '选填')})</span>
+            </label>
+            <div className="relative">
+              <TicketIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                placeholder={t('auth.referralCodePlaceholder', '输入邀请码（如有）')}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400 uppercase"
+                readOnly={!!searchParams.get('ref')}
+              />
+            </div>
+            {searchParams.get('ref') && (
+              <p className="text-xs text-green-600 mt-1">
+                {t('auth.referralCodeApplied', '邀请码已自动填入')}
+              </p>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all mt-2"
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                {t('common.loading', '加载中...')}
+              </span>
+            ) : (
+              t('auth.register', '注册')
+            )}
+          </button>
+        </form>
+
+        {/* Login Link */}
+        <p className="text-center mt-6 text-gray-600">
+          {t('auth.hasAccount', '已有账户？')}{' '}
+          <Link
+            to="/login"
+            className="text-blue-600 hover:text-blue-700 font-semibold"
+          >
+            {t('auth.loginNow', '立即登录')}
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+export default RegisterPage

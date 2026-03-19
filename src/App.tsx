@@ -57,6 +57,11 @@ const CouponListPage = lazyWithRetry(() => import("./pages/CouponListPage"))
 const ProfileEditPage = lazyWithRetry(() => import("./pages/ProfileEditPage"))
 const SettingsPage = lazyWithRetry(() => import("./pages/SettingsPage"))
 
+// 认证页面（PWA 模式）
+const LoginPage = lazyWithRetry(() => import("./pages/LoginPage"))
+const RegisterPage = lazyWithRetry(() => import("./pages/RegisterPage"))
+const ForgotPasswordPage = lazyWithRetry(() => import("./pages/ForgotPasswordPage"))
+
 // 404 页面
 const NotFoundPage = lazyWithRetry(() => import("./pages/NotFoundPage"))
 
@@ -85,6 +90,11 @@ function App() {
         <Layout>
           <Suspense fallback={<PageLoadingFallback />}>
             <Routes>
+              {/* 认证页面 - 不需要 Layout 包裹，但为了简化先放在这里 */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              
               <Route path="/" element={<HomePage />} />
               <Route path="/lottery" element={<LotteryPage />} />
               <Route path="/lottery/:id" element={<LotteryDetailPage />} />
