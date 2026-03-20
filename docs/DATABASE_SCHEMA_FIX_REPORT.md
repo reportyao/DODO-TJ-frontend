@@ -104,7 +104,7 @@ idx_wallets_version
 ## 相关文档
 
 - 详细迁移文档: `/docs/database-migration-20260111.md`
-- Supabase Dashboard: https://supabase.com/dashboard/project/enndjqqststndfeivwof
+- Supabase Dashboard: https://supabase.com/dashboard/project/qcrcgpwlfouqslokwbzl
 
 ---
 

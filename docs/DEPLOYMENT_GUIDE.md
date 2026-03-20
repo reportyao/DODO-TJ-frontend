@@ -107,14 +107,14 @@ systemctl reload nginx
 
 | 配置项 | 值 |
 |--------|-----|
-| Supabase URL | https://enndjqqststndfeivwof.supabase.co |
+| Supabase URL | https://qcrcgpwlfouqslokwbzl.supabase.co |
 | Supabase Anon Key | eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... |
 
 ## Edge Functions状态
 
 所有70个Edge Functions已部署到测试环境Supabase：
 
-- Dashboard: https://supabase.com/dashboard/project/enndjqqststndfeivwof/functions
+- Dashboard: https://supabase.com/dashboard/project/qcrcgpwlfouqslokwbzl/functions
 
 ## 数据库Schema
 

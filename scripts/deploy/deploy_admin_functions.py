@@ -6,7 +6,7 @@ import subprocess
 import json
 import os
 
-PROJECT_ID = "owyitxwxmxwbkqgzffdw"
+PROJECT_ID = "qcrcgpwlfouqslokwbzl"
 
 # 需要部署的管理后台函数
 functions = [

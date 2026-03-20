@@ -13,7 +13,7 @@
    - 登录您的账号
 
 2. **选择项目**
-   - 项目ID: `owyitxwxmxwbkqgzffdw`
+   - 项目ID: `qcrcgpwlfouqslokwbzl`
    - 项目名称: luckymart-tj
 
 3. **进入Edge Functions设置**
@@ -41,7 +41,7 @@
 supabase login
 
 # 链接到项目
-supabase link --project-ref owyitxwxmxwbkqgzffdw
+supabase link --project-ref qcrcgpwlfouqslokwbzl
 
 # 设置环境变量
 supabase secrets set TELEGRAM_BOT_TOKEN=8074258399:AAG1WdyCJe4vphx9YB3B6z60nTE3dhBBP-Q
@@ -62,7 +62,7 @@ supabase secrets list
 
 ```bash
 # 调用send-telegram-notification测试
-curl -X POST "https://owyitxwxmxwbkqgzffdw.supabase.co/functions/v1/send-telegram-notification" \
+curl -X POST "https://qcrcgpwlfouqslokwbzl.supabase.co/functions/v1/send-telegram-notification" \
   -H "Content-Type: application/json" \
   -d '{
     "user_id": "your-user-uuid",
@@ -146,5 +146,5 @@ curl "https://api.telegram.org/bot8074258399:AAG1WdyCJe4vphx9YB3B6z60nTE3dhBBP-Q
 3. Telegram Bot API响应
 
 **Bot Token**: `8074258399:AAG1WdyCJe4vphx9YB3B6z60nTE3dhBBP-Q`
-**项目ID**: `owyitxwxmxwbkqgzffdw`
-**Supabase URL**: `https://owyitxwxmxwbkqgzffdw.supabase.co`
+**项目ID**: `qcrcgpwlfouqslokwbzl`
+**Supabase URL**: `https://qcrcgpwlfouqslokwbzl.supabase.co`

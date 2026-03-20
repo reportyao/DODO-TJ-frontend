@@ -438,7 +438,7 @@ npm install @tanstack/react-query
 - [Admin](https://github.com/reportyao/luckymart-tj-admin)
 
 ### Supabase
-- **URL**: https://owyitxwxmxwbkqgzffdw.supabase.co
+- **URL**: https://qcrcgpwlfouqslokwbzl.supabase.co
 - **Dashboard**: [Supabase Console](https://app.supabase.com)
 
 ---

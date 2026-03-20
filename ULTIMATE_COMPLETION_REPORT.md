@@ -280,7 +280,7 @@
 - **状态**: ✅ 已推送
 
 ### Supabase 配置：
-- **URL**: owyitxwxmxwbkqgzffdw.supabase.co
+- **URL**: qcrcgpwlfouqslokwbzl.supabase.co
 - **Tables**: 16 (13 existing + 3 new)
 
 ---

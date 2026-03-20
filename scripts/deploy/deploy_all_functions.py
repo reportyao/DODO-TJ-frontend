@@ -6,7 +6,7 @@ import subprocess
 import json
 import os
 
-PROJECT_ID = "owyitxwxmxwbkqgzffdw"
+PROJECT_ID = "qcrcgpwlfouqslokwbzl"
 
 # 需要部署的函数列表
 functions = [

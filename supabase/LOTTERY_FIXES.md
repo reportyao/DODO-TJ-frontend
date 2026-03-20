@@ -87,7 +87,7 @@ supabase db push
 
 # 或使用 MCP
 manus-mcp-cli tool call apply_migration --server supabase \
-  --input '{"project_id": "owyitxwxmxwbkqgzffdw", "name": "migration_name", "query": "..."}'
+  --input '{"project_id": "qcrcgpwlfouqslokwbzl", "name": "migration_name", "query": "..."}'
 ```
 
 ---
@@ -112,7 +112,7 @@ supabase functions deploy scheduled-lottery-draw
 
 # 或使用 MCP
 manus-mcp-cli tool call deploy_edge_function --server supabase \
-  --input '{"project_id": "owyitxwxmxwbkqgzffdw", "name": "function-name", "files": [...]}'
+  --input '{"project_id": "qcrcgpwlfouqslokwbzl", "name": "function-name", "files": [...]}'
 ```
 
 ---
@@ -128,7 +128,7 @@ SELECT cron.schedule(
   '* * * * *',  -- 每分钟执行一次
   $$
   SELECT net.http_post(
-    url := 'https://owyitxwxmxwbkqgzffdw.supabase.co/functions/v1/scheduled-lottery-draw',
+    url := 'https://qcrcgpwlfouqslokwbzl.supabase.co/functions/v1/scheduled-lottery-draw',
     headers := jsonb_build_object('Content-Type', 'application/json'),
     body := '{}'::jsonb
   ) AS request_id;

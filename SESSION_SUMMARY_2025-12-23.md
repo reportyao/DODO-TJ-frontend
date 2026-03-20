@@ -378,7 +378,7 @@ URL: https://github.com/reportyao/luckymart-tj-frontend/commit/e46b613
 
 ### Supabase 配置：
 ```
-URL: owyitxwxmxwbkqgzffdw.supabase.co
+URL: qcrcgpwlfouqslokwbzl.supabase.co
 Tables: 16 total
 SQL File: create_missing_tables.sql
 ```

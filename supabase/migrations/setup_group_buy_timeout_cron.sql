@@ -34,7 +34,7 @@ BEGIN
   -- SELECT value->>'service_role_key' INTO service_role_key FROM system_configs WHERE key = 'service_role_key';
   
   -- 方案2: 硬编码(不推荐,但方便测试)
-  -- supabase_url := 'https://owyitxwxmxwbkqgzffdw.supabase.co';
+  -- supabase_url := 'https://qcrcgpwlfouqslokwbzl.supabase.co';
   -- service_role_key := 'YOUR_SERVICE_ROLE_KEY_HERE';
   
   -- 如果配置不存在,抛出错误提示

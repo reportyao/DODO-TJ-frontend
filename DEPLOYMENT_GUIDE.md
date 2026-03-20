@@ -436,7 +436,7 @@ kill -9 <PID>
 
 **生产环境**:
 ```
-SUPABASE_URL=https://zvouvjkrexowtujnqtna.supabase.co
+SUPABASE_URL=https://qcrcgpwlfouqslokwbzl.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
@@ -445,7 +445,7 @@ SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```typescript
 // ✅ 正确：在 supabase.ts 中定义并导出
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 
-  'https://zvouvjkrexowtujnqtna.supabase.co';
+  'https://qcrcgpwlfouqslokwbzl.supabase.co';
 export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
 

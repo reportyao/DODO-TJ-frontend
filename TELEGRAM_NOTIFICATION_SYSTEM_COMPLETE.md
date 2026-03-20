@@ -108,7 +108,7 @@ GET /realtime-notifications?user_id=xxx
 **使用示例**:
 ```javascript
 const eventSource = new EventSource(
-  `https://owyitxwxmxwbkqgzffdw.supabase.co/functions/v1/realtime-notifications?user_id=${userId}`
+  `https://qcrcgpwlfouqslokwbzl.supabase.co/functions/v1/realtime-notifications?user_id=${userId}`
 );
 
 eventSource.onmessage = (event) => {
@@ -194,7 +194,7 @@ TELEGRAM_BOT_TOKEN=8074258399:AAG1WdyCJe4vphx9YB3B6z60nTE3dhBBP-Q
 
 **配置步骤**:
 1. 登录Supabase Dashboard
-2. 进入项目 `owyitxwxmxwbkqgzffdw`
+2. 进入项目 `qcrcgpwlfouqslokwbzl`
 3. Settings → Edge Functions → Environment Variables
 4. 添加 `TELEGRAM_BOT_TOKEN`
 
@@ -414,9 +414,9 @@ eventSource.addEventListener('message', (e) => {
 
 **Bot Token**: `8074258399:AAG1WdyCJe4vphx9YB3B6z60nTE3dhBBP-Q`
 
-**项目ID**: `owyitxwxmxwbkqgzffdw`
+**项目ID**: `qcrcgpwlfouqslokwbzl`
 
-**Supabase URL**: `https://owyitxwxmxwbkqgzffdw.supabase.co`
+**Supabase URL**: `https://qcrcgpwlfouqslokwbzl.supabase.co`
 
 ---
 

@@ -13,8 +13,8 @@ let supabaseAnonKey = import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || import.me
 // 兜底方案：如果环境变量加载失败，使用硬编码的生产环境配置
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('[Supabase] Environment variables not found, using fallback production config');
-  supabaseUrl = 'https://zvouvjkrexowtujnqtna.supabase.co';
-  supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2b3V2amtyZXhvd3R1am5xdG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5MjEzOTgsImV4cCI6MjA4MzQ5NzM5OH0.-fb0nWhyAMdmzKBIzNqV0gXoANT7rPMmwYCwiszd7jM';
+  supabaseUrl = 'https://qcrcgpwlfouqslokwbzl.supabase.co';
+  supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcmNncHdsZm91cXNsb2t3YnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzMzMzcsImV4cCI6MjA4OTUwOTMzN30.KFR8C1O0BnGWvR6GSCCq8opP2EljMwwOQrtn8snXqM0';
 }
 
 if (!supabaseUrl || !supabaseAnonKey) {

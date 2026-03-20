@@ -2,7 +2,7 @@
 import subprocess
 import json
 
-project_id = "owyitxwxmxwbkqgzffdw"
+project_id = "qcrcgpwlfouqslokwbzl"
 
 # 分步执行SQL语句
 sqls = [

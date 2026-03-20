@@ -21,8 +21,8 @@ FRONTEND_PATH="/root/projects/luckymart-tj-frontend"
 ADMIN_PATH="/root/projects/luckymart-tj-admin"
 
 # 测试环境Supabase配置
-SUPABASE_URL="https://enndjqqststndfeivwof.supabase.co"
-SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVubmRqcXFzdHN0bmRmZWl2d29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5MjQ2NDIsImV4cCI6MjA4MzUwMDY0Mn0.qaFg4dXSL1a0lPA4W6MITdYk2_iaOuy96A2GfZv0bcQ"
+SUPABASE_URL="https://qcrcgpwlfouqslokwbzl.supabase.co"
+SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcmNncHdsZm91cXNsb2t3YnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzMzMzcsImV4cCI6MjA4OTUwOTMzN30.KFR8C1O0BnGWvR6GSCCq8opP2EljMwwOQrtn8snXqM0"
 
 echo ""
 echo -e "${YELLOW}步骤 1/5: 更新前端代码${NC}"

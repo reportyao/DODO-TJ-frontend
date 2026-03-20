@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw'
 
 // 模拟 Supabase 认证 API
-const SUPABASE_URL = 'https://owyitxwxmxwbkqgzffdw.supabase.co'
+const SUPABASE_URL = 'https://qcrcgpwlfouqslokwbzl.supabase.co'
 
 export const handlers = [
   // 模拟用户登录

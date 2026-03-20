@@ -54,7 +54,7 @@ BEGIN
   IF supabase_url IS NULL OR supabase_url = '' THEN
     -- 回退方案: 使用 Supabase 项目的固定 URL
     -- 【部署时需要更新此 URL】
-    supabase_url := 'https://zvouvjkrexowtujnqtna.supabase.co';
+    supabase_url := 'https://qcrcgpwlfouqslokwbzl.supabase.co';
   END IF;
 
   IF service_role_key IS NULL OR service_role_key = '' THEN
@@ -128,7 +128,7 @@ SELECT cron.schedule(
   '* * * * *',                           -- 每分钟执行
   $$
   SELECT net.http_post(
-    url := 'https://zvouvjkrexowtujnqtna.supabase.co/functions/v1/process-squad-events',
+    url := 'https://qcrcgpwlfouqslokwbzl.supabase.co/functions/v1/process-squad-events',
     headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_SERVICE_ROLE_KEY"}'::jsonb,
     body := '{"trigger": "cron_job"}'::jsonb
   );

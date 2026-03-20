@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECT_ID="owyitxwxmxwbkqgzffdw"
+PROJECT_ID="qcrcgpwlfouqslokwbzl"
 
 echo "部署新的Edge Functions..."
 

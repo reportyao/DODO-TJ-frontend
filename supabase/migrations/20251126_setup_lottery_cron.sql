@@ -8,7 +8,7 @@ SELECT cron.schedule(
   $$
   SELECT
     net.http_post(
-      url := 'https://owyitxwxmxwbkqgzffdw.supabase.co/functions/v1/scheduled-lottery-draw',
+      url := 'https://qcrcgpwlfouqslokwbzl.supabase.co/functions/v1/scheduled-lottery-draw',
       headers := jsonb_build_object(
         'Content-Type', 'application/json'
       ),

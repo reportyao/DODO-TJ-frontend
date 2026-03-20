@@ -16,7 +16,7 @@ SELECT cron.schedule(
   '* * * * *',                 -- 每分钟运行一次
   $$
   SELECT net.http_post(
-    url:='https://owyitxwxmxwbkqgzffdw.supabase.co/functions/v1/check-draw-time',
+    url:='https://qcrcgpwlfouqslokwbzl.supabase.co/functions/v1/check-draw-time',
     headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93eWl0eHd4bXh3YmtxZ3pmZmR3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjQyMzg1MywiZXhwIjoyMDc3OTk5ODUzfQ.Yqu0OluUMtVC73H_bHC6nCqEtjllzhz2HfltbffF_HA"}'::jsonb
   ) as request_id;
   $$

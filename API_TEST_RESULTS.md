@@ -4,7 +4,7 @@
 2025-11-16
 
 ## Supabase 配置
-- **URL**: https://owyitxwxmxwbkqgzffdw.supabase.co
+- **URL**: https://qcrcgpwlfouqslokwbzl.supabase.co
 - **Anon Key**: ✅ 已配置
 - **Service Role Key**: ✅ 已配置
 
@@ -15,7 +15,7 @@
 
 **测试命令**:
 ```bash
-curl "https://owyitxwxmxwbkqgzffdw.supabase.co/rest/v1/lotteries?select=*&limit=5" \
+curl "https://qcrcgpwlfouqslokwbzl.supabase.co/rest/v1/lotteries?select=*&limit=5" \
   -H "apikey: ..." \
   -H "Authorization: Bearer ..."
 ```

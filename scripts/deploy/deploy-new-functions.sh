@@ -2,7 +2,7 @@
 
 # 批量部署Edge Functions脚本
 
-PROJECT_ID="owyitxwxmxwbkqgzffdw"
+PROJECT_ID="qcrcgpwlfouqslokwbzl"
 FUNCTIONS_DIR="/home/ubuntu/project/luckymart-tj/supabase/functions"
 
 # 要部署的函数列表

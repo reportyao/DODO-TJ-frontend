@@ -49,7 +49,7 @@
 ### Supabase REST API
 ```bash
 # 测试命令
-curl "https://owyitxwxmxwbkqgzffdw.supabase.co/rest/v1/lotteries?select=*&limit=5"
+curl "https://qcrcgpwlfouqslokwbzl.supabase.co/rest/v1/lotteries?select=*&limit=5"
 
 # 结果
 ✅ 状态码: 200
@@ -148,7 +148,7 @@ curl "https://owyitxwxmxwbkqgzffdw.supabase.co/rest/v1/lotteries?select=*&limit=
 
 如需进一步支持，请查看：
 - GitHub: https://github.com/reportyao/tezbarakat-tj-frontend
-- Supabase Dashboard: https://owyitxwxmxwbkqgzffdw.supabase.co
+- Supabase Dashboard: https://qcrcgpwlfouqslokwbzl.supabase.co
 
 ---
 **报告生成时间**: 2025-11-16

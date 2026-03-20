@@ -17,7 +17,7 @@
 **目标受众**：AI 开发工程师 / Manus AI
 **部署环境**：47.243.83.253 服务器
 **前端参考**：tezbarakat-tj-frontend（支持中文/俄语/塔吉克语三语言）
-**数据库**：Supabase (owyitxwxmxwbkqgzffdw.supabase.co)
+**数据库**：Supabase (qcrcgpwlfouqslokwbzl.supabase.co)
 
 ***
 

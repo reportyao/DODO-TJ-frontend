@@ -23,8 +23,8 @@ SELECT cron.schedule(
     -- 仅在有 pending 事件时才触发 Worker，避免无谓的冷启动开销
     IF EXISTS (SELECT 1 FROM event_queue WHERE status = 'pending' LIMIT 1) THEN
       PERFORM net.http_post(
-        url := 'https://zvouvjkrexowtujnqtna.supabase.co/functions/v1/process-squad-events',
-        headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2b3V2amtyZXhvd3R1am5xdG5hIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzkyMTM5OCwiZXhwIjoyMDgzNDk3Mzk4fQ.9Dkzh2A1bmYF1NM_rxQInLhD_fPsBEFY-RwkEAJb_-I"}'::jsonb,
+        url := 'https://qcrcgpwlfouqslokwbzl.supabase.co/functions/v1/process-squad-events',
+        headers := '"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcmNncHdsZm91cXNsb2t3YnpsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzkzMzMzNywiZXhwIjoyMDg5NTA5MzM3fQ.CB4qQc2gXjZA_LEJG3J2GgMsd0Z1Cr5speVpV3IhRrM"}'::jsonb,,
         body := '{"source": "pg_cron"}'::jsonb
       );
       RAISE LOG 'process-event-queue: triggered Worker for pending events';

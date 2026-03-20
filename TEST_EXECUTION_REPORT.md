@@ -80,7 +80,7 @@ try {
 #### 修复方案
 创建了 `.env` 文件并配置了Supabase连接信息:
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://owyitxwxmxwbkqgzffdw.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://qcrcgpwlfouqslokwbzl.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
 NODE_ENV=development
 ```
