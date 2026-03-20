@@ -343,13 +343,13 @@ const ShowoffPage: React.FC = () => {
     // 【迁移修复】使用 PWA 域名生成分享链接
     const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
     const inviteLink = `${appDomain}?ref=${code}`;
-    const shareText = `🎁 Барои Шумо 10 сомонӣ тӯҳфа!\nБо истиноди ман ворид шавед ва бонус гиред. Дар TezBarakat арзон харед ва бурд кунед!`;
+    const shareText = `🎁 Барои Шумо 10 сомонӣ тӯҳфа!\nБо истиноди ман ворид шавед ва бонус гиред. Дар DODO арзон харед ва бурд кунед!`;
     
     // 【迁移修复】优先使用 Web Share API，回退到 WhatsApp
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'TezBarakat',
+          title: 'DODO',
           text: shareText,
           url: inviteLink
         });

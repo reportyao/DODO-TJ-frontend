@@ -157,7 +157,7 @@ export default function AIPage() {
       <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <h1 className="text-xl font-bold text-gray-900">TezBarakat AI</h1>
+            <h1 className="text-xl font-bold text-gray-900">DODO AI</h1>
             <p className="text-xs text-gray-600 mt-0.5">и пешрафта барои Тоҷикистон</p>
           </div>
           {!loading && <UsageQuota quota={quota} />}

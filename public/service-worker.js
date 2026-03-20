@@ -1,5 +1,5 @@
 /**
- * TezBarakat PWA Service Worker
+ * DODO PWA Service Worker
  * 
  * 功能：
  * 1. 离线缓存策略 (Cache-First, Network-First, Stale-While-Revalidate)
@@ -10,10 +10,10 @@
 
 const CACHE_VERSION = 'v1';
 const CACHE_NAMES = {
-  STATIC: `tezbarakat-static-${CACHE_VERSION}`,
-  DYNAMIC: `tezbarakat-dynamic-${CACHE_VERSION}`,
-  API: `tezbarakat-api-${CACHE_VERSION}`,
-  IMAGES: `tezbarakat-images-${CACHE_VERSION}`,
+  STATIC: `dodo-static-${CACHE_VERSION}`,
+  DYNAMIC: `dodo-dynamic-${CACHE_VERSION}`,
+  API: `dodo-api-${CACHE_VERSION}`,
+  IMAGES: `dodo-images-${CACHE_VERSION}`,
 };
 
 // 需要立即缓存的静态资源
@@ -21,8 +21,8 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/tezbarakat-logo.png',
-  '/tezbarakat-logo.webp',
+  '/dodo-logo.png',
+  '/dodo-logo.webp',
 ];
 
 // 需要缓存的 API 端点模式
@@ -445,14 +445,14 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: event.data ? event.data.text() : 'You have a new notification',
-    icon: '/tezbarakat-logo.png',
-    badge: '/tezbarakat-logo.webp',
-    tag: 'tezbarakat-notification',
+    icon: '/dodo-logo.png',
+    badge: '/dodo-logo.webp',
+    tag: 'dodo-notification',
     requireInteraction: false,
   };
 
   event.waitUntil(
-    self.registration.showNotification('TezBarakat', options)
+    self.registration.showNotification('DODO', options)
   );
 });
 

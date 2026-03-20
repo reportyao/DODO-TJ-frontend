@@ -1,7 +1,7 @@
 {
-  "name": "TezBarakat - WhatsApp Shopping App",
-  "short_name": "TezBarakat",
-  "description": "TezBarakat - A modern shopping and lottery app with WhatsApp integration and offline support",
+  "name": "DODO - WhatsApp Shopping App",
+  "short_name": "DODO",
+  "description": "DODO - A modern shopping and lottery app with WhatsApp integration and offline support",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -12,13 +12,13 @@
   "categories": ["shopping", "lifestyle"],
   "screenshots": [
     {
-      "src": "/tezbarakat-logo.png",
+      "src": "/dodo-logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "form_factor": "narrow"
     },
     {
-      "src": "/tezbarakat-logo.png",
+      "src": "/dodo-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "wide"
@@ -26,49 +26,49 @@
   ],
   "icons": [
     {
-      "src": "/tezbarakat-logo.png",
+      "src": "/dodo-logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/tezbarakat-logo.png",
+      "src": "/dodo-logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/tezbarakat-logo.png",
+      "src": "/dodo-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/tezbarakat-logo.png",
+      "src": "/dodo-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/tezbarakat-logo.webp",
+      "src": "/dodo-logo.webp",
       "sizes": "192x192",
       "type": "image/webp",
       "purpose": "any"
     },
     {
-      "src": "/tezbarakat-logo.webp",
+      "src": "/dodo-logo.webp",
       "sizes": "192x192",
       "type": "image/webp",
       "purpose": "maskable"
     },
     {
-      "src": "/tezbarakat-logo.webp",
+      "src": "/dodo-logo.webp",
       "sizes": "512x512",
       "type": "image/webp",
       "purpose": "any"
     },
     {
-      "src": "/tezbarakat-logo.webp",
+      "src": "/dodo-logo.webp",
       "sizes": "512x512",
       "type": "image/webp",
       "purpose": "maskable"
@@ -82,7 +82,7 @@
       "url": "/lottery",
       "icons": [
         {
-          "src": "/tezbarakat-logo.png",
+          "src": "/dodo-logo.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -95,7 +95,7 @@
       "url": "/wallet",
       "icons": [
         {
-          "src": "/tezbarakat-logo.png",
+          "src": "/dodo-logo.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -108,7 +108,7 @@
       "url": "/orders",
       "icons": [
         {
-          "src": "/tezbarakat-logo.png",
+          "src": "/dodo-logo.png",
           "sizes": "192x192",
           "type": "image/png"
         }

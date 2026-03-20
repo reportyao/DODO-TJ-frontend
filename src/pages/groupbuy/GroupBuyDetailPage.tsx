@@ -642,7 +642,7 @@ export default function GroupBuyDetailPage() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'TezBarakat',
+          title: 'DODO',
           text: shareText,
           url: shareUrl,
         });

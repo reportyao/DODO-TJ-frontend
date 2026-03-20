@@ -205,7 +205,7 @@ export async function shareContent(text: string, url?: string, title?: string): 
   if (navigator.share) {
     try {
       await navigator.share({
-        title: title || 'TezBarakat',
+        title: title || 'DODO',
         text,
         url,
       });

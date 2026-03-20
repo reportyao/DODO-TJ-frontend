@@ -84,7 +84,7 @@ export const PWAUpdateNotification: React.FC<PWAUpdateNotificationProps> = ({
                 {t('pwa.updateTitle', 'Навсозӣ дастрас аст')}
               </h3>
               <p className="text-xs text-gray-600 leading-relaxed">
-                {t('pwa.updateDesc', 'Версияи нави TezBarakat дастрас аст. Лутфан навсозӣ кунед барои имконоти нав.')}
+                {t('pwa.updateDesc', 'Версияи нави DODO дастрас аст. Лутфан навсозӣ кунед барои имконоти нав.')}
               </p>
             </div>
 

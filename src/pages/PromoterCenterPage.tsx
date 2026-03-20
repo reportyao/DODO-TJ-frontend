@@ -240,7 +240,7 @@ const PromoterCenterPage: React.FC = () => {
     const shareText = t('promoter.shareText', { code: inviteCode })
     if (navigator.share) {
       navigator.share({
-        title: 'TezBarakat',
+        title: 'DODO',
         text: shareText,
         url: inviteLink,
       }).catch(console.error)

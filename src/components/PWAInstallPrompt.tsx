@@ -143,12 +143,12 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
             {/* 文本内容 */}
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">
-                {t('pwa.installTitle', 'Насб кунед TezBarakat')}
+                {t('pwa.installTitle', 'Насб кунед DODO')}
               </h3>
               <p className="text-xs text-gray-600 leading-relaxed">
                 {isIOS
                   ? t('pwa.installDescIOS', 'Тугмаи «Мубодила» -ро пахш кунед ва «Ба саҳифаи асосӣ илова кунед» -ро интихоб кунед')
-                  : t('pwa.installDesc', 'TezBarakat-ро ба саҳифаи асосӣ илова кунед барои дастрасии зуд ва кори офлайн')
+                  : t('pwa.installDesc', 'DODO-ро ба саҳифаи асосӣ илова кунед барои дастрасии зуд ва кори офлайн')
                 }
               </p>
             </div>

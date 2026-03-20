@@ -164,7 +164,7 @@ function notifyUpdateAvailable(): void {
   // 发送事件，让应用层决定如何处理
   const event = new CustomEvent('pwa:update-available', {
     detail: {
-      message: 'A new version of TezBarakat is available. Please refresh to update.',
+      message: 'A new version of DODO is available. Please refresh to update.',
     },
   });
   window.dispatchEvent(event);

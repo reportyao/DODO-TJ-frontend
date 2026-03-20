@@ -331,7 +331,7 @@ const SpinLotteryPage: React.FC = () => {
     
     const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
     const inviteLink = `${appDomain}?ref=${spinData.referral_code}`;
-    const shareText = `🎁 Барои Шумо 10 сомонӣ тӯҳфа!\nБо истиноди ман ворид шавед ва бонус гиред. Дар TezBarakat арзон харед ва бурд кунед!`;
+    const shareText = `🎁 Барои Шумо 10 сомонӣ тӯҳфа!\nБо истиноди ман ворид шавед ва бонус гиред. Дар DODO арзон харед ва бурд кунед!`;
     
     if (navigator.share) {
       navigator.share({
