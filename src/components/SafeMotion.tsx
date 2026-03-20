@@ -1,15 +1,6 @@
 import React, { useRef, useEffect } from 'react'
 import { motion, MotionProps } from 'framer-motion'
 
-// 扩展 Window 接口以支持 Telegram WebApp
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp: any
-    }
-  }
-}
-
 // 安全的 Motion 组件包装器，防止 DOM 操作冲突
 interface SafeMotionProps extends Omit<MotionProps, 'ref'> {
   children: React.ReactNode

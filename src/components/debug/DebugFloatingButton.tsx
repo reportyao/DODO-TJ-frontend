@@ -55,9 +55,7 @@ interface DebugInfo {
   // 平台环境
   platform: {
     isPWA: boolean
-    isInTelegram: boolean
-    initDataAvailable: boolean
-    webAppVersion?: string
+    hasSessionToken: boolean
   }
   // 认证状态
   auth: {
@@ -341,10 +339,6 @@ export const DebugFloatingButton: React.FC = () => {
   }, [])
 
   const getDebugInfo = (): DebugInfo => {
-    // 检测Telegram环境
-    const isInTelegram = !!(window as any).Telegram?.WebApp
-    const telegramWebApp = (window as any).Telegram?.WebApp
-    
     return {
       page: {
         path: location.pathname,
@@ -360,9 +354,7 @@ export const DebugFloatingButton: React.FC = () => {
       },
       platform: {
         isPWA: window.matchMedia('(display-mode: standalone)').matches,
-        isInTelegram,
-        initDataAvailable: !!telegramWebApp?.initData,
-        webAppVersion: telegramWebApp?.version
+        hasSessionToken: !!localStorage.getItem('custom_session_token')
       },
       auth: {
         hasUser: !!user,
@@ -478,8 +470,8 @@ export const DebugFloatingButton: React.FC = () => {
                   <div>PWA模式: <span className={getDebugInfo().platform.isPWA ? 'text-green-400' : 'text-red-400'}>
                     {getDebugInfo().platform.isPWA ? '是 ✅' : '否 ❌'}
                   </span></div>
-                  <div>Telegram环境: <span className={getDebugInfo().platform.isInTelegram ? 'text-green-400' : 'text-red-400'}>
-                    {getDebugInfo().platform.isInTelegram ? '是 ✅' : '否 ❌'}
+                  <div>Session Token: <span className={getDebugInfo().platform.hasSessionToken ? 'text-green-400' : 'text-red-400'}>
+                    {getDebugInfo().platform.hasSessionToken ? '已设置 ✅' : '未设置 ❌'}
                   </span></div>
                 </div>
               </div>

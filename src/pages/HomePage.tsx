@@ -29,66 +29,30 @@ const HomePage: React.FC = () => {
 
   const nav = useNavigate();
 
-  // 处理 Telegram start_param 重定向（仅在首次挂载时执行）
+  // 处理 PWA 深度链接参数（仅在首次挂载时执行）
+  // 支持 URL 查询参数重定向，例如: /?goto=lt_xxx 或 /?ref=INVITE_CODE
   useEffect(() => {
-    const checkStartParam = () => {
-      const WebApp = (window as any).Telegram?.WebApp || (window as any).__TELEGRAM_WEB_APP__;
-      
-      if (!WebApp) {
-        console.log('[HomePage] Telegram SDK not loaded yet, waiting...');
-        return false;
-      }
-      
-      const startParam = WebApp.initDataUnsafe?.start_param;
-      console.log('[HomePage] Checking start_param:', startParam);
-      
-      if (startParam) {
-        console.log('[HomePage] Found start_param:', startParam);
-        
-        // 1. 拼团详情: gb_{productId} - 保留路由兼容，避免死链
-        if (startParam.startsWith('gb_')) {
-          const productId = startParam.replace('gb_', '');
-          console.log('[HomePage] Group buy link received, redirecting to home');
-          // 拼团已隐藏，重定向到首页
-        }
-        // 2. 拼团结果/加入: gbs_{sessionId} - 保留路由兼容
-        else if (startParam.startsWith('gbs_')) {
-          const sessionId = startParam.replace('gbs_', '');
-          console.log('[HomePage] Group buy session link received, redirecting to home');
-          // 拼团已隐藏，重定向到首页
-        }
-        // 3. 商城详情: lt_{lotteryId}
-        else if (startParam.startsWith('lt_')) {
-          const lotteryId = startParam.replace('lt_', '');
-          console.log('[HomePage] Redirecting to lottery detail:', lotteryId);
-          nav(`/lottery/${lotteryId}`, { replace: true });
-        }
-        // 4. 晒单详情: so_{showoffId}
-        else if (startParam.startsWith('so_')) {
-          const showoffId = startParam.replace('so_', '');
-          console.log('[HomePage] Redirecting to showoff detail:', showoffId);
-          nav(`/showoff`, { replace: true });
-        }
-        // 5. 邀请码: 直接是邀请码字符串（如 LMBDYIHI）
-        else {
-          console.log('[HomePage] Found referral code:', startParam);
-          // 邀请码已在 UserContext 中处理，这里不需要额外操作
-        }
-      } else {
-        console.log('[HomePage] No start_param found');
-      }
-      
-      return true;
-    };
+    const urlParams = new URLSearchParams(window.location.search);
+    const gotoParam = urlParams.get('goto');
     
-    // 立即尝试检查
-    if (!checkStartParam()) {
-      const timer = setTimeout(() => {
-        checkStartParam();
-      }, 500);
+    if (gotoParam) {
+      console.log('[HomePage] Found goto param:', gotoParam);
       
-      return () => clearTimeout(timer);
+      // 商城详情: lt_{lotteryId}
+      if (gotoParam.startsWith('lt_')) {
+        const lotteryId = gotoParam.replace('lt_', '');
+        nav(`/lottery/${lotteryId}`, { replace: true });
+      }
+      // 晒单: so_{showoffId}
+      else if (gotoParam.startsWith('so_')) {
+        nav(`/showoff`, { replace: true });
+      }
+      // 拼团路由兼容（已废弃，重定向到首页）
+      else if (gotoParam.startsWith('gb_') || gotoParam.startsWith('gbs_')) {
+        console.log('[HomePage] Group buy link received, staying on home');
+      }
     }
+    // 邀请码通过 /register?ref=CODE 处理，不在首页处理
   }, [nav]);
 
   const [selectedLottery, setSelectedLottery] = useState<Lottery | null>(null);

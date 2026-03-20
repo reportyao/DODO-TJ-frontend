@@ -206,61 +206,9 @@ const PromoterDepositPage: React.FC = () => {
     }
   }
 
-  // ========== Telegram Mini App 扫码 ==========
+  // ========== 扫码功能（PWA 模式不支持，提示用户使用手动搜索） ==========
   const handleScanQr = () => {
-    const WebApp = window.Telegram?.WebApp
-    if (WebApp?.showScanQrPopup) {
-      WebApp.showScanQrPopup(
-        { text: t('promoterDeposit.scanQrHint') },
-        (data: string) => {
-          // 解析二维码内容：tezbarakat://user/{user_id}
-          const match = data.match(/tezbarakat:\/\/user\/(.+)/)
-          if (match) {
-            setSearchQuery(match[1])
-            // 自动搜索
-            setTimeout(() => {
-              const input = document.getElementById('search-input') as HTMLInputElement
-              if (input) {
-                input.value = match[1]
-              }
-            }, 100)
-            // 关闭扫码弹窗并搜索
-            WebApp.closeScanQrPopup?.()
-            setSearchQuery(match[1])
-            // 延迟执行搜索，确保状态更新
-            setTimeout(async () => {
-              setIsSearching(true)
-              try {
-                const result = await callPromoterDeposit({
-                  action: 'search_user',
-                  query: match[1],
-                })
-                if (result?.success) {
-                  if (result.user.id === user?.id) {
-                    toast.error(t('promoterDeposit.cannotDepositSelf'))
-                    return
-                  }
-                  setTargetUser(result.user)
-                  setStep('amount')
-                } else {
-                  toast.error(t('promoterDeposit.userNotFound'))
-                }
-              } catch (err: any) {
-                toast.error(err.message || t('promoterDeposit.searchFailed'))
-              } finally {
-                setIsSearching(false)
-              }
-            }, 200)
-            return true // 关闭扫码弹窗
-          } else {
-            toast.error(t('promoterDeposit.invalidQrCode'))
-            return true
-          }
-        }
-      )
-    } else {
-      toast.error(t('promoterDeposit.scanNotSupported'))
-    }
+    toast.error(t('promoterDeposit.scanNotSupported', '扫码功能在当前环境不可用，请使用手动搜索'))
   }
 
   // ========== 选择金额 ==========

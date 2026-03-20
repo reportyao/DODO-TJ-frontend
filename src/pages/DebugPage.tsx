@@ -54,23 +54,12 @@ export default function DebugPage() {
       addLog(loaded ? 'info' : 'error', `CSS ${i + 1}: ${href} ${loaded ? '✅ 已加载' : '❌ 未加载'}`);
     });
 
-    // 检测 Telegram
-    if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
-      const tg = window.Telegram.WebApp;
-      addLog('info', `Telegram 版本: ${tg.version}`);
-      addLog('info', `Telegram 平台: ${tg.platform}`);
-      addLog('info', `Telegram 主题: ${tg.colorScheme}`);
-      addLog('info', `Telegram 已展开: ${tg.isExpanded}`);
-      
-      // 检测 Telegram 主题参数
-      const themeParams = tg.themeParams;
-      if (themeParams) {
-        addLog('info', `Telegram bg_color: ${themeParams.bg_color}`);
-        addLog('info', `Telegram text_color: ${themeParams.text_color}`);
-      }
-    } else {
-      addLog('warn', 'Telegram WebApp 未初始化');
-    }
+    // 检测 PWA 环境
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+    addLog('info', `PWA 模式: ${isPWA ? '是' : '否'}`);
+    addLog('info', `平台: ${navigator.userAgent}`);
+    addLog('info', `语言: ${navigator.language}`);
+    addLog('info', `Session Token: ${localStorage.getItem('custom_session_token') ? '已设置' : '未设置'}`);
     
     // 用户登录状态
     if (user) {

@@ -9,7 +9,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// 密码哈希函数 (HMAC-SHA256 + 应用盐) - 与 auth-register 保持一致
+// 密码哈希函数 (HMAC-SHA256 + 应用盐) - 与 auth-register / auth-reset-password 保持一致
 const APP_SALT = Deno.env.get('PASSWORD_SALT') || 'tezbarakat_default_salt_2026';
 
 async function hashPassword(password: string): Promise<string> {
@@ -23,7 +23,7 @@ async function hashPassword(password: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// 标准化手机号：与 auth-register 保持一致
+// 标准化手机号：与 auth-register / auth-reset-password 保持一致
 function normalizePhone(phone: string): string {
   let cleaned = phone.replace(/[\s\-\(\)]/g, '');
   if (!cleaned.startsWith('+')) {
@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
 
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('id, phone_number, password_hash, first_name, last_name, referral_code, status, is_blocked, deleted_at')
+      .select('id, phone_number, password_hash, first_name, last_name, referral_code, status, is_blocked, deleted_at, avatar_url, language_code, preferred_language')
       .or(`phone_number.eq.${normalizedPhone},phone_number.eq.${phoneWithoutPlus},phone_number.eq.+${phoneWithoutPlus}`)
       .limit(1)
       .maybeSingle();
@@ -115,7 +115,18 @@ Deno.serve(async (req) => {
     }
 
     // ============================================================
-    // 4. 创建会话
+    // 4. 更新最后登录时间
+    // ============================================================
+    await supabase
+      .from('users')
+      .update({
+        last_login_at: new Date().toISOString(),
+        last_active_at: new Date().toISOString(),
+      })
+      .eq('id', user.id);
+
+    // ============================================================
+    // 5. 创建会话
     // ============================================================
     const sessionToken = crypto.randomUUID();
     const { data: session, error: sessionError } = await supabase
@@ -135,7 +146,7 @@ Deno.serve(async (req) => {
     }
 
     // ============================================================
-    // 5. 获取钱包信息
+    // 6. 获取钱包信息
     // ============================================================
     const { data: wallets } = await supabase
       .from('wallets')
@@ -143,7 +154,7 @@ Deno.serve(async (req) => {
       .eq('user_id', user.id);
 
     // ============================================================
-    // 6. 返回结果 (保持与 auth-telegram 兼容的结构)
+    // 7. 返回结果 (与 auth-register 保持一致的结构)
     // ============================================================
     const result = {
       success: true,
@@ -154,6 +165,9 @@ Deno.serve(async (req) => {
         last_name: user.last_name,
         referral_code: user.referral_code,
         status: user.status,
+        avatar_url: user.avatar_url,
+        language_code: user.language_code,
+        preferred_language: user.preferred_language,
       },
       wallets: wallets || [],
       session: {

@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useSupabase } from '../contexts/SupabaseContext'
 import { useUser } from '../contexts/UserContext'
 import {
   PhoneIcon,
@@ -15,8 +14,7 @@ const LoginPage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { authService } = useSupabase()
-  const { refreshWallets } = useUser()
+  const { loginWithPhone } = useUser()
 
   const [phoneNumber, setPhoneNumber] = useState('')
   const [password, setPassword] = useState('')
@@ -37,21 +35,12 @@ const LoginPage: React.FC = () => {
 
     setIsLoading(true)
     try {
-      const result = await authService.loginWithPhone(phoneNumber.trim(), password)
+      // 使用 UserContext 的 loginWithPhone，它会自动处理 session 存储和状态更新
+      await loginWithPhone(phoneNumber.trim(), password)
 
-      if (result.session?.token) {
-        localStorage.setItem('custom_session_token', result.session.token)
-        localStorage.setItem('custom_user', JSON.stringify(result.user))
-      }
-
-      toast.success(t('auth.loginSuccess', '登录成功'))
-
-      // 如果有重定向参数，跳转到目标页面
+      // 登录成功后跳转（UserContext 已处理 toast 和状态）
       const redirectTo = searchParams.get('redirect') || '/'
       navigate(redirectTo, { replace: true })
-
-      // 刷新页面以重新初始化 UserContext
-      window.location.reload()
     } catch (error: any) {
       console.error('Login failed:', error)
       if (error.message?.includes('PASSWORD_NOT_SET')) {

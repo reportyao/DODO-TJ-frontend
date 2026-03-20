@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const APP_DOMAIN = Deno.env.get('APP_DOMAIN') || 'https://dodo.tj';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -120,7 +121,7 @@ Deno.serve(async (req) => {
         .update({ is_active: false })
         .eq('id', resetSession.id);
 
-      // 使该用户所有其他活跃会话失效（安全措施）
+      // 使该用户所有其他活跃会话失效（安全措施：密码重置后强制重新登录）
       await supabase
         .from('user_sessions')
         .update({ is_active: false })
@@ -179,7 +180,7 @@ Deno.serve(async (req) => {
         .gte('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (existingReset) {
         const createdAt = new Date(existingReset.created_at);
@@ -218,7 +219,7 @@ Deno.serve(async (req) => {
       }
 
       // 发送通知到 WhatsApp 队列
-      const resetLink = `https://dodo.tj/reset-password?token=${resetToken}`;
+      const resetLink = `${APP_DOMAIN}/reset-password?token=${resetToken}`;
 
       const { error: notifyError } = await supabase
         .from('notification_queue')
@@ -227,13 +228,17 @@ Deno.serve(async (req) => {
           phone_number: user.phone_number,
           type: 'password_reset',
           notification_type: 'password_reset',
-          payload: { reset_link: resetLink },
+          payload: { reset_link: resetLink, reset_token: resetToken },
           title: '密码重置',
-          message: `您的密码重置链接: ${resetLink}`,
+          message: `您的密码重置链接: ${resetLink}\n\n您的重置Token: ${resetToken}\n\n此链接1小时内有效。`,
           status: 'pending',
           channel: 'whatsapp',
           priority: 1,
           scheduled_at: new Date().toISOString(),
+          retry_count: 0,
+          max_retries: 3,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         });
 
       if (notifyError) {

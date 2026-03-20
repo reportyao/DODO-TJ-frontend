@@ -7,6 +7,7 @@ import PWAUpdateNotification from "./components/PWAUpdateNotification"
 import { Layout } from "./components/layout/Layout"
 import { RealtimeNotificationsProvider } from "./components/RealtimeNotificationsProvider"
 import { PageLoadingFallback } from "./components/PageLoadingFallback"
+import { AuthGuard, GuestGuard } from "./components/AuthGuard"
 import { lazyWithRetry, prefetchCorePages, clearChunkReloadFlag } from "./utils/lazyWithRetry"
 
 // ============================================================
@@ -92,57 +93,68 @@ function App() {
         <Layout>
           <Suspense fallback={<PageLoadingFallback />}>
             <Routes>
-              {/* 认证页面 - 不需要 Layout 包裹，但为了简化先放在这里 */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              
+              {/* ============================================================ */}
+              {/* 访客路由（已登录用户访问将重定向到首页）                      */}
+              {/* ============================================================ */}
+              <Route path="/login" element={<GuestGuard><LoginPage /></GuestGuard>} />
+              <Route path="/register" element={<GuestGuard><RegisterPage /></GuestGuard>} />
+              <Route path="/forgot-password" element={<GuestGuard><ForgotPasswordPage /></GuestGuard>} />
+              {/* /reset-password 是密码重置链接的目标路由，复用 ForgotPasswordPage 并自动进入 verify 步骤 */}
+              <Route path="/reset-password" element={<GuestGuard><ForgotPasswordPage /></GuestGuard>} />
+
+              {/* ============================================================ */}
+              {/* 公开路由（无需登录即可访问）                                  */}
+              {/* 首页和商城列表允许未登录用户浏览，提升转化率                  */}
+              {/* ============================================================ */}
               <Route path="/" element={<HomePage />} />
               <Route path="/lottery" element={<LotteryPage />} />
               <Route path="/lottery/:id" element={<LotteryDetailPage />} />
               <Route path="/lottery/:id/result" element={<LotteryResultPage />} />
-              <Route path="/full-purchase-confirm/:lotteryId" element={<FullPurchaseConfirmPage />} />
-              
+              <Route path="/showoff" element={<ShowoffPage />} />
+
               {/* 拼团路由 - 重定向到首页，避免死链 */}
               <Route path="/group-buy" element={<Navigate to="/" replace />} />
               <Route path="/group-buy/:productId" element={<Navigate to="/" replace />} />
               <Route path="/group-buy/result/:sessionId" element={<Navigate to="/" replace />} />
               <Route path="/my-group-buys" element={<Navigate to="/orders" replace />} />
               <Route path="/groupbuy/:productId" element={<Navigate to="/" replace />} />
-              
-              <Route path="/wallet" element={<WalletPage />} />
-              <Route path="/deposit" element={<DepositPage />} />
-              <Route path="/wallet/deposit" element={<DepositPage />} />
-              <Route path="/withdraw" element={<WithdrawPage />} />
-              <Route path="/wallet/withdraw" element={<WithdrawPage />} />
-              <Route path="/exchange" element={<ExchangePage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/subsidy-plan" element={<SubsidyPlanPage />} />
 
-              <Route path="/orders" element={<OrderManagementPage />} />
-              <Route path="/notifications" element={<NotificationPage />} />
-              <Route path="/invite" element={<InvitePage />} />
-              <Route path="/spin" element={<SpinLotteryPage />} />
-              <Route path="/ai" element={<AIPage />} />
-              <Route path="/showoff" element={<ShowoffPage />} />
-              <Route path="/showoff/create" element={<ShowoffCreatePage />} />
-              <Route path="/market" element={<MarketPage />} />
-              <Route path="/market/create" element={<MarketCreatePage />} />
-              <Route path="/my-tickets" element={<MyTicketsPage />} />
-              <Route path="/my-prizes" element={<OrderManagementPage />} />
-              <Route path="/prizes" element={<OrderManagementPage />} />
-              <Route path="/orders-management" element={<OrderManagementPage />} />
-              <Route path="/order-detail/:id" element={<OrderDetailPage />} />
-              <Route path="/showoff/my" element={<ShowoffPage />} />
-              <Route path="/promoter-center" element={<PromoterCenterPage />} />
-              <Route path="/promoter-deposit" element={<PromoterDepositPage />} />
-              <Route path="/market/my-resales" element={<MarketPage />} />
-              <Route path="/coupons" element={<CouponListPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              {/* ============================================================ */}
+              {/* 受保护路由（需要登录才能访问）                                */}
+              {/* ============================================================ */}
+              <Route path="/full-purchase-confirm/:lotteryId" element={<AuthGuard><FullPurchaseConfirmPage /></AuthGuard>} />
+              <Route path="/wallet" element={<AuthGuard><WalletPage /></AuthGuard>} />
+              <Route path="/deposit" element={<AuthGuard><DepositPage /></AuthGuard>} />
+              <Route path="/wallet/deposit" element={<AuthGuard><DepositPage /></AuthGuard>} />
+              <Route path="/withdraw" element={<AuthGuard><WithdrawPage /></AuthGuard>} />
+              <Route path="/wallet/withdraw" element={<AuthGuard><WithdrawPage /></AuthGuard>} />
+              <Route path="/exchange" element={<AuthGuard><ExchangePage /></AuthGuard>} />
+              <Route path="/profile" element={<AuthGuard><ProfilePage /></AuthGuard>} />
+              <Route path="/subsidy-plan" element={<AuthGuard><SubsidyPlanPage /></AuthGuard>} />
+
+              <Route path="/orders" element={<AuthGuard><OrderManagementPage /></AuthGuard>} />
+              <Route path="/notifications" element={<AuthGuard><NotificationPage /></AuthGuard>} />
+              <Route path="/invite" element={<AuthGuard><InvitePage /></AuthGuard>} />
+              <Route path="/spin" element={<AuthGuard><SpinLotteryPage /></AuthGuard>} />
+              <Route path="/ai" element={<AuthGuard><AIPage /></AuthGuard>} />
+              <Route path="/showoff/create" element={<AuthGuard><ShowoffCreatePage /></AuthGuard>} />
+              <Route path="/market" element={<AuthGuard><MarketPage /></AuthGuard>} />
+              <Route path="/market/create" element={<AuthGuard><MarketCreatePage /></AuthGuard>} />
+              <Route path="/my-tickets" element={<AuthGuard><MyTicketsPage /></AuthGuard>} />
+              <Route path="/my-prizes" element={<AuthGuard><OrderManagementPage /></AuthGuard>} />
+              <Route path="/prizes" element={<AuthGuard><OrderManagementPage /></AuthGuard>} />
+              <Route path="/orders-management" element={<AuthGuard><OrderManagementPage /></AuthGuard>} />
+              <Route path="/order-detail/:id" element={<AuthGuard><OrderDetailPage /></AuthGuard>} />
+              <Route path="/showoff/my" element={<AuthGuard><ShowoffPage /></AuthGuard>} />
+              <Route path="/promoter-center" element={<AuthGuard><PromoterCenterPage /></AuthGuard>} />
+              <Route path="/promoter-deposit" element={<AuthGuard><PromoterDepositPage /></AuthGuard>} />
+              <Route path="/market/my-resales" element={<AuthGuard><MarketPage /></AuthGuard>} />
+              <Route path="/coupons" element={<AuthGuard><CouponListPage /></AuthGuard>} />
+              <Route path="/settings" element={<AuthGuard><SettingsPage /></AuthGuard>} />
               <Route path="/debug" element={<DebugPage />} />
-              <Route path="/profile/edit" element={<ProfileEditPage />} />
-              <Route path="/pending-pickup" element={<PendingPickupPage />} />
-              <Route path="/orders/:id" element={<OrderDetailPage />} />
+              <Route path="/profile/edit" element={<AuthGuard><ProfileEditPage /></AuthGuard>} />
+              <Route path="/pending-pickup" element={<AuthGuard><PendingPickupPage /></AuthGuard>} />
+              <Route path="/orders/:id" element={<AuthGuard><OrderDetailPage /></AuthGuard>} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>

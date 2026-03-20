@@ -152,6 +152,8 @@ Deno.serve(async (req) => {
         referred_by_id: referredById,
         referrer_id: referredById,
         status: 'ACTIVE',
+        last_login_at: new Date().toISOString(),
+        last_active_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -170,7 +172,7 @@ Deno.serve(async (req) => {
     }
 
     // ============================================================
-    // 5. 初始化钱包 (参考 auth-telegram 逻辑)
+    // 5. 初始化钱包
     // ============================================================
     const wallets = [
       {
@@ -178,6 +180,10 @@ Deno.serve(async (req) => {
         type: 'TJS',
         currency: 'TJS',
         balance: 0,
+        frozen_balance: 0,
+        total_deposits: 0,
+        total_withdrawals: 0,
+        version: 1,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
@@ -186,6 +192,10 @@ Deno.serve(async (req) => {
         type: 'LUCKY_COIN',
         currency: 'POINTS',
         balance: 10, // 注册奖励
+        frozen_balance: 0,
+        total_deposits: 0,
+        total_withdrawals: 0,
+        version: 1,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
@@ -198,8 +208,13 @@ Deno.serve(async (req) => {
 
     if (walletError) {
       console.error('创建钱包失败:', walletError);
-    } else if (createdWallets) {
-      // 记录积分奖励交易
+      // 钱包创建失败需要回滚用户创建
+      await supabase.from('users').delete().eq('id', user.id);
+      throw new Error('创建钱包失败，注册已回滚');
+    }
+
+    // 记录积分奖励交易
+    if (createdWallets) {
       const luckyWallet = createdWallets.find((w: any) => w.type === 'LUCKY_COIN');
       if (luckyWallet) {
         await supabase.from('wallet_transactions').insert({
@@ -210,6 +225,7 @@ Deno.serve(async (req) => {
           balance_after: 10,
           description: '新用户注册奖励',
           status: 'COMPLETED',
+          created_at: new Date().toISOString(),
         });
       }
     }
@@ -219,11 +235,62 @@ Deno.serve(async (req) => {
     // ============================================================
     if (referredById) {
       try {
+        // 增加邀请人的抽奖次数
         await supabase.rpc('add_user_spin_count', {
           p_user_id: referredById,
           p_count: 1,
           p_source: 'invite_reward'
         });
+
+        // 记录邀请奖励
+        await supabase.from('invite_rewards').insert({
+          inviter_id: referredById,
+          invitee_id: user.id,
+          reward_type: 'new_user_register',
+          spin_count_awarded: 1,
+          lucky_coins_awarded: 10,
+          is_processed: true,
+          processed_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        });
+
+        // 给邀请人和被邀请人各增加5次AI对话次数
+        try {
+          const supabaseUrl = SUPABASE_URL;
+          const serviceRoleKey = SUPABASE_SERVICE_ROLE_KEY;
+
+          // 给邀请人增加AI次数
+          await fetch(`${supabaseUrl}/functions/v1/ai-add-bonus`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${serviceRoleKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              user_id: referredById,
+              amount: 5,
+              reason: 'invite_reward'
+            })
+          });
+
+          // 给被邀请人增加AI次数
+          await fetch(`${supabaseUrl}/functions/v1/ai-add-bonus`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${serviceRoleKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              user_id: user.id,
+              amount: 5,
+              reason: 'invite_reward'
+            })
+          });
+
+          console.log(`[Invite Reward] Awarded 5 AI chats to both inviter ${referredById} and invitee ${user.id}`);
+        } catch (aiRewardError: unknown) {
+          console.error('Failed to process AI invite reward:', aiRewardError);
+        }
 
         // 发送通知给邀请人
         await supabase.from('notifications').insert({
@@ -231,12 +298,46 @@ Deno.serve(async (req) => {
           type: 'INVITE_SUCCESS',
           title_i18n: { zh: '邀请成功', ru: 'Успешное приглашение', tg: 'Даъвати муваффақ' },
           message_i18n: {
-            zh: `恭喜！新用户通过您的邀请链接注册成功！您获得了1次转盘抽奖机会。`,
-            ru: `Поздравляем! Новый пользователь успешно зарегистрировался по вашей ссылке! Вы получили 1 вращение.`,
-            tg: `Табрик! Корбари нав тавассути истиноди шумо сабти ном кард! Шумо 1 чархиш гирифтед.`
+            zh: `恭喜！用户 ${first_name || '新用户'} 通过您的邀请链接注册成功！您获得了1次转盘抽奖机会和5次AI对话次数。`,
+            ru: `Поздравляем! Пользователь ${first_name || 'новый пользователь'} успешно зарегистрировался по вашей ссылке! Вы получили 1 вращение колеса и 5 AI-чатов.`,
+            tg: `Табрик! Корбар ${first_name || 'корбари нав'} тавассути истиноди шумо бомуваффақият сабти ном кард! Шумо 1 чархиши чархак ва 5 суҳбати AI гирифтед.`
           },
-          metadata: { invitee_id: user.id },
+          metadata: {
+            invitee_id: user.id,
+            invitee_name: first_name || null,
+            rewards: { spin_count: 1, ai_chats: 5 }
+          },
+          created_at: new Date().toISOString(),
         });
+
+        // 将通知加入 WhatsApp 发送队列
+        const { data: inviterData } = await supabase
+          .from('users')
+          .select('phone_number')
+          .eq('id', referredById)
+          .single();
+
+        if (inviterData?.phone_number) {
+          await supabase.from('notification_queue').insert({
+            user_id: referredById,
+            phone_number: inviterData.phone_number,
+            type: 'referral_success',
+            notification_type: 'referral_success',
+            payload: {
+              invitee_name: first_name || '新用户'
+            },
+            title: '邀请成功',
+            message: `用户 ${first_name || '新用户'} 通过您的邀请链接注册成功！`,
+            priority: 2,
+            status: 'pending',
+            channel: 'whatsapp',
+            scheduled_at: new Date().toISOString(),
+            retry_count: 0,
+            max_retries: 3,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        }
       } catch (referralError) {
         // 邀请奖励失败不应阻断注册流程
         console.error('邀请奖励发放失败:', referralError);
@@ -271,7 +372,7 @@ Deno.serve(async (req) => {
     }
 
     // ============================================================
-    // 8. 返回结果 (保持与 auth-telegram 兼容的结构)
+    // 8. 返回结果
     // ============================================================
     const result = {
       success: true,
@@ -282,7 +383,11 @@ Deno.serve(async (req) => {
         last_name: user.last_name,
         referral_code: user.referral_code,
         status: user.status,
+        avatar_url: user.avatar_url || null,
+        language_code: user.language_code || null,
+        preferred_language: user.preferred_language || null,
       },
+      wallets: createdWallets || [],
       session: {
         token: session.session_token,
         expires_at: session.expires_at

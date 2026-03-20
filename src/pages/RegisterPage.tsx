@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useSupabase } from '../contexts/SupabaseContext'
+import { useUser } from '../contexts/UserContext'
 import {
   PhoneIcon,
   LockClosedIcon,
@@ -16,7 +16,7 @@ const RegisterPage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { authService } = useSupabase()
+  const { registerWithPhone } = useUser()
 
   const [phoneNumber, setPhoneNumber] = useState('')
   const [password, setPassword] = useState('')
@@ -57,24 +57,16 @@ const RegisterPage: React.FC = () => {
 
     setIsLoading(true)
     try {
-      const result = await authService.registerWithPhone(
+      // 使用 UserContext 的 registerWithPhone，它会自动处理 session 存储和状态更新
+      await registerWithPhone(
         phoneNumber.trim(),
         password,
         firstName.trim() || undefined,
-        undefined,
         referralCode.trim() || undefined
       )
 
-      if (result.session?.token) {
-        localStorage.setItem('custom_session_token', result.session.token)
-        localStorage.setItem('custom_user', JSON.stringify(result.user))
-      }
-
-      toast.success(t('auth.registerSuccess', '注册成功！'))
+      // 注册成功后跳转（UserContext 已处理 toast 和状态）
       navigate('/', { replace: true })
-
-      // 刷新页面以重新初始化 UserContext
-      window.location.reload()
     } catch (error: any) {
       console.error('Registration failed:', error)
       toast.error(error.message || t('auth.registerFailed', '注册失败'))

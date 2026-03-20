@@ -170,112 +170,29 @@ export const likeService = {
 
 /**
  * 认证服务
+ * 已完成 PWA 迁移：移除 Telegram 认证，仅保留手机号+密码认证
  */
 export const authService = {
   /**
-   * 使用 Telegram Mini App 的 initData 进行认证
-   * @param initData Telegram Mini App 启动参数
-   * @param startParam 启动参数 (可选)
-   */
-  async authenticateWithTelegram(initData: string, startParam?: string) {
-    const maxRetries = 3;
-    let lastError: Error | null = null;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`[Auth] Attempt ${attempt}/${maxRetries}...`);
-        
-        // 调用 Supabase Edge Function 进行认证
-        const { data, error } = await supabase.functions.invoke('auth-telegram', {
-          body: { initData, startParam }
-        });
-        
-        if (error) {
-          console.error(`[Auth] Attempt ${attempt} failed:`, error);
-          lastError = new Error(await extractEdgeFunctionError(error));
-          
-          // 如果不是最后一次尝试，等待后重试
-          if (attempt < maxRetries) {
-            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // 指数退避，最多5秒
-            console.log(`[Auth] Waiting ${delay}ms before retry...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            continue;
-          }
-          throw lastError;
-        }
-        
-        // Edge Function 返回的数据结构是 { data: { user, wallets, session, ... } }
-        if (!data || !data.data) {
-          lastError = new Error('Invalid response from auth function');
-          if (attempt < maxRetries) {
-            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-            console.log(`[Auth] Invalid response, waiting ${delay}ms before retry...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            continue;
-          }
-          throw lastError;
-        }
-      
-      // 添加字段映射：referral_code -> invite_code
-      const user = {
-        ...data.data.user,
-        invite_code: data.data.user.referral_code // 映射字段
-      };
-      
-      // 【新增】如果是新用户且有礼物，存储到localStorage以便弹窗显示
-      if (data.data.is_new_user && data.data.new_user_gift) {
-        localStorage.setItem('new_user_gift_data', JSON.stringify(data.data.new_user_gift));
-      }
-      
-      return {
-        user,
-        session: data.data.session,
-        wallets: data.data.wallets,
-        is_new_user: data.data.is_new_user,
-        new_user_gift: data.data.new_user_gift
-      };
-      } catch (error) {
-        console.error(`[Auth] Attempt ${attempt} error:`, error);
-        lastError = error instanceof Error ? error : new Error(String(error));
-        
-        if (attempt < maxRetries) {
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-          console.log(`[Auth] Waiting ${delay}ms before retry...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-      }
-    }
-    
-    // 所有重试都失败
-    throw lastError || new Error('Authentication failed after all retries');
-  },
-
-  /**
-   * 获取当前登录用户
+   * 获取当前登录用户（基于自定义 session token）
+   * 不再依赖 Supabase Auth，而是从 localStorage 读取缓存的用户数据
    */
   async getCurrentUser() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    const storedUser = localStorage.getItem('custom_user');
+    const sessionToken = localStorage.getItem('custom_session_token');
+    
+    if (!storedUser || !sessionToken) return null;
 
-    // 获取用户 Profile
-    const { data: profile, error } = await supabase
-	      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (error) {
-      console.error('Failed to fetch user profile:', error);
-      throw new Error(`获取用户资料失败: ${error.message}`);
+    try {
+      const parsedUser = JSON.parse(storedUser);
+      return {
+        ...parsedUser,
+        invite_code: parsedUser.referral_code // 兼容旧字段
+      };
+    } catch (e) {
+      console.error('Failed to parse stored user:', e);
+      return null;
     }
-
-    // 添加字段映射：referral_code -> invite_code
-    return { 
-      ...user, 
-      ...profile,
-      invite_code: profile.referral_code // 映射字段
-    };
   },
 
   /**

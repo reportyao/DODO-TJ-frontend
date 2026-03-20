@@ -161,19 +161,10 @@ export function getWalletTypeText(type: string, t?: (key: string) => string): st
   return typeMap[type] || type;
 }
 
-// 复制到剪贴板 - 优先使用 Telegram WebApp API
+// 复制到剪贴板
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
-    // 优先使用 Telegram WebApp 的剪贴板 API
-    if (window.Telegram?.WebApp?.writeTextToClipboard) {
-      return new Promise((resolve) => {
-        window.Telegram!.WebApp.writeTextToClipboard(text, (success: boolean) => {
-          resolve(success);
-        });
-      });
-    }
-    
-    // 其次尝试使用原生 Clipboard API
+    // 优先使用原生 Clipboard API
     if (navigator.clipboard && window.isSecureContext) {
       try {
         await navigator.clipboard.writeText(text);

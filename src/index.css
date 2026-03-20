@@ -25,7 +25,7 @@
     --sidebar-ring: 217.2 91.2% 59.8%
   }
   
-  /* 强制设置基础样式，防止被 Telegram 主题覆盖 */
+  /* 基础样式 */
   html {
     background-color: #f9fafb !important;
     min-height: 100vh;
@@ -46,10 +46,7 @@
     min-height: 100vh;
   }
 
-  /* 确保 Telegram WebApp 容器也有正确的背景 */
-  .tg-viewport {
-    background-color: #f9fafb !important;
-  }
+
 }
 
 /*
@@ -59,7 +56,7 @@
  * 这会导致在固定尺寸容器中使用 object-fit: cover 的图片无法正确填充。
  *
  * 以下规则放在 @layer 外部，优先级高于 @layer base 中的 preflight。
- * 使用 !important 确保在 Telegram WebView（旧版 Chromium）中也能生效。
+ * 使用 !important 确保在各种浏览器环境中都能生效。
  */
 
 /* 当 img 有内联 style 设置了 position:absolute 时，覆盖 preflight */

@@ -13,13 +13,13 @@ import tgTranslation from './locales/tg.json'
 declare const __APP_VERSION__: string
 const I18N_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : Date.now().toString()
 
-// 【迁移修复】自定义语言检测器
-// 优先从用户缓存的配置中读取语言偏好，其次尝试 Telegram WebApp（向后兼容）
+// 自定义语言检测器
+// 从用户缓存的配置中读取语言偏好（登录后用户的 preferred_language）
 const userPreferenceDetector = {
   name: 'userPreference',
   lookup: (): string | undefined => {
     try {
-      // 优先从缓存的用户数据中读取语言偏好
+      // 从缓存的用户数据中读取语言偏好
       const storedUser = localStorage.getItem('custom_user');
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
@@ -29,14 +29,6 @@ const userPreferenceDetector = {
           if (lang.startsWith('ru')) return 'ru';
           if (lang.startsWith('tg') || lang.startsWith('fa')) return 'tg';
         }
-      }
-
-      // 向后兼容：尝试从 Telegram WebApp 获取
-      const tgLang = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code;
-      if (tgLang) {
-        if (tgLang.startsWith('zh')) return 'zh';
-        if (tgLang.startsWith('ru')) return 'ru';
-        if (tgLang.startsWith('tg') || tgLang.startsWith('fa')) return 'tg';
       }
 
       return undefined;
@@ -76,7 +68,7 @@ i18n
     },
     detection: {
       // localStorage 优先（用户手动切换的语言应被尊重），
-      // 其次是用户偏好检测器（从缓存用户数据或 Telegram WebApp 获取），
+      // 其次是用户偏好检测器（从缓存用户数据中获取），
       // 最后是浏览器语言
       order: ['localStorage', 'userPreference', 'navigator'],
       caches: ['localStorage']
