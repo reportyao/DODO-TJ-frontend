@@ -162,12 +162,15 @@ serve(async (req) => {
 
             // 更新原订单表的提货码
             if (orderItem.order_type === 'FULL_PURCHASE') {
+              // 【R20修复】补充 pickup_status 和 expires_at，与 LOTTERY_PRIZE/GROUP_BUY 保持一致
               await supabase
                 .from('full_purchase_orders')
                 .update({
                   pickup_code: pickupCode,
+                  pickup_status: 'PENDING_PICKUP',
                   logistics_status: 'READY_FOR_PICKUP',
                   pickup_point_id: pickupPoint?.id,
+                  expires_at: expiresAt,
                 })
                 .eq('id', orderItem.order_id)
             } else if (orderItem.order_type === 'LOTTERY_PRIZE') {
