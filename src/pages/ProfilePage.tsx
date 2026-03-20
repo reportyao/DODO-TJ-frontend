@@ -108,15 +108,16 @@ const ProfilePage: React.FC = () => {
     const code = user?.referral_code || user?.invite_code;
     if (!code) return;
     
-    // 【迁移修复】使用 PWA 域名生成分享链接
+    // 使用 PWA 域名生成分享链接
     const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
     const inviteLink = `${appDomain}?ref=${code}`;
-    const shareText = `🎁 Барои Шумо 10 сомонӣ тӯҳфа!\nБо истиноди ман ворид шавед ва бонус гиред. Дар DODO арзон харед ва бурд кунед!`;
+    // 使用 i18n 多语言分享文案
+    const shareText = t('invite.shareText', { inviteCode: code, inviteLink });
     
-    // 【迁移修复】优先使用 WhatsApp 分享，其次使用 Web Share API
+    // 优先使用 Web Share API，其次使用 WhatsApp 分享
     if (navigator.share) {
       navigator.share({
-        title: t('invite.shareInvite'),
+        title: t('invite.shareTitle'),
         text: shareText,
         url: inviteLink
       }).catch(console.error);
