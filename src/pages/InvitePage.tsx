@@ -77,9 +77,10 @@ const InvitePage: React.FC = () => {
         return;
       }
 
-      // 使用Edge Function获取邀请数据
+      // 使用Edge Function获取邀请数据（传递 session_token 进行身份验证）
+      const sessionToken = localStorage.getItem('custom_session_token');
       const { data, error } = await supabase.functions.invoke('get-invite-data', {
-        body: { user_id: user.id }
+        body: { user_id: user.id, session_token: sessionToken }
       });
 
       if (error) throw new Error(await extractEdgeFunctionError(error));

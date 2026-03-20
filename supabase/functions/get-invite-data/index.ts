@@ -6,15 +6,70 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
 }
 
+// 通用的 session 验证函数
+async function validateSession(sessionToken: string): Promise<{ userId: string }> {
+  if (!sessionToken) {
+    throw new Error('未授权：缺少认证令牌');
+  }
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('服务器配置错误');
+  }
+  const sessionResponse = await fetch(
+    `${supabaseUrl}/rest/v1/user_sessions?session_token=eq.${sessionToken}&is_active=eq.true&select=*`,
+    {
+      headers: {
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  if (!sessionResponse.ok) {
+    throw new Error('验证会话失败');
+  }
+  const sessions = await sessionResponse.json();
+  if (sessions.length === 0) {
+    throw new Error('未授权：会话不存在或已失效');
+  }
+  const session = sessions[0];
+  const expiresAt = new Date(session.expires_at);
+  if (expiresAt < new Date()) {
+    throw new Error('未授权：会话已过期');
+  }
+  return { userId: session.user_id };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { user_id } = await req.json()
+    const body = await req.json()
+    const { user_id, session_token } = body
 
-    if (!user_id) {
+    // 【安全修复】验证 session_token，确保只有本人可以查看自己的邀请数据
+    if (!session_token) {
+      return new Response(
+        JSON.stringify({ success: false, error: '未授权：缺少 session_token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const { userId: authenticatedUserId } = await validateSession(session_token);
+
+    // 确保请求的 user_id 与 session 中的 user_id 一致，防止越权访问
+    const targetUserId = user_id || authenticatedUserId;
+    if (targetUserId !== authenticatedUserId) {
+      return new Response(
+        JSON.stringify({ success: false, error: '未授权：无权查看他人数据' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!targetUserId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Missing user_id' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -26,11 +81,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    console.log('[GetInviteData] Fetching invite data for user:', user_id)
+    console.log('[GetInviteData] Fetching invite data for user:', targetUserId)
 
     // 维护一个已出现的用户ID集合，防止重复和自引用
     const appearedUserIds = new Set<string>()
-    appearedUserIds.add(user_id) // 首先排除当前用户自己
+    appearedUserIds.add(targetUserId) // 首先排除当前用户自己
 
     const allInvitedUsers: any[] = []
 
@@ -39,8 +94,8 @@ serve(async (req) => {
     const { data: level1Users, error: level1Error } = await supabase
       .from('users')
       .select('id, first_name, phone_number, avatar_url, created_at')
-      .or(`referred_by_id.eq.${user_id},referrer_id.eq.${user_id}`)
-      .neq('id', user_id) // 排除当前用户自己
+      .or(`referred_by_id.eq.${targetUserId},referrer_id.eq.${targetUserId}`)
+      .neq('id', targetUserId) // 排除当前用户自己
 
     if (level1Error) {
       console.error('[GetInviteData] Level 1 query error:', level1Error)
@@ -55,7 +110,7 @@ serve(async (req) => {
     if (level1Users && level1Users.length > 0) {
       level1Users.forEach(u => {
         // 再次检查，确保不是当前用户
-        if (u.id !== user_id && !appearedUserIds.has(u.id)) {
+        if (u.id !== targetUserId && !appearedUserIds.has(u.id)) {
           appearedUserIds.add(u.id)
           allInvitedUsers.push({
             id: u.id,
@@ -71,7 +126,7 @@ serve(async (req) => {
       })
 
       // 2. 获取二级邀请用户（一级用户邀请的用户）
-      const level1Ids = Array.from(appearedUserIds).filter(id => id !== user_id)
+      const level1Ids = Array.from(appearedUserIds).filter(id => id !== targetUserId)
       
       if (level1Ids.length > 0) {
         // 修复: 需要分别查询两个字段然后合并去重，并排除已出现的用户
@@ -132,19 +187,19 @@ serve(async (req) => {
           
           if (level2Ids.length > 0) {
             // 修复: 需要分别查询两个字段然后合并去重，并排除已出现的用户
-            const appearedIdsArray = Array.from(appearedUserIds)
+            const appearedIdsArray2 = Array.from(appearedUserIds)
             
             const { data: level3ByReferred } = await supabase
               .from('users')
               .select('id, first_name, phone_number, avatar_url, created_at')
               .in('referred_by_id', level2Ids)
-              .not('id', 'in', `(${appearedIdsArray.join(',')})`) // 排除已出现的用户
+              .not('id', 'in', `(${appearedIdsArray2.join(',')})`) // 排除已出现的用户
             
             const { data: level3ByReferrer } = await supabase
               .from('users')
               .select('id, first_name, phone_number, avatar_url, created_at')
               .in('referrer_id', level2Ids)
-              .not('id', 'in', `(${appearedIdsArray.join(',')})`) // 排除已出现的用户
+              .not('id', 'in', `(${appearedIdsArray2.join(',')})`) // 排除已出现的用户
             
             // 合并并去重
             const level3Map = new Map()
@@ -253,7 +308,7 @@ serve(async (req) => {
       const { data: commissionsData } = await supabase
         .from('commissions')
         .select('from_user_id, source_user_id, amount')
-        .eq('user_id', user_id)
+        .eq('user_id', targetUserId)
         .in('from_user_id', userIds)
         .eq('status', 'settled')
       
@@ -294,7 +349,7 @@ serve(async (req) => {
     const { data: commissionsData } = await supabase
       .from('commissions')
       .select('amount, status')
-      .eq('user_id', user_id)
+      .eq('user_id', targetUserId)
 
     const totalCommission = commissionsData?.reduce((sum, c) => sum + Number(c.amount), 0) || 0
     const paidCommission = commissionsData?.filter(c => c.status === 'PAID').reduce((sum, c) => sum + Number(c.amount), 0) || 0
@@ -302,28 +357,20 @@ serve(async (req) => {
 
     /**
      * 获取用户现金余额（佣金奖励统一发放到现金钱包）
-     * 
-     * 钱包类型说明（重要）：
-     * - 现金钱包: type='TJS', currency='TJS'
-     * - 积分钱包: type='LUCKY_COIN', currency='POINTS'
-     * 
-     * 注意：数据库枚举 WalletType 只有 'TJS' 和 'LUCKY_COIN'，没有 'BONUS'
-     * 佣金奖励统一发放到现金钱包(TJS)，不是单独的奖金钱包
      */
     const { data: walletData } = await supabase
       .from('wallets')
       .select('balance')
-      .eq('user_id', user_id)
-      .eq('type', 'TJS')           // 修复：现金钱包类型，不是'BONUS'
+      .eq('user_id', targetUserId)
+      .eq('type', 'TJS')
       .eq('currency', 'TJS')
       .single()
 
-    // 佣金余额就是现金钱包余额
     const bonusBalance = walletData?.balance || 0
 
     const stats = {
-      total_invites: level1Count, // 直接邀请数
-      total_referrals: totalReferrals, // 总推荐数（3级）
+      total_invites: level1Count,
+      total_referrals: totalReferrals,
       level1_referrals: level1Count,
       level2_referrals: level2Count,
       level3_referrals: level3Count,
@@ -335,7 +382,6 @@ serve(async (req) => {
 
     console.log('[GetInviteData] Stats:', stats)
     console.log('[GetInviteData] Unique users returned:', allInvitedUsers.length)
-    console.log('[GetInviteData] User IDs:', allInvitedUsers.map(u => u.id))
 
     return new Response(
       JSON.stringify({ 
