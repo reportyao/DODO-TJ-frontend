@@ -166,7 +166,7 @@ serve(async (req) => {
     }
 
     // 生成订单号
-    const orderNumber = `TB${Date.now()}`
+    const orderNumber = `DP${Date.now()}`
     console.log('[deposit-request] 生成订单号:', orderNumber)
 
     // 创建充值申请
