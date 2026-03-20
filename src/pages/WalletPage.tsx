@@ -16,7 +16,6 @@ import {
 import { formatCurrency, formatDateTime } from '../lib/utils'
 import toast from 'react-hot-toast'
 import { DepositModal } from '../components/wallet/DepositModal'
-import { WithdrawModal } from '../components/wallet/WithdrawModal'
 import { SubsidyPoolCard } from '../components/wallet/SubsidyPoolCard'
 import { useSupabase } from '../contexts/SupabaseContext'
 
@@ -28,7 +27,6 @@ const WalletPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions'>('transactions')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showDepositModal, setShowDepositModal] = useState(false)
-  const [showWithdrawModal, setShowWithdrawModal] = useState(false)
   const [transactions, setTransactions] = useState<any[]>([])
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(true)
   const [hasLoadedTransactions, setHasLoadedTransactions] = useState(false)
@@ -427,11 +425,7 @@ const WalletPage: React.FC = () => {
         onClose={() => setShowDepositModal(false)}
         onSuccess={handleRefresh}
       />
-      <WithdrawModal
-        isOpen={showWithdrawModal}
-        onClose={() => setShowWithdrawModal(false)}
-        onSuccess={handleRefresh}
-      />
+
     </div>
   )
 }
