@@ -191,6 +191,8 @@ serve(async (req) => {
        * - status: 状态（settled）
        * - order_id: 关联订单ID
        */
+      // 【R19修复】先创建 pending 状态的佣金记录，钱包更新成功后再改为 settled
+      // 这样如果钱包更新失败，管理员可通过 bulk-payout-commissions 重试发放
       const { data: commission, error: commissionError } = await supabaseClient
         .from('commissions')
         .insert({
@@ -206,7 +208,7 @@ serve(async (req) => {
           order_id: order_id,
           related_order_id: order_id,
           type: 'REFERRAL_COMMISSION',
-          status: 'settled'
+          status: 'pending'  // 先设为 pending，钱包更新成功后再改为 settled
         })
         .select()
         .single()
@@ -268,6 +270,13 @@ serve(async (req) => {
           processed_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
         })
+        // 【R19修复】新建钱包成功后，将 commission 状态改为 settled
+        if (commission?.id) {
+          await supabaseClient
+            .from('commissions')
+            .update({ status: 'settled', settled_at: new Date().toISOString() })
+            .eq('id', commission.id)
+        }
         console.log('Created new LUCKY_COIN wallet for user:', currentUserId, 'with balance:', commissionAmount)
       } else {
         // 更新积分钱包余额
@@ -309,6 +318,13 @@ serve(async (req) => {
               processed_at: new Date().toISOString(),
               created_at: new Date().toISOString(),
             })
+            // 【R19修复】钱包更新成功后，将 commission 状态改为 settled
+            if (commission?.id) {
+              await supabaseClient
+                .from('commissions')
+                .update({ status: 'settled', settled_at: new Date().toISOString() })
+                .eq('id', commission.id)
+            }
             console.log('Updated LUCKY_COIN wallet for user:', currentUserId, 'new balance:', newBalance)
             break
           }
