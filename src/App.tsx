@@ -1,6 +1,8 @@
 import { Suspense, useEffect } from "react"
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import { Toaster } from "react-hot-toast"
+import PWAInstallPrompt from "./components/PWAInstallPrompt"
+import PWAUpdateNotification from "./components/PWAUpdateNotification"
 
 import { Layout } from "./components/layout/Layout"
 import { RealtimeNotificationsProvider } from "./components/RealtimeNotificationsProvider"
@@ -157,6 +159,11 @@ function App() {
         <DebugFloatingButton />
       </Suspense>
       
+      {/* PWA 安装提示 */}
+      <PWAInstallPrompt />
+      
+      {/* PWA 更新通知 */}
+      <PWAUpdateNotification />
 
     </div>
       </Router>

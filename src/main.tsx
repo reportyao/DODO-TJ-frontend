@@ -13,6 +13,7 @@ import './index.css';
 import App from './App';
 import { UserProvider } from './contexts/UserContext';
 import { SupabaseProvider } from './contexts/SupabaseContext';
+import { registerServiceWorker } from './utils/pwaUtils';
 
 // 检查版本，防止加载旧版本（必须在最前面）
 checkVersion();
@@ -24,6 +25,11 @@ suppressKnownWarnings();
 // 初始化错误监控服务（仅在生产环境启用）
 if (import.meta.env.PROD) {
   errorMonitor.init('2.0.0');
+}
+
+// 注册 Service Worker 以支持 PWA 离线能力
+if ('serviceWorker' in navigator) {
+  registerServiceWorker();
 }
 
 
