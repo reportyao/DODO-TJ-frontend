@@ -117,7 +117,7 @@ export default function GroupBuyResultPage() {
   useEffect(() => {
     if (result && user) {
       // 检查当前用户是否是中奖者
-      if (result.winner_id === user.id || result.winner_id === user.telegram_id) {
+      if (result.winner_id === user.id) {
         setIsWinner(true);
         // Trigger confetti animation only if not already claimed
         if (!result.pickup_code) {
@@ -133,10 +133,10 @@ export default function GroupBuyResultPage() {
       const participants = result.participants || [];
       const orders = result.orders || [];
       const userParticipant = participants.find(p => 
-        p.user_id === user.id || p.user_id === user.telegram_id
+        p.user_id === user.id
       );
       const userOrderData = orders.find(o => 
-        o.user_id === user.id || o.user_id === user.telegram_id
+        o.user_id === user.id
       );
       
       if (userParticipant || userOrderData) {

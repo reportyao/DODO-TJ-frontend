@@ -1,5 +1,5 @@
 {
-  "version": "2.5.0",
-  "buildTime": "2026-02-28T11:59:30.056Z",
-  "description": "全面修复图片/缩略图显示异常：将所有img标签从Tailwind className改为内联style，彻底解决Tailwind v4 preflight与Telegram WebView的兼容性冲突"
+  "version": "3.0.0",
+  "buildTime": "2026-03-20T08:00:00.000Z",
+  "description": "WhatsApp + PWA 迁移完成：清除 Telegram 痕迹，升级分享功能为 Web Share API，完善 PWA 支持，Admin 后台适配"
 }

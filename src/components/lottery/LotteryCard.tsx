@@ -21,7 +21,7 @@ interface LotteryCardProps {
 }
 
 /**
- * 所有 img 标签的内联样式，确保在 Telegram WebView 中正确显示
+ * 所有 img 标签的内联样式，确保在各种浏览器和 PWA 中正确显示
  * 使用内联样式覆盖 Tailwind v4 preflight 的 img { height: auto; max-width: 100% }
  */
 const imgCoverStyle: CSSProperties = {

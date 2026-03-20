@@ -3,13 +3,14 @@
  * 
  * 功能：
  * 1. 检测 Service Worker 更新
- * 2. 显示更新通知
+ * 2. 显示更新通知（支持多语言）
  * 3. 处理用户更新操作
  * 4. 自动刷新应用
  */
 
 import React, { useEffect, useState } from 'react';
 import { RefreshCw, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { onPWAUpdate, forceUpdate } from '../utils/pwaUtils';
 
 interface PWAUpdateNotificationProps {
@@ -19,6 +20,7 @@ interface PWAUpdateNotificationProps {
 export const PWAUpdateNotification: React.FC<PWAUpdateNotificationProps> = ({
   autoHideDuration = 0,
 }) => {
+  const { t } = useTranslation();
   const [showNotification, setShowNotification] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -73,10 +75,10 @@ export const PWAUpdateNotification: React.FC<PWAUpdateNotificationProps> = ({
             {/* 文本内容 */}
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">
-                Update Available
+                {t('pwa.updateTitle', 'Навсозӣ дастрас аст')}
               </h3>
               <p className="text-xs text-gray-600 leading-relaxed">
-                A new version of TezBarakat is available. Please update to get the latest features and improvements.
+                {t('pwa.updateDesc', 'Версияи нави TezBarakat дастрас аст. Лутфан навсозӣ кунед барои имконоти нав.')}
               </p>
             </div>
 
@@ -85,7 +87,7 @@ export const PWAUpdateNotification: React.FC<PWAUpdateNotificationProps> = ({
               onClick={handleDismiss}
               disabled={isUpdating}
               className="flex-shrink-0 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              aria-label="Dismiss"
+              aria-label={t('common.close', 'Пӯшидан')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -99,7 +101,7 @@ export const PWAUpdateNotification: React.FC<PWAUpdateNotificationProps> = ({
             disabled={isUpdating}
             className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Later
+            {t('pwa.later', 'Баъдтар')}
           </button>
           <button
             onClick={handleUpdate}
@@ -109,12 +111,12 @@ export const PWAUpdateNotification: React.FC<PWAUpdateNotificationProps> = ({
             {isUpdating ? (
               <>
                 <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Updating...
+                {t('pwa.updating', 'Навсозӣ...')}
               </>
             ) : (
               <>
                 <RefreshCw className="w-4 h-4" />
-                Update Now
+                {t('pwa.updateNow', 'Навсозӣ кунед')}
               </>
             )}
           </button>

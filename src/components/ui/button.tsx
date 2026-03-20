@@ -19,9 +19,7 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        // 品牌风格按钮（兼容旧的 telegram 变体名）
-        telegram: "bg-[#25D366] text-white hover:bg-[#128C7E] shadow-md",
-        telegram_secondary: "bg-[#E6E6E6] text-[#000000] hover:bg-[#CCCCCC] shadow-sm",
+        // 品牌风格按钮 - WhatsApp 绿色主题
         whatsapp: "bg-[#25D366] text-white hover:bg-[#128C7E] shadow-md",
         whatsapp_secondary: "bg-[#E6E6E6] text-[#000000] hover:bg-[#CCCCCC] shadow-sm",
       },

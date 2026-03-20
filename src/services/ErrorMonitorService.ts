@@ -190,10 +190,11 @@ function getPlatformInfo(): {
       result.phoneNumber = parsedUser.phone_number;
     }
 
-    // 向后兼容：检查 Telegram WebApp
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg) {
-      result.platformType = 'telegram_miniapp';
+    // 检测 PWA 环境
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
+      result.platformType = 'pwa_standalone';
+    } else {
+      result.platformType = 'browser';
     }
   } catch (e) {
     // 忽略错误

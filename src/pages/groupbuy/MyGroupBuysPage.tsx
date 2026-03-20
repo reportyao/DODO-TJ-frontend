@@ -58,7 +58,7 @@ export default function MyGroupBuysPage() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('group-buy-list', {
-        body: { type: 'my-orders', user_id: user.telegram_id },
+        body: { type: 'my-orders', user_id: user.id },
       });
 
       if (error) throw new Error(await extractEdgeFunctionError(error));

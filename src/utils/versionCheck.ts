@@ -18,7 +18,7 @@
  * 因此，正常的版本更新流程为：
  * - 用户打开应用 → 浏览器验证 index.html 是否更新
  * - 如果 index.html 已更新，其中引用的新哈希文件名会自动触发下载新资源
- * - version.json 检查作为额外的保险机制，处理 Telegram WebView 等
+ * - version.json 检查作为额外的保险机制，处理某些浏览器或 PWA
  *   可能缓存 index.html 的极端情况
  */
 

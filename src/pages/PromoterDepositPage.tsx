@@ -2,7 +2,7 @@
  * PromoterDepositPage - 地推人员代客充值页面
  * 
  * 功能：
- *   1. 扫描用户二维码或手动输入用户 ID / Telegram ID 查找目标用户
+ *   1. 扫描用户二维码或手动输入用户 ID / 手机号查找目标用户
  *   2. 选择快捷金额或手动输入充值金额（10-500 TJS）
  *   3. 执行充值操作（调用 promoter-deposit Edge Function）
  *   4. 显示今日充值统计和充值历史

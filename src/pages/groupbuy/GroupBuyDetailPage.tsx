@@ -53,8 +53,8 @@ interface GroupBuySession {
     created_at: string;
     users?: {
       id: string;
-      telegram_id: string;
-      telegram_username: string | null;
+      first_name: string | null;
+      phone_number: string | null;
       avatar_url: string | null;
     };
   }>;
@@ -638,12 +638,31 @@ export default function GroupBuyDetailPage() {
     const shareUrl = `${window.location.origin}/group-buy/join/${sessionCode}`;
     const shareText = t('groupBuy.shareText', { code: sessionCode });
     
+    // 优先使用 Web Share API
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'TezBarakat',
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch (e) {
+        // 用户取消分享或不支持，回退到剪贴板
+        if ((e as Error).name !== 'AbortError') {
+          console.error('Share failed:', e);
+        }
+      }
+    }
+    
+    // 回退：复制到剪贴板
     try {
-      await copyToClipboard(shareUrl);
+      await copyToClipboard(`${shareText}\n${shareUrl}`);
       toast.success(t('common.copiedToClipboard'));
     } catch (error) {
-      console.error('Error sharing:', error);
-      toast.error(t('common.error'));
+      // 最终回退：WhatsApp 分享
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + '\n' + shareUrl)}`;
+      window.open(whatsappUrl, '_blank');
     }
   };
 
@@ -847,15 +866,15 @@ export default function GroupBuyDetailPage() {
                       {session.orders?.map((order: any) => (
                         <div key={order.id} className="flex flex-col items-center">
                           <img
-                            src={order.users?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(order.users?.telegram_username || order.users?.first_name || 'U')}&background=random&size=48`}
-                            alt={order.users?.telegram_username || order.users?.first_name || 'User'}
+                            src={order.users?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(order.users?.first_name || 'U')}&background=random&size=48`}
+                            alt={order.users?.first_name || 'User'}
                             style={{ width: '48px', height: '48px', borderRadius: '9999px', border: '2px solid #e9d5ff', objectFit: 'cover', maxWidth: 'none' }}
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(order.users?.telegram_username || order.users?.first_name || 'U')}&background=random&size=48`;
+                              (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(order.users?.first_name || 'U')}&background=random&size=48`;
                             }}
                           />
                           <span className="text-xs text-gray-600 mt-1 max-w-[60px] truncate text-center">
-                            {order.users?.telegram_username || order.users?.first_name || `User ${order.user_id?.slice(-4) || ''}`}
+                            {order.users?.first_name || `User ${order.user_id?.slice(-4) || ''}`}
                           </span>
                         </div>
                       ))}

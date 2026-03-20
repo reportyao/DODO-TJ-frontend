@@ -198,8 +198,8 @@ export type Database = {
           message_type: string
           response_content: string | null
           response_sent: boolean | null
-          telegram_chat_id: number
-          telegram_message_id: number
+          telegram_chat_id: number | null
+          telegram_message_id: number | null
           updated_at: string | null
           user_id: string
         }
@@ -212,8 +212,8 @@ export type Database = {
           message_type?: string
           response_content?: string | null
           response_sent?: boolean | null
-          telegram_chat_id: number
-          telegram_message_id: number
+          telegram_chat_id?: number | null
+          telegram_message_id?: number | null
           updated_at?: string | null
           user_id: string
         }
@@ -226,8 +226,8 @@ export type Database = {
           message_type?: string
           response_content?: string | null
           response_sent?: boolean | null
-          telegram_chat_id?: number
-          telegram_message_id?: number
+          telegram_chat_id?: number | null
+          telegram_message_id?: number | null
           updated_at?: string | null
           user_id?: string
         }
@@ -248,7 +248,7 @@ export type Database = {
           current_state: string | null
           expires_at: string | null
           id: string
-          telegram_chat_id: number
+          telegram_chat_id: number | null
           updated_at: string | null
           user_id: string
         }
@@ -258,7 +258,7 @@ export type Database = {
           current_state?: string | null
           expires_at?: string | null
           id?: string
-          telegram_chat_id: number
+          telegram_chat_id?: number | null
           updated_at?: string | null
           user_id: string
         }
@@ -268,7 +268,7 @@ export type Database = {
           current_state?: string | null
           expires_at?: string | null
           id?: string
-          telegram_chat_id?: number
+          telegram_chat_id?: number | null
           updated_at?: string | null
           user_id?: string
         }
@@ -294,7 +294,7 @@ export type Database = {
           quiet_hours_start: string | null
           referral_notifications: boolean | null
           system_notifications: boolean | null
-          telegram_chat_id: number
+          telegram_chat_id: number | null
           timezone: string | null
           updated_at: string | null
           user_id: string
@@ -311,7 +311,7 @@ export type Database = {
           quiet_hours_start?: string | null
           referral_notifications?: boolean | null
           system_notifications?: boolean | null
-          telegram_chat_id: number
+          telegram_chat_id?: number | null
           timezone?: string | null
           updated_at?: string | null
           user_id: string
@@ -328,7 +328,7 @@ export type Database = {
           quiet_hours_start?: string | null
           referral_notifications?: boolean | null
           system_notifications?: boolean | null
-          telegram_chat_id?: number
+          telegram_chat_id?: number | null
           timezone?: string | null
           updated_at?: string | null
           user_id?: string
@@ -1192,12 +1192,13 @@ export type Database = {
           max_retries: number | null
           message: string
           notification_type: string
+          phone_number: string | null
           priority: number | null
           retry_count: number | null
           scheduled_at: string | null
           sent_at: string | null
           status: string | null
-          telegram_chat_id: number
+          telegram_chat_id: number | null
           title: string
           updated_at: string | null
           user_id: string
@@ -1210,12 +1211,13 @@ export type Database = {
           max_retries?: number | null
           message: string
           notification_type: string
+          phone_number?: string | null
           priority?: number | null
           retry_count?: number | null
           scheduled_at?: string | null
           sent_at?: string | null
           status?: string | null
-          telegram_chat_id: number
+          telegram_chat_id?: number | null
           title: string
           updated_at?: string | null
           user_id: string
@@ -1228,12 +1230,13 @@ export type Database = {
           max_retries?: number | null
           message?: string
           notification_type?: string
+          phone_number?: string | null
           priority?: number | null
           retry_count?: number | null
           scheduled_at?: string | null
           sent_at?: string | null
           status?: string | null
-          telegram_chat_id?: number
+          telegram_chat_id?: number | null
           title?: string
           updated_at?: string | null
           user_id?: string
@@ -1653,10 +1656,9 @@ export type Database = {
           referral_code: string
           referrer_id: string | null
           status: string | null
-          telegram_id: string
+          telegram_id: string | null
           telegram_username: string | null
           updated_at: string | null
-          // username: string | null / removed - use telegram_username instead
         }
         Insert: {
           avatar_url?: string | null
@@ -1671,10 +1673,9 @@ export type Database = {
           referral_code: string
           referrer_id?: string | null
           status?: string | null
-          telegram_id: string
+          telegram_id?: string | null
           telegram_username?: string | null
           updated_at?: string | null
-          // username?: string | null / removed - use telegram_username instead
         }
         Update: {
           avatar_url?: string | null
@@ -1689,10 +1690,9 @@ export type Database = {
           referral_code?: string
           referrer_id?: string | null
           status?: string | null
-          telegram_id?: string
+          telegram_id?: string | null
           telegram_username?: string | null
           updated_at?: string | null
-          // username?: string | null / removed - use telegram_username instead
         }
         Relationships: []
       }
@@ -2576,7 +2576,7 @@ export type Database = {
           referred_by_id: string | null
           referrer_id: string | null
           status: Database["public"]["Enums"]["UserStatus"]
-          telegram_id: string
+          telegram_id: string | null
           telegram_username: string | null
           total_lotteries: number
           total_spent: number
@@ -2606,7 +2606,7 @@ export type Database = {
           referred_by_id?: string | null
           referrer_id?: string | null
           status?: Database["public"]["Enums"]["UserStatus"]
-          telegram_id: string
+          telegram_id?: string | null
           telegram_username?: string | null
           total_lotteries?: number
           total_spent?: number
@@ -2636,7 +2636,7 @@ export type Database = {
           referred_by_id?: string | null
           referrer_id?: string | null
           status?: Database["public"]["Enums"]["UserStatus"]
-          telegram_id?: string
+          telegram_id?: string | null
           telegram_username?: string | null
           total_lotteries?: number
           total_spent?: number

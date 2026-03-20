@@ -199,15 +199,31 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-// 【迁移修复】分享到 WhatsApp
-export function shareToWhatsApp(text: string, url?: string): void {
+// 【迁移完成】通用分享函数 - 优先使用 Web Share API，回退到 WhatsApp
+export async function shareContent(text: string, url?: string, title?: string): Promise<void> {
+  // 优先使用 Web Share API（PWA 和移动端支持良好）
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: title || 'TezBarakat',
+        text,
+        url,
+      });
+      return;
+    } catch (e) {
+      // 用户取消分享或 API 不可用，回退到 WhatsApp
+      if ((e as DOMException)?.name === 'AbortError') return;
+      console.warn('[Share] Web Share API failed, falling back to WhatsApp:', e);
+    }
+  }
+  // 回退到 WhatsApp 分享
   const fullText = url ? `${text} ${url}` : text;
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(fullText)}`;
   window.open(whatsappUrl, '_blank');
 }
 
-// 保留旧函数名以兼容已有调用
-export const shareToTelegram = shareToWhatsApp;
+// 向后兼容：保留 shareToWhatsApp 作为别名
+export const shareToWhatsApp = shareContent;
 
 // 处理多语言 JSONB 字段，用于获取商城标题、描述等
 export function getLocalizedText(

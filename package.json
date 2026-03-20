@@ -1,6 +1,6 @@
 {
   "name": "tezbarakat-tj-frontend",
-  "description": "TezBarakat TJ - Telegram Mini App Platform Frontend",
+  "description": "TezBarakat TJ - WhatsApp + PWA Platform Frontend",
   "private": true,
   "version": "1.0.1",
   "type": "module",
@@ -60,8 +60,8 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "keywords": [
-    "telegram",
-    "mini-app",
+    "whatsapp",
+    "pwa",
     "lottery",
     "react",
     "vite",

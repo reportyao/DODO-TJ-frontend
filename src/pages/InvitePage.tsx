@@ -28,7 +28,7 @@ const InvitePage: React.FC = () => {
   const [commissionRates, setCommissionRates] = useState<Record<number, number>>({ 1: 0.03, 2: 0.01, 3: 0.005 });
 
   const inviteCode = user?.referral_code || user?.invite_code || 'LOADING...'; // 优先使用 referral_code，兼容旧的 invite_code
-  // 【迁移修复】使用 PWA 域名生成分享链接（替代原来的 Telegram Bot 链接）
+  // 使用 PWA 域名生成分享链接
   const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
   const inviteLink = `${appDomain}?ref=${inviteCode}`;
 

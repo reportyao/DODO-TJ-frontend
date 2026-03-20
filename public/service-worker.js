@@ -361,9 +361,10 @@ function createOfflineResponse() {
       <body>
         <div class="container">
           <div class="icon">📡</div>
-          <h1>You're Offline</h1>
-          <p>It looks like you've lost your internet connection. Some features may not be available right now.</p>
-          <button onclick="window.location.reload()">Retry</button>
+          <h1>Шумо офлайн ҳастед / Вы офлайн / You're Offline</h1>
+          <p>Пайвасти интернет қатъ шудааст. Баъзе имконот ҳоло дастрас нестанд.</p>
+          <p style="font-size: 12px; color: #9ca3af; margin-bottom: 16px;">Похоже, вы потеряли подключение к интернету.</p>
+          <button onclick="window.location.reload()">Такрор / Повторить / Retry</button>
         </div>
       </body>
     </html>

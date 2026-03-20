@@ -170,7 +170,7 @@ export const likeService = {
 
 /**
  * 认证服务
- * 已完成 PWA 迁移：移除 Telegram 认证，仅保留手机号+密码认证
+ * 已完成 WhatsApp + PWA 迁移，仅保留手机号+密码认证
  */
 export const authService = {
   /**
