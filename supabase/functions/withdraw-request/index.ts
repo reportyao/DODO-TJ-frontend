@@ -101,6 +101,15 @@ serve(async (req) => {
     if (!amount || amount <= 0) {
       throw new Error('提现金额必须大于0');
     }
+    // 【安全修复】服务端校验提现金额范围，防止绕过前端直接调用 API
+    const MIN_WITHDRAW = 50;
+    const MAX_WITHDRAW = 10000;
+    if (amount < MIN_WITHDRAW) {
+      throw new Error(`提现金额不能低于最低限额 ${MIN_WITHDRAW} TJS`);
+    }
+    if (amount > MAX_WITHDRAW) {
+      throw new Error(`提现金额不能超过最高限额 ${MAX_WITHDRAW} TJS`);
+    }
 
     // 验证用户 session
     const { userId } = await validateSession(session_token);

@@ -148,6 +148,17 @@ serve(async (req) => {
       console.log('[deposit-request] 错误: 充值金额无效:', amount)
       throw new Error('充值金额必须大于0')
     }
+    // 【安全修复】服务端校验充值金额范围，防止绕过前端直接调用 API
+    const MIN_DEPOSIT = 10;
+    const MAX_DEPOSIT = 50000;
+    if (amount < MIN_DEPOSIT) {
+      console.log('[deposit-request] 错误: 充值金额低于最低限额:', amount)
+      throw new Error(`充值金额不能低于最低限额 ${MIN_DEPOSIT} TJS`)
+    }
+    if (amount > MAX_DEPOSIT) {
+      console.log('[deposit-request] 错误: 充值金额超过最高限额:', amount)
+      throw new Error(`充值金额不能超过最高限额 ${MAX_DEPOSIT} TJS`)
+    }
 
     if (!paymentMethod) {
       console.log('[deposit-request] 错误: 未选择支付方式')
@@ -155,7 +166,7 @@ serve(async (req) => {
     }
 
     // 生成订单号
-    const orderNumber = `LM${Date.now()}`
+    const orderNumber = `TB${Date.now()}`
     console.log('[deposit-request] 生成订单号:', orderNumber)
 
     // 创建充值申请

@@ -171,7 +171,7 @@ serve(async (req) => {
         })
 
       } catch (dispatchError: unknown) {
-    const dispatchErrorMsg = dispatchError instanceof Error ? dispatchErrorMsg : String(dispatchError);
+        const dispatchErrorMsg = dispatchError instanceof Error ? dispatchError.message : String(dispatchError);
         console.error(`[admin-notification-hub] 发送到 ${channel.name} 失败:`, dispatchErrorMsg)
         
         // 记录失败日志

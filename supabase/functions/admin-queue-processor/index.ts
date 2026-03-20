@@ -171,7 +171,7 @@ serve(async (req) => {
         }
 
       } catch (taskError: unknown) {
-    const taskErrorMsg = taskError instanceof Error ? taskErrorMsg : String(taskError);
+        const taskErrorMsg = taskError instanceof Error ? taskError.message : String(taskError);
         // 任务处理异常
         const newRetryCount = task.retry_count + 1
         const newStatus = newRetryCount >= task.max_retries ? 'failed' : 'pending'
