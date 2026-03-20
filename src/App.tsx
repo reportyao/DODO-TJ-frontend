@@ -100,7 +100,8 @@ function App() {
               <Route path="/register" element={<GuestGuard><RegisterPage /></GuestGuard>} />
               <Route path="/forgot-password" element={<GuestGuard><ForgotPasswordPage /></GuestGuard>} />
               {/* /reset-password 是密码重置链接的目标路由，复用 ForgotPasswordPage 并自动进入 verify 步骤 */}
-              <Route path="/reset-password" element={<GuestGuard><ForgotPasswordPage /></GuestGuard>} />
+              {/* 注意：这是公开路由，已登录用户也可以通过 WhatsApp 链接重置密码 */}
+              <Route path="/reset-password" element={<ForgotPasswordPage />} />
 
               {/* ============================================================ */}
               {/* 公开路由（无需登录即可访问）                                  */}

@@ -200,7 +200,7 @@ const SpinWheel: React.FC<{
 
 const SpinLotteryPage: React.FC = () => {
   const { t, i18n } = useTranslation();
-  const { user, refreshWallets } = useUser();
+  const { user, sessionToken, refreshWallets } = useUser();
   
   const [spinData, setSpinData] = useState<SpinData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -217,7 +217,7 @@ const SpinLotteryPage: React.FC = () => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase.functions.invoke('get-spin-data', {
-        body: { user_id: user.id }
+        body: { user_id: user.id, session_token: sessionToken }
       });
 
       if (error) throw new Error(await extractEdgeFunctionError(error));
@@ -251,7 +251,7 @@ const SpinLotteryPage: React.FC = () => {
       setLastReward(null);
 
       const { data, error } = await supabase.functions.invoke('spin-lottery', {
-        body: { user_id: user.id }
+        body: { user_id: user.id, session_token: sessionToken }
       });
 
       if (error) throw new Error(await extractEdgeFunctionError(error));

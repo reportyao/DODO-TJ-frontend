@@ -1,5 +1,6 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useRealtimeNotifications, RealtimeNotification } from '@/hooks/useRealtimeNotifications';
+import { useUser } from '@/contexts/UserContext';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
@@ -95,8 +96,13 @@ export function RealtimeNotificationsProvider({ children }: RealtimeNotification
     console.error('Realtime notifications error:', error);
   };
 
+  // 从 UserContext 获取用户信息，不再依赖 supabase.auth
+  const { user, sessionToken, isAuthenticated } = useUser();
+
   const { isConnected, lastMessage, reconnect, disconnect } = useRealtimeNotifications({
-    enabled: true,
+    enabled: isAuthenticated,
+    userId: user?.id || null,
+    sessionToken: sessionToken,
     onNotification: handleNotification,
     onBalanceUpdate: handleBalanceUpdate,
     onGroupBuyUpdate: handleGroupBuyUpdate,

@@ -37,7 +37,7 @@ interface PaymentConfig {
 export default function DepositPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { user } = useUser()
+  const { user, sessionToken } = useUser()
   const [loading, setLoading] = useState(false)
   const [configs, setConfigs] = useState<PaymentConfig[]>([])
   const [selectedMethod, setSelectedMethod] = useState<PaymentConfig | null>(null)
@@ -232,9 +232,9 @@ export default function DepositPage() {
     try {
       setSubmitting(true)
 
-      // 构建请求体
+      // 构建请求体（使用 session_token 认证，不再传不安全的 userId）
       const requestBody = {
-        userId: user?.id,
+        session_token: sessionToken,
         amount: amountNum,
         currency: 'TJS',
         paymentMethod: selectedMethod.config_data?.method || selectedMethod.config_key,

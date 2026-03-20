@@ -6,6 +6,48 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
 }
 
+// 通用的 session 验证函数（与其他 Edge Functions 保持一致）
+async function validateSession(sessionToken: string) {
+  if (!sessionToken) {
+    throw new Error('未授权：缺少认证令牌');
+  }
+  
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('服务器配置错误');
+  }
+
+  const sessionResponse = await fetch(
+    `${supabaseUrl}/rest/v1/user_sessions?session_token=eq.${sessionToken}&is_active=eq.true&select=*`,
+    {
+      headers: {
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  if (!sessionResponse.ok) {
+    throw new Error('验证会话失败');
+  }
+
+  const sessions = await sessionResponse.json();
+  if (sessions.length === 0) {
+    throw new Error('未授权：会话不存在或已失效');
+  }
+
+  const session = sessions[0];
+  const expiresAt = new Date(session.expires_at);
+  if (expiresAt < new Date()) {
+    throw new Error('未授权：会话已过期');
+  }
+
+  return { userId: session.user_id };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -14,15 +56,30 @@ serve(async (req) => {
   console.log('[deposit-request] 开始处理请求')
 
   try {
-    // 先尝试使用用户的token
-    const authHeader = req.headers.get('Authorization')
-    let userId: string | null = null
-    let user: any = null
+    const requestBody = await req.json()
+    console.log('[deposit-request] 请求体:', JSON.stringify({
+      ...requestBody,
+      session_token: requestBody.session_token ? '***' : undefined
+    }))
 
-    console.log('[deposit-request] Authorization header:', authHeader ? '存在' : '不存在')
+    // ============================================================
+    // 1. 认证：优先 session_token，向后兼容 Authorization header
+    //    【安全修复】移除了不安全的 body userId 回退机制
+    // ============================================================
+    let userId: string;
 
-    if (authHeader) {
-      // 尝试使用用户token验证
+    if (requestBody.session_token) {
+      // 新的自定义 session 认证（PWA 模式）
+      const result = await validateSession(requestBody.session_token);
+      userId = result.userId;
+      console.log('[deposit-request] session_token 验证通过, userId:', userId)
+    } else {
+      // 向后兼容：尝试 Authorization header（Supabase Auth，将来移除）
+      const authHeader = req.headers.get('Authorization')
+      if (!authHeader) {
+        throw new Error('未授权：缺少 session_token')
+      }
+
       const supabaseClientWithAuth = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -35,23 +92,20 @@ serve(async (req) => {
 
       const { data: { user: authUser }, error: userError } = await supabaseClientWithAuth.auth.getUser()
       
-      if (!userError && authUser) {
-        userId = authUser.id
-        user = authUser
-        console.log('[deposit-request] 从token获取到userId:', userId)
-      } else {
+      if (userError || !authUser) {
         console.log('[deposit-request] token验证失败:', userError?.message)
+        throw new Error('未授权：无效的认证令牌')
       }
+
+      userId = authUser.id
+      console.log('[deposit-request] 从 Auth token 获取到 userId:', userId)
     }
 
-    // 如果没有有效的认证，使用Service Role Key
+    // 使用 service role client 进行数据库操作
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
-
-    const requestBody = await req.json()
-    console.log('[deposit-request] 请求体:', JSON.stringify(requestBody))
 
     const { 
       amount, 
@@ -62,7 +116,6 @@ serve(async (req) => {
       payerName, 
       payerAccount,
       payerPhone,
-      userId: bodyUserId  // 从body中获取userId
     } = requestBody
 
     console.log('[deposit-request] 解析的字段:', {
@@ -73,19 +126,7 @@ serve(async (req) => {
       payerName: payerName || '未提供',
       payerAccount: payerAccount || '未提供',
       payerPhone: payerPhone || '未提供',
-      bodyUserId
     })
-
-    // 如果没有从token中获取到userId，使用body中的userId
-    if (!userId && bodyUserId) {
-      userId = bodyUserId
-      console.log('[deposit-request] 使用body中的userId:', userId)
-    }
-
-    if (!userId) {
-      console.log('[deposit-request] 错误: 未授权 - 没有userId')
-      throw new Error('未授权')
-    }
 
     // 验证用户是否存在
     console.log('[deposit-request] 验证用户是否存在:', userId)
@@ -95,13 +136,8 @@ serve(async (req) => {
       .eq('id', userId)
       .single()
 
-    if (userCheckError) {
-      console.log('[deposit-request] 用户查询错误:', userCheckError.message)
-      throw new Error('用户不存在: ' + userCheckError.message)
-    }
-
-    if (!existingUser) {
-      console.log('[deposit-request] 用户不存在')
+    if (userCheckError || !existingUser) {
+      console.log('[deposit-request] 用户不存在:', userCheckError?.message)
       throw new Error('用户不存在')
     }
 

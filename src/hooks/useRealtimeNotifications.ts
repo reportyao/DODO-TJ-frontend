@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { supabase, SUPABASE_URL } from '@/lib/supabase';
+import { SUPABASE_URL } from '@/lib/supabase';
 
 export interface RealtimeNotification {
   type: 'connected' | 'notification' | 'group_buy_update' | 'balance_update' | 'heartbeat';
@@ -9,6 +9,8 @@ export interface RealtimeNotification {
 
 export interface UseRealtimeNotificationsOptions {
   enabled?: boolean;
+  userId?: string | null;
+  sessionToken?: string | null;
   onNotification?: (notification: RealtimeNotification) => void;
   onBalanceUpdate?: (balance: { balance: number; frozen_balance: number; currency: string }) => void;
   onGroupBuyUpdate?: (session: any) => void;
@@ -18,6 +20,8 @@ export interface UseRealtimeNotificationsOptions {
 export function useRealtimeNotifications(options: UseRealtimeNotificationsOptions = {}) {
   const {
     enabled = true,
+    userId,
+    sessionToken,
     onNotification,
     onBalanceUpdate,
     onGroupBuyUpdate,
@@ -33,14 +37,13 @@ export function useRealtimeNotifications(options: UseRealtimeNotificationsOption
   const connect = useCallback(async () => {
     if (!enabled) return;
 
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.warn('No user logged in, skipping realtime notifications');
-        return;
-      }
+    // 使用传入的 userId（来自 UserContext），不再依赖 supabase.auth
+    if (!userId) {
+      console.warn('No user ID provided, skipping realtime notifications');
+      return;
+    }
 
+    try {
       // Close existing connection
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
@@ -52,8 +55,11 @@ export function useRealtimeNotifications(options: UseRealtimeNotificationsOption
         throw new Error('Supabase URL not configured');
       }
 
-      // Create SSE connection
-      const url = `${supabaseUrl}/functions/v1/realtime-notifications?user_id=${user.id}`;
+      // Create SSE connection（传递 session_token 用于服务端验证）
+      let url = `${supabaseUrl}/functions/v1/realtime-notifications?user_id=${userId}`;
+      if (sessionToken) {
+        url += `&session_token=${sessionToken}`;
+      }
       const eventSource = new EventSource(url);
 
       eventSource.onopen = () => {
@@ -134,7 +140,7 @@ export function useRealtimeNotifications(options: UseRealtimeNotificationsOption
       console.error('Error connecting to realtime notifications:', error);
       onError?.(error as Error);
     }
-  }, [enabled, onNotification, onBalanceUpdate, onGroupBuyUpdate, onError]);
+  }, [enabled, userId, sessionToken, onNotification, onBalanceUpdate, onGroupBuyUpdate, onError]);
 
   const disconnect = useCallback(() => {
     if (eventSourceRef.current) {

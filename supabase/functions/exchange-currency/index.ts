@@ -6,33 +6,94 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
 }
 
+// 通用的 session 验证函数（与 claim-prize / request-shipping 保持一致）
+async function validateSession(sessionToken: string) {
+  if (!sessionToken) {
+    throw new Error('未授权：缺少认证令牌');
+  }
+  
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('服务器配置错误');
+  }
+
+  const sessionResponse = await fetch(
+    `${supabaseUrl}/rest/v1/user_sessions?session_token=eq.${sessionToken}&is_active=eq.true&select=*`,
+    {
+      headers: {
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  if (!sessionResponse.ok) {
+    throw new Error('验证会话失败');
+  }
+
+  const sessions = await sessionResponse.json();
+  if (sessions.length === 0) {
+    throw new Error('未授权：会话不存在或已失效');
+  }
+
+  const session = sessions[0];
+  const expiresAt = new Date(session.expires_at);
+  if (expiresAt < new Date()) {
+    throw new Error('未授权：会话已过期');
+  }
+
+  return { userId: session.user_id };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
+    const body = await req.json()
+
+    // ============================================================
+    // 1. 认证：优先使用 session_token，向后兼容 Authorization header
+    // ============================================================
+    let userId: string;
+
+    if (body.session_token) {
+      // 新的自定义 session 认证（PWA 模式）
+      const result = await validateSession(body.session_token);
+      userId = result.userId;
+    } else {
+      // 向后兼容：尝试 Authorization header（Supabase Auth，将来移除）
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        throw new Error('未授权：缺少 session_token');
       }
-    )
-
-    // 获取当前用户
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseClient.auth.getUser()
-
-    if (userError || !user) {
-      throw new Error('未授权')
+      const supabaseAuth = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        {
+          global: {
+            headers: { Authorization: authHeader },
+          },
+        }
+      );
+      const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+      if (userError || !user) {
+        throw new Error('未授权');
+      }
+      userId = user.id;
     }
 
-    const { exchangeType, amount, currency } = await req.json()
+    // 使用 service role client 进行数据库操作
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const { exchangeType, amount, currency } = body
 
     // 验证参数
     if (!exchangeType || !['BALANCE_TO_COIN', 'COIN_TO_BALANCE'].includes(exchangeType)) {
@@ -47,7 +108,6 @@ serve(async (req) => {
 
     // 【资金安全修复 v4】修复钱包类型映射
     // 标准: 现金钱包 type='TJS', 积分钱包 type='LUCKY_COIN'
-    // 原代码使用 'BALANCE' 是错误的，数据库中不存在 type='BALANCE' 的钱包
     const sourceType = exchangeType === 'BALANCE_TO_COIN' ? 'TJS' : 'LUCKY_COIN'
     const targetType = exchangeType === 'BALANCE_TO_COIN' ? 'LUCKY_COIN' : 'TJS'
     // 积分钱包的 currency 是 'POINTS'，现金钱包的 currency 是 'TJS'
@@ -58,7 +118,7 @@ serve(async (req) => {
     const { data: sourceWallet, error: sourceError } = await supabaseClient
       .from('wallets')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('type', sourceType)
       .eq('currency', sourceCurrency)
       .single()
@@ -71,7 +131,7 @@ serve(async (req) => {
     const { data: targetWallet, error: targetError } = await supabaseClient
       .from('wallets')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('type', targetType)
       .eq('currency', targetCurrency)
       .single()
@@ -148,7 +208,7 @@ serve(async (req) => {
     const { data: exchangeRecord, error: recordError } = await supabaseClient
       .from('exchange_records')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         exchange_type: exchangeType,
         amount: amount,
         currency: curr,

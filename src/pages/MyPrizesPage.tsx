@@ -248,6 +248,7 @@ const ShippingModal: React.FC<{
   onSuccess: () => void;
 }> = ({ prize, onClose, onSuccess }) => {
   const { supabase } = useSupabase();
+  const { sessionToken } = useUser();
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     recipient_name: '',
@@ -264,19 +265,14 @@ const ShippingModal: React.FC<{
     setIsSubmitting(true);
 
     try {
-      // 调用 request-shipping Edge Function
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-
-      if (!token) {
-        throw new Error('User not authenticated');
+      // 调用 request-shipping Edge Function（使用自定义 session_token 认证）
+      if (!sessionToken) {
+        throw new Error('未登录，请重新登录');
       }
 
       const { data, error } = await supabase.functions.invoke('request-shipping', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: {
+          session_token: sessionToken,
           prize_id: prize.id,
           shipping_info: formData
         }

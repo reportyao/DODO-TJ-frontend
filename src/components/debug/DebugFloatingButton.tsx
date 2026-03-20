@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUser } from '../../contexts/UserContext'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
+// supabase import removed - no longer needed after session_token migration
 
 interface LogEntry {
   time: string
@@ -30,7 +30,7 @@ interface RouteChange {
 
 interface AuthCheck {
   time: string
-  method: 'getUser' | 'getSession'
+  method: 'getUser' | 'getSession' | 'customSession'
   success: boolean
   userId?: string | null
   sessionExists?: boolean
@@ -174,54 +174,37 @@ export const DebugFloatingButton: React.FC = () => {
     }
   }, [location.pathname])
 
-  // 拦截 supabase.auth 方法
+  // 监控自定义 session 状态（不再 monkey-patch supabase.auth）
   useEffect(() => {
-    const originalGetUser = supabase.auth.getUser.bind(supabase.auth)
-    const originalGetSession = supabase.auth.getSession.bind(supabase.auth)
-
-    // 拦截 getUser
-    supabase.auth.getUser = async () => {
-      const startTime = Date.now()
-      const result = await originalGetUser()
-      const duration = Date.now() - startTime
-
-      const authCheck: AuthCheck = {
-        time: new Date().toLocaleTimeString('zh-CN'),
-        method: 'getUser',
-        success: !result.error && !!result.data.user,
-        userId: result.data.user?.id || null,
-        error: result.error?.message
-      }
-
-      setAuthChecks(prev => [authCheck, ...prev.slice(0, 9)])
-      
-      return result
-    }
-
-    // 拦截 getSession
-    supabase.auth.getSession = async () => {
-      const startTime = Date.now()
-      const result = await originalGetSession()
-      const duration = Date.now() - startTime
+    const checkCustomSession = () => {
+      const sessionToken = localStorage.getItem('custom_session_token')
+      const storedUser = localStorage.getItem('custom_user')
+      let parsedUser: any = null
+      try {
+        parsedUser = storedUser ? JSON.parse(storedUser) : null
+      } catch { /* ignore */ }
 
       const authCheck: AuthCheck = {
         time: new Date().toLocaleTimeString('zh-CN'),
-        method: 'getSession',
-        success: !result.error && !!result.data.session,
-        sessionExists: !!result.data.session,
-        userId: result.data.session?.user?.id || null,
-        error: result.error?.message
+        method: 'customSession',
+        success: !!sessionToken && !!parsedUser,
+        userId: parsedUser?.id || null,
+        sessionExists: !!sessionToken,
       }
 
-      setAuthChecks(prev => [authCheck, ...prev.slice(0, 9)])
-      
-      return result
+      setAuthChecks(prev => {
+        // 避免重复记录相同状态
+        if (prev.length > 0 && prev[0].userId === authCheck.userId && prev[0].success === authCheck.success) {
+          return prev
+        }
+        return [authCheck, ...prev.slice(0, 9)]
+      })
     }
 
-    return () => {
-      supabase.auth.getUser = originalGetUser
-      supabase.auth.getSession = originalGetSession
-    }
+    checkCustomSession()
+    const interval = setInterval(checkCustomSession, 10000) // 每10秒检查一次
+
+    return () => clearInterval(interval)
   }, [])
 
   // 拦截 fetch 请求
