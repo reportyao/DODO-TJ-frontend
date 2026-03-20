@@ -86,6 +86,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
     }
   }, [supabase, t]);
 
+  // 【R14修复】每次订单只能使用一张抵扣券（最早到期），前端显示金额须与后端保持一致
   const fetchCouponCount = useCallback(async () => {
     if (!user) return;
     try {
@@ -94,10 +95,12 @@ const FullPurchaseConfirmPage: React.FC = () => {
         .select('amount')
         .eq('user_id', user.id)
         .eq('status', 'VALID')
-        .gt('expires_at', new Date().toISOString());
+        .gt('expires_at', new Date().toISOString())
+        .order('expires_at', { ascending: true });
       if (!error && data) {
         setValidCouponCount(data.length);
-        setCouponTotalAmount(data.reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0));
+        // 只取最早到期的一张券面额（与后端 process_mixed_payment LIMIT 1 逻辑一致）
+        setCouponTotalAmount(data.length > 0 ? (Number(data[0].amount) || 0) : 0);
         setUseCoupon(data.length > 0);
       }
     } catch (e) {
