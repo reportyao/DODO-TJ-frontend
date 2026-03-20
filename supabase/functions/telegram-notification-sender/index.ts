@@ -661,14 +661,12 @@ serve(async (req: Request) => {
     // 请求体为空或非 JSON，使用默认值
   }
 
-  // 查询待处理的通知（仅查询支持的类型，按优先级和创建时间排序）
-  const supportedTypes = Array.from(SUPPORTED_NOTIFICATION_TYPES);
+  // 查询待处理的通知（查询所有 pending 状态，以便将非白名单类型标记为 skipped）
   const { data: notifications, error: queryError } = await supabase
     .from('notification_queue')
     .select('*')
     .eq('channel', 'whatsapp')
     .eq('status', 'pending')
-    .in('notification_type', supportedTypes)
     .lte('scheduled_at', new Date().toISOString())
     .order('priority', { ascending: false }) // 高优先级先处理
     .order('created_at', { ascending: true }) // 同优先级按创建时间
