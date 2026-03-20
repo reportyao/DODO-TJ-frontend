@@ -494,6 +494,60 @@ export type Database = {
           },
         ]
       }
+      coupons: {
+        Row: {
+          id: string
+          user_id: string
+          amount: number
+          status: 'VALID' | 'USED' | 'EXPIRED'
+          source: string
+          related_lottery_id: string | null
+          expires_at: string
+          used_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          amount?: number
+          status?: 'VALID' | 'USED' | 'EXPIRED'
+          source?: string
+          related_lottery_id?: string | null
+          expires_at: string
+          used_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          amount?: number
+          status?: 'VALID' | 'USED' | 'EXPIRED'
+          source?: string
+          related_lottery_id?: string | null
+          expires_at?: string
+          used_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupons_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupons_related_lottery_id_fkey"
+            columns: ["related_lottery_id"]
+            isOneToOne: false
+            referencedRelation: "lotteries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deposit_requests: {
         Row: {
           admin_id: string | null
