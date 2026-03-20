@@ -94,10 +94,12 @@ const OrderDetailPage: React.FC = () => {
       setLoading(true);
       
       // 使用 Edge Function 获取订单详情，绕过 RLS 限制
+      // 【R17修复】传入 session_token 代替直接传入 user_id
+      const sessionToken = localStorage.getItem('custom_session_token');
       const { data, error } = await supabase.functions.invoke('get-order-detail', {
         body: {
           order_id: id,
-          user_id: user?.id
+          session_token: sessionToken,
         }
       });
 

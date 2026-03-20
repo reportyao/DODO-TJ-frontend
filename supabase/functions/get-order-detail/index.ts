@@ -40,17 +40,45 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    let requestBody: { order_id?: string; user_id?: string }
+    let requestBody: { order_id?: string; user_id?: string; session_token?: string }
     try {
       requestBody = await req.json()
     } catch {
       return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    const { order_id, user_id } = requestBody
-    if (!order_id || !user_id) {
-      return new Response(JSON.stringify({ error: 'Missing order_id or user_id' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const { order_id, session_token } = requestBody
+    if (!order_id) {
+      return new Response(JSON.stringify({ error: 'Missing order_id' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
+
+    // 【R17修复】验证 session_token，从 session 中获取真实 user_id
+    // 原先直接信任客户端传入的 user_id 参数，存在身份伪造风险
+    if (!session_token) {
+      return new Response(JSON.stringify({ error: 'Missing session_token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    const sessionResponse = await fetch(
+      `${supabaseUrl}/rest/v1/user_sessions?session_token=eq.${session_token}&is_active=eq.true&select=user_id,expires_at&limit=1`,
+      {
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+          'apikey': supabaseServiceKey,
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+    if (!sessionResponse.ok) {
+      return new Response(JSON.stringify({ error: 'Invalid session' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    const sessions = await sessionResponse.json()
+    if (!sessions || sessions.length === 0) {
+      return new Response(JSON.stringify({ error: 'Session not found or expired' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    if (new Date(sessions[0].expires_at) < new Date()) {
+      return new Response(JSON.stringify({ error: 'Session expired' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    // 从已验证的 session 中获取 user_id，而非信任客户端传入的参数
+    const user_id = sessions[0].user_id
 
     const cacheKey = `order:${user_id}:${order_id}`
     const cachedResult = getCached(cacheKey)
