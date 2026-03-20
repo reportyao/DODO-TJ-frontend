@@ -25,22 +25,28 @@ export const PWAUpdateNotification: React.FC<PWAUpdateNotificationProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
+    // 用于清理自动隐藏定时器的引用
+    let autoHideTimer: ReturnType<typeof setTimeout> | null = null;
+
     // 监听 PWA 更新事件
     const unsubscribe = onPWAUpdate((detail) => {
       console.log('[PWAUpdateNotification] Update available:', detail);
       setShowNotification(true);
 
-      // 自动隐藏
+      // 自动隐藏（注意：定时器引用必须在 useEffect 作用域内管理，不能在回调内返回）
       if (autoHideDuration > 0) {
-        const timer = setTimeout(() => {
+        if (autoHideTimer) clearTimeout(autoHideTimer);
+        autoHideTimer = setTimeout(() => {
           setShowNotification(false);
         }, autoHideDuration);
-
-        return () => clearTimeout(timer);
       }
     });
 
-    return unsubscribe;
+    // 组件卸载时：取消事件监听 + 清理定时器
+    return () => {
+      unsubscribe();
+      if (autoHideTimer) clearTimeout(autoHideTimer);
+    };
   }, [autoHideDuration]);
 
   const handleUpdate = async () => {
