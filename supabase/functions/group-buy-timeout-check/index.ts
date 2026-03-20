@@ -276,6 +276,7 @@ Deno.serve(async (req) => {
               phone_number: null,  // 由通知发送器查询用户的 phone_number
               notification_type: 'group_buy_timeout',
               title: '拼团超时退款通知',
+              channel: 'whatsapp',
               message: '',
               data: {
                 product_name: product?.name || 'Unknown Product',

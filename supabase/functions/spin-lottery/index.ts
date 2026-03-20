@@ -294,6 +294,7 @@ Deno.serve(async (req) => {
                 phone_number: userData[0].phone_number,
                 notification_type: 'spin_win',
                 title: '转盘中奖',
+                channel: 'whatsapp',
                 message: `恭喜您在转盘抽奖中获得奖励`,
                 data: {
                   prize_name: selectedReward.reward_name,

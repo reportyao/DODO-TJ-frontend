@@ -45,7 +45,7 @@ async function sendCommissionNotification(userId: string, type: string, data: { 
     
     const message = messageFunc(data.amount || 0, data.level || 1)
     
-    // 通过 notification_queue 发送通知
+    // 通过 notification_queue 发送通知 [MIGRATION] 添加 channel='whatsapp'
     await supabase.from('notification_queue').insert({
       user_id: userId,
       type: 'commission_earned',
@@ -55,6 +55,7 @@ async function sendCommissionNotification(userId: string, type: string, data: { 
       message: message,
       payload: { amount: data.amount, level: data.level },
       data: { amount: data.amount, level: data.level },
+      channel: 'whatsapp',
       priority: 1,
       status: 'pending',
       scheduled_at: new Date().toISOString(),

@@ -159,6 +159,7 @@ serve(async (req) => {
             count: coupon_count,
             expires_at: expiresAtStr,
           },
+          channel: 'whatsapp',
           priority: 2,
           status: 'pending',
           scheduled_at: now,

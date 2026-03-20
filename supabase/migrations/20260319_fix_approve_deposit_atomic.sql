@@ -43,6 +43,7 @@ DECLARE
   v_deposit_amount NUMERIC;
   v_tjs_balance_before NUMERIC;
   v_lc_balance_before  NUMERIC;
+  v_user_phone    TEXT;
 BEGIN
   -- ============================================================
   -- Step 1: 参数校验
@@ -72,6 +73,10 @@ BEGIN
   END IF;
 
   v_deposit_amount := v_deposit.amount;
+
+  -- [MIGRATION] 预先获取用户手机号，用于通知队列
+  SELECT phone_number INTO v_user_phone
+  FROM users WHERE id = v_deposit.user_id;
 
   -- ============================================================
   -- Step 3: 处理拒绝操作（简单路径）
@@ -106,14 +111,16 @@ BEGIN
     );
 
     -- 【修复 H3】使用正确的 wallet_deposit_rejected 通知类型（而非 wallet_withdraw_failed）
+    -- [MIGRATION] 使用 phone_number + channel='whatsapp'
     INSERT INTO notification_queue (
-      user_id, type, payload,
+      user_id, phone_number, type, payload,
       notification_type, title, message, data,
       priority, status, scheduled_at,
       retry_count, max_retries,
-      created_at, updated_at
+      channel, created_at, updated_at
     ) VALUES (
       v_deposit.user_id,
+      v_user_phone,
       'wallet_deposit_rejected',
       json_build_object(
         'transaction_amount', v_deposit_amount,
@@ -132,6 +139,7 @@ BEGIN
       'pending',
       NOW(),
       0, 3,
+      'whatsapp',
       NOW(), NOW()
     );
 
@@ -339,16 +347,18 @@ BEGIN
   );
 
   -- ============================================================
-  -- Step 11: 插入 Telegram 通知队列 - 充值到账
+  -- Step 11: 插入通知队列 - 充值到账
+  -- [MIGRATION] 使用 phone_number + channel='whatsapp'
   -- ============================================================
   INSERT INTO notification_queue (
-    user_id, type, payload,
+    user_id, phone_number, type, payload,
     notification_type, title, message, data,
     priority, status, scheduled_at,
     retry_count, max_retries,
-    created_at, updated_at
+    channel, created_at, updated_at
   ) VALUES (
     v_deposit.user_id,
+    v_user_phone,
     'wallet_deposit',
     json_build_object('transaction_amount', v_deposit_amount)::jsonb,
     'wallet_deposit',
@@ -359,19 +369,21 @@ BEGIN
     'pending',
     NOW(),
     0, 3,
+    'whatsapp',
     NOW(), NOW()
   );
 
-  -- 【修复 C3】如果有赠送，发送充值赠送通知（而非"首充奖励"）
+  -- 【修复 C3】如果有赠送，发送充值赠送通知（而非“首充奖励”）
   IF v_bonus > 0 THEN
     INSERT INTO notification_queue (
-      user_id, type, payload,
+      user_id, phone_number, type, payload,
       notification_type, title, message, data,
       priority, status, scheduled_at,
       retry_count, max_retries,
-      created_at, updated_at
+      channel, created_at, updated_at
     ) VALUES (
       v_deposit.user_id,
+      v_user_phone,
       'first_deposit_bonus',
       json_build_object(
         'deposit_amount', v_deposit_amount,
@@ -392,6 +404,7 @@ BEGIN
       'pending',
       NOW(),
       0, 3,
+      'whatsapp',
       NOW(), NOW()
     );
   END IF;

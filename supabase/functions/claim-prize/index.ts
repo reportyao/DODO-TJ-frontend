@@ -157,7 +157,14 @@ async function generatePickupCode(supabase: any): Promise<string> {
       .eq('pickup_code', code)
       .single();
     
-    if (!existingPrize && !existingGroupBuy) {
+    // 检查是否在full_purchase_orders表中已存在
+    const { data: existingFullPurchase } = await supabase
+      .from('full_purchase_orders')
+      .select('id')
+      .eq('pickup_code', code)
+      .single();
+    
+    if (!existingPrize && !existingGroupBuy && !existingFullPurchase) {
       return code;
     }
     
@@ -414,6 +421,8 @@ serve(async (req) => {
         pickup_code: pickupCode,
         pickup_point_id: pickup_point_id || null,
         operation_type: 'CLAIM',
+        order_type: order_type,
+        operator_id: userId,
         notes: `用户确认领取${order_type === 'group_buy' ? '拼团' : '积分商城'}奖品，生成提货码`,
       });
 

@@ -146,6 +146,7 @@ async function sendCommissionNotification(
         message: message,
         payload: { amount, level },
         data: { amount, level },
+        channel: 'whatsapp',
         status: 'pending',
         priority: 2,
         scheduled_at: now,
@@ -662,6 +663,7 @@ async function handleNotification(event: QueuedEvent): Promise<void> {
     phone_number: null,  // 由通知发送器查询用户的 phone_number
     notification_type: 'group_buy_win',
     title: '包团成功通知',
+    channel: 'whatsapp',
     message: '',
     data: {
       product_name,

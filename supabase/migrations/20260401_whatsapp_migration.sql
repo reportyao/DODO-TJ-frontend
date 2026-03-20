@@ -127,10 +127,12 @@ $function$;
 
 -- -----------------------------------------------------------------------
 -- 3.2 perform_promoter_deposit
--- 变更说明:
---   - Step 11: 获取用户名时，回退链从 telegram_username/telegram_id
---     改为 phone_number/id
---   - 其余业务逻辑（金额校验、钱包操作、首充奖励等）完全保持不变
+-- 变更说明（v2.1.0 - 合并修复）:
+--   - 【修复 C1】移除"首充限制"，改为"每次充值赠送"
+--   - 【修复 C2】赠送金额打入 LUCKY_COIN 钱包（而非 TJS 钱包混合计算）
+--   - 【修复 C3】通知文案从"首充奖励"改为"充值赠送"
+--   - [MIGRATION] 用户名回退链改为 phone_number/id
+--   - [MIGRATION] notification_queue 使用 phone_number + channel='whatsapp'
 -- -----------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.perform_promoter_deposit(p_promoter_id text, p_target_user_id text, p_amount numeric, p_note text DEFAULT NULL::text)
  RETURNS json
@@ -142,10 +144,11 @@ DECLARE
   v_today           DATE := (now() AT TIME ZONE 'Asia/Dushanbe')::date;
   v_today_total     NUMERIC;
   v_today_count     INTEGER;
-  v_wallet          RECORD;
-  v_new_balance     NUMERIC;
+  v_tjs_wallet      RECORD;
+  v_lc_wallet       RECORD;
+  v_new_tjs_balance NUMERIC;
+  v_new_lc_balance  NUMERIC;
   v_new_total_deposits NUMERIC;
-  v_is_first_deposit BOOLEAN;
   v_bonus_amount    NUMERIC := 0;
   v_bonus_percent   NUMERIC := 0;
   v_config_value    JSONB;
@@ -155,6 +158,8 @@ DECLARE
   v_target_name     TEXT;
   v_promoter_name   TEXT;
   v_settlement      RECORD;
+  v_tjs_balance_before NUMERIC;
+  v_lc_balance_before  NUMERIC;
 BEGIN
   -- ============================================================
   -- Step 1: 验证地推人员身份和状态
@@ -163,22 +168,18 @@ BEGIN
   INTO v_promoter
   FROM promoter_profiles pp
   WHERE pp.user_id = p_promoter_id;
-
   IF v_promoter IS NULL THEN
     RETURN json_build_object('success', false, 'error', 'NOT_PROMOTER');
   END IF;
-
   IF v_promoter.promoter_status != 'active' THEN
     RETURN json_build_object('success', false, 'error', 'PROMOTER_INACTIVE');
   END IF;
-
   -- ============================================================
   -- Step 2: 禁止给自己充值
   -- ============================================================
   IF p_promoter_id = p_target_user_id THEN
     RETURN json_build_object('success', false, 'error', 'SELF_DEPOSIT_FORBIDDEN');
   END IF;
-
   -- ============================================================
   -- Step 3: 验证金额范围 (10 ~ 500 TJS) 且必须为整数
   -- [ISSUE-AMT-001 FIX] 增加整数验证
@@ -186,11 +187,9 @@ BEGIN
   IF p_amount < 10 OR p_amount > 500 THEN
     RETURN json_build_object('success', false, 'error', 'INVALID_AMOUNT');
   END IF;
-
   IF p_amount != FLOOR(p_amount) THEN
     RETURN json_build_object('success', false, 'error', 'AMOUNT_MUST_BE_INTEGER');
   END IF;
-
   -- ============================================================
   -- Step 3.5 (PD-003 修复): 锁定或创建当日结算记录
   --   [ISSUE-TZ-001 FIX] 使用塔吉克斯坦时区的日期
@@ -209,12 +208,10 @@ BEGIN
   ON CONFLICT (promoter_id, settlement_date)
   DO UPDATE SET updated_at = now()
   RETURNING * INTO v_settlement;
-
   -- 对结算记录加行级排他锁，确保串行化
   PERFORM 1 FROM promoter_settlements
   WHERE id = v_settlement.id
   FOR UPDATE;
-
   -- ============================================================
   -- Step 4: 检查今日充值次数和额度（现在是在锁保护下执行）
   -- [ISSUE-TZ-001 FIX] 使用塔吉克斯坦时区的日期范围
@@ -227,12 +224,10 @@ BEGIN
   WHERE promoter_id = p_promoter_id
     AND created_at >= (v_today::timestamp AT TIME ZONE 'Asia/Dushanbe')
     AND created_at < ((v_today + INTERVAL '1 day')::timestamp AT TIME ZONE 'Asia/Dushanbe');
-
   -- 每日最多 10 次
   IF v_today_count >= 10 THEN
     RETURN json_build_object('success', false, 'error', 'DAILY_COUNT_EXCEEDED');
   END IF;
-
   -- 每日额度上限（默认 5000 TJS）
   IF (v_today_total + p_amount) > COALESCE(v_promoter.daily_deposit_limit, 5000) THEN
     RETURN json_build_object(
@@ -241,89 +236,105 @@ BEGIN
       'remaining', COALESCE(v_promoter.daily_deposit_limit, 5000) - v_today_total
     );
   END IF;
-
   -- ============================================================
-  -- Step 5: 锁定目标用户钱包（FOR UPDATE 防止余额并发修改）
+  -- Step 5: 锁定目标用户 TJS 钱包（FOR UPDATE 防止余额并发修改）
   -- ============================================================
   SELECT *
-  INTO v_wallet
+  INTO v_tjs_wallet
   FROM wallets
   WHERE user_id = p_target_user_id AND type = 'TJS'
   FOR UPDATE;
 
-  IF v_wallet IS NULL THEN
-    -- 自动创建钱包（新用户可能还没有钱包）
-    -- 【资金安全修复 v4】创建钱包时显式设置 version = 1
+  IF v_tjs_wallet IS NULL THEN
     INSERT INTO wallets (
       user_id, type, currency, balance,
       total_deposits, first_deposit_bonus_claimed, first_deposit_bonus_amount, version
     )
     VALUES (p_target_user_id, 'TJS', 'TJS', 0, 0, false, 0, 1)
-    RETURNING * INTO v_wallet;
+    RETURNING * INTO v_tjs_wallet;
   END IF;
 
   -- ============================================================
-  -- Step 6: 检查是否为首充，计算首充奖励
+  -- 【修复 C2】Step 5b: 锁定用户 LUCKY_COIN 钱包（用于赠送积分）
   -- ============================================================
-  v_is_first_deposit := (COALESCE(v_wallet.total_deposits, 0) = 0)
-                        AND (v_wallet.first_deposit_bonus_claimed IS NOT TRUE);
+  SELECT *
+  INTO v_lc_wallet
+  FROM wallets
+  WHERE user_id = p_target_user_id AND type = 'LUCKY_COIN'
+  FOR UPDATE;
 
-  IF v_is_first_deposit THEN
-    -- 从 system_config 获取首充奖励配置（key = 'first_deposit_bonus'）
-    SELECT value INTO v_config_value
-    FROM system_config
-    WHERE key = 'first_deposit_bonus';
-
-    IF v_config_value IS NOT NULL
-       AND (v_config_value->>'enabled')::boolean = true
-       AND p_amount >= (v_config_value->>'min_deposit_amount')::numeric THEN
-      v_bonus_percent := (v_config_value->>'bonus_percent')::numeric;
-      v_bonus_amount := LEAST(
-        p_amount * (v_bonus_percent / 100),
-        (v_config_value->>'max_bonus_amount')::numeric
-      );
-    END IF;
+  IF v_lc_wallet IS NULL THEN
+    INSERT INTO wallets (
+      user_id, type, currency, balance,
+      total_deposits, version
+    )
+    VALUES (p_target_user_id, 'LUCKY_COIN', 'POINTS', 0, 0, 1)
+    RETURNING * INTO v_lc_wallet;
   END IF;
 
   -- ============================================================
-  -- Step 7: 更新钱包余额（原子操作）
-  -- 【资金安全修复 v4】添加 version 递增，保持与 Edge Function 乐观锁模式的一致性
+  -- 【修复 C1】Step 6: 检查充值赠送（移除首充限制）
+  -- 不再检查 total_deposits = 0 和 first_deposit_bonus_claimed
+  -- 只要 enabled 且金额 >= min_deposit_amount 即可获得赠送
   -- ============================================================
-  v_new_balance := COALESCE(v_wallet.balance, 0) + p_amount + v_bonus_amount;
-  v_new_total_deposits := COALESCE(v_wallet.total_deposits, 0) + p_amount;
+  SELECT value INTO v_config_value
+  FROM system_config
+  WHERE key = 'first_deposit_bonus';
 
+  IF v_config_value IS NOT NULL
+     AND (v_config_value->>'enabled')::boolean = true
+     AND p_amount >= (v_config_value->>'min_deposit_amount')::numeric THEN
+    v_bonus_percent := (v_config_value->>'bonus_percent')::numeric;
+    v_bonus_amount := LEAST(
+      p_amount * (v_bonus_percent / 100),
+      (v_config_value->>'max_bonus_amount')::numeric
+    );
+  END IF;
+
+  -- ============================================================
+  -- 【修复 C2】Step 7: 更新钱包余额（原子操作）
+  -- 本金入 TJS 钱包，赠送入 LUCKY_COIN 钱包
+  -- ============================================================
+  v_tjs_balance_before := COALESCE(v_tjs_wallet.balance, 0);
+  v_lc_balance_before := COALESCE(v_lc_wallet.balance, 0);
+  v_new_tjs_balance := v_tjs_balance_before + p_amount;
+  v_new_lc_balance := v_lc_balance_before + v_bonus_amount;
+  v_new_total_deposits := COALESCE(v_tjs_wallet.total_deposits, 0) + p_amount;
+
+  -- 更新 TJS 钱包（本金）
   UPDATE wallets
   SET
-    balance = v_new_balance,
+    balance = v_new_tjs_balance,
     total_deposits = v_new_total_deposits,
     version = COALESCE(version, 1) + 1,
-    first_deposit_bonus_claimed = CASE
-      WHEN v_bonus_amount > 0 THEN true
-      ELSE first_deposit_bonus_claimed
-    END,
-    first_deposit_bonus_amount = CASE
-      WHEN v_bonus_amount > 0 THEN v_bonus_amount
-      ELSE first_deposit_bonus_amount
-    END,
     updated_at = now()
-  WHERE id = v_wallet.id;
+  WHERE id = v_tjs_wallet.id;
+
+  -- 更新 LUCKY_COIN 钱包（赠送积分）
+  IF v_bonus_amount > 0 THEN
+    UPDATE wallets
+    SET
+      balance = v_new_lc_balance,
+      version = COALESCE(version, 1) + 1,
+      updated_at = now()
+    WHERE id = v_lc_wallet.id;
+  END IF;
 
   -- ============================================================
-  -- Step 8: 创建充值交易记录
+  -- Step 8: 创建充值交易记录（TJS 钱包）
   -- ============================================================
   v_tx_id := gen_random_uuid();
-
   INSERT INTO wallet_transactions (
     id, wallet_id, type, amount,
     balance_before, balance_after,
     description, reference_id, status, created_at
   ) VALUES (
     v_tx_id,
-    v_wallet.id,
+    v_tjs_wallet.id,
     'PROMOTER_DEPOSIT',
     p_amount,
-    COALESCE(v_wallet.balance, 0),
-    COALESCE(v_wallet.balance, 0) + p_amount,
+    v_tjs_balance_before,
+    v_new_tjs_balance,
     '线下充值 - 操作员: ' || p_promoter_id,
     NULL,
     'COMPLETED',
@@ -331,23 +342,23 @@ BEGIN
   );
 
   -- ============================================================
-  -- Step 9: 如果有首充奖励，创建奖励交易记录
+  -- 【修复 C2】Step 9: 如果有赠送，创建赠送交易记录（LUCKY_COIN 钱包）
+  -- 【修复 C3】通知文案从"首充奖励"改为"充值赠送"
   -- ============================================================
   IF v_bonus_amount > 0 THEN
     v_bonus_tx_id := gen_random_uuid();
-
     INSERT INTO wallet_transactions (
       id, wallet_id, type, amount,
       balance_before, balance_after,
       description, reference_id, status, created_at
     ) VALUES (
       v_bonus_tx_id,
-      v_wallet.id,
+      v_lc_wallet.id,
       'BONUS',
       v_bonus_amount,
-      COALESCE(v_wallet.balance, 0) + p_amount,
-      v_new_balance,
-      '首充奖励 (' || v_bonus_percent || '%) - 地推充值触发',
+      v_lc_balance_before,
+      v_new_lc_balance,
+      '充值赠送 (' || v_bonus_percent || '%) - 地推充值触发',
       v_tx_id::text,
       'COMPLETED',
       now()
@@ -358,7 +369,6 @@ BEGIN
   -- Step 10: 创建地推充值记录
   -- ============================================================
   v_deposit_id := gen_random_uuid();
-
   INSERT INTO promoter_deposits (
     id, promoter_id, target_user_id, amount, currency,
     status, note, transaction_id, bonus_amount, created_at, updated_at
@@ -393,6 +403,7 @@ BEGIN
   -- ============================================================
   -- Step 12: 插入通知队列 - 通知被充值用户
   -- [MIGRATION] 使用 phone_number 作为通知目标
+  -- 【修复 C3】通知文案从"首充奖励"改为"充值赠送"
   -- ============================================================
   INSERT INTO notification_queue (
     user_id,
@@ -409,12 +420,13 @@ BEGIN
     '线下充值到账',
     '您已收到 ' || p_amount || ' TJS 线下充值' ||
       CASE WHEN v_bonus_amount > 0
-           THEN '，另有首充奖励 ' || v_bonus_amount || ' TJS'
+           THEN '，另有充值赠送 ' || v_bonus_amount || ' 积分'
            ELSE ''
       END,
     json_build_object(
       'transaction_amount', p_amount,
       'bonus_amount', v_bonus_amount,
+      'bonus_wallet', 'LUCKY_COIN',
       'promoter_name', v_promoter_name,
       'deposit_id', v_deposit_id
     )::jsonb,
@@ -468,11 +480,12 @@ BEGIN
     'deposit_id', v_deposit_id,
     'amount', p_amount,
     'bonus_amount', v_bonus_amount,
-    'new_balance', v_new_balance,
+    'bonus_wallet', 'LUCKY_COIN',
+    'new_tjs_balance', v_new_tjs_balance,
+    'new_lc_balance', v_new_lc_balance,
     'today_count', v_today_count + 1,
     'today_total', v_today_total + p_amount,
-    'daily_limit', COALESCE(v_promoter.daily_deposit_limit, 5000),
-    'is_first_deposit', v_is_first_deposit
+    'daily_limit', COALESCE(v_promoter.daily_deposit_limit, 5000)
   );
 
 EXCEPTION
@@ -485,6 +498,10 @@ EXCEPTION
     );
 END;
 $function$;
+
+COMMENT ON FUNCTION perform_promoter_deposit(TEXT, TEXT, NUMERIC, TEXT)
+  IS '地推充值函数（v2.1.0），合并修复：C1移除首充限制改为每次赠送，C2赠送入LUCKY_COIN钱包，C3通知文案修正';
+
 
 
 -- -----------------------------------------------------------------------
@@ -935,13 +952,14 @@ BEGIN
 END;
 $function$;
 
-
 -- -----------------------------------------------------------------------
 -- 3.7 approve_deposit_atomic
--- 变更说明:
---   - Step 11: 向 notification_queue 插入数据时，使用 phone_number 替代
---     telegram_chat_id，并设置 channel = 'whatsapp'
---   - 其余所有业务逻辑（钱包操作、首充奖励、操作日志等）完全保持不变
+-- 变更说明（v2.1.0 - 合并 20260319 修复 + WhatsApp 迁移）:
+--   - 【修复 C1】移除"首充限制"逻辑，改为"每次充值赠送"
+--   - 【修复 C2】赠送金额打入 LUCKY_COIN 钱包（而非 TJS 钱包）
+--   - 【修复 C3】通知文案从"首充奖励"改为"充值赠送"
+--   - 【修复 H3】充值拒绝通知类型从 wallet_withdraw_failed 改为 wallet_deposit_rejected
+--   - 【迁移】notification_queue 使用 phone_number + channel='whatsapp'
 -- -----------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.approve_deposit_atomic(p_request_id text, p_action text, p_admin_id text, p_admin_note text DEFAULT NULL::text)
  RETURNS json
@@ -950,8 +968,10 @@ CREATE OR REPLACE FUNCTION public.approve_deposit_atomic(p_request_id text, p_ac
 AS $function$
 DECLARE
   v_deposit       RECORD;
-  v_wallet        RECORD;
-  v_new_balance   NUMERIC;
+  v_tjs_wallet    RECORD;
+  v_lc_wallet     RECORD;
+  v_new_tjs_balance   NUMERIC;
+  v_new_lc_balance    NUMERIC;
   v_new_total     NUMERIC;
   v_bonus         NUMERIC := 0;
   v_bonus_pct     NUMERIC := 0;
@@ -959,7 +979,8 @@ DECLARE
   v_tx_id         UUID;
   v_bonus_tx_id   UUID;
   v_deposit_amount NUMERIC;
-  v_balance_after_deposit NUMERIC;
+  v_tjs_balance_before NUMERIC;
+  v_lc_balance_before  NUMERIC;
   v_user_phone    TEXT;
 BEGIN
   -- ============================================================
@@ -1027,7 +1048,8 @@ BEGIN
       'DEPOSIT_REQUEST'
     );
 
-    -- [MIGRATION] 插入通知队列（充值被拒绝）- 使用 phone_number 作为通知目标
+    -- 【修复 H3】使用正确的 wallet_deposit_rejected 通知类型（而非 wallet_withdraw_failed）
+    -- [MIGRATION] 使用 phone_number + channel='whatsapp'
     INSERT INTO notification_queue (
       user_id, phone_number, type, payload,
       notification_type, title, message, data,
@@ -1037,14 +1059,14 @@ BEGIN
     ) VALUES (
       v_deposit.user_id,
       v_user_phone,
-      'wallet_withdraw_failed',
+      'wallet_deposit_rejected',
       json_build_object(
         'transaction_amount', v_deposit_amount,
         'failure_reason', COALESCE(p_admin_note, '审核未通过'),
         'current_balance', 0
       )::jsonb,
-      'wallet_withdraw_failed',
-      '充值失败',
+      'wallet_deposit_rejected',
+      '充值申请被拒绝',
       '',
       json_build_object(
         'transaction_amount', v_deposit_amount,
@@ -1085,14 +1107,14 @@ BEGIN
   END IF;
 
   -- ============================================================
-  -- Step 4: 处理批准操作 - 锁定用户钱包
+  -- Step 4: 处理批准操作 - 锁定用户 TJS 钱包
   -- ============================================================
-  SELECT * INTO v_wallet
+  SELECT * INTO v_tjs_wallet
   FROM wallets
   WHERE user_id = v_deposit.user_id AND type = 'TJS'
   FOR UPDATE;
 
-  IF v_wallet IS NULL THEN
+  IF v_tjs_wallet IS NULL THEN
     INSERT INTO wallets (
       user_id, type, currency, balance,
       total_deposits, first_deposit_bonus_claimed,
@@ -1100,50 +1122,72 @@ BEGIN
     ) VALUES (
       v_deposit.user_id, 'TJS', 'TJS', 0, 0, false, 0, 1
     )
-    RETURNING * INTO v_wallet;
+    RETURNING * INTO v_tjs_wallet;
   END IF;
 
   -- ============================================================
-  -- Step 5: 检查首充奖励
+  -- 【修复 C2】Step 4b: 锁定用户 LUCKY_COIN 钱包（用于赠送积分）
   -- ============================================================
-  IF COALESCE(v_wallet.total_deposits, 0) = 0
-     AND v_wallet.first_deposit_bonus_claimed IS NOT TRUE THEN
-    SELECT value INTO v_config
-    FROM system_config
-    WHERE key = 'first_deposit_bonus';
+  SELECT * INTO v_lc_wallet
+  FROM wallets
+  WHERE user_id = v_deposit.user_id AND type = 'LUCKY_COIN'
+  FOR UPDATE;
 
-    IF v_config IS NOT NULL
-       AND (v_config->>'enabled')::boolean = true
-       AND v_deposit_amount >= (v_config->>'min_deposit_amount')::numeric THEN
-      v_bonus_pct := (v_config->>'bonus_percent')::numeric;
-      v_bonus := LEAST(
-        v_deposit_amount * (v_bonus_pct / 100),
-        (v_config->>'max_bonus_amount')::numeric
-      );
-    END IF;
+  IF v_lc_wallet IS NULL THEN
+    INSERT INTO wallets (
+      user_id, type, currency, balance,
+      total_deposits, version
+    ) VALUES (
+      v_deposit.user_id, 'LUCKY_COIN', 'POINTS', 0, 0, 1
+    )
+    RETURNING * INTO v_lc_wallet;
   END IF;
 
   -- ============================================================
-  -- Step 6: 计算新余额并更新钱包
+  -- 【修复 C1】Step 5: 检查充值赠送（移除首充限制）
+  -- 不再检查 total_deposits = 0 和 first_deposit_bonus_claimed
+  -- 只要 enabled 且金额 >= min_deposit_amount 即可获得赠送
   -- ============================================================
-  v_balance_after_deposit := COALESCE(v_wallet.balance, 0) + v_deposit_amount;
-  v_new_balance := v_balance_after_deposit + v_bonus;
-  v_new_total := COALESCE(v_wallet.total_deposits, 0) + v_deposit_amount;
+  SELECT value INTO v_config
+  FROM system_config
+  WHERE key = 'first_deposit_bonus';
 
+  IF v_config IS NOT NULL
+     AND (v_config->>'enabled')::boolean = true
+     AND v_deposit_amount >= (v_config->>'min_deposit_amount')::numeric THEN
+    v_bonus_pct := (v_config->>'bonus_percent')::numeric;
+    v_bonus := LEAST(
+      v_deposit_amount * (v_bonus_pct / 100),
+      (v_config->>'max_bonus_amount')::numeric
+    );
+  END IF;
+
+  -- ============================================================
+  -- 【修复 C2】Step 6: 计算新余额
+  -- 本金入 TJS 钱包，赠送入 LUCKY_COIN 钱包
+  -- ============================================================
+  v_tjs_balance_before := COALESCE(v_tjs_wallet.balance, 0);
+  v_lc_balance_before := COALESCE(v_lc_wallet.balance, 0);
+  v_new_tjs_balance := v_tjs_balance_before + v_deposit_amount;
+  v_new_lc_balance := v_lc_balance_before + v_bonus;
+  v_new_total := COALESCE(v_tjs_wallet.total_deposits, 0) + v_deposit_amount;
+
+  -- 更新 TJS 钱包（本金）
   UPDATE wallets SET
-    balance = v_new_balance,
+    balance = v_new_tjs_balance,
     total_deposits = v_new_total,
     version = COALESCE(version, 1) + 1,
-    first_deposit_bonus_claimed = CASE
-      WHEN v_bonus > 0 THEN true
-      ELSE first_deposit_bonus_claimed
-    END,
-    first_deposit_bonus_amount = CASE
-      WHEN v_bonus > 0 THEN v_bonus
-      ELSE first_deposit_bonus_amount
-    END,
     updated_at = NOW()
-  WHERE id = v_wallet.id;
+  WHERE id = v_tjs_wallet.id;
+
+  -- 更新 LUCKY_COIN 钱包（赠送积分）
+  IF v_bonus > 0 THEN
+    UPDATE wallets SET
+      balance = v_new_lc_balance,
+      version = COALESCE(version, 1) + 1,
+      updated_at = NOW()
+    WHERE id = v_lc_wallet.id;
+  END IF;
 
   -- ============================================================
   -- Step 7: 更新充值申请状态
@@ -1157,7 +1201,7 @@ BEGIN
   WHERE id = v_deposit.id;
 
   -- ============================================================
-  -- Step 8: 创建充值交易记录
+  -- Step 8: 创建充值交易记录（TJS 钱包）
   -- ============================================================
   v_tx_id := gen_random_uuid();
 
@@ -1168,11 +1212,11 @@ BEGIN
     processed_at, created_at
   ) VALUES (
     v_tx_id,
-    v_wallet.id,
+    v_tjs_wallet.id,
     'DEPOSIT',
     v_deposit_amount,
-    COALESCE(v_wallet.balance, 0),
-    v_balance_after_deposit,
+    v_tjs_balance_before,
+    v_new_tjs_balance,
     '充值审核通过 - 订单号: ' || COALESCE(v_deposit.order_number, 'N/A'),
     p_request_id,
     'COMPLETED',
@@ -1181,7 +1225,7 @@ BEGIN
   );
 
   -- ============================================================
-  -- Step 9: 如果有首充奖励，创建奖励交易记录
+  -- 【修复 C2】Step 9: 如果有赠送，创建赠送交易记录（LUCKY_COIN 钱包）
   -- ============================================================
   IF v_bonus > 0 THEN
     v_bonus_tx_id := gen_random_uuid();
@@ -1193,12 +1237,12 @@ BEGIN
       processed_at, created_at
     ) VALUES (
       v_bonus_tx_id,
-      v_wallet.id,
+      v_lc_wallet.id,
       'BONUS',
       v_bonus,
-      v_balance_after_deposit,
-      v_new_balance,
-      '首充奖励 (' || v_bonus_pct || '%) - 订单号: ' || COALESCE(v_deposit.order_number, 'N/A'),
+      v_lc_balance_before,
+      v_new_lc_balance,
+      '充值赠送 (' || v_bonus_pct || '%) - 订单号: ' || COALESCE(v_deposit.order_number, 'N/A'),
       p_request_id,
       'COMPLETED',
       NOW(),
@@ -1208,6 +1252,7 @@ BEGIN
 
   -- ============================================================
   -- Step 10: 插入应用内通知
+  -- 【修复 C3】通知文案从"首充奖励"改为"充值赠送"
   -- ============================================================
   INSERT INTO notifications (
     user_id, type, title, title_i18n,
@@ -1219,14 +1264,14 @@ BEGIN
     '充值成功',
     '{"zh": "充值成功", "ru": "Пополнение успешно", "tg": "Пуркунӣ бомуваффақият"}'::jsonb,
     CASE WHEN v_bonus > 0
-      THEN '您的充值申请已审核通过,金额' || v_deposit_amount || ' ' || v_deposit.currency || '已到账，首充奖励+' || v_bonus || ' ' || v_deposit.currency
+      THEN '您的充值申请已审核通过,金额' || v_deposit_amount || ' ' || v_deposit.currency || '已到账，赠送+' || v_bonus || ' 积分'
       ELSE '您的充值申请已审核通过,金额' || v_deposit_amount || ' ' || v_deposit.currency || '已到账'
     END,
     CASE WHEN v_bonus > 0 THEN
       json_build_object(
-        'zh', '您的充值申请已审核通过，金额 ' || v_deposit_amount || ' ' || v_deposit.currency || ' 已到账，首充奖励 +' || v_bonus || ' ' || v_deposit.currency,
-        'ru', 'Ваш запрос на пополнение одобрен. ' || v_deposit_amount || ' ' || v_deposit.currency || ' зачислено, бонус за первое пополнение +' || v_bonus || ' ' || v_deposit.currency,
-        'tg', 'Дархости пуркунии шумо тасдиқ шуд. ' || v_deposit_amount || ' ' || v_deposit.currency || ' ворид шуд, мукофоти аввалин пуркунӣ +' || v_bonus || ' ' || v_deposit.currency
+        'zh', '您的充值申请已审核通过，金额 ' || v_deposit_amount || ' ' || v_deposit.currency || ' 已到账，赠送 +' || v_bonus || ' 积分',
+        'ru', 'Ваш запрос на пополнение одобрен. ' || v_deposit_amount || ' ' || v_deposit.currency || ' зачислено, бонус +' || v_bonus || ' баллов',
+        'tg', 'Дархости пуркунии шумо тасдиқ шуд. ' || v_deposit_amount || ' ' || v_deposit.currency || ' ворид шуд, мукофот +' || v_bonus || ' хол'
       )::jsonb
     ELSE
       json_build_object(
@@ -1241,7 +1286,7 @@ BEGIN
 
   -- ============================================================
   -- Step 11: 插入通知队列 - 充值到账
-  -- [MIGRATION] 使用 phone_number 作为通知目标，channel 设为 whatsapp
+  -- [MIGRATION] 使用 phone_number + channel='whatsapp'
   -- ============================================================
   INSERT INTO notification_queue (
     user_id, phone_number, type, payload,
@@ -1266,7 +1311,7 @@ BEGIN
     NOW(), NOW()
   );
 
-  -- 如果有首充奖励，发送首充奖励通知
+  -- 【修复 C3】如果有赠送，发送充值赠送通知（而非"首充奖励"）
   IF v_bonus > 0 THEN
     INSERT INTO notification_queue (
       user_id, phone_number, type, payload,
@@ -1285,7 +1330,7 @@ BEGIN
         'total_amount', v_deposit_amount + v_bonus
       )::jsonb,
       'first_deposit_bonus',
-      '首充奖励到账',
+      '充值赠送到账',
       '',
       json_build_object(
         'deposit_amount', v_deposit_amount,
@@ -1316,10 +1361,12 @@ BEGIN
       'user_id', v_deposit.user_id,
       'amount', v_deposit_amount,
       'bonus_amount', v_bonus,
+      'bonus_wallet', 'LUCKY_COIN',
       'currency', v_deposit.currency,
       'order_number', v_deposit.order_number,
       'admin_note', p_admin_note,
-      'new_balance', v_new_balance
+      'new_tjs_balance', v_new_tjs_balance,
+      'new_lc_balance', v_new_lc_balance
     )::jsonb,
     p_status := 'success'
   );
@@ -1334,7 +1381,9 @@ BEGIN
     'deposit_amount', v_deposit_amount,
     'bonus_amount', v_bonus,
     'bonus_percent', v_bonus_pct,
-    'new_balance', v_new_balance,
+    'bonus_wallet', 'LUCKY_COIN',
+    'new_tjs_balance', v_new_tjs_balance,
+    'new_lc_balance', v_new_lc_balance,
     'user_id', v_deposit.user_id,
     'order_number', v_deposit.order_number
   );
@@ -1361,6 +1410,10 @@ EXCEPTION
     );
 END;
 $function$;
+
+COMMENT ON FUNCTION approve_deposit_atomic(TEXT, TEXT, TEXT, TEXT)
+  IS '充值审批原子操作函数（v2.1.0），合并修复：C1移除首充限制改为每次赠送，C2赠送入LUCKY_COIN钱包，C3通知文案修正，H3拒绝通知类型修正，迁移至WhatsApp通知';
+
 
 
 -- ============================================================================

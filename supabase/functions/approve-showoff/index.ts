@@ -203,6 +203,7 @@ serve(async (req) => {
             data: {
               reward_amount: rewardCoins
             },
+            channel: 'whatsapp',
             priority: 2,
             status: 'pending',
             scheduled_at: new Date().toISOString(),
@@ -256,6 +257,7 @@ serve(async (req) => {
             data: {
               reward_amount: 0
             },
+            channel: 'whatsapp',
             priority: 2,
             status: 'pending',
             scheduled_at: new Date().toISOString(),
@@ -305,6 +307,7 @@ serve(async (req) => {
             data: {
               reason: adminNote || '不符合要求'
             },
+            channel: 'whatsapp',
             priority: 2,
             status: 'pending',
             scheduled_at: new Date().toISOString(),

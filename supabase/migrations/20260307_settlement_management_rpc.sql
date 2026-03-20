@@ -50,14 +50,13 @@ BEGIN
             ps.note,
             ps.created_at,
             ps.updated_at,
-            -- 关联地推人员信息
+            -- 关联地推人员信息 [MIGRATION] 使用 phone_number 替代 telegram_id
             COALESCE(
               NULLIF(TRIM(CONCAT(u.first_name, ' ', COALESCE(u.last_name, ''))), ''),
-              u.telegram_username,
-              'TG:' || u.telegram_id,
+              u.phone_number,
               ps.promoter_id
             ) AS promoter_name,
-            u.telegram_id AS promoter_telegram_id
+            u.phone_number AS promoter_phone_number
           FROM promoter_settlements ps
           LEFT JOIN users u ON u.id::TEXT = ps.promoter_id
           WHERE ps.settlement_date = p_settlement_date

@@ -512,6 +512,7 @@ async function createBotNotification(
                 title: getNotificationTitle(notificationType),
                 message: getNotificationMessage(notificationType),
                 data: data,
+                channel: 'whatsapp',
                 priority: 2,
                 status: 'pending',
                 scheduled_at: new Date().toISOString(),

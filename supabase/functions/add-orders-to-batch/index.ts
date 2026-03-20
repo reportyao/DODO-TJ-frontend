@@ -98,6 +98,7 @@ async function sendBatchShippedNotification(
         batch_no: batchNo,
         estimated_arrival_date: estimatedArrivalDate,
       },
+      channel: 'whatsapp',
       priority: 2,
       status: 'pending',
       scheduled_at: new Date().toISOString(),

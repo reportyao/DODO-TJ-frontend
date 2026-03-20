@@ -172,6 +172,7 @@ serve(async (req) => {
               title: '订单物流更新',
               message: `您的订单状态已更新`,
               data: notificationData,
+              channel: 'whatsapp',
               priority: 1,
               status: 'pending',
               scheduled_at: new Date().toISOString(),

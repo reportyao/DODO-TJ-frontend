@@ -163,6 +163,7 @@ async function queueNotification(
         message: message,
         payload: data,
         data: data,
+        channel: 'whatsapp',
         status: 'pending',
         priority: 2,
         scheduled_at: now,
