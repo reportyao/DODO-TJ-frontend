@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import { useTranslation } from 'react-i18next';
 import { useSupabase } from '../contexts/SupabaseContext';
 import { useUser } from '../contexts/UserContext';
@@ -1007,7 +1008,7 @@ const LotteryDetailPage: React.FC = () => {
 
             {/* Rich Text Details */}
             {details && (
-              <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: details }} />
+              <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(details) }} />
             )}
           </div>
         )}
