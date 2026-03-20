@@ -134,7 +134,7 @@ BEGIN
       ) VALUES (
         v_tjs_wallet.id, 'COUPON_DEDUCTION', -v_coupon_deduction,
         v_tjs_balance, v_tjs_balance,
-        'COMPLETED', '使用抵扣券', p_order_id::uuid, p_lottery_id::uuid, NOW()
+        'COMPLETED', '使用抵扣券', p_order_id, p_lottery_id, NOW()
       );
     END IF;
   END IF;
@@ -156,7 +156,7 @@ BEGIN
     ) VALUES (
       v_tjs_wallet.id, p_order_type, -v_tjs_deduction,
       v_tjs_balance, v_tjs_balance - v_tjs_deduction,
-      'COMPLETED', '余额支付', p_order_id::uuid, p_lottery_id::uuid, NOW()
+      'COMPLETED', '余额支付', p_order_id, p_lottery_id, NOW()
     );
   END IF;
 
@@ -180,7 +180,7 @@ BEGIN
     ) VALUES (
       v_lc_wallet.id, p_order_type, -v_lc_deduction,
       v_lc_balance, v_lc_balance - v_lc_deduction,
-      'COMPLETED', '积分支付', p_order_id::uuid, p_lottery_id::uuid, NOW()
+      'COMPLETED', '积分支付', p_order_id, p_lottery_id, NOW()
     );
   END IF;
 
