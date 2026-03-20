@@ -650,7 +650,20 @@ async function handleNotification(event: QueuedEvent): Promise<void> {
     return;
   }
 
-  // 写入 notification_queue（与原 v1 代码完全一致）
+  // 查询用户 phone_number（修复 R24：原来为 null，导致通知发送器跳过）
+  let userPhoneNumber: string | null = null;
+  try {
+    const { data: userData } = await supabase
+      .from('users')
+      .select('phone_number')
+      .eq('id', user_id)
+      .maybeSingle();
+    userPhoneNumber = userData?.phone_number ?? null;
+  } catch (e) {
+    console.warn(`[Worker] Failed to fetch phone_number for user ${user_id}:`, e);
+  }
+
+  // 写入 notification_queue（修复 R24：添加 phone_number 字段）
   const { error } = await supabase.from('notification_queue').insert({
     user_id: user_id,
     type: 'group_buy_win',
@@ -660,11 +673,11 @@ async function handleNotification(event: QueuedEvent): Promise<void> {
       won_at,
       is_squad_buy,
     },
-    phone_number: null,  // 由通知发送器查询用户的 phone_number
+    phone_number: userPhoneNumber,
     notification_type: 'group_buy_win',
     title: '包团成功通知',
     channel: 'whatsapp',
-    message: '',
+    message: `您的包团「${product_name}」已成功！团购码：${session_code}`,
     data: {
       product_name,
       session_code,

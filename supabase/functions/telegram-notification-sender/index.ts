@@ -70,6 +70,7 @@ interface AliyunConfig {
   custSpaceId: string;
   templateDeposit: string;
   templatePickup: string;
+  templateGroupBuyWin: string;
   region: string;
   endpoint: string;
 }
@@ -79,6 +80,7 @@ const SUPPORTED_NOTIFICATION_TYPES = new Set([
   'promoter_deposit',  // 地推充值到账（含赠送积分）
   'wallet_deposit',    // 普通充值到账
   'batch_arrived',     // 提货码通知
+  'group_buy_win',     // 包团成功通知
 ]);
 
 // 语言代码映射（用户 preferred_language → WhatsApp 语言代码）
@@ -420,12 +422,21 @@ function resolveTemplate(
       return { templateCode, templateParams: params, waLanguage };
     }
 
-    case 'batch_arrived': {
+     case 'batch_arrived': {
       const params = buildPickupTemplateParams(data);
       const templateCode = config.templatePickup;
       return { templateCode, templateParams: params, waLanguage };
     }
-
+    case 'group_buy_win': {
+      // 包团成功通知模板变量：{{1}} = 商品名称, {{2}} = 团购码
+      const params: CamsTemplateParam = {
+        '1': String(data.product_name ?? ''),
+        '2': String(data.session_code ?? ''),
+      };
+      const templateCode = config.templateGroupBuyWin;
+      if (!templateCode) return null; // 未配置模板时跳过
+      return { templateCode, templateParams: params, waLanguage };
+    }
     default:
       return null;
   }
@@ -611,6 +622,7 @@ serve(async (req: Request) => {
   const aliyunCustSpaceId = Deno.env.get('ALIYUN_CAMS_CUST_SPACE_ID') ?? '';
   const aliyunTemplateDeposit = Deno.env.get('ALIYUN_CAMS_TEMPLATE_DEPOSIT') ?? '';
   const aliyunTemplatePickup = Deno.env.get('ALIYUN_CAMS_TEMPLATE_PICKUP') ?? '';
+  const aliyunTemplateGroupBuyWin = Deno.env.get('ALIYUN_CAMS_TEMPLATE_GROUP_BUY_WIN') ?? '';
   const aliyunRegion = Deno.env.get('ALIYUN_CAMS_REGION') ?? 'cn-hangzhou';
 
   // 验证必要的环境变量
@@ -641,6 +653,7 @@ serve(async (req: Request) => {
     custSpaceId: aliyunCustSpaceId,
     templateDeposit: aliyunTemplateDeposit,
     templatePickup: aliyunTemplatePickup,
+    templateGroupBuyWin: aliyunTemplateGroupBuyWin,
     region: aliyunRegion,
     // CAMS API endpoint：cams.{region}.aliyuncs.com
     // 注意：部分区域使用统一 endpoint cams.aliyuncs.com
