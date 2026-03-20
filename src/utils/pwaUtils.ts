@@ -80,27 +80,38 @@ export async function unregisterServiceWorker(): Promise<void> {
 export function setupInstallPrompt(
   onPromptReady: (canInstall: boolean) => void,
   onInstalled: () => void
-): void {
-  // 监听 beforeinstallprompt 事件
-  window.addEventListener('beforeinstallprompt', (e: Event) => {
+): () => void {
+  // 保存具名引用，以便正确移除（匿名函数无法被 removeEventListener 移除）
+  const handleBeforeInstall = (e: Event) => {
     e.preventDefault();
     deferredPrompt = e;
     console.log('[PWA] Install prompt ready');
     onPromptReady(true);
-  });
+  };
 
-  // 监听应用安装完成
-  window.addEventListener('appinstalled', () => {
+  const handleAppInstalled = () => {
     console.log('[PWA] App installed');
     deferredPrompt = null;
     onInstalled();
-  });
+  };
 
-  // 检查是否已安装
+  // 监听 beforeinstallprompt 事件
+  window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+  // 监听应用安装完成
+  window.addEventListener('appinstalled', handleAppInstalled);
+
+  // 检查是否已安装（standalone 模式）
   if (window.matchMedia('(display-mode: standalone)').matches) {
     console.log('[PWA] App is already installed (standalone mode)');
     onInstalled();
   }
+
+  // 返回清理函数，防止组件卸载后内存泄漏
+  return () => {
+    window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.removeEventListener('appinstalled', handleAppInstalled);
+  };
 }
 
 /**

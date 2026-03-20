@@ -72,7 +72,8 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
     }
 
     // 设置安装提示（标准 Chrome/Edge/Samsung 等浏览器）
-    setupInstallPrompt(
+    // setupInstallPrompt 现在返回清理函数，防止内存泄漏
+    const cleanup = setupInstallPrompt(
       (canInstall) => {
         if (canInstall) {
           setShowPrompt(true);
@@ -83,6 +84,7 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
         onInstalled?.();
       }
     );
+    return cleanup;
   }, [onInstalled]);
 
   const handleInstall = async () => {
