@@ -119,6 +119,32 @@ Deno.serve(async (req) => {
       throw new Error('Invalid quantity: must be between 1 and 100');
     }
 
+    // 【R15修复】幂等性查重：如果提供了 idempotency_key，在开始时查询 edge_function_logs
+    // 防止网络超时后用户重试导致重复扣款
+    if (idempotency_key) {
+      const idempotencyCheckResponse = await fetch(
+        `${supabaseUrl}/rest/v1/edge_function_logs?function_name=eq.lottery-purchase&status=eq.success&details->>idempotency_key=eq.${encodeURIComponent(idempotency_key)}&select=id,details&limit=1`,
+        {
+          headers: {
+            'Authorization': `Bearer ${serviceRoleKey}`,
+            'apikey': serviceRoleKey,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      if (idempotencyCheckResponse.ok) {
+        const existingLogs = await idempotencyCheckResponse.json();
+        if (existingLogs.length > 0) {
+          // 找到重复请求，返回原始结果
+          const cachedResult = existingLogs[0].details?.result_data;
+          console.log('Idempotency hit, returning cached result for key:', idempotency_key);
+          return new Response(JSON.stringify({ data: cachedResult, idempotency_hit: true }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
+
     // ✅ 使用自定义 session token 验证用户
     let sessionToken = session_token;
     if (!sessionToken) {

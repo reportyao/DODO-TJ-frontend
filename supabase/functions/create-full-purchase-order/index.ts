@@ -174,10 +174,12 @@ serve(async (req) => {
     });
 
     // 0. 幂等性保护：如果有提供 idempotency_key，检查是否已经处理过
+    // 【R16修复】原查询的是不存在的 audit_logs 表，应改为 edge_function_logs
     if (idempotency_key) {
       const { data: existingLog } = await supabase
-        .from('audit_logs')
+        .from('edge_function_logs')
         .select('id, details')
+        .eq('function_name', 'create-full-purchase-order')
         .eq('action', 'FULL_PURCHASE')
         .eq('user_id', userId)
         .eq('status', 'success')
