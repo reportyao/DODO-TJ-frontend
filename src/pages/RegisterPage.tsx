@@ -81,7 +81,7 @@ const RegisterPage: React.FC = () => {
         {/* Logo / Brand */}
         <div className="text-center mb-6">
           <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
-            <span className="text-white text-3xl font-bold">TB</span>
+            <span className="text-white text-3xl font-bold">D</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">DODO</h1>
           <p className="text-gray-500 mt-1">{t('auth.registerSubtitle', '创建新账户')}</p>
