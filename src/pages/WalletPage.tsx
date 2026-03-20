@@ -15,7 +15,6 @@ import {
 } from '@heroicons/react/24/outline'
 import { formatCurrency, formatDateTime } from '../lib/utils'
 import toast from 'react-hot-toast'
-import { DepositModal } from '../components/wallet/DepositModal'
 import { SubsidyPoolCard } from '../components/wallet/SubsidyPoolCard'
 import { useSupabase } from '../contexts/SupabaseContext'
 
@@ -26,7 +25,6 @@ const WalletPage: React.FC = () => {
   const { supabase } = useSupabase()
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions'>('transactions')
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [showDepositModal, setShowDepositModal] = useState(false)
   const [transactions, setTransactions] = useState<any[]>([])
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(true)
   const [hasLoadedTransactions, setHasLoadedTransactions] = useState(false)
@@ -419,12 +417,6 @@ const WalletPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Modals */}
-      <DepositModal
-        isOpen={showDepositModal}
-        onClose={() => setShowDepositModal(false)}
-        onSuccess={handleRefresh}
-      />
 
     </div>
   )
