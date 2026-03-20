@@ -22,7 +22,7 @@ async function callNotificationSender(supabaseUrl: string, serviceKey: string): 
         'Authorization': `Bearer ${serviceKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ batchSize: 100 })
+      body: JSON.stringify({ batch_size: 20 }) // 每次处理 20 条，避免超时
     });
 
     if (!response.ok) {
@@ -69,22 +69,48 @@ async function cleanupOldMessages(supabase: any): Promise<number> {
   }
 }
 
-// 清理失败通知（超过7天且已失败的通知）
+// 清理失败通知（超过7天且已失败/已跳过/已发送的通知）
+// 同时恢复超时的 processing 状态记录（防止死锁）
 async function cleanupFailedNotifications(supabase: any): Promise<number> {
+  let cleaned = 0;
+
   try {
+    // 1. 删除超过7天的已完成通知（failed/skipped/sent）
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data, error } = await supabase
+    const { data: deletedOld, error: deleteError } = await supabase
       .from('notification_queue')
       .delete()
-      .eq('status', 'failed')
-      .lt('created_at', sevenDaysAgo);
-    if (error) throw error;
-    return data?.length || 0;
-  } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error('Error cleaning up failed notifications:', errMsg);
-    return 0;
+      .in('status', ['failed', 'skipped', 'sent'])
+      .lt('created_at', sevenDaysAgo)
+      .select('id');
+    if (!deleteError) cleaned += deletedOld?.length || 0;
+  } catch (err: unknown) {
+    console.error('Error deleting old notifications:', err instanceof Error ? err.message : String(err));
   }
+
+  try {
+    // 2. 恢复超时的 processing 状态（防止 Edge Function 崩溃导致死锁）
+    // 超过 10 分钟仍在 processing 的记录，回滚为 pending 重新处理
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: recovered, error: recoverError } = await supabase
+      .from('notification_queue')
+      .update({
+        status: 'pending',
+        updated_at: new Date().toISOString(),
+        error_message: 'Recovered from stuck processing state (timeout > 10 min)',
+      })
+      .eq('status', 'processing')
+      .lt('updated_at', tenMinutesAgo)
+      .select('id');
+    if (!recoverError && recovered?.length > 0) {
+      console.log(`[RECOVERY] Recovered ${recovered.length} stuck notifications from processing state`);
+      cleaned += recovered.length;
+    }
+  } catch (err: unknown) {
+    console.error('Error recovering stuck notifications:', err instanceof Error ? err.message : String(err));
+  }
+
+  return cleaned;
 }
 
 // 检查彩票开奖提醒（写入 notification_queue，由 WhatsApp 发送）
@@ -265,7 +291,7 @@ serve(async (req) => {
       results.tasks.lotteryReminders = { error: errMsg };
     }
 
-    // 3. 清理任务（每小时执行）
+    // 3. 清理任务
     const currentHour = new Date().getHours();
     try {
       const expiredSessions = await cleanupExpiredSessions(supabase);
@@ -273,10 +299,9 @@ serve(async (req) => {
       if (currentHour === 2) {
         oldMessages = await cleanupOldMessages(supabase);
       }
-      let failedNotifications = 0;
-      if (currentHour === 3) {
-        failedNotifications = await cleanupFailedNotifications(supabase);
-      }
+      // processing 超时恢复：每次 cron 都执行（防止死锁）
+      // 旧通知清理：仅凌晨3点执行
+      const failedNotifications = await cleanupFailedNotifications(supabase);
       results.tasks.cleanup = { expiredSessions, oldMessages, failedNotifications };
     } catch (error: unknown) {
       const errMsg = error instanceof Error ? error.message : String(error);

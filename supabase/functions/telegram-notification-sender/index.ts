@@ -1,614 +1,766 @@
-// 通知发送器
-// 【迁移修复】从 Telegram Bot 迁移到 WhatsApp Business API
-// 处理通知队列并发送通知给用户
+/**
+ * WhatsApp 通知发送器（阿里云 ChatApp API 方案）
+ *
+ * 功能说明：
+ *   - 消费 notification_queue 表中 status='pending' 的通知
+ *   - 仅处理以下两种通知类型：
+ *       1. promoter_deposit  — 地推充值到账（含赠送积分）
+ *       2. wallet_deposit    — 普通充值到账
+ *       3. batch_arrived     — 提货码通知（商品到达自提点）
+ *   - 其他类型的通知直接标记为 skipped，不发送
+ *   - 使用阿里云 CAMS SendChatappMessage API（V3 签名 ACS3-HMAC-SHA256）
+ *
+ * 环境变量（需在 Supabase Dashboard → Edge Functions → Secrets 中配置）：
+ *   ALIYUN_ACCESS_KEY_ID       阿里云 AccessKey ID
+ *   ALIYUN_ACCESS_KEY_SECRET   阿里云 AccessKey Secret
+ *   ALIYUN_CAMS_FROM           WhatsApp 发送号码（E.164 格式，如 +992XXXXXXXXX）
+ *   ALIYUN_CAMS_CUST_SPACE_ID  阿里云 CAMS 实例 ID（CustSpaceId）
+ *   ALIYUN_CAMS_TEMPLATE_DEPOSIT   充值到账模板 Code（在阿里云 CAMS 控制台获取）
+ *   ALIYUN_CAMS_TEMPLATE_PICKUP    提货码模板 Code（在阿里云 CAMS 控制台获取）
+ *   ALIYUN_CAMS_REGION         API 区域，默认 cn-hangzhou
+ *
+ * 模板说明（需在阿里云 CAMS 控制台预先创建并审核通过）：
+ *
+ *   充值到账模板（ALIYUN_CAMS_TEMPLATE_DEPOSIT）：
+ *     模板内容示例（三语言各一个模板）：
+ *       中文: 您好，您的钱包已到账 {{1}} TJS。{{2}}
+ *             {{2}} 为空时不显示；有赠送时填写"另赠 {{bonus}} 积分"
+ *       俄文: Здравствуйте, на ваш кошелёк зачислено {{1}} TJS. {{2}}
+ *       塔语: Ассалому алейкум, ба ҳисоби шумо {{1}} TJS ворид шуд. {{2}}
+ *     变量：{{1}} = 充值金额, {{2}} = 赠送积分说明（可为空）
+ *
+ *   提货码模板（ALIYUN_CAMS_TEMPLATE_PICKUP）：
+ *     模板内容示例：
+ *       中文: 您的商品「{{1}}」已到达自提点「{{2}}」，提货码：{{3}}，有效期至 {{4}}。
+ *       俄文: Ваш товар «{{1}}» прибыл в пункт выдачи «{{2}}». Код получения: {{3}}, действителен до {{4}}.
+ *       塔语: Моли шумо «{{1}}» ба нуқтаи гирифтан «{{2}}» расид. Рамзи гирифтан: {{3}}, то {{4}}.
+ *     变量：{{1}} = 商品名, {{2}} = 自提点名称, {{3}} = 提货码, {{4}} = 有效期
+ *
+ * 注意：
+ *   - 阿里云 CAMS 模板消息按条计费，请在控制台确认费率
+ *   - 每种语言需要单独的模板（zh/ru/tg 各一套），或使用多语言模板
+ *   - 如果用户语言不在支持列表中，默认使用 tg（塔吉克语）
+ */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-interface NotificationData {
-  // 一元夺宝相关
-  product_name?: string;
-  ticket_number?: string;  // 参与码
-  winning_number?: string; // 幸运号码
-  
-  // 拼团相关
-  session_code?: string;
-  won_at?: string;
-  refund_amount?: number;
-  balance?: number;
-  points_balance?: number;  // 拼团积分退款后的积分余额
-  
-  // 钱包相关
-  transaction_amount?: number;
-  deposit_amount?: number;
-  bonus_amount?: number;
-  bonus_percent?: number;
-  total_amount?: number;
-  estimated_arrival?: string;
-  failure_reason?: string;
-  current_balance?: number;
-  
-  // 订单物流相关
-  tracking_number?: string;
-  pickup_location?: string;
-  pickup_code?: string;
-  
-  // 晒单相关
-  reward_amount?: number;
-  reason?: string;
-  
-  // 转盘相关
-  prize_name?: string;
-  prize_amount?: number;
-  
-  // 推荐相关
-  referral_amount?: number;
-  level?: string;
-  source?: string;
-  invitee_name?: string;  // 被邀请人名称
-  
-  // 开奖提醒相关
-  lottery_title?: string;
-  lottery_id?: string;
+// ============================================================
+// 类型定义
+// ============================================================
 
-  // 抵扣券相关
-  count?: number;  // 抵扣券数量
-  expires_at?: string;  // 抵扣券过期时间
-
-  // 地推充值相关
-  promoter_name?: string;   // 地推人员名称
-  target_user_name?: string; // 目标用户名称
-  deposit_id?: string;       // 充值记录ID
+interface NotificationRecord {
+  id: string;
+  user_id: string;
+  phone_number: string;
+  notification_type: string;
+  message: string;
+  data: Record<string, unknown>;
+  channel: string;
+  status: string;
+  retry_count: number;
+  max_retries: number;
+  created_at: string;
 }
 
-// 多语言通知模板 - 根据用户确认的文案
-const notificationTemplates = {
-  // ==================== 1. 一元夺宝活动通知 ====================
-  
-  // 幸运入选通知
-  lucky_draw_win: {
-    zh: (data: NotificationData) => 
-      `🎉 恭喜您幸运入选！\n\n🎁 商品: ${data.product_name}\n🔢 您的参与码: ${data.ticket_number}\n🎯 幸运号码: ${data.winning_number}\n\n恭喜您获得此商品，请尽快填写收货地址！`,
-    ru: (data: NotificationData) => 
-      `🎉 Поздравляем, вы счастливый победитель!\n\n🎁 Товар: ${data.product_name}\n🔢 Ваш код участия: ${data.ticket_number}\n🎯 Счастливый номер: ${data.winning_number}\n\nПоздравляем с получением товара! Пожалуйста, заполните адрес доставки!`,
-    tg: (data: NotificationData) => 
-      `🎉 Табрик, шумо ғолиби хушбахт ҳастед!\n\n🎁 Мол: ${data.product_name}\n🔢 Рамзи иштироки шумо: ${data.ticket_number}\n🎯 Рақами хушбахт: ${data.winning_number}\n\nТабрик барои гирифтани мол! Лутфан суроғаи расониданро пур кунед!`
-  },
+interface AliyunConfig {
+  accessKeyId: string;
+  accessKeySecret: string;
+  from: string;
+  custSpaceId: string;
+  templateDeposit: string;
+  templatePickup: string;
+  region: string;
+  endpoint: string;
+}
 
-  // ==================== 2. 拼团活动通知 ====================
-  
-  // 拼团成功通知
-  group_buy_win: {
-    zh: (data: NotificationData) => 
-      `🎉 恭喜拼团成功！\n\n🎁 商品: ${data.product_name}\n🔢 拼团编号: ${data.session_code}\n⏰ 成功时间: ${data.won_at}\n\n请尽快填写收货地址，我们将为您发货！`,
-    ru: (data: NotificationData) => 
-      `🎉 Поздравляем с успешной групповой покупкой!\n\n🎁 Товар: ${data.product_name}\n🔢 Номер группы: ${data.session_code}\n⏰ Время успеха: ${data.won_at}\n\nПожалуйста, заполните адрес доставки как можно скорее!`,
-    tg: (data: NotificationData) => 
-      `🎉 Табрик бо харидии гурӯҳии муваффақ!\n\n🎁 Мол: ${data.product_name}\n🔢 Рақами гурӯҳ: ${data.session_code}\n⏰ Вақти муваффақият: ${data.won_at}\n\nЛутфан суроғаи расонидани молро пур кунед!`
-  },
-  
-  // 拼团退款通知（未拼中 - 退回余额）
-  group_buy_refund: {
-    zh: (data: NotificationData) => 
-      `😔 很遗憾本次未拼中\n\n🎁 商品: ${data.product_name}\n🔢 拼团编号: ${data.session_code}\n💰 退款金额: ${data.refund_amount} TJS\n💵 当前余额: ${data.balance}\n\n退款已退回您的余额钱包，欢迎继续参与！`,
-    ru: (data: NotificationData) => 
-      `😔 К сожалению, в этот раз не повезло\n\n🎁 Товар: ${data.product_name}\n🔢 Номер группы: ${data.session_code}\n💰 Возврат: ${data.refund_amount} TJS\n💵 Текущий баланс: ${data.balance}\n\nСредства возвращены на ваш баланс, продолжайте участвовать!`,
-    tg: (data: NotificationData) => 
-      `😔 Мутаассифона ин дафъа насиб нашуд\n\n🎁 Мол: ${data.product_name}\n🔢 Рақами гурӯҳ: ${data.session_code}\n💰 Баргардонидан: ${data.refund_amount} TJS\n💵 Боқимондаи ҷорӣ: ${data.balance}\n\nМаблағ ба боқимондаи шумо баргардонида шуд, идома диҳед!`
-  },
+// 支持的通知类型白名单
+const SUPPORTED_NOTIFICATION_TYPES = new Set([
+  'promoter_deposit',  // 地推充值到账（含赠送积分）
+  'wallet_deposit',    // 普通充值到账
+  'batch_arrived',     // 提货码通知
+]);
 
-  // 拼团退款通知（未拼中 - 退回积分）
-  group_buy_points_refund: {
-    zh: (data: NotificationData) => 
-      `😔 很遗憾本次未拼中\n\n🎁 商品: ${data.product_name}\n🔢 拼团编号: ${data.session_code}\n💰 补偿积分: +${data.refund_amount} 积分\n💎 当前积分: ${data.points_balance}\n\n您的支付金额已转换为积分退还，可在积分商城继续购物。`,
-    ru: (data: NotificationData) => 
-      `😔 К сожалению, в этот раз не повезло\n\n🎁 Товар: ${data.product_name}\n🔢 Номер группы: ${data.session_code}\n💰 Компенсация: +${data.refund_amount} баллов\n💎 Текущие баллы: ${data.points_balance}\n\nВаша оплата конвертирована в баллы. Используйте их в магазине баллов.`,
-    tg: (data: NotificationData) => 
-      `😔 Мутаассифона ин дафъа насиб нашуд\n\n🎁 Мол: ${data.product_name}\n🔢 Рақами гурӯҳ: ${data.session_code}\n💰 Товони холҳо: +${data.refund_amount} хол\n💎 Холҳои ҷорӣ: ${data.points_balance}\n\nМаблағи шумо ба холҳо табдил шуд. Дар мағозаи холҳо истифода баред.`
-  },
-  
-  // 拼团超时/取消通知
-  group_buy_timeout: {
-    zh: (data: NotificationData) => 
-      `⏰ 拼团已取消\n\n🎁 商品: ${data.product_name}\n🔢 拼团编号: ${data.session_code}\n💰 退款金额: ${data.refund_amount} TJS\n💵 当前余额: ${data.balance}\n\n拼团未能凑齐人数，参与金额已退回您的余额钱包。`,
-    ru: (data: NotificationData) => 
-      `⏰ Групповая покупка отменена\n\n🎁 Товар: ${data.product_name}\n🔢 Номер группы: ${data.session_code}\n💰 Возврат: ${data.refund_amount} TJS\n💵 Текущий баланс: ${data.balance}\n\nГруппа не набралась, средства возвращены на ваш баланс.`,
-    tg: (data: NotificationData) => 
-      `⏰ Харидии гурӯҳӣ бекор карда шуд\n\n🎁 Мол: ${data.product_name}\n🔢 Рақами гурӯҳ: ${data.session_code}\n💰 Баргардонидан: ${data.refund_amount} TJS\n💵 Боқимондаи ҷорӣ: ${data.balance}\n\nГурӯҳ пур нашуд, маблағ ба боқимондаи шумо баргардонида шуд.`
-  },
-
-  // ==================== 3. 钱包相关通知 ====================
-  
-  // 充值到账通知（管理后台审核通过后触发）
-  wallet_deposit: {
-    zh: (data: NotificationData) => 
-      `💰 充值已到账\n\n💵 金额: +${data.transaction_amount} TJS\n🕒 时间: ${new Date().toLocaleString('zh-CN')}\n\n您的余额已更新，可以继续参与活动！`,
-    ru: (data: NotificationData) => 
-      `💰 Пополнение зачислено\n\n💵 Сумма: +${data.transaction_amount} TJS\n🕒 Время: ${new Date().toLocaleString('ru-RU')}\n\nВаш баланс обновлен, можете продолжать участие!`,
-    tg: (data: NotificationData) => 
-      `💰 Пурсозӣ гузошта шуд\n\n💵 Маблағ: +${data.transaction_amount} TJS\n🕒 Вақт: ${new Date().toLocaleString('tg-TJ')}\n\nБоқимондаи шумо навсозӣ шуд, метавонед дар фаъолият идома диҳед!`
-  },
-  
-  // 充值赠送到账通知
-  // [业务重构] 已从"首充奖励"改为"充值赠送"，匹配每次充值都赠送的业务逻辑
-  // 保持 key 为 first_deposit_bonus 以兼容现有通知队列中的历史记录
-  first_deposit_bonus: {
-    zh: (data: NotificationData) => 
-      `🎁 充值赠送到账\n\n💵 充值金额: ${data.deposit_amount} TJS\n🎉 赠送积分: +${data.bonus_amount} 积分（${data.bonus_percent}%）\n💰 充值到账: ${data.deposit_amount} TJS\n\n赠送积分已打入您的积分钱包，可在积分商城使用！`,
-    ru: (data: NotificationData) => 
-      `🎁 Бонус за пополнение\n\n💵 Сумма пополнения: ${data.deposit_amount} TJS\n🎉 Бонус баллов: +${data.bonus_amount} баллов (${data.bonus_percent}%)\n💰 Зачислено: ${data.deposit_amount} TJS\n\nБонусные баллы зачислены в кошелек баллов!`,
-    tg: (data: NotificationData) => 
-      `🎁 Ҷоизаи пурсозӣ\n\n💵 Маблағи пурсозӣ: ${data.deposit_amount} TJS\n🎉 Ҷоизаи холҳо: +${data.bonus_amount} хол (${data.bonus_percent}%)\n💰 Гузошта шуд: ${data.deposit_amount} TJS\n\nҶоизаи холҳо ба ҳамёни холҳои шумо гузошта шуд!`
-  },
-  
-  // 提现申请已提交
-  wallet_withdraw_pending: {
-    zh: (data: NotificationData) => 
-      `⏳ 提现申请已提交\n\n💵 金额: ${data.transaction_amount} TJS\n📝 状态: 审核中\n\n我们将在24小时内处理您的提现申请。`,
-    ru: (data: NotificationData) => 
-      `⏳ Заявка на вывод подана\n\n💵 Сумма: ${data.transaction_amount} TJS\n📝 Статус: На рассмотрении\n\nМы обработаем вашу заявку в течение 24 часов.`,
-    tg: (data: NotificationData) => 
-      `⏳ Дархости баровардан пешниҳод шуд\n\n💵 Маблағ: ${data.transaction_amount} TJS\n📝 Ҳолат: Дар баррасӣ\n\nМо дархости шуморо дар давоми 24 соат коркард мекунем.`
-  },
-  
-  // 提现完成通知
-  wallet_withdraw_completed: {
-    zh: (data: NotificationData) => 
-      `✅ 提现完成\n\n💵 金额: ${data.transaction_amount} TJS\n✅ 状态: 已到账\n⏰ 到账时间: ${data.estimated_arrival || '已到账'}\n\n资金已成功转至您的账户！`,
-    ru: (data: NotificationData) => 
-      `✅ Вывод завершен\n\n💵 Сумма: ${data.transaction_amount} TJS\n✅ Статус: Зачислено\n⏰ Время зачисления: ${data.estimated_arrival || 'Зачислено'}\n\nСредства успешно переведены на ваш счет!`,
-    tg: (data: NotificationData) => 
-      `✅ Баровардан анҷом ёфт\n\n💵 Маблағ: ${data.transaction_amount} TJS\n✅ Ҳолат: Гузошта шуд\n⏰ Вақти гузоштан: ${data.estimated_arrival || 'Гузошта шуд'}\n\nМаблағ ба ҳисоби шумо муваффақият гузошта шуд!`
-  },
-  
-  // 提现失败通知
-  wallet_withdraw_failed: {
-    zh: (data: NotificationData) => 
-      `❌ 提现失败\n\n💵 金额: ${data.transaction_amount} TJS\n❌ 状态: 失败\n📝 失败原因: ${data.failure_reason}\n💰 当前余额: ${data.current_balance} TJS\n\n资金已退回您的余额钱包，请重新提交申请。`,
-    ru: (data: NotificationData) => 
-      `❌ Вывод не удался\n\n💵 Сумма: ${data.transaction_amount} TJS\n❌ Статус: Не удалось\n📝 Причина: ${data.failure_reason}\n💰 Текущий баланс: ${data.current_balance} TJS\n\nСредства возвращены на ваш баланс, пожалуйста, подайте заявку снова.`,
-    tg: (data: NotificationData) => 
-      `❌ Баровардан ноком\n\n💵 Маблағ: ${data.transaction_amount} TJS\n❌ Ҳолат: Ноком\n📝 Сабаб: ${data.failure_reason}\n💰 Боқимондаи ҷорӣ: ${data.current_balance} TJS\n\nМаблағ ба боқимондаи шумо баргардонида шуд, лутфан дархостро дубора пешниҳод кунед.`
-  },
-
-  // 充值被拒绝通知（管理后台审核拒绝后触发）
-  wallet_deposit_rejected: {
-    zh: (data: NotificationData) => 
-      `❌ 充值申请被拒绝\n\n💵 金额: ${data.transaction_amount} TJS\n❌ 状态: 已拒绝\n📝 原因: ${data.failure_reason}\n\n请检查您的充值信息后重新提交申请。如有疑问请联系客服。`,
-    ru: (data: NotificationData) => 
-      `❌ Запрос на пополнение отклонён\n\n💵 Сумма: ${data.transaction_amount} TJS\n❌ Статус: Отклонено\n📝 Причина: ${data.failure_reason}\n\nПожалуйста, проверьте данные и подайте заявку снова. По вопросам обращайтесь в поддержку.`,
-    tg: (data: NotificationData) => 
-      `❌ Дархости пурсозӣ рад карда шуд\n\n💵 Маблағ: ${data.transaction_amount} TJS\n❌ Ҳолат: Рад карда шуд\n📝 Сабаб: ${data.failure_reason}\n\nЛутфан маълумоти пурсозиро тафтиш кунед ва дубора дархост диҳед. Барои саволҳо ба дастгирӣ муроҷиат кунед.`
-  },
-
-  // ==================== 4. 订单物流通知 ====================
-  // 只推送关键节点：到达塔国路段、到达自提点生成提货码
-  
-  // 订单到达塔吉克斯坦
-  order_arrived_tajikistan: {
-    zh: (data: NotificationData) => 
-      `🚚 订单已到达塔吉克斯坦\n\n🎁 商品: ${data.product_name}\n📮 物流单号: ${data.tracking_number}\n📍 当前状态: 已到达塔吉克斯坦\n\n您的订单即将送达自提点，请留意后续通知。`,
-    ru: (data: NotificationData) => 
-      `🚚 Заказ прибыл в Таджикистан\n\n🎁 Товар: ${data.product_name}\n📮 Трек-номер: ${data.tracking_number}\n📍 Текущий статус: Прибыл в Таджикистан\n\nВаш заказ скоро будет доставлен в пункт выдачи.`,
-    tg: (data: NotificationData) => 
-      `🚚 Фармоиш ба Тоҷикистон расид\n\n🎁 Мол: ${data.product_name}\n📮 Рақами пайгирӣ: ${data.tracking_number}\n📍 Ҳолати ҷорӣ: Ба Тоҷикистон расид\n\nФармоиши шумо ба зудӣ ба нуқтаи гирифтан мерасад.`
-  },
-  
-  // 订单已到达自提点
-  order_ready_pickup: {
-    zh: (data: NotificationData) => 
-      `✅ 订单已到达自提点\n\n🎁 商品: ${data.product_name}\n📍 自提点: ${data.pickup_location}\n🔢 提货码: ${data.pickup_code}\n\n请携带提货码前往自提点提货！`,
-    ru: (data: NotificationData) => 
-      `✅ Заказ прибыл в пункт выдачи\n\n🎁 Товар: ${data.product_name}\n📍 Пункт выдачи: ${data.pickup_location}\n🔢 Код получения: ${data.pickup_code}\n\nПридите с кодом получения!`,
-    tg: (data: NotificationData) => 
-      `✅ Фармоиш ба нуқтаи гирифтан расид\n\n🎁 Мол: ${data.product_name}\n📍 Нуқтаи гирифтан: ${data.pickup_location}\n🔢 Рамзи гирифтан: ${data.pickup_code}\n\nБо рамзи гирифтан биёед!`
-  },
-  
-  // 订单已完成
-  order_completed: {
-    zh: (data: NotificationData) => 
-      `🎊 订单已完成\n\n🎁 商品: ${data.product_name}\n✅ 状态: 已提货\n\n感谢您的使用，期待您的下次光临！`,
-    ru: (data: NotificationData) => 
-      `🎊 Заказ завершен\n\n🎁 Товар: ${data.product_name}\n✅ Статус: Получено\n\nСпасибо за использование, ждем вас снова!`,
-    tg: (data: NotificationData) => 
-      `🎊 Фармоиш анҷом ёфт\n\n🎁 Мол: ${data.product_name}\n✅ Ҳолат: Гирифта шуд\n\nТашаккур барои истифода, интизори шумо ҳастем!`
-  },
-
-  // ==================== 5. 晒单审核通知 ====================
-  
-  // 晒单审核通过
-  showoff_approved: {
-    zh: (data: NotificationData) => 
-      `✅ 晒单审核通过\n\n💰 奖励: +${data.reward_amount} TJS\n\n感谢您的分享！`,
-    ru: (data: NotificationData) => 
-      `✅ Отзыв одобрен\n\n💰 Награда: +${data.reward_amount} TJS\n\nСпасибо за ваш отзыв!`,
-    tg: (data: NotificationData) => 
-      `✅ Шарҳ тасдиқ шуд\n\n💰 Ҷоиза: +${data.reward_amount} TJS\n\nТашаккур барои шарҳи шумо!`
-  },
-  
-  // 晒单审核未通过
-  showoff_rejected: {
-    zh: (data: NotificationData) => 
-      `❌ 晒单审核未通过\n\n📝 原因: ${data.reason}\n\n请重新提交符合要求的晒单。`,
-    ru: (data: NotificationData) => 
-      `❌ Отзыв не одобрен\n\n📝 Причина: ${data.reason}\n\nПожалуйста, отправьте отзыв, соответствующий требованиям.`,
-    tg: (data: NotificationData) => 
-      `❌ Шарҳ тасдиқ нашуд\n\n📝 Сабаб: ${data.reason}\n\nЛутфан шарҳи мувофиқ пешниҳод кунед.`
-  },
-
-  // ==================== 6. 转盘抽奖通知 ====================
-  
-  // 转盘获奖通知
-  spin_win: {
-    zh: (data: NotificationData) => 
-      `🎰 转盘获奖\n\n🎁 奖品: ${data.prize_name}\n💰 金额: ${data.prize_amount} TJS\n\n奖励已发放到您的账户！`,
-    ru: (data: NotificationData) => 
-      `🎰 Приз в колесе фортуны\n\n🎁 Приз: ${data.prize_name}\n💰 Сумма: ${data.prize_amount} TJS\n\nНаграда зачислена на ваш счет!`,
-    tg: (data: NotificationData) => 
-      `🎰 Ҷоиза дар чархи бахт\n\n🎁 Ҷоиза: ${data.prize_name}\n💰 Маблағ: ${data.prize_amount} TJS\n\nҶоиза ба ҳисоби шумо гузошта шуд!`
-  },
-
-  // ==================== 7. 邀请好友通知 ====================
-  
-  // 邀请好友注册成功通知（邀请者获得轮盘抽奖机会）
-  referral_success: {
-    zh: (data: NotificationData) => 
-      `🎉 好友注册成功\n\n👥 您邀请的好友 ${data.invitee_name || '新用户'} 已成功注册\n🎰 奖励: 获得1次轮盘抽奖机会\n\n立即前往轮盘抽奖，赢取更多奖励！`,
-    ru: (data: NotificationData) => 
-      `🎉 Друг успешно зарегистрировался\n\n👥 Ваш приглашенный друг ${data.invitee_name || 'новый пользователь'} успешно зарегистрировался\n🎰 Награда: 1 бесплатный спин колеса фортуны\n\nКрутите колесо и выигрывайте больше призов!`,
-    tg: (data: NotificationData) => 
-      `🎉 Дӯст бомуваффақият сабти ном шуд\n\n👥 Дӯсти даъватшудаи шумо ${data.invitee_name || 'корбари нав'} бомуваффақият сабти ном шуд\n🎰 Ҷоиза: 1 чархиши ройгони чархи бахт\n\nЧархро бигардонед ва ҷоизаҳои бештар бурдед!`
-  },
-  
-  // 推荐奖励到账通知
-  referral_reward: {
-    zh: (data: NotificationData) => 
-      `🎁 推荐奖励到账\n\n💰 奖励金额: +${data.referral_amount} TJS\n👥 来源: ${data.source || data.level || '好友邀请奖励'}\n\n感谢您推广 TezBarakatTJ！`,
-    ru: (data: NotificationData) => 
-      `🎁 Реферальная награда получена\n\n💰 Размер награды: +${data.referral_amount} TJS\n👥 Источник: ${data.source || data.level || 'Награда за приглашение друзей'}\n\nСпасибо за продвижение TezBarakatTJ!`,
-    tg: (data: NotificationData) => 
-      `🎁 Ҷоизаи реферал дарёфт\n\n💰 Андозаи ҷоиза: +${data.referral_amount} TJS\n👥 Манбаъ: ${data.source || data.level || 'Ҷоизаи таклифи дӯстон'}\n\nТашаккур барои таблиғи TezBarakatTJ!`
-  },
-
-  // ==================== 8. 开奖提醒通知 ====================
-  
-  // 彩票即将开奖提醒
-  lottery_draw_soon: {
-    zh: (data: NotificationData) => 
-      `⏰ 开奖提醒\n\n🎰 商品: ${data.lottery_title || data.product_name || '未知商品'}\n🔢 您的参与码: ${data.ticket_number}\n⏰ 即将10分钟后开奖\n\n请留意开奖结果！`,
-    ru: (data: NotificationData) => 
-      `⏰ Напоминание о розыгрыше\n\n🎰 Товар: ${data.lottery_title || data.product_name || 'Неизвестный товар'}\n🔢 Ваш код участия: ${data.ticket_number}\n⏰ Розыгрыш через 10 минут\n\nСледите за результатами!`,
-    tg: (data: NotificationData) =>       `♐️ Огоҳӣ дар бораи бахтозмоӣ\n\n🎰 Мол: ${data.lottery_title || data.product_name || 'Моли номаълум'}\n🔢 Рамзи иштироки шумо: ${data.ticket_number}\n♐️ Бахтозмоӣ пас аз 10 дақиқа\n\nНатиҷаҳоро пайгирӣ кунед!`
-  },
-
-  // ==================== 8. 地推充值通知 ====================
-  
-  // 地推充值到账通知（发送给被充值用户）
-  promoter_deposit: {
-    zh: (data: NotificationData) => 
-      `💰 线下充值到账\n\n💵 充值金额: +${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 充值赠送: +${data.bonus_amount} 积分` : ''}\n👤 操作人: ${data.promoter_name || '地推人员'}\n🕒 时间: ${new Date().toLocaleString('zh-CN')}\n\n您的余额已更新，可以继续参与活动！`,
-    ru: (data: NotificationData) => 
-      `💰 Пополнение от промоутера\n\n💵 Сумма: +${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 Бонус: +${data.bonus_amount} TJS` : ''}\n👤 Оператор: ${data.promoter_name || 'Промоутер'}\n🕒 Время: ${new Date().toLocaleString('ru-RU')}\n\nВаш баланс обновлен, можете продолжать участие!`,
-    tg: (data: NotificationData) => 
-      `💰 Пуркунӣ аз промоутер\n\n💵 Маблағ: +${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 Ҷоиза: +${data.bonus_amount} TJS` : ''}\n👤 Оператор: ${data.promoter_name || 'Промоутер'}\n🕒 Вақт: ${new Date().toLocaleString('tg-TJ')}\n\nБоқимондаи шумо навсозӣ шуд, метавонед дар фаъолият идома диҳед!`
-  },
-
-  // 地推充值确认通知（发送给地推人员自己）
-  promoter_deposit_confirm: {
-    zh: (data: NotificationData) => 
-      `✅ 代客充值成功\n\n👤 用户: ${data.target_user_name || '用户'}\n💵 金额: ${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 充值赠送: ${data.bonus_amount} 积分` : ''}\n🕒 时间: ${new Date().toLocaleString('zh-CN')}\n\n充值已成功到账！`,
-    ru: (data: NotificationData) => 
-      `✅ Пополнение выполнено\n\n👤 Пользователь: ${data.target_user_name || 'Пользователь'}\n💵 Сумма: ${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 Бонус: ${data.bonus_amount} баллов` : ''}\n🕒 Время: ${new Date().toLocaleString('ru-RU')}\n\nПополнение успешно зачислено!`,
-    tg: (data: NotificationData) => 
-      `✅ Пуркунӣ муваффақ\n\n👤 Корбар: ${data.target_user_name || 'Корбар'}\n💵 Маблағ: ${data.transaction_amount} TJS${data.bonus_amount ? `\n🎁 Ҷоиза: ${data.bonus_amount} холҳо` : ''}\n🕒 Вақт: ${new Date().toLocaleString('tg-TJ')}\n\nПуркунӣ муваффақият гузошта шуд!`
-  },
-
-  // ==================== 9. 抵扣券通知 ====================
-
-  // 抵扣券到账通知（未中奖用户获得抵扣券返还）
-  coupon_issued: {
-    zh: (data: NotificationData) => 
-      `🎫 抵扣券到账通知\n\n很遗憾您在【${data.lottery_title || '活动'}】中未中奖。已为您返还 ${data.count || 0} 张 1 TJS 抵扣券！\n\n⏰ 有效期: 30天\n\n可在下次购买时直接抵扣现金使用。`,
-    ru: (data: NotificationData) => 
-      `🎫 Купон получен\n\nК сожалению, вы не выиграли в 【${data.lottery_title || 'акции'}】. Вам начислено ${data.count || 0} купонов по 1 TJS!\n\n⏰ Срок действия: 30 дней`,
-    tg: (data: NotificationData) => 
-      `🎫 Купон гирифта шуд\n\nМутаассифона, шумо дар 【${data.lottery_title || 'фаъолият'}】 бурд накардед. Ба шумо ${data.count || 0} купони 1 TJS дода шуд!\n\n⏰ Мӯҳлати эътибор: 30 рӯз`
-  }
+// 语言代码映射（用户 preferred_language → WhatsApp 语言代码）
+const LANGUAGE_CODE_MAP: Record<string, string> = {
+  zh: 'zh_CN',
+  ru: 'ru',
+  tg: 'tg',  // 塔吉克语，如阿里云不支持则回退到 ru
 };
+
+// ============================================================
+// 阿里云 V3 签名实现（ACS3-HMAC-SHA256）
+// ============================================================
+
 /**
- * 发送 WhatsApp 消息
- * 【迁移修复】从 Telegram Bot API 迁移到 WhatsApp Business API
- * 当前为占位实现，待 WhatsApp Business API 集成后替换
+ * 计算 SHA-256 哈希（返回小写十六进制字符串）
  */
-async function sendWhatsAppMessage(
-  phoneNumber: string,
-  text: string
-): Promise<boolean> {
-  try {
-    const WHATSAPP_API_TOKEN = Deno.env.get('WHATSAPP_API_TOKEN') || '';
-    const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') || '';
-    
-    if (!WHATSAPP_API_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
-      // WhatsApp API 未配置，记录日志并返回成功（消息已写入队列，后续可重发）
-      console.log(`[WhatsApp] API not configured, message queued for phone: ${phoneNumber.slice(0, 3)}****`);
-      return true;
-    }
-
-    const response = await fetch(
-      `https://graph.facebook.com/v18.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${WHATSAPP_API_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: phoneNumber.replace(/[^0-9]/g, ''),
-          type: 'text',
-          text: { body: text },
-        }),
-      }
-    );
-
-    const result = await response.json();
-    
-    if (!response.ok) {
-      console.error('WhatsApp API error:', result);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error sending WhatsApp message:', error);
-    return false;
-  }
+async function sha256Hex(data: string | Uint8Array): Promise<string> {
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 /**
- * 将用户的 language_code 或 preferred_language 映射为模板语言代码
- * 映射规则：
- *   ru, ru-* → ru（俄语）
- *   zh, zh-hans, zh-hant, zh-* → zh（中文）
- *   tg, tg-* → tg（塔吉克语）
- *   其他（en, 未知等） → tg（塔吉克斯坦本地用户默认塔吉克语）
+ * 计算 HMAC-SHA256（返回 Uint8Array）
  */
-function resolveLanguage(langCode: string | null | undefined): string {
-  if (!langCode) return 'tg';
-  const normalized = langCode.toLowerCase().trim();
-  if (normalized.startsWith('ru')) return 'ru';
-  if (normalized.startsWith('zh')) return 'zh';
-  if (normalized.startsWith('tg')) return 'tg';
-  // 英语和其他语言的用户在塔吉克斯坦，默认使用俄语（更通用）
-  if (normalized.startsWith('en')) return 'ru';
-  return 'tg';
+async function hmacSha256(key: string | Uint8Array, data: string): Promise<Uint8Array> {
+  const keyBytes = typeof key === 'string' ? new TextEncoder().encode(key) : key;
+  const dataBytes = new TextEncoder().encode(data);
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyBytes,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, dataBytes);
+  return new Uint8Array(signature);
 }
 
-// 格式化通知文本
-function formatNotificationText(
-  notificationType: string,
-  language: string,
-  data: NotificationData
-): string {
-  const template = notificationTemplates[notificationType as keyof typeof notificationTemplates];
-  
-  if (!template) {
-    console.warn(`Unknown notification type: ${notificationType}`);
-    // 未知类型时使用塔吉克语提示
-    return `Огоҳӣ: ${notificationType}`;
-  }
-
-  // 使用 resolveLanguage 进行语言映射，默认塔吉克语
-  const languageCode = resolveLanguage(language);
-  const formatter = template[languageCode as keyof typeof template] || template['tg'];
-  
-  if (typeof formatter === 'function') {
-    return formatter(data);
-  }
-  
-  return `Огоҳӣ: ${notificationType}`;
+/**
+ * 将 Uint8Array 转为小写十六进制字符串
+ */
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
-// 【迁移修复】处理单个通知 - 从 Telegram 迁移到 WhatsApp
-async function processNotification(supabase: any, notification: any, _botToken: string) {
-  try {
-    // 获取用户信息和语言偏好
-    const { data: user } = await supabase
-      .from('users')
-      .select('preferred_language, language_code, phone_number')
-      .eq('id', notification.user_id)
-      .single();
-
-    // 语言优先级：用户手动设置 > 语言代码 > 默认塔吉克语
-    const language = resolveLanguage(user?.preferred_language !== 'zh' ? user?.preferred_language : user?.language_code);
-    
-    // 【迁移修复】获取 phone_number，优先使用通知中的，否则从用户表查询
-    let phoneNumber = notification.phone_number;
-    if (!phoneNumber && user?.phone_number) {
-      phoneNumber = user.phone_number;
-    }
-    
-    // 如果没有有效的 phone_number，标记为失败
-    if (!phoneNumber) {
-      console.warn(`No phone_number found for user ${notification.user_id}`);
-      await supabase
-        .from('notification_queue')
-        .update({ 
-          status: 'failed',
-          error_message: 'No phone_number found for user',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', notification.id);
-      return { success: false, error: 'No phone_number' };
-    }
-
-    // 格式化通知文本
-    const notificationText = formatNotificationText(
-      notification.notification_type || notification.type,
-      language,
-      notification.data || notification.payload || {}
-    );
-
-    // 【迁移修复】发送 WhatsApp 通知
-    const sent = await sendWhatsAppMessage(
-      phoneNumber,
-      notificationText
-    );
-
-    if (sent) {
-      // 标记为已发送
-      await supabase
-        .from('notification_queue')
-        .update({ 
-          status: 'sent',
-          sent_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', notification.id);
-      
-      return { success: true, sent: true };
-    } else {
-      throw new Error('Failed to send WhatsApp message');
-    }
-
-  } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error(`Error processing notification ${notification.id}:`, errMsg);
-    
-    // 更新重试计数
-    const newRetryCount = (notification.retry_count || notification.attempts || 0) + 1;
-    const maxRetries = notification.max_retries || 3;
-    
-    if (newRetryCount >= maxRetries) {
-      // 达到最大重试次数，标记为失败
-      await supabase
-        .from('notification_queue')
-        .update({ 
-          status: 'failed',
-          error_message: errMsg,
-          retry_count: newRetryCount,
-          attempts: newRetryCount,
-          last_attempt_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', notification.id);
-    } else {
-      // 增加重试计数，稍后重试
-      const nextRetryTime = new Date(Date.now() + Math.pow(2, newRetryCount) * 60000); // 指数退避
-      
-      await supabase
-        .from('notification_queue')
-        .update({ 
-          retry_count: newRetryCount,
-          attempts: newRetryCount,
-          error_message: errMsg,
-          scheduled_at: nextRetryTime.toISOString(),
-          last_attempt_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', notification.id);
-    }
-    
-    return { success: false, error: errMsg };
-  }
+/**
+ * 生成随机 nonce（32位十六进制）
+ */
+function generateNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return toHex(bytes);
 }
 
-serve(async (req) => {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
-    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE, PATCH',
-    'Access-Control-Max-Age': '86400',
-    'Access-Control-Allow-Credentials': 'false'
+/**
+ * 构造阿里云 V3 签名请求头
+ *
+ * 参考文档：https://help.aliyun.com/zh/sdk/product-overview/v3-request-structure-and-signature
+ *
+ * 签名流程：
+ *   1. 构造规范化请求（CanonicalRequest）
+ *   2. 构造待签字符串（StringToSign）
+ *   3. 计算签名（HMAC-SHA256）
+ *   4. 构造 Authorization 头
+ */
+async function buildAliyunV3Headers(
+  config: AliyunConfig,
+  action: string,
+  apiVersion: string,
+  requestBody: string
+): Promise<Record<string, string>> {
+  const now = new Date();
+  // ISO 8601 UTC 格式：yyyy-MM-ddTHH:mm:ssZ
+  const xAcsDate = now.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const nonce = generateNonce();
+
+  // Step 1: 计算 RequestBody 的 SHA-256 哈希
+  const hashedPayload = await sha256Hex(requestBody);
+
+  // Step 2: 构造规范化请求头（按字母升序排列，全小写）
+  // 需要参与签名的头：content-type, host, x-acs-action, x-acs-content-sha256, x-acs-date, x-acs-signature-nonce, x-acs-version
+  const host = config.endpoint;
+  const headersToSign: Record<string, string> = {
+    'content-type': 'application/json; charset=utf-8',
+    'host': host,
+    'x-acs-action': action,
+    'x-acs-content-sha256': hashedPayload,
+    'x-acs-date': xAcsDate,
+    'x-acs-signature-nonce': nonce,
+    'x-acs-version': apiVersion,
   };
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
+  // 按 key 字母升序排列
+  const sortedHeaderKeys = Object.keys(headersToSign).sort();
+
+  // 构造 CanonicalHeaders（每行 key:value\n）
+  const canonicalHeaders = sortedHeaderKeys
+    .map(k => `${k}:${headersToSign[k].trim()}\n`)
+    .join('');
+
+  // 构造 SignedHeaders（分号分隔）
+  const signedHeaders = sortedHeaderKeys.join(';');
+
+  // Step 3: 构造 CanonicalRequest
+  // RPC 风格 API 的 CanonicalURI 固定为 /
+  const canonicalRequest = [
+    'POST',           // HTTPRequestMethod
+    '/',              // CanonicalURI（RPC 风格固定为 /）
+    '',               // CanonicalQueryString（无查询参数）
+    canonicalHeaders, // CanonicalHeaders（末尾已有 \n）
+    signedHeaders,    // SignedHeaders
+    hashedPayload,    // HashedRequestPayload
+  ].join('\n');
+
+  // Step 4: 计算 CanonicalRequest 的 SHA-256 哈希
+  const hashedCanonicalRequest = await sha256Hex(canonicalRequest);
+
+  // Step 5: 构造待签字符串（StringToSign）
+  const stringToSign = `ACS3-HMAC-SHA256\n${hashedCanonicalRequest}`;
+
+  // Step 6: 计算签名
+  const signatureBytes = await hmacSha256(config.accessKeySecret, stringToSign);
+  const signature = toHex(signatureBytes);
+
+  // Step 7: 构造 Authorization 头
+  const authorization = `ACS3-HMAC-SHA256 Credential=${config.accessKeyId},SignedHeaders=${signedHeaders},Signature=${signature}`;
+
+  // 返回完整请求头
+  return {
+    'Authorization': authorization,
+    'Content-Type': 'application/json; charset=utf-8',
+    'Host': host,
+    'x-acs-action': action,
+    'x-acs-content-sha256': hashedPayload,
+    'x-acs-date': xAcsDate,
+    'x-acs-signature-nonce': nonce,
+    'x-acs-version': apiVersion,
+  };
+}
+
+// ============================================================
+// 阿里云 CAMS API 调用
+// ============================================================
+
+interface CamsTemplateParam {
+  [key: string]: string;
+}
+
+interface SendChatappMessageRequest {
+  ChannelType: 'whatsapp';
+  Type: 'template';
+  From: string;
+  To: string;
+  CustSpaceId: string;
+  TemplateCode: string;
+  Language: string;
+  TemplateParams?: CamsTemplateParam;
+}
+
+interface SendChatappMessageResponse {
+  RequestId: string;
+  Code: string;
+  Message: string;
+  MessageId?: string;
+}
+
+/**
+ * 调用阿里云 CAMS SendChatappMessage API 发送 WhatsApp 模板消息
+ *
+ * @returns { success: boolean, messageId?: string, error?: string }
+ */
+async function sendCamsMessage(
+  config: AliyunConfig,
+  to: string,
+  templateCode: string,
+  language: string,
+  templateParams: CamsTemplateParam
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const action = 'SendChatappMessage';
+  const apiVersion = '2020-06-06';
+
+  // 规范化手机号：确保以 + 开头（E.164 格式）
+  const normalizedTo = to.startsWith('+') ? to : `+${to}`;
+  const normalizedFrom = config.from.startsWith('+') ? config.from : `+${config.from}`;
+
+  // 构造请求体
+  const requestPayload: SendChatappMessageRequest = {
+    ChannelType: 'whatsapp',
+    Type: 'template',
+    From: normalizedFrom,
+    To: normalizedTo,
+    CustSpaceId: config.custSpaceId,
+    TemplateCode: templateCode,
+    Language: language,
+    TemplateParams: templateParams,
+  };
+
+  const requestBody = JSON.stringify(requestPayload);
+
+  // 构造签名请求头
+  const headers = await buildAliyunV3Headers(config, action, apiVersion, requestBody);
+
+  const url = `https://${config.endpoint}/`;
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    // 【迁移修复】WhatsApp API 配置由 processNotification 内部处理
-    const botToken = ''; // 保留参数但不再使用
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    if (req.method === 'GET') {
-      // 健康检查端点
-      return new Response(JSON.stringify({ 
-        status: 'ok',
-        timestamp: new Date().toISOString()
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    // 处理通知队列
-    const { batchSize = 50 } = await req.json().catch(() => ({}));
-
-    // 获取待发送的通知 (按优先级和时间排序)
-    const { data: notifications, error } = await supabase
-      .from('notification_queue')
-      .select('*')
-      .in('status', ['pending', 'PENDING'])
-      .lte('scheduled_at', new Date().toISOString())
-      .order('priority', { ascending: true })
-      .order('scheduled_at', { ascending: true })
-      .limit(batchSize);
-
-    if (error) {
-      throw error;
-    }
-
-    if (!notifications || notifications.length === 0) {
-      return new Response(JSON.stringify({ 
-        processed: 0,
-        message: 'No notifications to process'
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    console.log(`Processing ${notifications.length} notifications`);
-
-    const results = {
-      processed: 0,
-      sent: 0,
-      failed: 0,
-      errors: [] as string[]
-    };
-
-    // 处理每个通知
-    for (const notification of notifications) {
-      try {
-        const result = await processNotification(supabase, notification, botToken);
-        results.processed++;
-        
-        if (result.sent) results.sent++;
-        else if (!result.success) results.failed++;
-        
-      } catch (error: unknown) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        results.failed++;
-        results.errors.push(`Notification ${notification.id}: ${errMsg}`);
-        console.error(`Failed to process notification ${notification.id}:`, errMsg);
-      }
-    }
-
-    return new Response(JSON.stringify(results), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: requestBody,
     });
 
-  } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error('Notification processor error:', errMsg);
-    return new Response(JSON.stringify({ 
-      error: 'Internal server error',
-      message: errMsg 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    const responseText = await response.text();
+    let responseJson: SendChatappMessageResponse;
+
+    try {
+      responseJson = JSON.parse(responseText);
+    } catch {
+      return {
+        success: false,
+        error: `Invalid JSON response: ${responseText.substring(0, 200)}`,
+      };
+    }
+
+    if (!response.ok || responseJson.Code !== 'OK') {
+      return {
+        success: false,
+        error: `CAMS API error: Code=${responseJson.Code}, Message=${responseJson.Message}, RequestId=${responseJson.RequestId}`,
+      };
+    }
+
+    return {
+      success: true,
+      messageId: responseJson.MessageId,
+    };
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      error: `Network error: ${errMsg}`,
+    };
+  }
+}
+
+// ============================================================
+// 通知类型处理器
+// ============================================================
+
+/**
+ * 处理充值到账通知（promoter_deposit / wallet_deposit）
+ *
+ * 模板变量：
+ *   {{1}} = 充值金额（TJS）
+ *   {{2}} = 赠送积分说明（有赠送时填写，无赠送时填写空字符串或省略）
+ *
+ * 注意：阿里云模板变量不能为空字符串，如果 {{2}} 无内容，
+ *       建议模板设计为：{{1}} TJS 已到账{{2}}
+ *       其中 {{2}} 在有赠送时为"，另赠 X 积分"，无赠送时为""
+ *       但阿里云不允许空变量，所以需要在模板中将 {{2}} 设为可选文本
+ *       实际处理：无赠送时传入空格 " " 作为占位符
+ */
+function buildDepositTemplateParams(
+  data: Record<string, unknown>,
+  lang: string
+): CamsTemplateParam {
+  const amount = data.transaction_amount ?? data.deposit_amount ?? 0;
+  const bonusAmount = data.bonus_amount as number | undefined;
+
+  let bonusText = ' '; // 默认空格占位（阿里云不允许空字符串变量）
+
+  if (bonusAmount && bonusAmount > 0) {
+    switch (lang) {
+      case 'zh':
+        bonusText = `，另赠 ${bonusAmount} 积分`;
+        break;
+      case 'ru':
+        bonusText = `，бонус ${bonusAmount} баллов`;
+        break;
+      case 'tg':
+      default:
+        bonusText = `，бонус ${bonusAmount} хол`;
+        break;
+    }
+  }
+
+  return {
+    '1': String(amount),
+    '2': bonusText,
+  };
+}
+
+/**
+ * 处理提货码通知（batch_arrived）
+ *
+ * 模板变量：
+ *   {{1}} = 商品名称
+ *   {{2}} = 自提点名称
+ *   {{3}} = 提货码
+ *   {{4}} = 有效期
+ */
+function buildPickupTemplateParams(
+  data: Record<string, unknown>
+): CamsTemplateParam {
+  return {
+    '1': String(data.product_name ?? ''),
+    '2': String(data.pickup_point_name ?? ''),
+    '3': String(data.pickup_code ?? ''),
+    '4': String(data.expires_at ?? ''),
+  };
+}
+
+/**
+ * 根据通知类型和语言，确定模板 Code 和构造模板参数
+ *
+ * 注意：阿里云 CAMS 每种语言需要单独的模板，
+ *       模板 Code 格式建议为：{BASE_CODE}_{LANG}
+ *       例如：deposit_zh, deposit_ru, deposit_tg
+ *       如果只有一套多语言模板，则直接使用 BASE_CODE
+ */
+function resolveTemplate(
+  config: AliyunConfig,
+  notificationType: string,
+  data: Record<string, unknown>,
+  lang: string
+): { templateCode: string; templateParams: CamsTemplateParam; waLanguage: string } | null {
+  const waLanguage = LANGUAGE_CODE_MAP[lang] ?? LANGUAGE_CODE_MAP['tg'];
+
+  switch (notificationType) {
+    case 'promoter_deposit':
+    case 'wallet_deposit': {
+      const params = buildDepositTemplateParams(data, lang);
+      // 模板 Code 支持按语言区分：如 DEPOSIT_ZH、DEPOSIT_RU、DEPOSIT_TG
+      // 如果只有一个模板 Code，则直接使用 config.templateDeposit
+      const templateCode = config.templateDeposit;
+      return { templateCode, templateParams: params, waLanguage };
+    }
+
+    case 'batch_arrived': {
+      const params = buildPickupTemplateParams(data);
+      const templateCode = config.templatePickup;
+      return { templateCode, templateParams: params, waLanguage };
+    }
+
+    default:
+      return null;
+  }
+}
+
+// ============================================================
+// 用户语言获取
+// ============================================================
+
+/**
+ * 从 notification_queue 的 data 字段或 users 表获取用户首选语言
+ * 默认返回 'tg'（塔吉克语）
+ */
+async function getUserLanguage(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  notificationData: Record<string, unknown>
+): Promise<string> {
+  // 优先从通知数据中获取语言
+  if (notificationData.preferred_language && typeof notificationData.preferred_language === 'string') {
+    return notificationData.preferred_language;
+  }
+
+  // 从用户表获取
+  try {
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('preferred_language')
+      .eq('id', userId)
+      .single();
+
+    if (!error && user?.preferred_language) {
+      return user.preferred_language;
+    }
+  } catch (err) {
+    console.warn(`Failed to get user language for ${userId}:`, err);
+  }
+
+  return 'tg'; // 默认塔吉克语
+}
+
+// ============================================================
+// 主处理逻辑
+// ============================================================
+
+/**
+ * 处理单条通知记录
+ */
+async function processNotification(
+  supabase: ReturnType<typeof createClient>,
+  notification: NotificationRecord,
+  config: AliyunConfig
+): Promise<{ success: boolean; skipped?: boolean; error?: string }> {
+  const { id, user_id, phone_number, notification_type, data } = notification;
+
+  // 1. 检查是否为支持的通知类型
+  if (!SUPPORTED_NOTIFICATION_TYPES.has(notification_type)) {
+    console.log(`[SKIP] Notification ${id}: type '${notification_type}' not in whitelist`);
+    // 标记为 skipped，不计入失败
+    await supabase
+      .from('notification_queue')
+      .update({
+        status: 'skipped',
+        updated_at: new Date().toISOString(),
+        error_message: `Notification type '${notification_type}' is not enabled`,
+      })
+      .eq('id', id);
+    return { success: true, skipped: true };
+  }
+
+  // 2. 验证手机号
+  if (!phone_number) {
+    const errMsg = `No phone_number for user ${user_id}`;
+    console.error(`[ERROR] Notification ${id}: ${errMsg}`);
+    await markFailed(supabase, notification, errMsg);
+    return { success: false, error: errMsg };
+  }
+
+  // 3. 获取用户语言
+  const lang = await getUserLanguage(supabase, user_id, data);
+
+  // 4. 解析模板
+  const templateInfo = resolveTemplate(config, notification_type, data, lang);
+  if (!templateInfo) {
+    const errMsg = `Cannot resolve template for type '${notification_type}'`;
+    console.error(`[ERROR] Notification ${id}: ${errMsg}`);
+    await markFailed(supabase, notification, errMsg);
+    return { success: false, error: errMsg };
+  }
+
+  const { templateCode, templateParams, waLanguage } = templateInfo;
+
+  // 5. 检查模板 Code 是否已配置
+  if (!templateCode) {
+    const errMsg = `Template code not configured for type '${notification_type}'`;
+    console.error(`[ERROR] Notification ${id}: ${errMsg}`);
+    await markFailed(supabase, notification, errMsg);
+    return { success: false, error: errMsg };
+  }
+
+  // 6. 发送 WhatsApp 消息
+  console.log(`[SEND] Notification ${id}: type=${notification_type}, to=${phone_number}, template=${templateCode}, lang=${waLanguage}`);
+
+  const result = await sendCamsMessage(
+    config,
+    phone_number,
+    templateCode,
+    waLanguage,
+    templateParams
+  );
+
+  // 7. 更新通知状态
+  if (result.success) {
+    await supabase
+      .from('notification_queue')
+      .update({
+        status: 'sent',
+        sent_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        external_message_id: result.messageId ?? null,
+        error_message: null,
+      })
+      .eq('id', id);
+
+    console.log(`[SUCCESS] Notification ${id}: messageId=${result.messageId}`);
+    return { success: true };
+  } else {
+    await markFailed(supabase, notification, result.error ?? 'Unknown error');
+    return { success: false, error: result.error };
+  }
+}
+
+/**
+ * 将通知标记为失败（支持重试）
+ */
+async function markFailed(
+  supabase: ReturnType<typeof createClient>,
+  notification: NotificationRecord,
+  errorMessage: string
+): Promise<void> {
+  const newRetryCount = (notification.retry_count ?? 0) + 1;
+  const maxRetries = notification.max_retries ?? 3;
+  const isFinalFailure = newRetryCount >= maxRetries;
+
+  const nextScheduledAt = isFinalFailure
+    ? null
+    : new Date(Date.now() + newRetryCount * 5 * 60 * 1000).toISOString(); // 指数退避：5分钟 * 重试次数
+
+  await supabase
+    .from('notification_queue')
+    .update({
+      status: isFinalFailure ? 'failed' : 'pending',
+      retry_count: newRetryCount,
+      error_message: errorMessage.substring(0, 500), // 限制错误消息长度
+      scheduled_at: nextScheduledAt ?? notification.created_at,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', notification.id);
+
+  console.error(`[FAILED] Notification ${notification.id}: retry=${newRetryCount}/${maxRetries}, error=${errorMessage}`);
+}
+
+// ============================================================
+// Edge Function 入口
+// ============================================================
+
+serve(async (req: Request) => {
+  // 仅允许 POST 请求（由 telegram-bot-cron 或手动触发）
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' },
     });
   }
+
+  // 读取环境变量
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+  const aliyunAccessKeyId = Deno.env.get('ALIYUN_ACCESS_KEY_ID') ?? '';
+  const aliyunAccessKeySecret = Deno.env.get('ALIYUN_ACCESS_KEY_SECRET') ?? '';
+  const aliyunFrom = Deno.env.get('ALIYUN_CAMS_FROM') ?? '';
+  const aliyunCustSpaceId = Deno.env.get('ALIYUN_CAMS_CUST_SPACE_ID') ?? '';
+  const aliyunTemplateDeposit = Deno.env.get('ALIYUN_CAMS_TEMPLATE_DEPOSIT') ?? '';
+  const aliyunTemplatePickup = Deno.env.get('ALIYUN_CAMS_TEMPLATE_PICKUP') ?? '';
+  const aliyunRegion = Deno.env.get('ALIYUN_CAMS_REGION') ?? 'cn-hangzhou';
+
+  // 验证必要的环境变量
+  const missingVars: string[] = [];
+  if (!aliyunAccessKeyId) missingVars.push('ALIYUN_ACCESS_KEY_ID');
+  if (!aliyunAccessKeySecret) missingVars.push('ALIYUN_ACCESS_KEY_SECRET');
+  if (!aliyunFrom) missingVars.push('ALIYUN_CAMS_FROM');
+  if (!aliyunCustSpaceId) missingVars.push('ALIYUN_CAMS_CUST_SPACE_ID');
+
+  if (missingVars.length > 0) {
+    const errMsg = `Missing required environment variables: ${missingVars.join(', ')}`;
+    console.error(`[CONFIG ERROR] ${errMsg}`);
+    return new Response(JSON.stringify({
+      success: false,
+      error: errMsg,
+      hint: 'Configure these variables in Supabase Dashboard → Edge Functions → Secrets',
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // 构造阿里云配置
+  const aliyunConfig: AliyunConfig = {
+    accessKeyId: aliyunAccessKeyId,
+    accessKeySecret: aliyunAccessKeySecret,
+    from: aliyunFrom,
+    custSpaceId: aliyunCustSpaceId,
+    templateDeposit: aliyunTemplateDeposit,
+    templatePickup: aliyunTemplatePickup,
+    region: aliyunRegion,
+    // CAMS API endpoint：cams.{region}.aliyuncs.com
+    // 注意：部分区域使用统一 endpoint cams.aliyuncs.com
+    endpoint: `cams.aliyuncs.com`,
+  };
+
+  // 初始化 Supabase 客户端
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  // 解析请求体（可选：支持指定批次大小）
+  let batchSize = 20; // 默认每次处理 20 条
+  try {
+    const body = await req.json();
+    if (body.batch_size && typeof body.batch_size === 'number') {
+      batchSize = Math.min(Math.max(1, body.batch_size), 100); // 限制在 1-100 之间
+    }
+  } catch {
+    // 请求体为空或非 JSON，使用默认值
+  }
+
+  // 查询待处理的通知（仅查询支持的类型，按优先级和创建时间排序）
+  const supportedTypes = Array.from(SUPPORTED_NOTIFICATION_TYPES);
+  const { data: notifications, error: queryError } = await supabase
+    .from('notification_queue')
+    .select('*')
+    .eq('channel', 'whatsapp')
+    .eq('status', 'pending')
+    .in('notification_type', supportedTypes)
+    .lte('scheduled_at', new Date().toISOString())
+    .order('priority', { ascending: false }) // 高优先级先处理
+    .order('created_at', { ascending: true }) // 同优先级按创建时间
+    .limit(batchSize);
+
+  if (queryError) {
+    console.error('[DB ERROR] Failed to query notification_queue:', queryError);
+    return new Response(JSON.stringify({
+      success: false,
+      error: `Database query failed: ${queryError.message}`,
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (!notifications || notifications.length === 0) {
+    console.log('[INFO] No pending notifications to process');
+    return new Response(JSON.stringify({
+      success: true,
+      processed: 0,
+      message: 'No pending notifications',
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  console.log(`[INFO] Processing ${notifications.length} notifications`);
+
+  // 逐条处理通知（串行处理，避免 API 限流）
+  const results = {
+    total: notifications.length,
+    sent: 0,
+    skipped: 0,
+    failed: 0,
+    errors: [] as string[],
+  };
+
+  for (const notification of notifications as NotificationRecord[]) {
+    try {
+      // 先将状态标记为 processing，防止并发重复处理
+      const { error: lockError } = await supabase
+        .from('notification_queue')
+        .update({ status: 'processing', updated_at: new Date().toISOString() })
+        .eq('id', notification.id)
+        .eq('status', 'pending'); // 乐观锁：只有 pending 状态才能被锁定
+
+      if (lockError) {
+        console.warn(`[SKIP] Notification ${notification.id}: failed to lock (may be processing by another instance)`);
+        results.skipped++;
+        continue;
+      }
+
+      const result = await processNotification(supabase, notification, aliyunConfig);
+
+      if (result.skipped) {
+        results.skipped++;
+      } else if (result.success) {
+        results.sent++;
+      } else {
+        results.failed++;
+        if (result.error) {
+          results.errors.push(`${notification.id}: ${result.error}`);
+        }
+      }
+
+      // 避免 API 限流：每条消息之间等待 100ms
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error(`[FATAL] Notification ${notification.id}: unexpected error: ${errMsg}`);
+      results.failed++;
+      results.errors.push(`${notification.id}: ${errMsg}`);
+
+      // 将意外错误的通知回滚到 pending 状态
+      await supabase
+        .from('notification_queue')
+        .update({ status: 'pending', updated_at: new Date().toISOString() })
+        .eq('id', notification.id)
+        .eq('status', 'processing');
+    }
+  }
+
+  console.log(`[DONE] Results: sent=${results.sent}, skipped=${results.skipped}, failed=${results.failed}`);
+
+  return new Response(JSON.stringify({
+    success: true,
+    ...results,
+    errors: results.errors.length > 0 ? results.errors : undefined,
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
 });
