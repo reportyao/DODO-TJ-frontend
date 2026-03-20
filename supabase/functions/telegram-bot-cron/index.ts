@@ -5,7 +5,7 @@
  * - 移除所有 Telegram Bot API 调用
  * - 保留通知队列处理（调用 telegram-notification-sender，内部已改为 WhatsApp）
  * - 保留数据库清理任务（过期会话、旧消息、失败通知）
- * - 保留每日摘要生成
+ * - 【更新】移除不再支持的通知生成逻辑（开奖提醒、每日摘要），以匹配新的 WhatsApp 通知范围
  *
  * 函数名保持 telegram-bot-cron 以兼容已配置的 Supabase cron job 调度
  */
@@ -42,7 +42,8 @@ async function cleanupExpiredSessions(supabase: any): Promise<number> {
     const { data, error } = await supabase
       .from('bot_sessions')
       .delete()
-      .lt('expires_at', new Date().toISOString());
+      .lt('expires_at', new Date().toISOString())
+      .select('id');
     if (error) throw error;
     return data?.length || 0;
   } catch (error: unknown) {
@@ -59,7 +60,8 @@ async function cleanupOldMessages(supabase: any): Promise<number> {
     const { data, error } = await supabase
       .from('bot_messages')
       .delete()
-      .lt('created_at', thirtyDaysAgo);
+      .lt('created_at', thirtyDaysAgo)
+      .select('id');
     if (error) throw error;
     return data?.length || 0;
   } catch (error: unknown) {
@@ -113,142 +115,6 @@ async function cleanupFailedNotifications(supabase: any): Promise<number> {
   return cleaned;
 }
 
-// 检查彩票开奖提醒（写入 notification_queue，由 WhatsApp 发送）
-async function checkLotteryDrawReminders(supabase: any): Promise<number> {
-  try {
-    const now = new Date();
-    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
-
-    const { data: lotteries, error } = await supabase
-      .from('lotteries')
-      .select('id, title, draw_time')
-      .eq('status', 'ACTIVE')
-      .gte('draw_time', now.toISOString())
-      .lte('draw_time', oneHourLater.toISOString());
-
-    if (error || !lotteries || lotteries.length === 0) return 0;
-
-    let remindersCreated = 0;
-    for (const lottery of lotteries) {
-      // 获取参与此彩票的用户
-      const { data: entries } = await supabase
-        .from('lottery_entries')
-        .select('user_id, users!inner(phone_number, preferred_language)')
-        .eq('lottery_id', lottery.id)
-        .eq('status', 'ACTIVE');
-
-      if (!entries) continue;
-
-      for (const entry of entries) {
-        const user = entry.users;
-        if (!user?.phone_number) continue;
-
-        // 检查是否已发送过此提醒
-        const { data: existing } = await supabase
-          .from('notification_queue')
-          .select('id')
-          .eq('user_id', entry.user_id)
-          .eq('type', 'lottery_draw_reminder')
-          .contains('data', { lottery_id: lottery.id })
-          .limit(1);
-
-        if (existing && existing.length > 0) continue;
-
-        await supabase.from('notification_queue').insert({
-          user_id: entry.user_id,
-          phone_number: user.phone_number,
-          type: 'lottery_draw_reminder',
-          notification_type: 'lottery_draw_reminder',
-          title: '开奖提醒',
-          message: `您参与的彩票即将开奖`,
-          data: {
-            lottery_id: lottery.id,
-            lottery_title: lottery.title,
-            draw_time: lottery.draw_time,
-          },
-          priority: 2,
-          status: 'pending',
-          channel: 'whatsapp',
-          scheduled_at: new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString(),
-        });
-        remindersCreated++;
-      }
-    }
-    return remindersCreated;
-  } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error('Error checking lottery draw reminders:', errMsg);
-    return 0;
-  }
-}
-
-// 生成每日摘要（写入 notification_queue，由 WhatsApp 发送）
-async function generateDailySummary(supabase: any): Promise<number> {
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-
-    const { data: activeUsers, error } = await supabase
-      .from('users')
-      .select('id, phone_number, preferred_language')
-      .eq('status', 'ACTIVE')
-      .not('phone_number', 'is', null)
-      .eq('whatsapp_opt_in', true);
-
-    if (error || !activeUsers) return 0;
-
-    let summariesCreated = 0;
-    for (const user of activeUsers) {
-      if (!user.phone_number) continue;
-
-      // 获取昨日参与统计
-      const { count: ticketCount } = await supabase
-        .from('lottery_entries')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .gte('created_at', yesterday.toISOString())
-        .lt('created_at', today.toISOString());
-
-      const { data: transactions } = await supabase
-        .from('wallet_transactions')
-        .select('amount')
-        .eq('user_id', user.id)
-        .eq('type', 'DEBIT')
-        .gte('created_at', yesterday.toISOString())
-        .lt('created_at', today.toISOString());
-
-      const totalSpent = transactions?.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) || 0;
-
-      if ((ticketCount || 0) === 0) continue;
-
-      await supabase.from('notification_queue').insert({
-        user_id: user.id,
-        phone_number: user.phone_number,
-        type: 'daily_summary',
-        notification_type: 'daily_summary',
-        title: '每日摘要',
-        message: `您的每日活动摘要`,
-        data: {
-          date: yesterday.toISOString().split('T')[0],
-          ticket_count: ticketCount,
-          total_spent: totalSpent,
-        },
-        priority: 3,
-        status: 'pending',
-        channel: 'whatsapp',
-        scheduled_at: new Date(today.getTime() + 9 * 60 * 60 * 1000).toISOString(),
-      });
-      summariesCreated++;
-    }
-    return summariesCreated;
-  } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error('Error generating daily summary:', errMsg);
-    return 0;
-  }
-}
-
 serve(async (req) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -282,16 +148,7 @@ serve(async (req) => {
       results.tasks.notifications = { error: errMsg };
     }
 
-    // 2. 检查彩票开奖提醒
-    try {
-      const remindersCreated = await checkLotteryDrawReminders(supabase);
-      results.tasks.lotteryReminders = { created: remindersCreated };
-    } catch (error: unknown) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      results.tasks.lotteryReminders = { error: errMsg };
-    }
-
-    // 3. 清理任务
+    // 2. 清理任务
     const currentHour = new Date().getHours();
     try {
       const expiredSessions = await cleanupExpiredSessions(supabase);
@@ -306,17 +163,6 @@ serve(async (req) => {
     } catch (error: unknown) {
       const errMsg = error instanceof Error ? error.message : String(error);
       results.tasks.cleanup = { error: errMsg };
-    }
-
-    // 4. 生成每日摘要（每天早上8点执行）
-    if (currentHour === 8) {
-      try {
-        const summariesCreated = await generateDailySummary(supabase);
-        results.tasks.dailySummary = { created: summariesCreated };
-      } catch (error: unknown) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        results.tasks.dailySummary = { error: errMsg };
-      }
     }
 
     console.log('Cron job completed:', results);
