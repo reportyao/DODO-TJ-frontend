@@ -39,7 +39,9 @@ const LoginPage: React.FC = () => {
       await loginWithPhone(phoneNumber.trim(), password)
 
       // 登录成功后跳转（UserContext 已处理 toast 和状态）
-      const redirectTo = searchParams.get('redirect') || '/'
+      // 安全校验：只允许内部路径跳转，防止开放重定向攻击
+      const rawRedirect = searchParams.get('redirect') || '/'
+      const redirectTo = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/'
       navigate(redirectTo, { replace: true })
     } catch (error: any) {
       console.error('Login failed:', error)
