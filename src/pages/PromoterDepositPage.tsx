@@ -208,7 +208,7 @@ const PromoterDepositPage: React.FC = () => {
 
   // ========== 扫码功能（PWA 模式不支持，提示用户使用手动搜索） ==========
   const handleScanQr = () => {
-    toast.error(t('promoterDeposit.scanNotSupported', '扫码功能在当前环境不可用，请使用手动搜索'))
+    toast.error(t('promoterDeposit.scanNotSupported'))
   }
 
   // ========== 选择金额 ==========

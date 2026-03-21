@@ -104,14 +104,14 @@ const ProfileEditPage: React.FC = () => {
           {/* 名字 */}
           <div className="p-4 border-b border-gray-100">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('profile.name') || t('common.name') || '名字'}
+              {t('profile.name')}
             </label>
             <input
               type="text"
               name="first_name"
               value={formData.first_name}
               onChange={handleChange}
-              placeholder={t('profile.namePlaceholder') || '请输入您的名字'}
+              placeholder={t('profile.namePlaceholder')}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -119,7 +119,7 @@ const ProfileEditPage: React.FC = () => {
           {/* 手机号 (只读) */}
           <div className="p-4 border-b border-gray-100">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('auth.phoneNumber') || '手机号'}
+              {t('auth.phoneNumber')}
             </label>
             <input
               type="text"
@@ -127,7 +127,7 @@ const ProfileEditPage: React.FC = () => {
               disabled
               className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
             />
-            <p className="text-xs text-gray-500 mt-1">{t('profile.phoneReadonly') || '手机号不可修改'}</p>
+            <p className="text-xs text-gray-500 mt-1">{t('profile.phoneReadonly')}</p>
           </div>
 
           {/* 推荐码 (只读) */}
@@ -150,7 +150,7 @@ const ProfileEditPage: React.FC = () => {
       <div className="mx-4 mt-4">
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
           <p className="text-sm text-blue-800">
-            💡 <strong>{t('common.note')}:</strong> {t('profile.editNote') || '修改信息后请点击保存按钮。'}
+            💡 <strong>{t('common.note')}:</strong> {t('profile.editNote')}
           </p>
         </div>
       </div>

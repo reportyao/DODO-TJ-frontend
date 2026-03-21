@@ -1,17 +1,12 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
-import HttpBackend from 'i18next-http-backend'
 
-// 内联 tg（塔吉克语）翻译作为默认语言
-// 塔吉克斯坦是主要运营市场，塔吉克语用户占多数
-// 其他语言（ru、zh）将通过 HTTP 按需加载
+// 内联所有语言翻译，确保任何语言的用户首次加载时都不会看到其他语言闪烁
+// 三个文件总共约 275KB，gzip 后约 40KB，对首屏加载影响极小
 import tgTranslation from './locales/tg.json'
-
-// 构建版本号，用于 i18n 文件的缓存破坏
-// 每次构建时 Vite 会注入 __APP_VERSION__，确保翻译文件不被旧缓存污染
-declare const __APP_VERSION__: string
-const I18N_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : Date.now().toString()
+import zhTranslation from './locales/zh.json'
+import ruTranslation from './locales/ru.json'
 
 // 自定义语言检测器
 // 从用户缓存的配置中读取语言偏好（登录后用户的 preferred_language）
@@ -45,20 +40,15 @@ const languageDetector = new LanguageDetector();
 languageDetector.addDetector(userPreferenceDetector);
 
 i18n
-  .use(HttpBackend) // HTTP 后端按需加载翻译文件
   .use(languageDetector) // 浏览器语言检测器（已包含自定义用户偏好检测器）
   .use(initReactI18next) // 集成 React
   .init({
-    // 内联 tg 翻译，确保塔吉克语用户首次加载时不会看到其他语言闪烁
+    // 所有语言翻译内联打包，消除异步加载延迟
+    // 确保切换语言时立即生效，不会出现其他语言闪烁
     resources: {
-      tg: { translation: tgTranslation }
-    },
-    // 对于非 tg 语言，通过 HTTP 后端加载
-    partialBundledLanguages: true,
-    backend: {
-      // 在 URL 中加入构建版本号，每次部署后强制浏览器重新加载翻译文件
-      // 避免缓存旧的翻译文件导致文案不更新
-      loadPath: `/locales/{{lng}}.json?v=${I18N_VERSION}`
+      tg: { translation: tgTranslation },
+      zh: { translation: zhTranslation },
+      ru: { translation: ruTranslation }
     },
     fallbackLng: 'tg',
     lng: undefined, // 让检测器自动检测

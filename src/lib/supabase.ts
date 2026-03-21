@@ -125,7 +125,7 @@ export const likeService = {
 
     if (error && error.code !== 'PGRST116') {
       console.error('Failed to check like status:', error);
-      throw new Error(`检查点赞状态失败: ${error.message}`);
+      throw new Error(`Check like status failed: ${error.message}`);
     }
 
     return !!data;
@@ -137,7 +137,7 @@ export const likeService = {
    */
   async likeShowoff(showoffId: string): Promise<void> {
     const user = await authService.getCurrentUser();
-    if (!user) throw new Error('用户未登录');
+    if (!user) throw new Error('User not logged in');
 
     const { error } = await supabase
       .from('likes')
@@ -145,7 +145,7 @@ export const likeService = {
 
     if (error) {
       console.error('Failed to like showoff:', error);
-      throw new Error(`点赞失败: ${error.message}`);
+      throw new Error(`Like failed: ${error.message}`);
     }
   },
 
@@ -155,7 +155,7 @@ export const likeService = {
    */
   async unlikeShowoff(showoffId: string): Promise<void> {
     const user = await authService.getCurrentUser();
-    if (!user) throw new Error('用户未登录');
+    if (!user) throw new Error('User not logged in');
 
     const { error } = await supabase
       .from('likes')
@@ -165,7 +165,7 @@ export const likeService = {
 
     if (error) {
       console.error('Failed to unlike showoff:', error);
-      throw new Error(`取消点赞失败: ${error.message}`);
+      throw new Error(`Unlike failed: ${error.message}`);
     }
   }
 };
@@ -211,7 +211,7 @@ export const authService = {
     }
 
     if (!data || !data.data) {
-      throw new Error('登录失败：服务器响应异常');
+      throw new Error('Login failed: server response error');
     }
 
     const user = {
@@ -241,7 +241,7 @@ export const authService = {
     }
 
     if (!data || !data.data) {
-      throw new Error('注册失败：服务器响应异常');
+      throw new Error('Register failed: server response error');
     }
 
     const user = {
@@ -339,7 +339,7 @@ export const lotteryService: any = {
     
     if (error) {
       console.error('Failed to fetch all lotteries:', error);
-      throw new Error(`获取所有商城列表失败: ${error.message}`);
+      throw new Error(`Failed to fetch lotteries: ${error.message}`);
     }
     return data;
   },
@@ -357,7 +357,7 @@ export const lotteryService: any = {
     
     if (error) {
       console.error(`Failed to fetch lotteries with status ${status}:`, error);
-      throw new Error(`获取商城列表失败: ${error.message}`);
+      throw new Error(`Failed to fetch lotteries: ${error.message}`);
     }
     return data;
   },
@@ -374,7 +374,7 @@ export const lotteryService: any = {
     
     if (error) {
       console.error('Failed to fetch lotteries:', error);
-      throw new Error(`获取商城列表失败: ${error.message}`);
+      throw new Error(`Failed to fetch lotteries: ${error.message}`);
     }
     return data;
   },
@@ -392,7 +392,7 @@ export const lotteryService: any = {
 
     if (error && error.code !== 'PGRST116') { // PGRST116: No rows found
       console.error('Failed to fetch lottery details:', error);
-      throw new Error(`获取商城详情失败: ${error.message}`);
+      throw new Error(`Failed to fetch lottery detail: ${error.message}`);
     }
     return data;
   },
@@ -406,7 +406,7 @@ export const lotteryService: any = {
     // 从 localStorage 获取 session token
     const sessionToken = localStorage.getItem('custom_session_token');
     if (!sessionToken) {
-      throw new Error('用户未登录');
+      throw new Error('User not logged in');
     }
 
     // 生成幂等性 key 防止重复提交
@@ -430,7 +430,7 @@ export const lotteryService: any = {
     }
 
     if (data?.error) {
-      throw new Error(`购买失败: ${data.error}`);
+      throw new Error(`Purchase failed: ${data.error}`);
     }
 
     return data?.order || data;
@@ -480,7 +480,7 @@ export const lotteryService: any = {
 
     if (!data?.success) {
       console.error('[lotteryService] Draw lottery returned error:', data?.error);
-      throw new Error(`开奖失败: ${data?.error || 'Unknown error'}`);
+      throw new Error(`Draw failed: ${data?.error || 'Unknown error'}`);
     }
 
     return data;
@@ -495,7 +495,7 @@ export const lotteryService: any = {
 
     if (error) {
       console.error('Failed to fetch user orders:', error);
-      throw new Error(`获取订单记录失败: ${error.message}`);
+      throw new Error(`Failed to fetch orders: ${error.message}`);
     }
     // 这里的类型需要手动处理一下，因为 select 包含了 join
     return data as any as Order[];
@@ -518,7 +518,7 @@ export const walletService = {
     
     if (error) {
       console.error('Failed to fetch wallets:', error);
-      throw new Error(`获取钱包失败: ${error.message}`);
+      throw new Error(`Failed to fetch wallets: ${error.message}`);
     }
     return data;
   },
@@ -529,7 +529,7 @@ export const walletService = {
    */
   async getBalance(currency: Currency): Promise<number> {
     const user = await authService.getCurrentUser();
-    if (!user) throw new Error('用户未登录');
+    if (!user) throw new Error('User not logged in');
 
     // 调用 Supabase 存储过程 get_user_wallet_balance
                const { data, error } = await supabase.rpc("get_user_wallet_balance" as any, {
@@ -539,7 +539,7 @@ export const walletService = {
 
     if (error) {
       console.error('Failed to fetch balance:', error);
-      throw new Error(`获取余额失败: ${error.message}`);
+      throw new Error(`Failed to fetch balance: ${error.message}`);
     }
     // 存储过程返回的是数字
                 return parseFloat(data as any) || 0;
@@ -555,7 +555,7 @@ export const walletService = {
     const sessionToken = localStorage.getItem('custom_session_token');
     
     if (!sessionToken) {
-      throw new Error('用户未登录');
+      throw new Error('User not logged in');
     }
 
     const requestBody = { 
@@ -575,7 +575,7 @@ export const walletService = {
     
     // 检查返回的数据中是否有错误
     if (data && !data.success) {
-      throw new Error(data.error || '兑换失败，请稍后重试');
+      throw new Error(data.error || 'Exchange failed, please try again later');
     }
     
     return data as { success: boolean; new_balance?: number };
@@ -599,7 +599,7 @@ export const commissionService = {
 
     if (error) {
       console.error('Failed to fetch commissions:', error);
-      throw new Error(`获取佣金记录失败: ${error.message}`);
+      throw new Error(`Failed to fetch commissions: ${error.message}`);
     }
     return data;
   }
@@ -615,10 +615,10 @@ export const referralService = {
    */
     async getInviteStats(): Promise<InviteStats | null> {
     const user = await authService.getCurrentUser();
-    if (!user) throw new Error('用户未登录');
+    if (!user) throw new Error('User not logged in');
 
     const sessionToken = localStorage.getItem('custom_session_token');
-    if (!sessionToken) throw new Error('未授权：缺少 session_token');
+    if (!sessionToken) throw new Error('Unauthorized: missing session_token');
 
     const { data, error } = await supabase.functions.invoke('get-user-referral-stats', {
       body: { session_token: sessionToken }
@@ -637,10 +637,10 @@ export const referralService = {
    */
   async getInvitedUsers(): Promise<InvitedUser[]> {
     const user = await authService.getCurrentUser();
-    if (!user) throw new Error('用户未登录');
+    if (!user) throw new Error('User not logged in');
 
     const sessionToken = localStorage.getItem('custom_session_token');
-    if (!sessionToken) throw new Error('未授权：缺少 session_token');
+    if (!sessionToken) throw new Error('Unauthorized: missing session_token');
 
     const { data, error } = await supabase.functions.invoke('get-invited-users', {
       body: { session_token: sessionToken }
@@ -676,7 +676,7 @@ export const referralService = {
 
     if (error) {
       console.error('Failed to fetch showoffs:', error);
-      throw new Error(`获取晒单列表失败: ${error.message}`);
+      throw new Error(`Failed to fetch showoffs: ${error.message}`);
     }
 
     if (!showoffs || showoffs.length === 0) {
@@ -738,7 +738,7 @@ export const referralService = {
       const lottery = lotteryId ? lotteryMap.get(lotteryId) : null;
       
       // 获取商品名：优先使用已保存的 title，其次使用查询到的 lottery.title
-      const lotteryTitle = (showoff as any).title || lottery?.title || '未知商品';
+      const lotteryTitle = (showoff as any).title || lottery?.title || 'Unknown product';
       
       return {
         ...showoff,
@@ -761,7 +761,7 @@ export const referralService = {
     let uid = userId;
     if (!uid) {
       const user = await authService.getCurrentUser();
-      if (!user) throw new Error('用户未登录');
+      if (!user) throw new Error('User not logged in');
       uid = user.id;
     }
 
@@ -772,7 +772,7 @@ export const referralService = {
     // 如果是重复点赞错误，忽略它（用户已经点赞过）
     if (error && error.code !== '23505') {
       console.error('Failed to like showoff:', error);
-      throw new Error(`点赞失败: ${error.message}`);
+      throw new Error(`Like failed: ${error.message}`);
     }
 
     // 如果不是重复点赞，更新 likes_count
@@ -802,7 +802,7 @@ export const referralService = {
     let uid = userId;
     if (!uid) {
       const user = await authService.getCurrentUser();
-      if (!user) throw new Error('用户未登录');
+      if (!user) throw new Error('User not logged in');
       uid = user.id;
     }
 
@@ -814,7 +814,7 @@ export const referralService = {
 	
 	    if (error) {
 	      console.error('Failed to unlike showoff:', error);
-	      throw new Error(`取消点赞失败: ${error.message}`);
+	      throw new Error(`Unlike failed: ${error.message}`);
 	    }
 
       // 更新 likes_count
@@ -841,7 +841,7 @@ export const referralService = {
 	  // 原始的 toggleLike 逻辑被拆分为 likeShowoff 和 unlikeShowoff
 		  async toggleLike(showoffId: string): Promise<void> {
 		    const user = await authService.getCurrentUser();
-		    if (!user) throw new Error('用户未登录');
+		    if (!user) throw new Error('User not logged in');
 
     const { data: existingLike, error: selectError } = await supabase
       .from('likes')
@@ -852,7 +852,7 @@ export const referralService = {
 		
 			    if (selectError && selectError.code !== 'PGRST116') {
 			      console.error('Failed to check like status:', selectError);
-			      throw new Error(`检查点赞状态失败: ${selectError.message}`);
+			      throw new Error(`Check like status failed: ${selectError.message}`);
 		    }
 				    if (existingLike) {
 			      // 取消点赞
@@ -864,7 +864,7 @@ export const referralService = {
 			
 			      if (error) {
 			        console.error('Failed to unlike showoff:', error);
-			        throw new Error(`取消点赞失败: ${error.message}`);
+			        throw new Error(`Unlike failed: ${error.message}`);
 			      }
 			    } else {
 			      // 点赞
@@ -874,7 +874,7 @@ export const referralService = {
 			
 			      if (error) {
 			        console.error('Failed to like showoff:', error);
-				        throw new Error(`点赞失败: ${error.message}`);
+				        throw new Error(`Like failed: ${error.message}`);
 				      }
 				    }
 			  },
@@ -893,7 +893,7 @@ export const referralService = {
     let userId = params.user_id;
     if (!userId) {
       const user = await authService.getCurrentUser();
-      if (!user) throw new Error('用户未登录');
+      if (!user) throw new Error('User not logged in');
       userId = user.id;
     }
 
@@ -914,7 +914,7 @@ export const referralService = {
 
     if (error) {
       console.error('Failed to create showoff:', error);
-      throw new Error(`创建晒单失败: ${error.message}`);
+      throw new Error(`Failed to create showoff: ${error.message}`);
     }
 
     return data as Showoff;

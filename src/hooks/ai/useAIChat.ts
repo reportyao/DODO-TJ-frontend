@@ -24,7 +24,7 @@ export function useAIChat(): UseAIChatReturn {
     } catch (err) {
       const aiError = err instanceof AIServiceError 
         ? err 
-        : new AIServiceError('AI_ERROR', (err as Error).message || '未知错误');
+        : new AIServiceError('AI_ERROR', (err as Error).message || 'Unknown error');
       setError(aiError);
       throw aiError;
     } finally {

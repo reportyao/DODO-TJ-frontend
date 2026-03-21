@@ -239,7 +239,8 @@
     "statusSoldOut": "Распродано",
     "statusDrawn": "Розыгрыш завершён",
     "statusCancelled": "Отменено",
-    "ticketUnit": "шт."
+    "ticketUnit": "шт.",
+    "unknownProduct": "Неизвестный товар"
   },
   "fairness": {
     "title": "Почему этот алгоритм честный?",
@@ -620,7 +621,26 @@
     "resetTokenPlaceholder": "Вставьте полученный токен",
     "sendResetLink": "Отправить ссылку сброса",
     "setNewPassword": "Установите новый пароль",
-    "tokenRequired": "Введите токен сброса"
+    "tokenRequired": "Введите токен сброса",
+    "passwordMinLength": "Пароль должен быть не менее 6 символов",
+    "createAccount": "Создать новый аккаунт",
+    "name": "Имя",
+    "namePlaceholder": "Введите ваше имя",
+    "inviteCode": "Код приглашения",
+    "optional": "Необязательно",
+    "inviteCodePlaceholder": "Введите код приглашения (если есть)",
+    "inviteCodeLocked": "Код приглашения заполнен автоматически, изменить нельзя",
+    "resetSent": "Ссылка для сброса отправлена",
+    "newPasswordRequired": "Пожалуйста, введите новый пароль",
+    "resetSuccess": "Пароль успешно сброшен, войдите с новым паролем",
+    "resetPasswordFailed": "Не удалось сбросить пароль",
+    "resetSubtitle": "Введите номер телефона, мы отправим ссылку для сброса",
+    "hasResetToken": "Есть код сброса? Нажмите для ввода",
+    "resetSentMessage": "Если этот номер зарегистрирован, ссылка для сброса будет отправлена через WhatsApp. Проверьте ваши сообщения.",
+    "resend": "Отправить повторно",
+    "newPasswordPlaceholder": "Минимум 6 символов",
+    "resetPasswordBtn": "Сбросить пароль",
+    "loginRequired": "Пожалуйста, войдите в систему"
   },
   "error": {
     "networkError": "Ошибка сети, повторите попытку позже",
@@ -638,7 +658,26 @@
     "pageNotFoundDescription": "Извините, запрашиваемая страница не существует.",
     "pageError": "Произошла ошибка",
     "pageErrorDesc": "Что-то пошло не так. Пожалуйста, попробуйте обновить страницу.",
-    "refresh": "Обновить страницу"
+    "refresh": "Обновить страницу",
+    "loginRequired": "Пользователь не авторизован",
+    "checkLikeStatusFailed": "Не удалось проверить статус лайка",
+    "likeFailed": "Не удалось поставить лайк",
+    "unlikeFailed": "Не удалось убрать лайк",
+    "loginFailed": "Ошибка входа",
+    "registerFailed": "Ошибка регистрации",
+    "fetchListFailed": "Не удалось получить список",
+    "fetchDetailFailed": "Не удалось получить детали",
+    "drawFailed": "Розыгрыш не удался",
+    "fetchOrdersFailed": "Не удалось получить записи заказов",
+    "fetchWalletFailed": "Не удалось получить кошелёк",
+    "fetchBalanceFailed": "Не удалось получить баланс",
+    "exchangeFailed": "Обмен не удался, попробуйте позже",
+    "fetchCommissionFailed": "Не удалось получить записи комиссий",
+    "fetchShowoffFailed": "Не удалось получить список отзывов",
+    "createShowoffFailed": "Не удалось создать отзыв",
+    "uploadImageFailed": "Не удалось загрузить изображение",
+    "deleteImageFailed": "Не удалось удалить изображение",
+    "operationFailed": "Операция не удалась"
   },
   "success": {
     "operationSuccess": "Операция успешна",
@@ -1549,7 +1588,8 @@
     "noLeaderboard": "Нет данных рейтинга",
     "me": "Я",
     "depositForCustomer": "Пополнить для клиента",
-    "depositForCustomerHint": "Помочь клиенту пополнить баланс"
+    "depositForCustomerHint": "Помочь клиенту пополнить баланс",
+    "scanNotAvailable": "Функция сканирования недоступна в текущей среде, используйте ручной поиск"
   },
   "language": "ru",
   "prizes": {

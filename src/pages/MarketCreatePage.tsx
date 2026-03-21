@@ -42,7 +42,7 @@ const MarketCreatePage: React.FC = () => {
       // 调用API获取我的奖品(可转售的)
       const sessionToken = localStorage.getItem('custom_session_token');
       if (!sessionToken) {
-        throw new Error('请先登录');
+        throw new Error(t('auth.loginRequired'));
       }
       const response = await fetch(
         `${SUPABASE_URL}/functions/v1/get-my-prizes`,
@@ -60,7 +60,7 @@ const MarketCreatePage: React.FC = () => {
       const result = await response.json();
       
       if (!result.success) {
-        throw new Error(result.error || '获取奖品列表失败');
+        throw new Error(result.error || t('error.loadFailed'));
       }
 
       // 过滤出可以转售的奖品(PENDING或REJECTED状态)
@@ -186,7 +186,7 @@ const MarketCreatePage: React.FC = () => {
       const result = await response.json();
       
       if (!result.success) {
-        throw new Error(result.error || '发布转售失败');
+        throw new Error(result.error || t('error.operationFailed'));
       }
 
       toast.success(t('market.publishSuccess'));

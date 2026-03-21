@@ -267,7 +267,7 @@ const ShippingModal: React.FC<{
     try {
       // 调用 request-shipping Edge Function（使用自定义 session_token 认证）
       if (!sessionToken) {
-        throw new Error('未登录，请重新登录');
+        throw new Error(t('auth.loginRequired'));
       }
 
       const { data, error } = await supabase.functions.invoke('request-shipping', {

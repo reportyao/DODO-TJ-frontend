@@ -84,10 +84,10 @@ const CouponListPage: React.FC = () => {
   // 来源类型翻译
   const getSourceLabel = (source: string): string => {
     switch (source) {
-      case 'LOTTERY_REFUND': return t('coupon.sourceLotteryRefund', '未中奖返还');
-      case 'DEPOSIT_BONUS': return t('coupon.sourceDepositBonus', '充值赠送');
-      case 'ADMIN_GRANT': return t('coupon.sourceAdminGrant', '系统发放');
-      case 'PROMOTION': return t('coupon.sourcePromotion', '活动奖励');
+      case 'LOTTERY_REFUND': return t('coupon.sourceLotteryRefund');
+      case 'DEPOSIT_BONUS': return t('coupon.sourceDepositBonus');
+      case 'ADMIN_GRANT': return t('coupon.sourceAdminGrant');
+      case 'PROMOTION': return t('coupon.sourcePromotion');
       default: return source;
     }
   };

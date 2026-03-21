@@ -34,7 +34,7 @@ const ForgotPasswordPage: React.FC = () => {
     e.preventDefault()
 
     if (!phoneNumber.trim()) {
-      toast.error(t('auth.phoneRequired', '请输入手机号'))
+      toast.error(t('auth.phoneRequired'))
       return
     }
 
@@ -42,9 +42,9 @@ const ForgotPasswordPage: React.FC = () => {
     try {
       await authService.requestPasswordReset(phoneNumber.trim())
       setRequestSent(true)
-      toast.success(t('auth.resetLinkSent', '如果该手机号已注册，您将收到重置链接'))
+      toast.success(t('auth.resetLinkSent'))
     } catch (error: any) {
-      toast.error(error.message || t('auth.resetRequestFailed', '请求失败'))
+      toast.error(error.message || t('auth.resetRequestFailed'))
     } finally {
       setIsLoading(false)
     }
@@ -54,29 +54,29 @@ const ForgotPasswordPage: React.FC = () => {
     e.preventDefault()
 
     if (!resetToken.trim()) {
-      toast.error(t('auth.tokenRequired', '请输入重置Token'))
+      toast.error(t('auth.tokenRequired'))
       return
     }
     if (!newPassword) {
-      toast.error(t('auth.passwordRequired', '请输入新密码'))
+      toast.error(t('auth.passwordRequired'))
       return
     }
     if (newPassword.length < 6) {
-      toast.error(t('auth.passwordTooShort', '密码长度至少6位'))
+      toast.error(t('auth.passwordTooShort'))
       return
     }
     if (newPassword !== confirmPassword) {
-      toast.error(t('auth.passwordMismatch', '两次输入的密码不一致'))
+      toast.error(t('auth.passwordMismatch'))
       return
     }
 
     setIsLoading(true)
     try {
       await authService.resetPassword(resetToken.trim(), newPassword)
-      toast.success(t('auth.passwordResetSuccess', '密码重置成功，请使用新密码登录'))
+      toast.success(t('auth.passwordResetSuccess'))
       navigate('/login', { replace: true })
     } catch (error: any) {
-      toast.error(error.message || t('auth.resetFailed', '密码重置失败'))
+      toast.error(error.message || t('auth.resetFailed'))
     } finally {
       setIsLoading(false)
     }
@@ -91,12 +91,12 @@ const ForgotPasswordPage: React.FC = () => {
             <KeyIcon className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {t('auth.resetPassword', '重置密码')}
+            {t('auth.resetPassword')}
           </h1>
           <p className="text-gray-500 mt-1">
             {step === 'request'
-              ? t('auth.resetDescription', '输入您的手机号，我们将发送重置链接')
-              : t('auth.setNewPassword', '设置您的新密码')}
+              ? t('auth.resetDescription')
+              : t('auth.setNewPassword')}
           </p>
         </div>
 
@@ -104,7 +104,7 @@ const ForgotPasswordPage: React.FC = () => {
           <form onSubmit={handleRequestReset} className="bg-white rounded-2xl shadow-lg p-6 space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                {t('auth.phoneNumber', '手机号')}
+                {t('auth.phoneNumber')}
               </label>
               <div className="relative">
                 <PhoneIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -124,7 +124,7 @@ const ForgotPasswordPage: React.FC = () => {
               disabled={isLoading}
               className="w-full py-3 bg-gradient-to-r from-orange-400 to-orange-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              {isLoading ? t('common.loading', '加载中...') : t('auth.sendResetLink', '发送重置链接')}
+              {isLoading ? t('common.loading') : t('auth.sendResetLink')}
             </button>
 
             <button
@@ -132,7 +132,7 @@ const ForgotPasswordPage: React.FC = () => {
               onClick={() => setStep('verify')}
               className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
-              {t('auth.haveResetToken', '已有重置Token？点击输入')}
+              {t('auth.haveResetToken')}
             </button>
           </form>
         )}
@@ -146,7 +146,7 @@ const ForgotPasswordPage: React.FC = () => {
                 </svg>
               </div>
               <p className="text-gray-700">
-                {t('auth.resetLinkSentDescription', '如果该手机号已注册，重置链接将通过 WhatsApp 发送到您的手机。请检查您的消息。')}
+                {t('auth.resetLinkSentDescription')}
               </p>
             </div>
 
@@ -155,7 +155,7 @@ const ForgotPasswordPage: React.FC = () => {
               onClick={() => setStep('verify')}
               className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all"
             >
-              {t('auth.enterResetToken', '输入重置Token')}
+              {t('auth.enterResetToken')}
             </button>
 
             <button
@@ -163,7 +163,7 @@ const ForgotPasswordPage: React.FC = () => {
               onClick={() => { setRequestSent(false); }}
               className="w-full text-sm text-gray-500 hover:text-gray-700"
             >
-              {t('auth.resendResetLink', '重新发送')}
+              {t('auth.resendResetLink')}
             </button>
           </div>
         )}
@@ -173,7 +173,7 @@ const ForgotPasswordPage: React.FC = () => {
             {/* Reset Token */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                {t('auth.resetToken', '重置Token')}
+                {t('auth.resetToken')}
               </label>
               <div className="relative">
                 <KeyIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -181,7 +181,7 @@ const ForgotPasswordPage: React.FC = () => {
                   type="text"
                   value={resetToken}
                   onChange={(e) => setResetToken(e.target.value)}
-                  placeholder={t('auth.resetTokenPlaceholder', '粘贴您收到的重置Token')}
+                  placeholder={t('auth.resetTokenPlaceholder')}
                   className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400 font-mono text-sm"
                   readOnly={!!tokenFromUrl}
                 />
@@ -191,7 +191,7 @@ const ForgotPasswordPage: React.FC = () => {
             {/* New Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                {t('auth.newPassword', '新密码')}
+                {t('auth.newPassword')}
               </label>
               <div className="relative">
                 <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -199,7 +199,7 @@ const ForgotPasswordPage: React.FC = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder={t('auth.passwordPlaceholder', '至少6位')}
+                  placeholder={t('auth.passwordPlaceholder')}
                   className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                   autoComplete="new-password"
                 />
@@ -216,7 +216,7 @@ const ForgotPasswordPage: React.FC = () => {
             {/* Confirm Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                {t('auth.confirmPassword', '确认密码')}
+                {t('auth.confirmPassword')}
               </label>
               <div className="relative">
                 <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -224,7 +224,7 @@ const ForgotPasswordPage: React.FC = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder={t('auth.confirmPasswordPlaceholder', '再次输入密码')}
+                  placeholder={t('auth.confirmPasswordPlaceholder')}
                   className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                   autoComplete="new-password"
                 />
@@ -236,7 +236,7 @@ const ForgotPasswordPage: React.FC = () => {
               disabled={isLoading}
               className="w-full py-3 bg-gradient-to-r from-orange-400 to-orange-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              {isLoading ? t('common.loading', '加载中...') : t('auth.resetPasswordSubmit', '重置密码')}
+              {isLoading ? t('common.loading') : t('auth.resetPasswordSubmit')}
             </button>
 
             {!tokenFromUrl && (
@@ -246,7 +246,7 @@ const ForgotPasswordPage: React.FC = () => {
                 className="w-full flex items-center justify-center gap-1 text-sm text-gray-500 hover:text-gray-700"
               >
                 <ArrowLeftIcon className="w-4 h-4" />
-                {t('auth.backToRequest', '返回请求重置')}
+                {t('auth.backToRequest')}
               </button>
             )}
           </form>
@@ -256,7 +256,7 @@ const ForgotPasswordPage: React.FC = () => {
         <p className="text-center mt-6 text-gray-600">
           <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold flex items-center justify-center gap-1">
             <ArrowLeftIcon className="w-4 h-4" />
-            {t('auth.backToLogin', '返回登录')}
+            {t('auth.backToLogin')}
           </Link>
         </p>
       </div>

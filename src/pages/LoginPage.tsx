@@ -25,11 +25,11 @@ const LoginPage: React.FC = () => {
     e.preventDefault()
 
     if (!phoneNumber.trim()) {
-      toast.error(t('auth.phoneRequired', '请输入手机号'))
+      toast.error(t('auth.phoneRequired'))
       return
     }
     if (!password) {
-      toast.error(t('auth.passwordRequired', '请输入密码'))
+      toast.error(t('auth.passwordRequired'))
       return
     }
 
@@ -46,9 +46,9 @@ const LoginPage: React.FC = () => {
     } catch (error: any) {
       console.error('Login failed:', error)
       if (error.message?.includes('PASSWORD_NOT_SET')) {
-        toast.error(t('auth.passwordNotSet', '该账户尚未设置密码，请使用"忘记密码"功能设置新密码'))
+        toast.error(t('auth.passwordNotSet'))
       } else {
-        toast.error(error.message || t('auth.loginFailed', '登录失败'))
+        toast.error(error.message || t('auth.loginFailed'))
       }
     } finally {
       setIsLoading(false)
@@ -64,7 +64,7 @@ const LoginPage: React.FC = () => {
             <span className="text-white text-3xl font-bold">D</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">DODO</h1>
-          <p className="text-gray-500 mt-1">{t('auth.loginSubtitle', '登录您的账户')}</p>
+          <p className="text-gray-500 mt-1">{t('auth.loginSubtitle')}</p>
         </div>
 
         {/* Login Form */}
@@ -72,7 +72,7 @@ const LoginPage: React.FC = () => {
           {/* Phone Number */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {t('auth.phoneNumber', '手机号')}
+              {t('auth.phoneNumber')}
             </label>
             <div className="relative">
               <PhoneIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -90,7 +90,7 @@ const LoginPage: React.FC = () => {
           {/* Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {t('auth.password', '密码')}
+              {t('auth.password')}
             </label>
             <div className="relative">
               <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -122,7 +122,7 @@ const LoginPage: React.FC = () => {
               to="/forgot-password"
               className="text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
-              {t('auth.forgotPassword', '忘记密码？')}
+              {t('auth.forgotPassword')}
             </Link>
           </div>
 
@@ -138,22 +138,22 @@ const LoginPage: React.FC = () => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                {t('common.loading', '加载中...')}
+                {t('common.loading')}
               </span>
             ) : (
-              t('auth.login', '登录')
+              t('auth.login')
             )}
           </button>
         </form>
 
         {/* Register Link */}
         <p className="text-center mt-6 text-gray-600">
-          {t('auth.noAccount', '还没有账户？')}{' '}
+          {t('auth.noAccount')}{' '}
           <Link
             to={`/register${searchParams.get('ref') ? `?ref=${searchParams.get('ref')}` : ''}`}
             className="text-blue-600 hover:text-blue-700 font-semibold"
           >
-            {t('auth.registerNow', '立即注册')}
+            {t('auth.registerNow')}
           </Link>
         </p>
       </div>

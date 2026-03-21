@@ -239,7 +239,8 @@
     "statusSoldOut": "已售完",
     "statusDrawn": "已开奖",
     "statusCancelled": "已取消",
-    "ticketUnit": "张"
+    "ticketUnit": "张",
+    "unknownProduct": "未知商品"
   },
   "fairness": {
     "title": "为什么这个算法公平？",
@@ -620,7 +621,26 @@
     "resetTokenPlaceholder": "粘贴您收到的重置Token",
     "sendResetLink": "发送重置链接",
     "setNewPassword": "设置您的新密码",
-    "tokenRequired": "请输入重置Token"
+    "tokenRequired": "请输入重置Token",
+    "passwordMinLength": "密码长度至少6位",
+    "createAccount": "创建新账户",
+    "name": "姓名",
+    "namePlaceholder": "请输入您的姓名",
+    "inviteCode": "邀请码",
+    "optional": "选填",
+    "inviteCodePlaceholder": "输入邀请码（如有）",
+    "inviteCodeLocked": "邀请码已自动填入，不可修改",
+    "resetSent": "重置链接已发送",
+    "newPasswordRequired": "请输入新密码",
+    "resetSuccess": "密码重置成功，请使用新密码登录",
+    "resetPasswordFailed": "密码重置失败",
+    "resetSubtitle": "输入您的手机号，我们将发送重置链接",
+    "hasResetToken": "已有重置Token？点击输入",
+    "resetSentMessage": "如果该手机号已注册，重置链接将通过 WhatsApp 发送到您的手机。请检查您的消息。",
+    "resend": "重新发送",
+    "newPasswordPlaceholder": "至少6位",
+    "resetPasswordBtn": "重置密码",
+    "loginRequired": "请先登录"
   },
   "error": {
     "networkError": "网络错误，请稍后重试",
@@ -638,7 +658,26 @@
     "pageNotFoundDescription": "抱歉，您访问的页面不存在。",
     "pageError": "页面出错了",
     "pageErrorDesc": "页面遇到了一些问题，请尝试刷新页面。",
-    "refresh": "刷新页面"
+    "refresh": "刷新页面",
+    "loginRequired": "用户未登录",
+    "checkLikeStatusFailed": "检查点赞状态失败",
+    "likeFailed": "点赞失败",
+    "unlikeFailed": "取消点赞失败",
+    "loginFailed": "登录失败",
+    "registerFailed": "注册失败",
+    "fetchListFailed": "获取列表失败",
+    "fetchDetailFailed": "获取详情失败",
+    "drawFailed": "开奖失败",
+    "fetchOrdersFailed": "获取订单记录失败",
+    "fetchWalletFailed": "获取钱包失败",
+    "fetchBalanceFailed": "获取余额失败",
+    "exchangeFailed": "兑换失败，请稍后重试",
+    "fetchCommissionFailed": "获取佣金记录失败",
+    "fetchShowoffFailed": "获取晒单列表失败",
+    "createShowoffFailed": "创建晒单失败",
+    "uploadImageFailed": "图片上传失败",
+    "deleteImageFailed": "图片删除失败",
+    "operationFailed": "操作失败"
   },
   "success": {
     "operationSuccess": "操作成功",
@@ -1542,7 +1581,8 @@
     "noLeaderboard": "暂无排行数据",
     "me": "我",
     "depositForCustomer": "代客充值",
-    "depositForCustomerHint": "帮助客户完成线下充值"
+    "depositForCustomerHint": "帮助客户完成线下充值",
+    "scanNotAvailable": "扫码功能在当前环境不可用，请使用手动搜索"
   },
   "onboarding": {
     "title": "邀请好友，获得终身佣金",

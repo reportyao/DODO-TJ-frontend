@@ -239,7 +239,8 @@
     "statusSoldOut": "Фурӯхта шуд",
     "statusDrawn": "Қуръа кашида шуд",
     "statusCancelled": "Бекор карда шуд",
-    "ticketUnit": "дона"
+    "ticketUnit": "дона",
+    "unknownProduct": "Маҳсулоти номаълум"
   },
   "fairness": {
     "title": "Чаро ин алгоритм одилона аст?",
@@ -620,7 +621,26 @@
     "resetTokenPlaceholder": "Токени дарёфтшударо часпонед",
     "sendResetLink": "Фиристодани пайванди барқарорсозӣ",
     "setNewPassword": "Рамзи навро танзим кунед",
-    "tokenRequired": "Токени барқарорсозиро ворид кунед"
+    "tokenRequired": "Токени барқарорсозиро ворид кунед",
+    "passwordMinLength": "Рамзи сирр бояд аз 6 аломат кам набошад",
+    "createAccount": "Эҷоди ҳисоби нав",
+    "name": "Ном",
+    "namePlaceholder": "Номи худро ворид кунед",
+    "inviteCode": "Рамзи даъват",
+    "optional": "Ихтиёрӣ",
+    "inviteCodePlaceholder": "Рамзи даъватро ворид кунед (агар дошта бошед)",
+    "inviteCodeLocked": "Рамзи даъват худкор пур шудааст, тағйир додан мумкин нест",
+    "resetSent": "Линки барқароркунӣ фиристода шуд",
+    "newPasswordRequired": "Лутфан рамзи сирри навро ворид кунед",
+    "resetSuccess": "Рамзи сирр бомуваффақият барқарор шуд, лутфан бо рамзи нав ворид шавед",
+    "resetPasswordFailed": "Барқароркунии рамзи сирр ноком шуд",
+    "resetSubtitle": "Рақами телефони худро ворид кунед, мо линки барқароркуниро мефиристем",
+    "hasResetToken": "Рамзи барқароркунӣ доред? Пахш кунед",
+    "resetSentMessage": "Агар ин рақами телефон сабт шуда бошад, линки барқароркунӣ тавассути WhatsApp фиристода мешавад. Лутфан паёмҳои худро тафтиш кунед.",
+    "resend": "Аз нав фиристодан",
+    "newPasswordPlaceholder": "Ақаллан 6 аломат",
+    "resetPasswordBtn": "Барқарор кардани рамзи сирр",
+    "loginRequired": "Лутфан аввал ворид шавед"
   },
   "error": {
     "networkError": "Хатогии шабака, лутфан баъдтар кӯшиш кунед",
@@ -638,7 +658,26 @@
     "pageNotFoundDescription": "Бубахшед, саҳифаи дархостшуда вуҷуд надорад.",
     "pageError": "Хатогӣ рух дод",
     "pageErrorDesc": "Чизе нодуруст шуд. Лутфан саҳифаро навсозӣ кунед.",
-    "refresh": "Навсозии саҳифа"
+    "refresh": "Навсозии саҳифа",
+    "loginRequired": "Корбар ворид нашудааст",
+    "checkLikeStatusFailed": "Тафтиши ҳолати лайк ноком шуд",
+    "likeFailed": "Лайк ноком шуд",
+    "unlikeFailed": "Бекор кардани лайк ноком шуд",
+    "loginFailed": "Воридшавӣ ноком шуд",
+    "registerFailed": "Сабти ном ноком шуд",
+    "fetchListFailed": "Гирифтани рӯйхат ноком шуд",
+    "fetchDetailFailed": "Гирифтани тафсилот ноком шуд",
+    "drawFailed": "Қуръаандозӣ ноком шуд",
+    "fetchOrdersFailed": "Гирифтани сабти фармоишҳо ноком шуд",
+    "fetchWalletFailed": "Гирифтани ҳамён ноком шуд",
+    "fetchBalanceFailed": "Гирифтани тавозун ноком шуд",
+    "exchangeFailed": "Мубодила ноком шуд, лутфан баъдтар кӯшиш кунед",
+    "fetchCommissionFailed": "Гирифтани сабти комиссия ноком шуд",
+    "fetchShowoffFailed": "Гирифтани рӯйхати намоишҳо ноком шуд",
+    "createShowoffFailed": "Эҷоди намоиш ноком шуд",
+    "uploadImageFailed": "Боркунии тасвир ноком шуд",
+    "deleteImageFailed": "Нест кардани тасвир ноком шуд",
+    "operationFailed": "Амалиёт ноком шуд"
   },
   "success": {
     "operationSuccess": "Амалиёт муваффақ",
@@ -1549,7 +1588,8 @@
     "noLeaderboard": "Маълумот нест",
     "me": "Ман",
     "depositForCustomer": "Пуркунӣ барои муштарӣ",
-    "depositForCustomerHint": "Ба муштарӣ барои пуркунии баланс кӯмак кунед"
+    "depositForCustomerHint": "Ба муштарӣ барои пуркунии баланс кӯмак кунед",
+    "scanNotAvailable": "Функсияи сканкунӣ дар ин муҳит дастрас нест, лутфан ҷустуҷӯи дастиро истифода баред"
   },
   "language": "tg",
   "prizes": {

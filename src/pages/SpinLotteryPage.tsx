@@ -145,7 +145,7 @@ const SpinWheel: React.FC<{
     displayRewards.push({
       id: `placeholder-${displayRewards.length}`,
       reward_name: t('spinLottery.thankYou'),
-      reward_name_i18n: { zh: '谢谢惠顾', ru: 'Спасибо!', tg: 'Ташаккур!' },
+      reward_name_i18n: { zh: t('spin.thankYou'), ru: 'Спасибо!', tg: 'Ташаккур!' },
       reward_type: 'NONE',
       reward_amount: 0,
       display_order: displayRewards.length,

@@ -93,9 +93,9 @@ export async function uploadImage(
     console.error('[uploadImage] Failed:', error)
     // 提供更详细的错误信息
     if (error instanceof Error) {
-      throw new Error(`图片上传失败: ${error.message}`)
+      throw new Error(`Image upload failed: ${error.message}`)
     }
-    throw new Error('图片上传失败: 未知错误')
+    throw new Error('Image upload failed: unknown error')
   }
 }
 
@@ -168,6 +168,6 @@ export async function deleteImage(url: string, bucket: string = 'payment-proofs'
     console.log('[deleteImage] Delete successful')
   } catch (error) {
     console.error('[deleteImage] Failed:', error)
-    throw new Error('图片删除失败')
+    throw new Error('Image delete failed')
   }
 }

@@ -39,19 +39,19 @@ const RegisterPage: React.FC = () => {
     e.preventDefault()
 
     if (!phoneNumber.trim()) {
-      toast.error(t('auth.phoneRequired', '请输入手机号'))
+      toast.error(t('auth.phoneRequired'))
       return
     }
     if (!password) {
-      toast.error(t('auth.passwordRequired', '请输入密码'))
+      toast.error(t('auth.passwordRequired'))
       return
     }
     if (password.length < 6) {
-      toast.error(t('auth.passwordTooShort', '密码长度至少6位'))
+      toast.error(t('auth.passwordTooShort'))
       return
     }
     if (password !== confirmPassword) {
-      toast.error(t('auth.passwordMismatch', '两次输入的密码不一致'))
+      toast.error(t('auth.passwordMismatch'))
       return
     }
 
@@ -69,7 +69,7 @@ const RegisterPage: React.FC = () => {
       navigate('/', { replace: true })
     } catch (error: any) {
       console.error('Registration failed:', error)
-      toast.error(error.message || t('auth.registerFailed', '注册失败'))
+      toast.error(error.message || t('auth.registerFailed'))
     } finally {
       setIsLoading(false)
     }
@@ -84,7 +84,7 @@ const RegisterPage: React.FC = () => {
             <span className="text-white text-3xl font-bold">D</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">DODO</h1>
-          <p className="text-gray-500 mt-1">{t('auth.registerSubtitle', '创建新账户')}</p>
+          <p className="text-gray-500 mt-1">{t('auth.registerSubtitle')}</p>
         </div>
 
         {/* Register Form */}
@@ -92,7 +92,7 @@ const RegisterPage: React.FC = () => {
           {/* Phone Number */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {t('auth.phoneNumber', '手机号')} <span className="text-red-500">*</span>
+              {t('auth.phoneNumber')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <PhoneIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -110,7 +110,7 @@ const RegisterPage: React.FC = () => {
           {/* Name (optional) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {t('auth.firstName', '姓名')}
+              {t('auth.firstName')}
             </label>
             <div className="relative">
               <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -118,7 +118,7 @@ const RegisterPage: React.FC = () => {
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                placeholder={t('auth.firstNamePlaceholder', '请输入您的姓名')}
+                placeholder={t('auth.firstNamePlaceholder')}
                 className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                 autoComplete="given-name"
               />
@@ -128,7 +128,7 @@ const RegisterPage: React.FC = () => {
           {/* Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {t('auth.password', '密码')} <span className="text-red-500">*</span>
+              {t('auth.password')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -136,7 +136,7 @@ const RegisterPage: React.FC = () => {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={t('auth.passwordPlaceholder', '至少6位')}
+                placeholder={t('auth.passwordPlaceholder')}
                 className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                 autoComplete="new-password"
               />
@@ -153,7 +153,7 @@ const RegisterPage: React.FC = () => {
           {/* Confirm Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {t('auth.confirmPassword', '确认密码')} <span className="text-red-500">*</span>
+              {t('auth.confirmPassword')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -161,7 +161,7 @@ const RegisterPage: React.FC = () => {
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder={t('auth.confirmPasswordPlaceholder', '再次输入密码')}
+                placeholder={t('auth.confirmPasswordPlaceholder')}
                 className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                 autoComplete="new-password"
               />
@@ -178,9 +178,9 @@ const RegisterPage: React.FC = () => {
           {/* Referral Code */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {t('auth.referralCode', '邀请码')}
+              {t('auth.referralCode')}
               {!searchParams.get('ref') && (
-                <span className="text-gray-400 ml-1 text-xs">({t('common.optional', '选填')})</span>
+                <span className="text-gray-400 ml-1 text-xs">({t('common.optional')})</span>
               )}
             </label>
             <div className="relative">
@@ -189,7 +189,7 @@ const RegisterPage: React.FC = () => {
                 type="text"
                 value={referralCode}
                 onChange={(e) => !searchParams.get('ref') && setReferralCode(e.target.value.toUpperCase())}
-                placeholder={t('auth.referralCodePlaceholder', '输入邀请码（如有）')}
+                placeholder={t('auth.referralCodePlaceholder')}
                 className={`w-full pl-10 pr-4 py-3 border rounded-xl transition-all text-gray-900 placeholder-gray-400 uppercase ${
                   searchParams.get('ref')
                     ? 'border-green-300 bg-green-50 text-green-800 cursor-not-allowed'
@@ -201,7 +201,7 @@ const RegisterPage: React.FC = () => {
             {searchParams.get('ref') && (
               <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
                 <span>✓</span>
-                <span>{t('auth.referralCodeApplied', '邀请码已自动填入，不可修改')}</span>
+                <span>{t('auth.referralCodeApplied')}</span>
               </p>
             )}
           </div>
@@ -218,22 +218,22 @@ const RegisterPage: React.FC = () => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                {t('common.loading', '加载中...')}
+                {t('common.loading')}
               </span>
             ) : (
-              t('auth.register', '注册')
+              t('auth.register')
             )}
           </button>
         </form>
 
         {/* Login Link */}
         <p className="text-center mt-6 text-gray-600">
-          {t('auth.hasAccount', '已有账户？')}{' '}
+          {t('auth.hasAccount')}{' '}
           <Link
             to="/login"
             className="text-blue-600 hover:text-blue-700 font-semibold"
           >
-            {t('auth.loginNow', '立即登录')}
+            {t('auth.loginNow')}
           </Link>
         </p>
       </div>

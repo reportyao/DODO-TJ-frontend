@@ -22,7 +22,7 @@ export function useInviteStats() {
       setStats(statsData);
     } catch (err) {
       // 忽略“用户未登录”错误，这是正常的初始化状态
-      if (err instanceof Error && err.message.includes('用户未登录')) {
+      if (err instanceof Error && err.message.includes('User not logged in')) {
         setStats(null);
       } else {
         console.error('Failed to fetch invite stats:', err);
