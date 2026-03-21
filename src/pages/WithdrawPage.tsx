@@ -55,7 +55,7 @@ export default function WithdrawPage() {
 
     // 验证必填字段
     if (!mobileWalletNumber || !mobileWalletName) {
-      alert(t('wallet.pleaseCompleteWalletInfo'))
+      toast.error(t('wallet.pleaseCompleteWalletInfo'))
       return
     }
 

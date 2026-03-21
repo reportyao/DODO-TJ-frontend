@@ -728,7 +728,7 @@
     "reviewRequired": "Пожалуйста, напишите отзыв",
     "ratingRequired": "Пожалуйста, поставьте оценку",
     "retry": "Повторить",
-    "imageAlt": "Фото晒单",
+    "imageAlt": "Фото отзыва",
     "groupBuyWin": "Выигрыш в групповой покупке",
     "minContentLength": "Минимальная длина содержания: 10 символов",
     "unknownGroupBuy": "Неизвестная групповая покупка",
@@ -1699,7 +1699,8 @@
     "sourceAdminGrant": "Системная выдача",
     "sourceDepositBonus": "Бонус за пополнение",
     "sourceLotteryRefund": "Возврат за проигрыш",
-    "sourcePromotion": "Акционная награда"
+    "sourcePromotion": "Акционная награда",
+    "remaining": "Доступно {{count}} шт."
   },
   "payment": {
     "actualPayment": "Фактическая оплата",

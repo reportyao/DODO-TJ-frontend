@@ -8,7 +8,7 @@
  * 4. 推送通知支持
  */
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const CACHE_NAMES = {
   STATIC: `dodo-static-${CACHE_VERSION}`,
   DYNAMIC: `dodo-dynamic-${CACHE_VERSION}`,

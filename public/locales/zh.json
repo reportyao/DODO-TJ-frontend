@@ -1699,7 +1699,8 @@
     "sourceAdminGrant": "系统发放",
     "sourceDepositBonus": "充值赠送",
     "sourceLotteryRefund": "未中奖返还",
-    "sourcePromotion": "活动奖励"
+    "sourcePromotion": "活动奖励",
+    "remaining": "可用 {{count}} 张"
   },
   "payment": {
     "actualPayment": "实际支付",

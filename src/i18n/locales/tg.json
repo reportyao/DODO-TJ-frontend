@@ -728,7 +728,7 @@
     "reviewRequired": "Лутфан шарҳ нависед",
     "ratingRequired": "Лутфан баҳо гузоред",
     "retry": "Такрор кардан",
-    "imageAlt": "Сурати пост",
+    "imageAlt": "Акси намоиш",
     "groupBuyWin": "Ғалаба дар хариди гурӯҳӣ",
     "minContentLength": "Ҳадди ақали дарозии мундариҷа: 10 аломат",
     "unknownGroupBuy": "Хариди гурӯҳии номаълум",
@@ -1699,7 +1699,8 @@
     "sourceAdminGrant": "Додани система",
     "sourceDepositBonus": "Бонуси пурпул",
     "sourceLotteryRefund": "Баргашт барои нобурд",
-    "sourcePromotion": "Мукофоти акция"
+    "sourcePromotion": "Мукофоти акция",
+    "remaining": "Дастрас {{count}} дона"
   },
   "payment": {
     "actualPayment": "Пардохти воқеӣ",

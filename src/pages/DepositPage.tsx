@@ -9,6 +9,7 @@ import { uploadImages } from '../lib/uploadImage'
 import { ArrowLeft, Upload, CheckCircle2, Loader2, X, Image as ImageIcon } from 'lucide-react'
 import { formatCurrency } from '../lib/utils'
 import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper'
+import toast from 'react-hot-toast'
 
 interface PaymentConfig {
   id: string
@@ -109,7 +110,7 @@ export default function DepositPage() {
     
     if (invalidFiles.length > 0) {
       console.error('[DepositPage] Invalid file types detected:', invalidFiles)
-      alert(t('deposit.invalidFileType'))
+      toast.error(t('deposit.invalidFileType'))
       e.target.value = ''
       return
     }
@@ -166,7 +167,7 @@ export default function DepositPage() {
       setUploadProgress(0)
       
       const errorMessage = error instanceof Error ? error.message : String(error)
-      alert(`${t('deposit.imageUploadFailed')}: ${errorMessage}`)
+      toast.error(`${t('deposit.imageUploadFailed')}: ${errorMessage}`)
       
       setTimeout(() => {
         setUploadStatus('idle')
@@ -194,38 +195,38 @@ export default function DepositPage() {
 
   const handleSubmit = async () => {
     if (!selectedMethod) {
-      alert(t('wallet.pleaseSelectPaymentMethod'))
+      toast.error(t('wallet.pleaseSelectPaymentMethod'))
       return
     }
 
     const amountNum = parseFloat(amount)
     if (!amountNum || amountNum < selectedMethod.config_data.min_amount) {
-      alert(t('wallet.minimumAmount') + ': ' + formatCurrency('TJS', selectedMethod.config_data.min_amount))
+      toast.error(t('wallet.minimumAmount') + ': ' + formatCurrency('TJS', selectedMethod.config_data.min_amount))
       return
     }
 
     if (amountNum > selectedMethod.config_data.max_amount) {
-      alert(t('wallet.maximumAmount') + ': ' + formatCurrency('TJS', selectedMethod.config_data.max_amount))
+      toast.error(t('wallet.maximumAmount') + ': ' + formatCurrency('TJS', selectedMethod.config_data.max_amount))
       return
     }
 
     // 根据配置检查必填字段
     if (selectedMethod?.require_payer_name && !payerName) {
-      alert(t('wallet.pleaseEnterPayerName'))
+      toast.error(t('wallet.pleaseEnterPayerName'))
       return
     }
     if (selectedMethod?.require_payer_account && !payerAccount) {
-      alert(t('wallet.pleaseEnterPayerAccount'))
+      toast.error(t('wallet.pleaseEnterPayerAccount'))
       return
     }
     if (selectedMethod?.require_payer_phone && !payerPhone) {
-      alert(t('wallet.pleaseEnterPayerPhone'))
+      toast.error(t('wallet.pleaseEnterPayerPhone'))
       return
     }
 
     // 验证是否上传了凭证
     if (!uploadedImages || uploadedImages.length === 0) {
-      alert(t('wallet.pleaseUploadProof') || t('deposit.pleaseUploadProof'))
+      toast.error(t('wallet.pleaseUploadProof') || t('deposit.pleaseUploadProof'))
       return
     }
 
@@ -261,7 +262,7 @@ export default function DepositPage() {
       }
     } catch (error: any) {
       console.error(t('deposit.submitFailed') + ':', error)
-      alert(error.message || t('wallet.depositRequestFailed'))
+      toast.error(error.message || t('wallet.depositRequestFailed'))
     } finally {
       setSubmitting(false)
     }

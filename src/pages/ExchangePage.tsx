@@ -26,12 +26,12 @@ export default function ExchangePage() {
     const amountNum = parseFloat(amount)
     
     if (!amountNum || amountNum <= 0) {
-      alert(t("wallet.pleaseEnterValidAmount"))
+      toast.error(t("wallet.pleaseEnterValidAmount"))
       return
     }
 
     if (amountNum > balance) {
-      alert(t("wallet.insufficientBalance"))
+      toast.error(t("wallet.insufficientBalance"))
       return
     }
 
@@ -55,7 +55,7 @@ export default function ExchangePage() {
       }
     } catch (error: any) {
       console.error("兑换失败:", error)
-      alert(error.message || t("wallet.exchangeFailed"))
+      toast.error(error.message || t("wallet.exchangeFailed"))
     } finally {
       setSubmitting(false)
     }
