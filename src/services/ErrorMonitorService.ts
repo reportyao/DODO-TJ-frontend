@@ -27,7 +27,7 @@ interface ErrorLogData {
   error_message: string;
   error_stack?: string;
   user_id?: string;
-  // phone_number removed - not in DB schema
+  phone_number?: string;
   page_url?: string;
   page_route?: string;
   component_name?: string;
@@ -358,6 +358,7 @@ class ErrorMonitorService {
         error_message: errorData.error_message || 'Unknown error',
         error_stack: errorData.error_stack,
         user_id: getCurrentUserId(),
+        phone_number: platformInfo.phoneNumber,
         page_url: window.location.href,
         page_route: window.location.pathname,
         component_name: errorData.component_name,

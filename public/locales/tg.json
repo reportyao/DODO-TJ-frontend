@@ -350,8 +350,8 @@
     "transactionType": {
       "deposit": "Пур кардан",
       "withdrawal": "Гирифтан",
-      "oneYuanPurchase": "Иштирок дар хариди 1 сомонӣ",
-      "lotteryPurchase": "Иштирок дар қуръа",
+      "oneYuanPurchase": "Иштирок дар аксияи 1TJS-и мағоза",
+      "lotteryPurchase": "Иштирок дар аксияи 1TJS-и мағоза",
       "lotteryRefund": "Баргардонидани пул барои қуръа",
       "lotteryPrize": "Ҷоизаи интихоб",
       "referralBonus": "Бонуси рефералӣ",

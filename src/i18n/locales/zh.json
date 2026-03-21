@@ -349,8 +349,8 @@
     "transactionType": {
       "deposit": "充值",
       "withdrawal": "提现",
-      "oneYuanPurchase": "参与一索莫尼购物",
-      "lotteryPurchase": "参与商城",
+      "oneYuanPurchase": "参与商城1TJS活动",
+      "lotteryPurchase": "参与商城1TJS活动",
       "lotteryRefund": "商城退款",
       "lotteryPrize": "入选奖励",
       "referralBonus": "推荐返佣",

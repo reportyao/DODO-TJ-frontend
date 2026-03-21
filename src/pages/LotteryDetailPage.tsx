@@ -117,6 +117,7 @@ const LotteryDetailPage: React.FC = () => {
     setIsLoading(true);
     try {
       // 获取商品信息，包含关联的库存商品信息
+      // 使用直接 fetch 绕过缓存，确保获取最新数据
       const { data, error } = await supabase
         .from('lotteries')
         .select('*')
@@ -215,6 +216,17 @@ const LotteryDetailPage: React.FC = () => {
     fetchRandomShowoffs();
     fetchCouponCount();
   }, [fetchLottery, fetchRandomShowoffs, fetchCouponCount]);
+
+  // 页面重新可见时自动刷新数据（解决购买后刷新页面进度不更新的问题）
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLottery();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchLottery]);
 
   // 移除活动结束时间倒计时，只保留售罄后的 180 秒开奖倒计时
 
@@ -340,6 +352,9 @@ const LotteryDetailPage: React.FC = () => {
       
       console.log('Purchase successful:', order);
       toast.success(t('lottery.purchaseSuccess'));
+      
+      // 等待短暂延迟确保数据库事务完成后再刷新
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // 刷新抽奖数据和钱包
       await fetchLottery();

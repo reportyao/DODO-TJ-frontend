@@ -350,8 +350,8 @@
     "transactionType": {
       "deposit": "Пополнение",
       "withdrawal": "Вывод",
-      "oneYuanPurchase": "Участие в покупке за 1 сомони",
-      "lotteryPurchase": "Участие в розыгрыше",
+      "oneYuanPurchase": "Участие в акции 1TJS магазина",
+      "lotteryPurchase": "Участие в акции 1TJS магазина",
       "lotteryRefund": "Возврат за розыгрыш",
       "lotteryPrize": "Выигрыш",
       "referralBonus": "Реферальный бонус",
