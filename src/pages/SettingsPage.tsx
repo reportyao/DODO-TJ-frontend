@@ -18,7 +18,7 @@ const SettingsPage: React.FC = () => {
   const languages = [
     { code: 'tg', name: 'Tajik', nativeName: 'Тоҷикӣ' },
     { code: 'ru', name: 'Russian', nativeName: 'Русский' },
-    { code: 'zh', name: '中文', nativeName: '简体中文' }
+    { code: 'zh', name: 'Chinese', nativeName: '中文' }
   ]
 
   // 在组件挂载时初始化当前语言

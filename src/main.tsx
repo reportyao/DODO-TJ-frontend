@@ -51,6 +51,46 @@ function AppWrapper() {
   );
 }
 
+// 获取用户语言偏好（在 React 之外使用）
+function getFallbackLang(): string {
+  try {
+    return localStorage.getItem('i18nextLng') || 'tg';
+  } catch {
+    return 'tg';
+  }
+}
+
+function getFallbackTexts() {
+  const lang = getFallbackLang();
+  const texts: Record<string, { loadFailed: string; loadFailedDesc: string; retry: string; appError: string; appErrorDesc: string; reload: string }> = {
+    tg: {
+      loadFailed: 'Боркунӣ ноком шуд',
+      loadFailedDesc: 'Барнома бор нашуд. Ин метавонад аз сабаби мушкилоти шабака бошад.',
+      retry: 'Дубора кӯшиш кунед',
+      appError: 'Хатои барнома',
+      appErrorDesc: 'Оғоз кардани барнома ноком шуд.',
+      reload: 'Аз нав бор кунед',
+    },
+    ru: {
+      loadFailed: 'Ошибка загрузки',
+      loadFailedDesc: 'Приложение не удалось загрузить. Возможно, это связано с проблемами сети.',
+      retry: 'Попробовать снова',
+      appError: 'Ошибка приложения',
+      appErrorDesc: 'Не удалось инициализировать приложение.',
+      reload: 'Перезагрузить',
+    },
+    zh: {
+      loadFailed: '加载失败',
+      loadFailedDesc: '应用加载失败，可能是网络问题导致。',
+      retry: '重试',
+      appError: '应用错误',
+      appErrorDesc: '应用初始化失败。',
+      reload: '重新加载',
+    },
+  };
+  return texts[lang] || texts['tg'];
+}
+
 // 全局加载超时检测
 let appMounted = false;
 const loadingTimeout = setTimeout(() => {
@@ -58,16 +98,17 @@ const loadingTimeout = setTimeout(() => {
     console.error('[App] Loading timeout detected, showing fallback UI');
     const rootElement = document.getElementById('root');
     if (rootElement) {
+      const t = getFallbackTexts();
       rootElement.innerHTML = `
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; background-color: #f9fafb;">
           <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
-          <h2 style="font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 10px;">Loading Failed</h2>
-          <p style="color: #6b7280; margin-bottom: 20px;">The application failed to load. This might be due to network issues.</p>
+          <h2 style="font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 10px;">${t.loadFailed}</h2>
+          <p style="color: #6b7280; margin-bottom: 20px;">${t.loadFailedDesc}</p>
           <button 
             onclick="window.location.reload()" 
             style="background-color: #2B5D3A; color: white; padding: 12px 24px; border-radius: 8px; border: none; font-size: 16px; cursor: pointer;"
           >
-            Retry
+            ${t.retry}
           </button>
         </div>
       `;
@@ -87,16 +128,17 @@ try {
 } catch (error) {
   console.error('[App] Failed to mount React app:', error);
   clearTimeout(loadingTimeout);
+  const t = getFallbackTexts();
   rootElement.innerHTML = `
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; background-color: #f9fafb;">
       <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
-      <h2 style="font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 10px;">Application Error</h2>
-      <p style="color: #6b7280; margin-bottom: 20px;">Failed to initialize the application.</p>
+      <h2 style="font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 10px;">${t.appError}</h2>
+      <p style="color: #6b7280; margin-bottom: 20px;">${t.appErrorDesc}</p>
       <button 
         onclick="window.location.reload()" 
         style="background-color: #2B5D3A; color: white; padding: 12px 24px; border-radius: 8px; border: none; font-size: 16px; cursor: pointer;"
       >
-        Reload
+        ${t.reload}
       </button>
     </div>
   `;

@@ -199,7 +199,7 @@ const OrderPage: React.FC = () => {
       DEPOSIT: t('order.deposit'),
       WITHDRAWAL: t('order.withdrawal')
     };
-    return labels[type] || type;
+    return labels[type] || t('wallet.transactionType.other');
   };
 
   const getOrderStatusLabel = (status: string): string => {
@@ -209,7 +209,7 @@ const OrderPage: React.FC = () => {
       CANCELLED: t('order.cancelled'),
       FAILED: t('order.failed')
     };
-    return labels[status] || status;
+    return labels[status] || t('wallet.transactionStatus.completed');
   };
 
   const getStatusColor = (status: string): string => {

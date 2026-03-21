@@ -158,7 +158,7 @@ export const ProductList: React.FC<ProductListProps> = ({
                     {formatCurrency('TJS', product.price)}
                   </span>
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-50 text-red-500 border border-red-100 whitespace-nowrap">
-                    {t('subsidyPool.subsidyPrice', '补贴价')}
+                    {t('subsidyPool.subsidyPrice')}
                   </span>
                 </div>
 
@@ -175,7 +175,7 @@ export const ProductList: React.FC<ProductListProps> = ({
         </div>
       ) : (
         <div className="text-center py-8 text-gray-400">
-          {emptyText || t('common.noData', '暂无数据')}
+          {emptyText || t('common.noData')}
         </div>
       )}
     </div>

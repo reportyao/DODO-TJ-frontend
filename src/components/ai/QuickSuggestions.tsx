@@ -39,7 +39,7 @@ export function QuickSuggestions() {
 
       {/* 提示文本 */}
       <p className="text-xs text-gray-500 text-center">
-        Ин фақат намунаҳо ҳастанд — Шумо метавонед ҳар чизе пурсед
+        {t('ai.quickSuggestionsHint')}
       </p>
     </div>
   );

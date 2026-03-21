@@ -246,7 +246,7 @@ const ProfilePage: React.FC = () => {
           {/* 用户信息 - 显示用户ID */}
           <div className="flex-1">
             <h2 className="text-xl font-bold">
-              {user?.first_name || 'User'}
+              {user?.first_name || t('profile.defaultName')}
             </h2>
             <div className="flex items-center space-x-2 mt-2">
               <span className="px-2 py-1 rounded-full text-xs font-medium bg-white/20 font-mono">

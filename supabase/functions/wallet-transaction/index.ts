@@ -17,25 +17,25 @@ Deno.serve(async (req) => {
         const supabaseUrl = Deno.env.get('SUPABASE_URL');
 
         if (!serviceRoleKey || !supabaseUrl) {
-            throw new Error('Supabase configuration missing');
+            throw new Error('服务器配置错误');
         }
 
         // 解析请求数据
         const { action, walletType, currency, amount, targetWalletType, referenceId } = await req.json();
 
         if (!action) {
-            throw new Error('Missing required parameter: action');
+            throw new Error('缺少必要参数: action');
         }
 
         const validActions = ['deposit', 'withdraw', 'exchange', 'balance'];
         if (!validActions.includes(action)) {
-            throw new Error(`Invalid action. Must be one of: ${validActions.join(', ')}`);
+            throw new Error(`无效的操作类型`);
         }
 
         // 获取用户信息（从 auth header）
         const authHeader = req.headers.get('authorization');
         if (!authHeader) {
-            throw new Error('No authorization header');
+            throw new Error('未授权：缺少认证令牌');
         }
 
         const token = authHeader.replace('Bearer ', '');
@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
         });
 
         if (!userResponse.ok) {
-            throw new Error('Invalid token');
+            throw new Error('未授权：无效的认证令牌');
         }
 
         const authUser = await userResponse.json();
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
 
         const users = await userDetailResponse.json();
         if (users.length === 0) {
-            throw new Error('User not found');
+            throw new Error('用户不存在');
         }
         const user = users[0];
 
@@ -102,11 +102,11 @@ Deno.serve(async (req) => {
 
         // 验证必需参数
         if (!walletType || !currency || (!amount && action !== 'balance')) {
-            throw new Error('Missing required parameters: walletType, currency, amount');
+            throw new Error('缺少必要参数');
         }
 
         if (amount <= 0) {
-            throw new Error('Amount must be positive');
+            throw new Error('金额必须大于0');
         }
 
         // 获取源钱包
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
 
         const sourceWallets = await sourceWalletResponse.json();
         if (sourceWallets.length === 0) {
-            throw new Error('Source wallet not found');
+            throw new Error('源钱包不存在');
         }
         const sourceWallet = sourceWallets[0];
 
@@ -136,12 +136,12 @@ Deno.serve(async (req) => {
                 break;
             case 'exchange':
                 if (!targetWalletType) {
-                    throw new Error('Missing targetWalletType for exchange operation');
+                    throw new Error('兑换操作缺少目标钱包类型');
                 }
                 result = await handleExchange(supabaseUrl, serviceRoleKey, userId, sourceWallet, targetWalletType, currency, amount);
                 break;
             default:
-                throw new Error('Invalid action');
+                throw new Error('无效的操作');
         }
 
         return new Response(JSON.stringify({ data: result }), {
@@ -190,12 +190,12 @@ async function handleDeposit(supabaseUrl: string, serviceRoleKey: string, wallet
 
     if (!updateWalletResponse.ok) {
         const errorText = await updateWalletResponse.text();
-        throw new Error(`Failed to update wallet for deposit: ${errorText}`);
+        throw new Error(`充值更新钱包失败: ${errorText}`);
     }
 
     const updatedWallets = await updateWalletResponse.json();
     if (updatedWallets.length === 0) {
-        throw new Error('Wallet version conflict. Please retry.');
+        throw new Error('钱包版本冲突，请重试');
     }
 
     // 创建交易记录
@@ -225,7 +225,7 @@ async function handleDeposit(supabaseUrl: string, serviceRoleKey: string, wallet
 
     if (!createTransactionResponse.ok) {
         const errorText = await createTransactionResponse.text();
-        throw new Error(`Failed to create transaction record: ${errorText}`);
+        throw new Error(`创建交易记录失败: ${errorText}`);
     }
 
     const transactions = await createTransactionResponse.json();
@@ -249,7 +249,7 @@ async function handleDeposit(supabaseUrl: string, serviceRoleKey: string, wallet
 async function handleWithdraw(supabaseUrl: string, serviceRoleKey: string, wallet: any, amount: number, referenceId?: string): Promise<any> {
     // 检查余额是否足够
     if (wallet.balance < amount) {
-        throw new Error('Insufficient balance for withdrawal');
+        throw new Error('余额不足');
     }
 
     const newBalance = wallet.balance - amount;
@@ -274,12 +274,12 @@ async function handleWithdraw(supabaseUrl: string, serviceRoleKey: string, walle
 
     if (!updateWalletResponse.ok) {
         const errorText = await updateWalletResponse.text();
-        throw new Error(`Failed to update wallet for withdrawal: ${errorText}`);
+        throw new Error(`提现更新钱包失败: ${errorText}`);
     }
 
     const updatedWallets = await updateWalletResponse.json();
     if (updatedWallets.length === 0) {
-        throw new Error('Wallet version conflict. Please retry.');
+        throw new Error('钱包版本冲突，请重试');
     }
 
     // 创建交易记录
@@ -309,7 +309,7 @@ async function handleWithdraw(supabaseUrl: string, serviceRoleKey: string, walle
 
     if (!createTransactionResponse.ok) {
         const errorText = await createTransactionResponse.text();
-        throw new Error(`Failed to create transaction record: ${errorText}`);
+        throw new Error(`创建交易记录失败: ${errorText}`);
     }
 
     const transactions = await createTransactionResponse.json();
@@ -333,18 +333,18 @@ async function handleWithdraw(supabaseUrl: string, serviceRoleKey: string, walle
 async function handleExchange(supabaseUrl: string, serviceRoleKey: string, userId: string, sourceWallet: any, targetWalletType: string, currency: string, amount: number): Promise<any> {
     // 验证兑换规则
     if (sourceWallet.type === targetWalletType) {
-        throw new Error('Source and target wallet types must be different');
+        throw new Error('源钱包和目标钱包类型必须不同');
     }
 
     // 【资金安全修复 v4】修复钱包类型验证，标准类型为 'TJS' 和 'LUCKY_COIN'
     const validTypes = ['TJS', 'LUCKY_COIN'];
     if (!validTypes.includes(targetWalletType)) {
-        throw new Error('Invalid target wallet type. Valid types: TJS, LUCKY_COIN');
+        throw new Error('无效的目标钱包类型');
     }
 
     // 检查源钱包余额
     if (sourceWallet.balance < amount) {
-        throw new Error('Insufficient balance for exchange');
+        throw new Error('余额不足');
     }
 
     // 【资金安全修复 v4】获取目标钱包，积分钱包的 currency 是 'POINTS'
@@ -359,7 +359,7 @@ async function handleExchange(supabaseUrl: string, serviceRoleKey: string, userI
 
     const targetWallets = await targetWalletResponse.json();
     if (targetWallets.length === 0) {
-        throw new Error('Target wallet not found');
+        throw new Error('目标钱包不存在');
     }
     const targetWallet = targetWallets[0];
 
@@ -385,7 +385,7 @@ async function handleExchange(supabaseUrl: string, serviceRoleKey: string, userI
 
     if (!updateSourceResponse.ok) {
         const errorText = await updateSourceResponse.text();
-        throw new Error(`Failed to update source wallet: ${errorText}`);
+        throw new Error(`更新源钱包失败: ${errorText}`);
     }
 
     // 【资金安全修复 v4】检查乐观锁是否成功（返回空数组表示 version 不匹配）
@@ -424,7 +424,7 @@ async function handleExchange(supabaseUrl: string, serviceRoleKey: string, userI
         });
         
         const errorText = await updateTargetResponse.text();
-        throw new Error(`Failed to update target wallet: ${errorText}`);
+        throw new Error(`更新目标钱包失败: ${errorText}`);
     }
 
     // 创建源钱包交易记录（支出）

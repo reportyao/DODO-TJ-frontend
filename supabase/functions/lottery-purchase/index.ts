@@ -105,18 +105,18 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
 
     if (!serviceRoleKey || !supabaseUrl) {
-      throw new Error('Supabase configuration missing');
+      throw new Error('服务器配置错误');
     }
 
     // 【修改】接收 useCoupon 参数，支持混合支付
     const { lotteryId, quantity, paymentMethod, session_token, useCoupon, idempotency_key } = await req.json();
 
     if (!lotteryId || !quantity || !paymentMethod) {
-      throw new Error('Missing required parameters: lotteryId, quantity, paymentMethod');
+      throw new Error('缺少必要参数');
     }
 
     if (quantity <= 0 || quantity > 100) {
-      throw new Error('Invalid quantity: must be between 1 and 100');
+      throw new Error('数量无效：必须在1到100之间');
     }
 
     // 【R15修复】幂等性查重：如果提供了 idempotency_key，在开始时查询 edge_function_logs
@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
     }
     
     if (!sessionToken) {
-      throw new Error('Missing session token');
+      throw new Error('未授权：缺少会话令牌');
     }
 
     // ✅ 查询 user_sessions 表验证 token
@@ -171,12 +171,12 @@ Deno.serve(async (req) => {
     );
 
     if (!sessionResponse.ok) {
-      throw new Error('Invalid session token');
+      throw new Error('未授权：无效的会话令牌');
     }
 
     const sessions = await sessionResponse.json();
     if (sessions.length === 0) {
-      throw new Error('Session not found or expired');
+      throw new Error('未授权：会话不存在或已过期');
     }
 
     const session = sessions[0];
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
     // ✅ 检查 session 是否过期
     const expiresAt = new Date(session.expires_at);
     if (expiresAt < new Date()) {
-      throw new Error('Session expired');
+      throw new Error('未授权：会话已过期');
     }
 
     // ✅ 单独查询用户信息
@@ -200,12 +200,12 @@ Deno.serve(async (req) => {
     );
 
     if (!userResponse.ok) {
-      throw new Error('User not found');
+      throw new Error('用户不存在');
     }
 
     const users = await userResponse.json();
     if (users.length === 0) {
-      throw new Error('User not found');
+      throw new Error('用户不存在');
     }
 
     const user = users[0];
@@ -225,19 +225,19 @@ Deno.serve(async (req) => {
 
     const lotteries = await lotteryResponse.json();
     if (lotteries.length === 0) {
-      throw new Error('Lottery not found');
+      throw new Error('商品不存在');
     }
 
     const lottery = lotteries[0];
 
     // 验证彩票状态
     if (lottery.status !== 'ACTIVE') {
-      throw new Error(`Lottery is not active. Current status: ${lottery.status}`);
+      throw new Error(`商品未在售中，当前状态: ${lottery.status}`);
     }
 
     // ✅ 检查是否有足够的票（预检查，实际检查在RPC函数中）
     if (lottery.sold_tickets + quantity > lottery.total_tickets) {
-      throw new Error('Not enough tickets available');
+      throw new Error('库存不足');
     }
 
     // 检查用户购买限制
@@ -257,7 +257,7 @@ Deno.serve(async (req) => {
     // ✅ 支持无限购买
     if (!lottery.unlimited_purchase && lottery.max_per_user) {
       if (userEntries.length + quantity > lottery.max_per_user) {
-        throw new Error(`Exceeds maximum purchase limit per user: ${lottery.max_per_user}`);
+        throw new Error(`超出每人最大购买限制: ${lottery.max_per_user}`);
       }
     }
 
@@ -265,7 +265,7 @@ Deno.serve(async (req) => {
     const totalAmount = lottery.ticket_price * quantity;
     // 【修复】验证总金额必须大于 0
     if (!totalAmount || totalAmount <= 0) {
-      throw new Error('Invalid price configuration');
+      throw new Error('价格配置无效');
     }
 
     // ============================================================
@@ -324,7 +324,7 @@ Deno.serve(async (req) => {
     // 总可用资产预检查
     const totalAvailable = tjsBalance + lcBalance + couponValue;
     if (totalAvailable < totalAmount) {
-      throw new Error(`Insufficient total balance. Available: ${totalAvailable.toFixed(2)} (TJS: ${tjsBalance.toFixed(2)}, Points: ${lcBalance.toFixed(2)}, Coupon: ${couponValue.toFixed(2)}), Required: ${totalAmount.toFixed(2)}`);
+      throw new Error(`余额不足。可用: ${totalAvailable.toFixed(2)} (TJS: ${tjsBalance.toFixed(2)}, 积分: ${lcBalance.toFixed(2)}, 优惠券: ${couponValue.toFixed(2)}), 需要: ${totalAmount.toFixed(2)}`);
     }
 
     // 生成订单号
@@ -358,7 +358,7 @@ Deno.serve(async (req) => {
 
     if (!createOrderResponse.ok) {
       const errorText = await createOrderResponse.text();
-      throw new Error(`Failed to create order: ${errorText}`);
+      throw new Error(`创建订单失败: ${errorText}`);
     }
 
     const orders = await createOrderResponse.json();
@@ -391,7 +391,7 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({ status: 'CANCELLED' }),
       });
-      throw new Error(`Failed to allocate tickets: ${errorText}`);
+      throw new Error(`分配票失败: ${errorText}`);
     }
 
     const allocatedTickets = await allocateResponse.json();
@@ -437,7 +437,7 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({ status: 'CANCELLED' }),
       });
-      throw new Error(`Payment failed: ${errorText}`);
+      throw new Error(`支付失败: ${errorText}`);
     }
 
     const paymentResult = await paymentRpcResponse.json();
@@ -445,7 +445,7 @@ Deno.serve(async (req) => {
 
     // 检查 RPC 业务逻辑结果
     if (!paymentResult || !paymentResult.success) {
-      const paymentError = paymentResult?.error || 'UNKNOWN_PAYMENT_ERROR';
+      const paymentError = paymentResult?.error || '未知支付错误';
       console.error('process_mixed_payment business error:', paymentError);
       // 回滚已分配的彩票和订单
       await rollbackAllocatedTickets(supabaseUrl, serviceRoleKey, allocatedTickets, {
@@ -462,7 +462,7 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({ status: 'CANCELLED' }),
       });
-      throw new Error(`Payment failed: ${paymentError}`);
+      throw new Error(`支付失败: ${paymentError}`);
     }
 
     // 更新订单状态

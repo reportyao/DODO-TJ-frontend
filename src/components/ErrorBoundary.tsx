@@ -41,6 +41,9 @@ const ERROR_TEXTS: Record<string, {
   techDetails: string;
   errorMessage: string;
   componentStack: string;
+  connectionError: string;
+  connectionErrorHint: string;
+  retryButton: string;
 }> = {
   tg: {
     appError: 'Дар барнома хатогӣ рух дод 😔',
@@ -49,6 +52,9 @@ const ERROR_TEXTS: Record<string, {
     techDetails: 'Тафсилоти техникӣ',
     errorMessage: 'Паёми хатогӣ:',
     componentStack: 'Стеки компонентҳо:',
+    connectionError: 'Хатои пайвастшавӣ',
+    connectionErrorHint: 'Лутфан интернети худро санҷед ва дубора кӯшиш кунед.',
+    retryButton: 'Дубора кӯшиш кунед',
   },
   ru: {
     appError: 'Произошла ошибка 😔',
@@ -57,6 +63,9 @@ const ERROR_TEXTS: Record<string, {
     techDetails: 'Технические детали',
     errorMessage: 'Сообщение об ошибке:',
     componentStack: 'Стек компонентов:',
+    connectionError: 'Ошибка соединения',
+    connectionErrorHint: 'Пожалуйста, проверьте подключение к интернету и попробуйте снова.',
+    retryButton: 'Попробовать снова',
   },
   zh: {
     appError: '应用出错了 😔',
@@ -65,6 +74,9 @@ const ERROR_TEXTS: Record<string, {
     techDetails: '技术详情',
     errorMessage: '错误信息:',
     componentStack: '组件堆栈:',
+    connectionError: '连接错误',
+    connectionErrorHint: '请检查您的网络连接后重试。',
+    retryButton: '重试',
   },
 };
 
@@ -140,13 +152,10 @@ export class ErrorBoundary extends React.Component<
                 </svg>
               </div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Хатои пайвастшавӣ
+                {getErrorTexts().connectionError}
               </h2>
-              <p className="text-gray-600 mb-2 text-sm">
-                Connection error / Ошибка соединения
-              </p>
               <p className="text-gray-500 mb-6 text-sm">
-                Лутфан интернети худро санҷед ва дубора кӯшиш кунед.
+                {getErrorTexts().connectionErrorHint}
               </p>
               
               <div className="space-y-3">
@@ -154,11 +163,8 @@ export class ErrorBoundary extends React.Component<
                   onClick={this.handleReload}
                   className="w-full bg-[#2B5D3A] text-white py-3 px-4 rounded-lg hover:bg-[#234a2e] transition-colors font-medium text-base"
                 >
-                  Дубора кӯшиш кунед
+                  {getErrorTexts().retryButton}
                 </button>
-                <p className="text-xs text-gray-400">
-                  Please check your internet and try again
-                </p>
               </div>
             </div>
           </div>

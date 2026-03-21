@@ -194,7 +194,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       
       const result = await authService.registerWithPhone(phone, password, firstName, undefined, referralCode);
       await setAuthResult(result);
-      toast.success(t('auth.registerSuccess', '注册成功！'));
+      toast.success(t('auth.registerSuccess'));
     } catch (error: any) {
       console.error('Phone registration failed:', error);
       throw error; // 向上抛出让页面处理具体错误消息

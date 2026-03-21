@@ -202,9 +202,12 @@ const WalletPage: React.FC = () => {
     const statusMap: Record<string, string> = {
       'COMPLETED': t('wallet.transactionStatus.completed'),
       'PENDING': t('wallet.transactionStatus.pending'),
-      'FAILED': t('wallet.transactionStatus.failed')
+      'FAILED': t('wallet.transactionStatus.failed'),
+      'REJECTED': t('wallet.transactionStatus.rejected'),
+      'CANCELLED': t('wallet.transactionStatus.cancelled'),
+      'APPROVED': t('wallet.transactionStatus.approved')
     }
-    return statusMap[status] || status
+    return statusMap[status] || t('wallet.transactionStatus.completed')
   }
 
   const getTransactionIcon = (type: string, amount?: number) => {
