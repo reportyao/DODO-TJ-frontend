@@ -408,7 +408,7 @@ export default function GroupBuyDetailPage() {
   const { productId: id } = useParams();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { user, wallets, refreshWallets } = useUser();
+  const { user, wallets, refreshWallets, sessionToken } = useUser();
   const [product, setProduct] = useState<GroupBuyProduct | null>(null);
   const [sessions, setSessions] = useState<GroupBuySession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -512,6 +512,7 @@ export default function GroupBuyDetailPage() {
           product_id: product.id,
           session_id: sessionId || null,
           user_id: user.id,
+          session_token: sessionToken,
         },
       });
 
@@ -589,6 +590,7 @@ export default function GroupBuyDetailPage() {
         body: {
           product_id: product.id,
           user_id: user.id,
+          session_token: sessionToken,
         },
       });
 

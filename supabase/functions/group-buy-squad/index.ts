@@ -159,13 +159,30 @@ Deno.serve(async (req) => {
 
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { product_id, user_id } = await req.json();
+    const { product_id, user_id, session_token } = await req.json();
 
     // ============================================
     // 步骤 0: 参数校验
     // ============================================
     if (!product_id || !user_id) {
       return createResponse({ success: false, error: 'Product ID and User ID are required' }, 400);
+    }
+
+    // 【A38修复】验证 session_token，防止伪造 user_id 发起包团
+    if (!session_token) {
+      return createResponse({ success: false, error: '未授权：缺少 session_token' }, 401);
+    }
+    const { data: sessionRows, error: sessionError } = await supabase
+      .from('user_sessions')
+      .select('user_id')
+      .eq('session_token', session_token)
+      .eq('is_active', true)
+      .single();
+    if (sessionError || !sessionRows) {
+      return createResponse({ success: false, error: '未授权：session_token 无效或已过期' }, 401);
+    }
+    if (sessionRows.user_id !== user_id) {
+      return createResponse({ success: false, error: '未授权：user_id 与 session 不匹配' }, 403);
     }
 
     console.log(`[SquadBuy] Starting squad buy: product=${product_id}, user=${user_id}`);
