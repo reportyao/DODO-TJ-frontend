@@ -106,33 +106,12 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         setUser(parsedUser as User);
         setSessionToken(storedToken);
 
-        // 异步验证 session 有效性（不阻塞首屏渲染）
-        fetch(
-          `${SUPABASE_URL}/rest/v1/user_sessions?session_token=eq.${storedToken}&user_id=eq.${parsedUser.id}&is_active=eq.true&select=id,expires_at`,
-          {
-            headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            }
-          }
-        ).then(async (response) => {
-          if (response.ok) {
-            const sessions = await response.json();
-            if (!sessions || sessions.length === 0) {
-              console.log('[Session] Session token invalid on server, clearing...');
-              logout(false);
-            } else {
-              const sessionData = sessions[0];
-              const expiresAt = new Date(sessionData.expires_at);
-              if (expiresAt < new Date()) {
-                console.log('[Session] Session expired on server, clearing...');
-                logout(false);
-              }
-            }
-          }
-        }).catch(err => {
-          console.warn('[Session] Network validation failed, keeping local session:', err);
-        });
+        // 注意：不在此处进行服务端验证。
+        // 原有的服务端验证逻辑直接用 anon key 查询 user_sessions 表，
+        // 但 RLS 策略要求用户必须用自己的 JWT 才能查到自己的 session，
+        // 导致查询始终返回空结果，误判为 session 失效并强制登出。
+        // session 的实际失效会在用户调用需要认证的 API 时自然返回 401 错误。
+        console.log('[Session] Skipping server validation, trusting local session token');
         
         // 获取最新的用户 profile（确保数据同步）
         try {

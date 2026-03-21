@@ -99,8 +99,10 @@ export function RealtimeNotificationsProvider({ children }: RealtimeNotification
   // 从 UserContext 获取用户信息，不再依赖 supabase.auth
   const { user, sessionToken, isAuthenticated } = useUser();
 
+  // 注意：SSE 实时通知当前存在 CORS 限制（Edge Function 未允许 cache-control header）
+  // 连接失败后会不断重试，导致控制台刺屏并影响性能。暂时禁用。
   const { isConnected, lastMessage, reconnect, disconnect } = useRealtimeNotifications({
-    enabled: isAuthenticated,
+    enabled: false, // 暂时禁用，避免 CORS 错误循环
     userId: user?.id || null,
     sessionToken: sessionToken,
     onNotification: handleNotification,

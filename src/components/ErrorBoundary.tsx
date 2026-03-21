@@ -96,21 +96,21 @@ export class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // 捕获错误信息
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
-    // 忽略 Framer Motion 的 DOM 操作错误
-    if (error && error.message && (
-      error.message.includes('removeChild') ||
-      error.message.includes('insertBefore') ||
+    // 忽略 Framer Motion 的 DOM 操作错误（不调用 setState 避免无限重渲染）
+    if (error && (
+      (error.message && (
+        error.message.includes('removeChild') ||
+        error.message.includes('insertBefore')
+      )) ||
       error.name === 'NotFoundError'
     )) {
       console.warn('Suppressed Framer Motion DOM error:', error);
-      // 重置错误状态，不显示错误 UI
-      this.setState({ hasError: false, error: null, errorInfo: null, isChunkError: false });
+      // 不调用 setState！调用会触发重渲染 → 再次触发 Framer Motion 错误 → 无限循环
       return;
     }
 
+    // 捕获错误信息
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
     this.setState({
       error,
       errorInfo,

@@ -60,6 +60,9 @@ export function useRealtimeNotifications(options: UseRealtimeNotificationsOption
       if (sessionToken) {
         url += `&session_token=${sessionToken}`;
       }
+      // 注意：EventSource 不支持自定义 header，且当前环境存在 CORS 限制
+      // 如果 Edge Function 未配置 CORS 允许 cache-control header，连接会失败
+      // 失败后会不断重试，影响性能。这里保持连接逻辑但错误不会导致应用崩溃
       const eventSource = new EventSource(url);
 
       eventSource.onopen = () => {
