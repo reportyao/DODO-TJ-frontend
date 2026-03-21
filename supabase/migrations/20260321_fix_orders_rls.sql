@@ -10,11 +10,12 @@ CREATE POLICY "Users can view their own orders" ON orders
         EXISTS (
             SELECT 1 FROM user_sessions 
             WHERE user_sessions.user_id = orders.user_id 
-            AND user_sessions.token = current_setting('request.headers', true)::json->>'authorization'
+            AND user_sessions.session_token = current_setting('request.headers', true)::json->>'authorization'
+            AND user_sessions.is_active = true
+            AND user_sessions.expires_at > NOW()
         )
     );
-
--- 2. full_purchase_orders 表
+-- 2. full_purchase_orderss 表
 DROP POLICY IF EXISTS "Users can view their own full purchase orders" ON full_purchase_orders;
 CREATE POLICY "Users can view their own full purchase orders" ON full_purchase_orders
     FOR SELECT USING (
@@ -23,11 +24,12 @@ CREATE POLICY "Users can view their own full purchase orders" ON full_purchase_o
         EXISTS (
             SELECT 1 FROM user_sessions 
             WHERE user_sessions.user_id = full_purchase_orders.user_id 
-            AND user_sessions.token = current_setting('request.headers', true)::json->>'authorization'
+            AND user_sessions.session_token = current_setting('request.headers', true)::json->>'authorization'
+            AND user_sessions.is_active = true
+            AND user_sessions.expires_at > NOW()
         )
     );
-
--- 3. prizes 表
+-- 3. prizess 表
 DROP POLICY IF EXISTS "Users can view their own prizes" ON prizes;
 CREATE POLICY "Users can view their own prizes" ON prizes
     FOR SELECT USING (
@@ -36,11 +38,12 @@ CREATE POLICY "Users can view their own prizes" ON prizes
         EXISTS (
             SELECT 1 FROM user_sessions 
             WHERE user_sessions.user_id = prizes.user_id 
-            AND user_sessions.token = current_setting('request.headers', true)::json->>'authorization'
+            AND user_sessions.session_token = current_setting('request.headers', true)::json->>'authorization'
+            AND user_sessions.is_active = true
+            AND user_sessions.expires_at > NOW()
         )
     );
-
--- 4. lottery_entries 表
+-- 4. lottery_entriess 表
 DROP POLICY IF EXISTS "Users can view their own lottery entries" ON lottery_entries;
 CREATE POLICY "Users can view their own lottery entries" ON lottery_entries
     FOR SELECT USING (
@@ -49,10 +52,11 @@ CREATE POLICY "Users can view their own lottery entries" ON lottery_entries
         EXISTS (
             SELECT 1 FROM user_sessions 
             WHERE user_sessions.user_id = lottery_entries.user_id 
-            AND user_sessions.token = current_setting('request.headers', true)::json->>'authorization'
+             AND user_sessions.session_token = current_setting('request.headers', true)::json->>'authorization'
+            AND user_sessions.is_active = true
+            AND user_sessions.expires_at > NOW()
         )
     );
-
 -- 5. wallets 表
 DROP POLICY IF EXISTS "Users can view their own wallets" ON wallets;
 CREATE POLICY "Users can view their own wallets" ON wallets
@@ -62,11 +66,12 @@ CREATE POLICY "Users can view their own wallets" ON wallets
         EXISTS (
             SELECT 1 FROM user_sessions 
             WHERE user_sessions.user_id = wallets.user_id 
-            AND user_sessions.token = current_setting('request.headers', true)::json->>'authorization'
+            AND user_sessions.session_token = current_setting('request.headers', true)::json->>'authorization'
+            AND user_sessions.is_active = true
+            AND user_sessions.expires_at > NOW()
         )
     );
-
--- 6. wallet_transactions 表
+-- 6. wallet_transactionss 表
 DROP POLICY IF EXISTS "Users can view their own wallet transactions" ON wallet_transactions;
 CREATE POLICY "Users can view their own wallet transactions" ON wallet_transactions
     FOR SELECT USING (
@@ -79,7 +84,9 @@ CREATE POLICY "Users can view their own wallet transactions" ON wallet_transacti
                 EXISTS (
                     SELECT 1 FROM user_sessions 
                     WHERE user_sessions.user_id = wallets.user_id 
-                    AND user_sessions.token = current_setting('request.headers', true)::json->>'authorization'
+                    AND user_sessions.session_token = current_setting('request.headers', true)::json->>'authorization'
+                    AND user_sessions.is_active = true
+                    AND user_sessions.expires_at > NOW()
                 )
             )
         )
