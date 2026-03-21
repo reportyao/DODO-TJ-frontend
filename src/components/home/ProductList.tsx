@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency, getLocalizedText } from '../../lib/utils';
 import { UserGroupIcon } from '@heroicons/react/24/outline';
@@ -36,11 +36,14 @@ interface ProductListProps {
   isLoading?: boolean;
   emptyText?: string;
   linkPrefix: string;
+  /** 未登录时点击商品是否跳转登录页（默认 false） */
+  requireAuthOnClick?: boolean;
 }
 
 /**
  * 首页商品列表组件 - 双列网格布局
  * 上图下文卡片样式，突出商品图片和补贴价
+ * 支持 requireAuthOnClick：未登录用户点击商品跳转登录页
  */
 export const ProductList: React.FC<ProductListProps> = ({
   title,
@@ -48,13 +51,25 @@ export const ProductList: React.FC<ProductListProps> = ({
   isLoading = false,
   emptyText,
   linkPrefix,
+  requireAuthOnClick = false,
 }) => {
   const { i18n, t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const getProductTitle = (product: Product) => {
     const localizedName = getLocalizedText(product.name_i18n as Record<string, string> | null, i18n.language);
     const localizedTitle = getLocalizedText(product.title_i18n as Record<string, string> | null, i18n.language);
     return localizedName || localizedTitle || product.title || '';
+  };
+
+  const handleProductClick = (e: React.MouseEvent, productId: string) => {
+    if (requireAuthOnClick) {
+      e.preventDefault();
+      const targetPath = `${linkPrefix}/${productId}`;
+      navigate(`/login?redirect=${encodeURIComponent(targetPath)}`);
+    }
+    // 已登录时不拦截，Link 正常跳转
   };
 
   return (
@@ -84,6 +99,7 @@ export const ProductList: React.FC<ProductListProps> = ({
             <Link
               key={product.id}
               to={`${linkPrefix}/${product.id}`}
+              onClick={(e) => handleProductClick(e, product.id)}
               className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
             >
               {/* 商品图片 - 1:1 比例容器，使用原生 img + loading="lazy" */}

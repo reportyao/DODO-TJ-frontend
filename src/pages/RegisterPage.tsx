@@ -179,22 +179,29 @@ const RegisterPage: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {t('auth.referralCode', '邀请码')}
-              <span className="text-gray-400 ml-1 text-xs">({t('common.optional', '选填')})</span>
+              {!searchParams.get('ref') && (
+                <span className="text-gray-400 ml-1 text-xs">({t('common.optional', '选填')})</span>
+              )}
             </label>
             <div className="relative">
-              <TicketIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <TicketIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${searchParams.get('ref') ? 'text-green-500' : 'text-gray-400'}`} />
               <input
                 type="text"
                 value={referralCode}
-                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                onChange={(e) => !searchParams.get('ref') && setReferralCode(e.target.value.toUpperCase())}
                 placeholder={t('auth.referralCodePlaceholder', '输入邀请码（如有）')}
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400 uppercase"
+                className={`w-full pl-10 pr-4 py-3 border rounded-xl transition-all text-gray-900 placeholder-gray-400 uppercase ${
+                  searchParams.get('ref')
+                    ? 'border-green-300 bg-green-50 text-green-800 cursor-not-allowed'
+                    : 'border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                }`}
                 readOnly={!!searchParams.get('ref')}
               />
             </div>
             {searchParams.get('ref') && (
-              <p className="text-xs text-green-600 mt-1">
-                {t('auth.referralCodeApplied', '邀请码已自动填入')}
+              <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                <span>✓</span>
+                <span>{t('auth.referralCodeApplied', '邀请码已自动填入，不可修改')}</span>
               </p>
             )}
           </div>

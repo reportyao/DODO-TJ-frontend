@@ -6,19 +6,18 @@ import { useInviteStats } from '../hooks/useInviteStats';
 import { Lottery } from '../lib/supabase';
 import { PurchaseModal } from '../components/lottery/PurchaseModal';
 import { useSupabase } from '../contexts/SupabaseContext';
-import { SafeMotion } from '../components/SafeMotion';
 import { ProductList } from '../components/home/ProductList';
-import { StarIcon } from '@heroicons/react/24/outline';
 import BannerCarousel from '../components/BannerCarousel';
 import toast from 'react-hot-toast';
 import { useLotteries } from '../hooks/useHomeData';
 
 
 const HomePage: React.FC = () => {
-  const { t, i18n } = useTranslation();
-  const { user, profile, wallets, isLoading: userLoading, refreshWallets } = useUser();
+  const { t } = useTranslation();
+  const { user, wallets, isLoading: userLoading, refreshWallets } = useUser();
   const { lotteryService } = useSupabase();
-  const { stats: inviteStats } = useInviteStats();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { stats: _inviteStats } = useInviteStats();
   
   // 使用 react-query hooks 获取数据（自动缓存、重试、后台刷新）
   const {
@@ -34,10 +33,9 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const gotoParam = urlParams.get('goto');
-    
+    const refParam = urlParams.get('ref');
+
     if (gotoParam) {
-      console.log('[HomePage] Found goto param:', gotoParam);
-      
       // 商城详情: lt_{lotteryId}
       if (gotoParam.startsWith('lt_')) {
         const lotteryId = gotoParam.replace('lt_', '');
@@ -49,19 +47,16 @@ const HomePage: React.FC = () => {
       }
       // 拼团路由兼容（已废弃，重定向到首页）
       else if (gotoParam.startsWith('gb_') || gotoParam.startsWith('gbs_')) {
-        console.log('[HomePage] Group buy link received, staying on home');
+        // 停留在首页
       }
+    } else if (refParam && !user && !userLoading) {
+      // 邀请码链接：未登录用户自动跳转到注册页，并携带邀请码
+      nav(`/register?ref=${encodeURIComponent(refParam)}`, { replace: true });
     }
-    // 邀请码通过 /register?ref=CODE 处理，不在首页处理
-  }, [nav]);
+  }, [nav, user, userLoading]);
 
   const [selectedLottery, setSelectedLottery] = useState<Lottery | null>(null);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
-
-  const handlePurchaseLottery = (lottery: Lottery) => {
-    setSelectedLottery(lottery);
-    setIsPurchaseModalOpen(true);
-  };
 
   const handlePurchaseConfirm = async (lotteryId: string, quantity: number) => {
     try {
@@ -75,11 +70,6 @@ const HomePage: React.FC = () => {
       setIsPurchaseModalOpen(false);
       setSelectedLottery(null);
     }
-  };
-
-  const handleRefreshWallets = async () => {
-    await refreshWallets();
-    toast.success(t('wallet.balanceUpdated'));
   };
 
   // 转换商城数据格式用于列表
@@ -96,36 +86,8 @@ const HomePage: React.FC = () => {
     created_at: l.created_at,
   }));
 
-  if (userLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">{t('common.loading')}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <SafeMotion
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center"
-        >
-          <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <StarIcon className="w-10 h-10 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('auth.welcome')}</h1>
-          <p className="text-gray-600 mb-6">{t('auth.description')}</p>
-          <p className="text-sm text-gray-500">{t('auth.pleaseLogin')}</p>
-        </SafeMotion>
-      </div>
-    );
-  }
-
+  // 加载中：仅在用户状态初始化期间显示（不阻塞商品列表）
+  // 注意：不再因 !user 而显示登录提示页，允许未登录用户浏览首页
   return (
     <div className="pb-20 bg-gray-50">
       {/* Banner广告位 */}
@@ -133,16 +95,17 @@ const HomePage: React.FC = () => {
         <BannerCarousel />
       </div>
 
-      {/* 商城商品完整列表 - 移除拼团模块，直接展示商城商品 */}
+      {/* 商城商品完整列表 */}
       <ProductList
         title={t('home.lotteryProducts')}
         products={lotteryListProducts}
-        isLoading={isLoadingLotteries}
+        isLoading={isLoadingLotteries || userLoading}
         emptyText={t('home.noLotteries')}
         linkPrefix="/lottery"
+        requireAuthOnClick={!user}
       />
 
-      {/* 购买模态框 */}
+      {/* 购买模态框（已登录用户才会触发） */}
       <PurchaseModal
         lottery={selectedLottery}
         isOpen={isPurchaseModalOpen}
