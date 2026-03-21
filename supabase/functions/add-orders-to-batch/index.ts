@@ -129,15 +129,25 @@ serve(async (req) => {
     )
 
     const body: AddOrdersRequest = await req.json()
-    const { batch_id, orders, admin_id, send_notification = true } = body
-
-    if (!batch_id || !orders || orders.length === 0) {
+     const { batch_id, orders, admin_id, send_notification = true } = body
+    if (!batch_id || !orders || orders.length === 0 || !admin_id) {
       return new Response(
         JSON.stringify({ success: false, error: '缺少必要参数' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
+    // 验证 admin_id 是否为合法管理员
+    const { data: adminUser, error: adminError } = await supabase
+      .from('admin_users')
+      .select('id, status')
+      .eq('id', admin_id)
+      .single()
+    if (adminError || !adminUser || adminUser.status !== 'active') {
+      return new Response(
+        JSON.stringify({ success: false, error: '无权限执行此操作' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
     // 验证批次是否存在
     const { data: batch, error: batchError } = await supabase
       .from('shipment_batches')
@@ -152,8 +162,8 @@ serve(async (req) => {
       )
     }
 
-    // 检查批次状态 - 允许运输中和已到达的批次
-    const allowedStatuses = ['IN_TRANSIT_CHINA', 'ARRIVED']
+    // 检查批次状态 - 允许所有运输中状态和已到达的批次
+    const allowedStatuses = ['IN_TRANSIT_CHINA', 'IN_TRANSIT_TAJIKISTAN', 'ARRIVED']
     if (!allowedStatuses.includes(batch.status)) {
       return new Response(
         JSON.stringify({ success: false, error: '只能向运输中或已到达的批次添加订单' }),
