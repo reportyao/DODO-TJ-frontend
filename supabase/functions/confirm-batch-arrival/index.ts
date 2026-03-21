@@ -63,6 +63,19 @@ serve(async (req) => {
       )
     }
 
+    // 验证 admin_id 是否为合法管理员
+    const { data: adminUser, error: adminError } = await supabase
+      .from('admin_users')
+      .select('id, status')
+      .eq('id', admin_id)
+      .single()
+    if (adminError || !adminUser || adminUser.status !== 'active') {
+      return new Response(
+        JSON.stringify({ success: false, error: '无权限执行此操作' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // 获取批次信息
     const { data: batch, error: batchError } = await supabase
       .from('shipment_batches')
