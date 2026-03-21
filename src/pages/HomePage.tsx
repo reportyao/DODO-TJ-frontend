@@ -99,7 +99,7 @@ const HomePage: React.FC = () => {
       <ProductList
         title={t('home.lotteryProducts')}
         products={lotteryListProducts}
-        isLoading={isLoadingLotteries || userLoading}
+        isLoading={isLoadingLotteries}
         emptyText={t('home.noLotteries')}
         linkPrefix="/lottery"
         requireAuthOnClick={!user}
