@@ -24,6 +24,8 @@
  *   v4 (2026-03-07): 钱包类型修复
  *     - 修复: 佣金发放从 TJS 现金钱包改为 LUCKY_COIN 积分钱包
  *     - 新增: 如果用户没有 LUCKY_COIN 钱包则自动创建
+ *   v5 (2026-03-21): 安全修复
+ *     - 修复(A35): 添加 admin 身份验证，防止未授权调用
  * ============================================================================
  */
 
@@ -32,7 +34,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer, x-admin-id',
 }
 
 serve(async (req) => {
@@ -45,6 +47,27 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
+
+    // 【A35修复】验证管理员身份
+    const adminId = req.headers.get('x-admin-id')
+    if (!adminId) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: admin authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const { data: adminUser, error: adminError } = await supabaseClient
+      .from('admin_users')
+      .select('id, status')
+      .eq('id', adminId)
+      .eq('status', 'active')
+      .single()
+    if (adminError || !adminUser) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: invalid or inactive admin' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     const { commission_ids } = await req.json()
 
