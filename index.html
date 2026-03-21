@@ -36,6 +36,36 @@
   </style>
 </head>
 <body>
+  <!-- 强制清除旧版 Service Worker 缓存，防止旧 JS 文件导致白屏 -->
+  <!-- CACHE_BUST_VERSION: v7 -->
+  <script>
+    (function() {
+      var CURRENT_SW_VERSION = 'v7';
+      var SW_VERSION_KEY = 'sw_cache_version';
+      var storedVersion = localStorage.getItem(SW_VERSION_KEY);
+      
+      if ('serviceWorker' in navigator) {
+        if (storedVersion !== CURRENT_SW_VERSION) {
+          // 版本不匹配：注销所有 SW 并清除所有缓存
+          Promise.all([
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              return Promise.all(regs.map(function(r) { return r.unregister(); }));
+            }),
+            caches.keys().then(function(keys) {
+              return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+            })
+          ]).then(function() {
+            localStorage.setItem(SW_VERSION_KEY, CURRENT_SW_VERSION);
+            // 强制硬刷新页面以加载最新资源
+            window.location.reload(true);
+          });
+        }
+      } else {
+        // 不支持 SW 的浏览器，直接更新版本号
+        localStorage.setItem(SW_VERSION_KEY, CURRENT_SW_VERSION);
+      }
+    })();
+  </script>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>

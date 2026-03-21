@@ -516,4 +516,22 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-console.log('[Service Worker] Loaded successfully');
+/**
+ * 处理来自页面的消息（版本检查）
+ */
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'CHECK_VERSION') {
+    // 回复当前版本号
+    if (event.source) {
+      event.source.postMessage({
+        type: 'SW_VERSION',
+        version: CACHE_VERSION
+      });
+    }
+  }
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+console.log('[Service Worker] Loaded successfully, version:', CACHE_VERSION);
