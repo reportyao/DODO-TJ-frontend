@@ -41,7 +41,7 @@ serve(async (req) => {
     const adminId = req.headers.get('X-Admin-Id')
     if (adminId) {
       try {
-        await supabaseClient.from('admin_logs').insert({
+        await supabaseClient.from('admin_audit_logs').insert({
           admin_id: adminId,
           action: `VIEW_USER_FINANCIAL_${action.toUpperCase()}`,
           target_type: 'user',

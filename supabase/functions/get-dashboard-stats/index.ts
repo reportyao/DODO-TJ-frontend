@@ -34,21 +34,21 @@ serve(async (req) => {
     const { count: activeLotteries } = await supabaseClient
       .from('lotteries')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'active')
+      .eq('status', 'ACTIVE')
 
     // 获取总收入
     const { data: deposits } = await supabaseClient
-      .from('deposits')
+      .from('deposit_requests')
       .select('amount')
-      .eq('status', 'approved')
+      .eq('status', 'APPROVED')
 
     const totalRevenue = deposits?.reduce((sum, d) => sum + parseFloat(d.amount), 0) || 0
 
     // 获取今日收入
     const { data: todayDeposits } = await supabaseClient
-      .from('deposits')
+      .from('deposit_requests')
       .select('amount')
-      .eq('status', 'approved')
+      .eq('status', 'APPROVED')
       .gte('created_at', today.toISOString())
 
     const todayRevenue = todayDeposits?.reduce((sum, d) => sum + parseFloat(d.amount), 0) || 0
@@ -57,19 +57,19 @@ serve(async (req) => {
     const { count: pendingOrders } = await supabaseClient
       .from('orders')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending')
+      .eq('status', 'PENDING')
 
     // 获取待审核充值
     const { count: pendingDeposits } = await supabaseClient
-      .from('deposits')
+      .from('deposit_requests')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending')
+      .eq('status', 'PENDING')
 
     // 获取待审核提现
     const { count: pendingWithdrawals } = await supabaseClient
-      .from('withdrawals')
+      .from('withdrawal_requests')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending')
+      .eq('status', 'PENDING')
 
     // 获取7日活跃用户（有订单或交易）
     const sevenDaysAgo = new Date()
