@@ -26,7 +26,13 @@ export const SUPABASE_URL = supabaseUrl;
 export const SUPABASE_ANON_KEY = supabaseAnonKey;
 
 // 创建 Supabase 客户端实例
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  global: {
+    headers: {
+      Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("custom_session_token") || "" : ""}`
+    }
+  }
+});
 
 // Helper 函数：获取带有自定义 session token 的请求选项
 function getAuthHeaders() {
