@@ -8,7 +8,7 @@
  * 4. 推送通知支持
  */
 
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7';
 const CACHE_NAMES = {
   STATIC: `dodo-static-${CACHE_VERSION}`,
   DYNAMIC: `dodo-dynamic-${CACHE_VERSION}`,
@@ -16,10 +16,8 @@ const CACHE_NAMES = {
   IMAGES: `dodo-images-${CACHE_VERSION}`,
 };
 
-// 需要立即缓存的静态资源
+// 需要立即缓存的静态资源（不缓存 index.html，避免旧版本 HTML 引用旧 JS 文件）
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/dodo-logo.png',
   '/dodo-logo.webp',
@@ -105,8 +103,14 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 根据请求类型选择缓存策略
-  if (isStaticAsset(url)) {
-    event.respondWith(cacheFirstStrategy(request));
+  // index.html 和 JS/CSS 文件使用 Network-First，确保每次都加载最新版本
+  // 避免旧版本 index.html 引用已不存在的旧 JS 文件导致白屏
+  if (url.pathname === '/' || url.pathname === '/index.html') {
+    // HTML 入口文件：永远从网络获取，不使用缓存
+    event.respondWith(networkOnlyStrategy(request));
+  } else if (isStaticAsset(url)) {
+    // JS/CSS 等静态资源：网络优先，失败时才用缓存
+    event.respondWith(networkFirstStaticStrategy(request));
   } else if (isAPIRequest(url)) {
     event.respondWith(apiCacheStrategy(request, url));
   } else if (isImageRequest(url)) {
@@ -155,34 +159,66 @@ function isImageRequest(url) {
 }
 
 /**
+ * 仅网络策略 (Network-Only)
+ * 用于：index.html 入口文件，永远从网络获取最新版本
+ */
+function networkOnlyStrategy(request) {
+  return fetch(request).catch(() => {
+    return caches.match(request).then((cachedResponse) => {
+      return cachedResponse || createOfflineResponse();
+    });
+  });
+}
+
+/**
+ * 静态资源网络优先策略 (Network-First for Static Assets)
+ * 用于：JS/CSS 文件，优先从网络获取，失败时才用缓存
+ * 这样可以避免旧 JS 文件被缓存后引发白屏
+ */
+function networkFirstStaticStrategy(request) {
+  return fetch(request).then((response) => {
+    // 只缓存成功的响应
+    if (!response || response.status !== 200 || response.type === 'error') {
+      return response;
+    }
+    const responseToCache = response.clone();
+    caches.open(CACHE_NAMES.STATIC).then((cache) => {
+      cache.put(request, responseToCache);
+    });
+    return response;
+  }).catch(() => {
+    // 网络失败时才使用缓存（离线场景）
+    return caches.match(request).then((cachedResponse) => {
+      return cachedResponse || createOfflineResponse();
+    });
+  });
+}
+
+/**
  * 缓存优先策略 (Cache-First)
- * 用于：静态资源 (JS, CSS, 字体)
+ * 保留此函数以兼容其他可能的调用
  */
 function cacheFirstStrategy(request) {
   return caches.match(request).then((response) => {
     if (response) {
       return response;
     }
-
     return fetch(request).then((response) => {
-      // 只缓存成功的响应
       if (!response || response.status !== 200 || response.type === 'error') {
         return response;
       }
-
       const responseToCache = response.clone();
       caches.open(CACHE_NAMES.STATIC).then((cache) => {
         cache.put(request, responseToCache);
       });
-
       return response;
     }).catch(() => {
-      // 离线时返回缓存或离线页面
       return caches.match(request).then((cachedResponse) => {
         return cachedResponse || createOfflineResponse();
       });
     });
   });
+};
 }
 
 /**
