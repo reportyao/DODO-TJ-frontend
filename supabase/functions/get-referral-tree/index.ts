@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer, x-admin-id',
 }
 
 interface ReferralNode {
@@ -33,6 +33,26 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
+
+    // Verify admin identity
+    const adminId = req.headers.get('x-admin-id')
+    if (!adminId) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: x-admin-id header required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const { data: adminUser, error: adminError } = await supabaseClient
+      .from('admin_users')
+      .select('id, status')
+      .eq('id', adminId)
+      .single()
+    if (adminError || !adminUser || adminUser.status !== 'active') {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: invalid or inactive admin' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     const { user_id } = await req.json()
 
