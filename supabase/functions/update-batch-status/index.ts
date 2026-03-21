@@ -2,7 +2,9 @@
  * 更新批次状态 Edge Function
  * 
  * 功能：更新批次状态（中国段 -> 塔国段 -> 已到达）
- * 权限：仅管理员可调用
+ * 权限：仅管理员可调用（需要 x-admin-id 请求头）
+ * 
+ * 安全修复 A41: 添加管理员身份验证
  */
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
@@ -11,7 +13,7 @@ import { sendBatchInTransitTJNotification } from '../_shared/batchNotification.t
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer, x-admin-id',
 }
 
 interface UpdateBatchStatusRequest {
@@ -36,6 +38,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
+    // 安全修复 A41: 验证管理员身份（通过请求头或请求体）
+    const adminIdFromHeader = req.headers.get('x-admin-id')
     const body: UpdateBatchStatusRequest = await req.json()
     const { 
       batch_id, 
@@ -43,14 +47,32 @@ serve(async (req) => {
       china_tracking_no, 
       tajikistan_tracking_no, 
       admin_note, 
-      admin_id,
+      admin_id: adminIdFromBody,
       send_notification = true 
     } = body
+
+    // 优先使用请求头中的 admin_id，其次使用请求体中的
+    const admin_id = adminIdFromHeader || adminIdFromBody
 
     if (!batch_id || !new_status || !admin_id) {
       return new Response(
         JSON.stringify({ success: false, error: '缺少必要参数' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 验证管理员身份
+    const { data: adminUser, error: adminError } = await supabase
+      .from('admin_users')
+      .select('id, is_active')
+      .eq('id', admin_id)
+      .eq('is_active', true)
+      .single()
+
+    if (adminError || !adminUser) {
+      return new Response(
+        JSON.stringify({ success: false, error: '管理员身份验证失败' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
