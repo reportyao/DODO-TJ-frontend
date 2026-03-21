@@ -373,7 +373,11 @@
       "bonus": "奖励",
       "couponDeduction": "优惠券抵扣",
       "depositBonus": "充值赠送",
-      "firstDepositBonus": "首充奖励"
+      "firstDepositBonus": "首充奖励",
+      "newUserGift": "新用户注册奖励",
+      "subsidy": "补贴",
+      "systemAdjustment": "系统调整",
+      "other": "其他交易"
     },
     "transactionStatus": {
       "completed": "已完成",

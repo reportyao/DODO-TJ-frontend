@@ -374,7 +374,11 @@
       "bonus": "Бонус",
       "couponDeduction": "Тахфифи купон",
       "depositBonus": "Бонуси пурпул",
-      "firstDepositBonus": "Бонуси аввалин пурпул"
+      "firstDepositBonus": "Бонуси аввалин пурпул",
+      "newUserGift": "Мукофоти сабтномаи корбари нав",
+      "subsidy": "Субсидия",
+      "systemAdjustment": "Танзими система",
+      "other": "Амалиёти дигар"
     },
     "transactionStatus": {
       "completed": "Анҷом ёфт",

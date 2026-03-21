@@ -190,9 +190,12 @@ const WalletPage: React.FC = () => {
       'DEPOSIT_BONUS': t('wallet.transactionType.depositBonus'),
       'FIRST_DEPOSIT_BONUS': t('wallet.transactionType.firstDepositBonus'),
       'COUPON_DEDUCTION': t('wallet.transactionType.couponDeduction'),
-      'BONUS': t('wallet.transactionType.bonus')
+      'BONUS': t('wallet.transactionType.bonus'),
+      'NEW_USER_GIFT': t('wallet.transactionType.newUserGift'),
+      'SUBSIDY': t('wallet.transactionType.subsidy'),
+      'SYSTEM_ADJUSTMENT': t('wallet.transactionType.systemAdjustment')
     }
-    return typeMap[type] || type
+    return typeMap[type] || t('wallet.transactionType.other')
   }
 
   const getTransactionStatusLabel = (status: string) => {

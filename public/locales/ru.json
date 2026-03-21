@@ -374,7 +374,11 @@
       "bonus": "Бонус",
       "couponDeduction": "Скидка купоном",
       "depositBonus": "Бонус за пополнение",
-      "firstDepositBonus": "Бонус за первое пополнение"
+      "firstDepositBonus": "Бонус за первое пополнение",
+      "newUserGift": "Бонус за регистрацию",
+      "subsidy": "Субсидия",
+      "systemAdjustment": "Системная корректировка",
+      "other": "Другая операция"
     },
     "transactionStatus": {
       "completed": "Завершено",
