@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useSupabase } from '../contexts/SupabaseContext';
 import { useUser } from '../contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -331,14 +331,12 @@ const OrderManagementPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <AnimatePresence mode="popLayout">
-              {filteredOrders.map((order) => (
+            {filteredOrders.map((order) => (
                 <motion.div
                   key={order.id}
-                  layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
                   onClick={() => handleOrderClick(order)}
                   className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all border border-gray-50 group cursor-pointer"
                 >
@@ -410,7 +408,6 @@ const OrderManagementPage: React.FC = () => {
                   )}
                 </motion.div>
               ))}
-            </AnimatePresence>
           </div>
         )}
       </div>

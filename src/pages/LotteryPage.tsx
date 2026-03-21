@@ -141,14 +141,12 @@ const LotteryPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <AnimatePresence mode="popLayout">
-              {filteredLotteries.map((lottery) => (
+            {filteredLotteries.map((lottery) => (
                 <motion.div
                   key={lottery.id}
-                  layout
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
                 >
                   <LotteryCard
                     lottery={lottery}
@@ -156,7 +154,6 @@ const LotteryPage: React.FC = () => {
                   />
                 </motion.div>
               ))}
-            </AnimatePresence>
 
             {filteredLotteries.length === 0 && (
               <motion.div

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { PaperAirplaneIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { useAIChat } from '../../hooks/ai/useAIChat';
 import { MessageBubble } from './MessageBubble';
@@ -149,11 +149,9 @@ export function AIChat({ initialMessages = [], onMessagesChange, onBack, onQuota
           </div>
         )}
         
-        <AnimatePresence>
-          {messages.map(message => (
+        {messages.map(message => (
             <MessageBubble key={message.id} message={message} />
           ))}
-        </AnimatePresence>
 
         {/* 加载动画 */}
         {loading && (

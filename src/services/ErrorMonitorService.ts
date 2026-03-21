@@ -27,7 +27,7 @@ interface ErrorLogData {
   error_message: string;
   error_stack?: string;
   user_id?: string;
-  phone_number?: string;
+  // phone_number removed - not in DB schema
   page_url?: string;
   page_route?: string;
   component_name?: string;
@@ -45,8 +45,8 @@ interface ErrorLogData {
   screen_height?: number;
   network_type?: string;
   app_version?: string;
-  is_pwa?: boolean;
-  platform_type?: string;
+  is_telegram_mini_app?: boolean;
+  telegram_platform?: string;
   api_endpoint?: string;
   api_method?: string;
   api_status_code?: number;
@@ -358,7 +358,6 @@ class ErrorMonitorService {
         error_message: errorData.error_message || 'Unknown error',
         error_stack: errorData.error_stack,
         user_id: getCurrentUserId(),
-        phone_number: platformInfo.phoneNumber,
         page_url: window.location.href,
         page_route: window.location.pathname,
         component_name: errorData.component_name,
@@ -376,8 +375,8 @@ class ErrorMonitorService {
         screen_height: window.screen.height,
         network_type: getNetworkType(),
         app_version: this.appVersion,
-        is_pwa: platformInfo.isPWA,
-        platform_type: platformInfo.platformType,
+        is_telegram_mini_app: platformInfo.isPWA || false,
+        telegram_platform: platformInfo.platformType || 'web',
         api_endpoint: errorData.api_endpoint,
         api_method: errorData.api_method,
         api_status_code: errorData.api_status_code,
