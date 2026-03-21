@@ -37,10 +37,10 @@
 </head>
 <body>
   <!-- 强制清除旧版 Service Worker 缓存，防止旧 JS 文件导致白屏 -->
-  <!-- CACHE_BUST_VERSION: v7 -->
+  <!-- CACHE_BUST_VERSION: v8 -->
   <script>
     (function() {
-      var CURRENT_SW_VERSION = 'v7';
+      var CURRENT_SW_VERSION = 'v8';
       var SW_VERSION_KEY = 'sw_cache_version';
       var storedVersion = localStorage.getItem(SW_VERSION_KEY);
       

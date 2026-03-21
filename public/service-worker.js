@@ -1,27 +1,17 @@
 /**
- * DODO PWA Service Worker
+ * DODO PWA Service Worker v8
  * 
- * 功能：
- * 1. 离线缓存策略 (Cache-First, Network-First, Stale-While-Revalidate)
- * 2. 动态缓存管理
- * 3. 后台同步支持
- * 4. 推送通知支持
+ * 极简策略：
+ * - 不缓存 HTML、JS、CSS（避免旧版本缓存导致白屏）
+ * - 只缓存图片和 API 响应（提升体验）
+ * - 安装时立即激活，激活时清除所有旧缓存
  */
 
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const CACHE_NAMES = {
-  STATIC: `dodo-static-${CACHE_VERSION}`,
-  DYNAMIC: `dodo-dynamic-${CACHE_VERSION}`,
-  API: `dodo-api-${CACHE_VERSION}`,
   IMAGES: `dodo-images-${CACHE_VERSION}`,
+  API: `dodo-api-${CACHE_VERSION}`,
 };
-
-// 需要立即缓存的静态资源（不缓存 index.html，避免旧版本 HTML 引用旧 JS 文件）
-const STATIC_ASSETS = [
-  '/manifest.json',
-  '/dodo-logo.png',
-  '/dodo-logo.webp',
-];
 
 // 需要缓存的 API 端点模式
 const API_CACHE_PATTERNS = [
@@ -29,125 +19,79 @@ const API_CACHE_PATTERNS = [
   /\/rest\/v1\/products/,
   /\/rest\/v1\/pickup_points/,
   /\/rest\/v1\/coupons/,
-  /\/rest\/v1\/group_buys/,
 ];
 
 // 不应该缓存的 API 端点
 const NO_CACHE_PATTERNS = [
   /\/rest\/v1\/user_sessions/,
   /\/rest\/v1\/wallet_transactions/,
+  /\/rest\/v1\/wallets/,
+  /\/rest\/v1\/orders/,
   /\/auth\//,
   /\/rpc\//,
+  /\/functions\//,
 ];
 
 /**
- * 安装事件：缓存静态资源
+ * 安装事件：跳过等待，立即激活
  */
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing...');
-  
-  event.waitUntil(
-    caches.open(CACHE_NAMES.STATIC).then((cache) => {
-      console.log('[Service Worker] Caching static assets');
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[Service Worker] Failed to cache some static assets:', err);
-        // 继续执行，不中断安装
-        return Promise.resolve();
-      });
-    }).then(() => {
-      // 跳过等待，立即激活
-      return self.skipWaiting();
-    })
-  );
+  console.log('[SW v8] Installing...');
+  self.skipWaiting();
 });
 
 /**
- * 激活事件：清理旧缓存
+ * 激活事件：清除所有旧缓存，立即接管
  */
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activating...');
-  
+  console.log('[SW v8] Activating...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          // 删除不在当前版本中的缓存
+          // 删除所有不属于当前版本的缓存
           if (!Object.values(CACHE_NAMES).includes(cacheName)) {
-            console.log('[Service Worker] Deleting old cache:', cacheName);
+            console.log('[SW v8] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     }).then(() => {
-      // 立即控制所有客户端
       return self.clients.claim();
     })
   );
 });
 
 /**
- * 获取事件：智能缓存策略
+ * Fetch 事件：只拦截图片和可缓存的 API 请求
+ * HTML、JS、CSS 全部走网络，不做任何缓存
  */
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   // 只处理 GET 请求
-  if (request.method !== 'GET') {
-    return;
-  }
+  if (request.method !== 'GET') return;
 
-  // 跳过 Chrome 扩展和其他非 HTTP(S) 请求
-  if (!url.protocol.startsWith('http')) {
-    return;
-  }
+  // 跳过非 HTTP(S) 请求
+  if (!url.protocol.startsWith('http')) return;
 
-  // 根据请求类型选择缓存策略
-  // index.html 和 JS/CSS 文件使用 Network-First，确保每次都加载最新版本
-  // 避免旧版本 index.html 引用已不存在的旧 JS 文件导致白屏
-  if (url.pathname === '/' || url.pathname === '/index.html') {
-    // HTML 入口文件：永远从网络获取，不使用缓存
-    event.respondWith(networkOnlyStrategy(request));
-  } else if (isStaticAsset(url)) {
-    // JS/CSS 等静态资源：网络优先，失败时才用缓存
-    event.respondWith(networkFirstStaticStrategy(request));
-  } else if (isAPIRequest(url)) {
-    event.respondWith(apiCacheStrategy(request, url));
-  } else if (isImageRequest(url)) {
+  // 图片：缓存优先
+  if (isImageRequest(url)) {
     event.respondWith(imageCacheStrategy(request));
-  } else {
-    event.respondWith(networkFirstStrategy(request));
+    return;
   }
+
+  // 可缓存的 API：stale-while-revalidate
+  if (isCacheableAPI(url)) {
+    event.respondWith(staleWhileRevalidate(request));
+    return;
+  }
+
+  // 其他所有请求（HTML、JS、CSS 等）：直接走网络，不拦截
+  // 这是关键：不 respondWith 就等于不拦截，浏览器正常从网络加载
 });
 
-/**
- * 判断是否为静态资源
- */
-function isStaticAsset(url) {
-  return (
-    url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.css') ||
-    url.pathname.endsWith('.woff') ||
-    url.pathname.endsWith('.woff2') ||
-    url.pathname.endsWith('.ttf') ||
-    url.pathname.endsWith('.eot') ||
-    url.pathname.endsWith('.svg') ||
-    url.pathname === '/' ||
-    url.pathname === '/index.html' ||
-    url.pathname === '/manifest.json'
-  );
-}
-
-/**
- * 判断是否为 API 请求
- */
-function isAPIRequest(url) {
-  return url.pathname.includes('/rest/v1/') || url.pathname.includes('/functions/');
-}
-
-/**
- * 判断是否为图片请求
- */
 function isImageRequest(url) {
   return (
     url.pathname.endsWith('.png') ||
@@ -158,380 +102,99 @@ function isImageRequest(url) {
   );
 }
 
-/**
- * 仅网络策略 (Network-Only)
- * 用于：index.html 入口文件，永远从网络获取最新版本
- */
-function networkOnlyStrategy(request) {
-  return fetch(request).catch(() => {
-    return caches.match(request).then((cachedResponse) => {
-      return cachedResponse || createOfflineResponse();
-    });
-  });
-}
-
-/**
- * 静态资源网络优先策略 (Network-First for Static Assets)
- * 用于：JS/CSS 文件，优先从网络获取，失败时才用缓存
- * 这样可以避免旧 JS 文件被缓存后引发白屏
- */
-function networkFirstStaticStrategy(request) {
-  return fetch(request).then((response) => {
-    // 只缓存成功的响应
-    if (!response || response.status !== 200 || response.type === 'error') {
-      return response;
-    }
-    const responseToCache = response.clone();
-    caches.open(CACHE_NAMES.STATIC).then((cache) => {
-      cache.put(request, responseToCache);
-    });
-    return response;
-  }).catch(() => {
-    // 网络失败时才使用缓存（离线场景）
-    return caches.match(request).then((cachedResponse) => {
-      return cachedResponse || createOfflineResponse();
-    });
-  });
-}
-
-/**
- * 缓存优先策略 (Cache-First)
- * 保留此函数以兼容其他可能的调用
- */
-function cacheFirstStrategy(request) {
-  return caches.match(request).then((response) => {
-    if (response) {
-      return response;
-    }
-    return fetch(request).then((response) => {
-      if (!response || response.status !== 200 || response.type === 'error') {
-        return response;
-      }
-      const responseToCache = response.clone();
-      caches.open(CACHE_NAMES.STATIC).then((cache) => {
-        cache.put(request, responseToCache);
-      });
-      return response;
-    }).catch(() => {
-      return caches.match(request).then((cachedResponse) => {
-        return cachedResponse || createOfflineResponse();
-      });
-    });
-  });
-};
-}
-
-/**
- * 网络优先策略 (Network-First)
- * 用于：HTML 页面、动态内容
- */
-function networkFirstStrategy(request) {
-  return fetch(request)
-    .then((response) => {
-      // 只缓存成功的响应
-      if (!response || response.status !== 200) {
-        return response;
-      }
-
-      const responseToCache = response.clone();
-      caches.open(CACHE_NAMES.DYNAMIC).then((cache) => {
-        cache.put(request, responseToCache);
-      });
-
-      return response;
-    })
-    .catch(() => {
-      // 网络失败时使用缓存
-      return caches.match(request).then((cachedResponse) => {
-        return cachedResponse || createOfflineResponse();
-      });
-    });
-}
-
-/**
- * API 缓存策略 (Stale-While-Revalidate)
- * 用于：API 请求（列表、详情等）
- */
-function apiCacheStrategy(request, url) {
-  // 检查是否应该缓存此 API 端点
-  const shouldCache = API_CACHE_PATTERNS.some((pattern) => pattern.test(url.pathname)) &&
-                      !NO_CACHE_PATTERNS.some((pattern) => pattern.test(url.pathname));
-
-  if (!shouldCache) {
-    // 不缓存的 API 请求，直接网络请求
-    return fetch(request).catch(() => {
-      return caches.match(request).then((cachedResponse) => {
-        return cachedResponse || createOfflineResponse();
-      });
-    });
+function isCacheableAPI(url) {
+  // 先检查是否在排除列表中
+  if (NO_CACHE_PATTERNS.some((pattern) => pattern.test(url.pathname))) {
+    return false;
   }
-
-  // 返回缓存，同时在后台更新
-  return caches.match(request).then((cachedResponse) => {
-    const fetchPromise = fetch(request).then((response) => {
-      if (!response || response.status !== 200) {
-        return response;
-      }
-
-      const responseToCache = response.clone();
-      caches.open(CACHE_NAMES.API).then((cache) => {
-        cache.put(request, responseToCache);
-      });
-
-      return response;
-    }).catch(() => {
-      // 网络失败，返回缓存
-      return cachedResponse || createOfflineResponse();
-    });
-
-    // 如果有缓存，立即返回；否则等待网络请求
-    return cachedResponse || fetchPromise;
-  });
+  // 再检查是否匹配缓存模式
+  return API_CACHE_PATTERNS.some((pattern) => pattern.test(url.pathname));
 }
 
 /**
- * 图片缓存策略 (Cache-First with size limit)
- * 用于：图片资源
+ * 图片缓存策略：缓存优先，限制数量
  */
 function imageCacheStrategy(request) {
-  return caches.match(request).then((cachedResponse) => {
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-
-    return fetch(request)
-      .then((response) => {
-        if (!response || response.status !== 200 || response.type === 'error') {
-          return response;
-        }
-
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAMES.IMAGES).then((cache) => {
-          cache.put(request, responseToCache);
-          // 限制图片缓存大小（最多 50 张图片）
-          cleanImageCache();
-        });
-
-        return response;
-      })
-      .catch(() => {
-        // 返回占位符图片或缓存
-        return caches.match(request).then((cachedResponse) => {
-          return cachedResponse || createPlaceholderImage();
+  return caches.match(request).then((cached) => {
+    if (cached) return cached;
+    return fetch(request).then((response) => {
+      if (!response || response.status !== 200) return response;
+      const clone = response.clone();
+      caches.open(CACHE_NAMES.IMAGES).then((cache) => {
+        cache.put(request, clone);
+        // 限制图片缓存数量
+        cache.keys().then((keys) => {
+          if (keys.length > 50) cache.delete(keys[0]);
         });
       });
-  });
-}
-
-/**
- * 清理图片缓存（保持大小在合理范围内）
- */
-function cleanImageCache() {
-  caches.open(CACHE_NAMES.IMAGES).then((cache) => {
-    cache.keys().then((requests) => {
-      if (requests.length > 50) {
-        // 删除最旧的请求
-        cache.delete(requests[0]);
-      }
+      return response;
+    }).catch(() => {
+      return createPlaceholderImage();
     });
   });
 }
 
 /**
- * 创建离线响应
+ * Stale-While-Revalidate：返回缓存同时后台更新
  */
-function createOfflineResponse() {
-  return new Response(
-    `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Offline</title>
-        <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
-            background-color: #f9fafb;
-            color: #1f2937;
-          }
-          .container {
-            text-align: center;
-            max-width: 400px;
-          }
-          .icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-          }
-          h1 {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 10px;
-          }
-          p {
-            color: #6b7280;
-            margin-bottom: 20px;
-            line-height: 1.6;
-          }
-          button {
-            background-color: #2B5D3A;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            border: none;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-          }
-          button:hover {
-            background-color: #1f4620;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="icon">📡</div>
-          <h1>Шумо офлайн ҳастед / Вы офлайн / You're Offline</h1>
-          <p>Пайвасти интернет қатъ шудааст. Баъзе имконот ҳоло дастрас нестанд.</p>
-          <p style="font-size: 12px; color: #9ca3af; margin-bottom: 16px;">Похоже, вы потеряли подключение к интернету.</p>
-          <button onclick="window.location.reload()">Такрор / Повторить / Retry</button>
-        </div>
-      </body>
-    </html>
-    `,
-    {
-      status: 200,
-      statusText: 'OK',
-      headers: new Headers({
-        'Content-Type': 'text/html; charset=utf-8',
-      }),
-    }
-  );
+function staleWhileRevalidate(request) {
+  return caches.open(CACHE_NAMES.API).then((cache) => {
+    return cache.match(request).then((cached) => {
+      const fetchPromise = fetch(request).then((response) => {
+        if (response && response.status === 200) {
+          cache.put(request, response.clone());
+        }
+        return response;
+      }).catch(() => cached);
+
+      return cached || fetchPromise;
+    });
+  });
 }
 
-/**
- * 创建占位符图片
- */
 function createPlaceholderImage() {
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
-      <rect width="200" height="200" fill="#e5e7eb"/>
-      <text x="50%" y="50%" font-size="14" fill="#9ca3af" text-anchor="middle" dy=".3em">
-        Image not available
-      </text>
-    </svg>
-  `;
-
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+    <rect width="200" height="200" fill="#e5e7eb"/>
+    <text x="50%" y="50%" font-size="14" fill="#9ca3af" text-anchor="middle" dy=".3em">Image not available</text>
+  </svg>`;
   return new Response(svg, {
     status: 200,
-    statusText: 'OK',
-    headers: new Headers({
-      'Content-Type': 'image/svg+xml; charset=utf-8',
-    }),
+    headers: { 'Content-Type': 'image/svg+xml; charset=utf-8' },
   });
 }
 
 /**
- * 处理后台同步（用于离线时的操作）
- */
-self.addEventListener('sync', (event) => {
-  console.log('[Service Worker] Background sync:', event.tag);
-
-  if (event.tag === 'sync-orders') {
-    event.waitUntil(syncPendingOrders());
-  } else if (event.tag === 'sync-notifications') {
-    event.waitUntil(syncNotifications());
-  }
-});
-
-/**
- * 同步待处理订单
- */
-function syncPendingOrders() {
-  return caches.open(CACHE_NAMES.API).then((cache) => {
-    // 从本地存储获取待同步的订单
-    return new Promise((resolve) => {
-      // 实现待同步订单的逻辑
-      resolve();
-    });
-  });
-}
-
-/**
- * 同步通知
- */
-function syncNotifications() {
-  return new Promise((resolve) => {
-    // 实现通知同步的逻辑
-    resolve();
-  });
-}
-
-/**
- * 处理推送通知
- */
-self.addEventListener('push', (event) => {
-  console.log('[Service Worker] Push notification received');
-
-  const options = {
-    body: event.data ? event.data.text() : 'You have a new notification',
-    icon: '/dodo-logo.png',
-    badge: '/dodo-logo.webp',
-    tag: 'dodo-notification',
-    requireInteraction: false,
-  };
-
-  event.waitUntil(
-    self.registration.showNotification('DODO', options)
-  );
-});
-
-/**
- * 处理通知点击事件
- */
-self.addEventListener('notificationclick', (event) => {
-  console.log('[Service Worker] Notification clicked');
-
-  event.notification.close();
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
-      // 如果已有窗口打开，聚焦到它
-      for (let i = 0; i < clientList.length; i++) {
-        if (clientList[i].url === '/' && 'focus' in clientList[i]) {
-          return clientList[i].focus();
-        }
-      }
-      // 否则打开新窗口
-      if (clients.openWindow) {
-        return clients.openWindow('/');
-      }
-    })
-  );
-});
-
-/**
- * 处理来自页面的消息（版本检查）
+ * 处理来自页面的消息
  */
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'CHECK_VERSION') {
-    // 回复当前版本号
-    if (event.source) {
-      event.source.postMessage({
-        type: 'SW_VERSION',
-        version: CACHE_VERSION
-      });
-    }
-  }
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
 
-console.log('[Service Worker] Loaded successfully, version:', CACHE_VERSION);
+/**
+ * 推送通知
+ */
+self.addEventListener('push', (event) => {
+  const options = {
+    body: event.data ? event.data.text() : 'You have a new notification',
+    icon: '/dodo-logo.png',
+    badge: '/dodo-logo.webp',
+    tag: 'dodo-notification',
+  };
+  event.waitUntil(self.registration.showNotification('DODO', options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('/');
+    })
+  );
+});
+
+console.log('[SW v8] Loaded successfully');
