@@ -16,7 +16,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { order_id, order_type, pickup_point_id, user_id } = await req.json()
+    const { order_id, order_type, pickup_point_id, user_id, session_token } = await req.json()
 
     console.log('[update-pickup-point] Request:', { order_id, order_type, pickup_point_id, user_id })
 
@@ -24,6 +24,32 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Missing required parameters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 【A39修复】验证 session_token，防止伪造 user_id 修改他人自提点
+    if (!session_token) {
+      return new Response(
+        JSON.stringify({ success: false, error: '未授权：缺少 session_token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const { data: sessionRows, error: sessionError } = await supabase
+      .from('user_sessions')
+      .select('user_id')
+      .eq('session_token', session_token)
+      .eq('is_active', true)
+      .single()
+    if (sessionError || !sessionRows) {
+      return new Response(
+        JSON.stringify({ success: false, error: '未授权：session_token 无效或已过期' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    if (sessionRows.user_id !== user_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: '未授权：user_id 与 session 不匹配' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -85,34 +111,10 @@ serve(async (req) => {
     }
 
     if (!orderCheck) {
-      // 如果找不到订单，尝试查询原始数据以帮助调试
-      const { data: debugData } = await supabase
-        .from(tableName)
-        .select('*')
-        .eq('id', order_id)
-        .maybeSingle()
-      
-      console.error('[update-pickup-point] Order not found. Debug info:', { 
-        tableName, 
-        order_id,
-        ownerField,
-        expected_owner: user_id,
-        actual_data: debugData,
-        query_condition: `${ownerField} = ${user_id}`
-      })
-
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: 'Order not found or access denied',
-          debug: { 
-            tableName, 
-            order_id, 
-            user_id, 
-            ownerField,
-            found: !!debugData,
-            actual_owner: debugData ? debugData[ownerField] : null
-          }
         }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )

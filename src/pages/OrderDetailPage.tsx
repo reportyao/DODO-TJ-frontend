@@ -75,7 +75,7 @@ const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { supabase } = useSupabase();
-  const { user } = useUser();
+  const { user, sessionToken } = useUser();
   const { t, i18n } = useTranslation();
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
@@ -177,7 +177,8 @@ const OrderDetailPage: React.FC = () => {
           order_id: order.id,
           order_type: order.metadata?.type || 'prize',
           pickup_point_id: selectedPickupPointId,
-          user_id: user?.id
+          user_id: user?.id,
+          session_token: sessionToken,
         }
       });
 
