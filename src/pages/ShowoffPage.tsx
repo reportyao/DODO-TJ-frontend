@@ -115,7 +115,8 @@ const ShowoffPage: React.FC = () => {
       if (isMyShowoffs && user) {
         url += `&user_id=eq.${user.id}`;
       } else {
-        url += `&status=eq.APPROVED`;
+        // 只显示已审核通过且未被隐藏的晒单
+        url += `&status=eq.APPROVED&is_hidden=eq.false`;
       }
 
       const showoffsResponse = await fetch(

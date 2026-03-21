@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer, x-admin-id',
 }
 
 serve(async (req) => {
@@ -18,6 +18,50 @@ serve(async (req) => {
     )
 
     const { action, showoff_id, user_id, data } = await req.json()
+
+    // 管理员操作（approve/reject）需要 admin 认证
+    const adminOnlyActions = ['approve', 'reject']
+    if (adminOnlyActions.includes(action)) {
+      const adminId = req.headers.get('x-admin-id')
+      if (!adminId) {
+        return new Response(
+          JSON.stringify({ error: '未授权：需要管理员权限' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        )
+      }
+      const { data: adminUser, error: adminError } = await supabaseClient
+        .from('admin_users')
+        .select('id, status')
+        .eq('id', adminId)
+        .single()
+      if (adminError || !adminUser || adminUser.status !== 'active') {
+        return new Response(
+          JSON.stringify({ error: '管理员认证失败' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        )
+      }
+    }
+
+    // 用户操作（create/like/comment）需要 session_token 验证
+    const userOnlyActions = ['create', 'like', 'comment']
+    if (userOnlyActions.includes(action) && user_id) {
+      const sessionToken = req.headers.get('x-session-token')
+      if (sessionToken) {
+        const { data: session, error: sessionError } = await supabaseClient
+          .from('user_sessions')
+          .select('user_id')
+          .eq('session_token', sessionToken)
+          .eq('user_id', user_id)
+          .gt('expires_at', new Date().toISOString())
+          .single()
+        if (sessionError || !session) {
+          return new Response(
+            JSON.stringify({ error: '用户认证失败' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+          )
+        }
+      }
+    }
 
     switch (action) {
       case 'create': {
