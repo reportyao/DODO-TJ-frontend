@@ -170,7 +170,7 @@ export const Layout: React.FC<LayoutProps> = ({
       
       <main className={cn(
         "max-w-md mx-auto",
-        showBottomNav && "pb-20"
+        showBottomNav && "pb-24"
       )}>
         {children}
       </main>
