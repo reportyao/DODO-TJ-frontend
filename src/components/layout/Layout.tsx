@@ -6,6 +6,7 @@ import { BottomNavigation } from "../navigation/BottomNavigation"
 import { useTranslation } from 'react-i18next'
 import SpinFloatingButton from "../SpinFloatingButton"
 import NewUserGiftModal from "../NewUserGiftModal"
+import OfflineBanner from "../OfflineBanner"
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "../../lib/supabase"
 
 interface LayoutProps {
@@ -128,6 +129,8 @@ export const Layout: React.FC<LayoutProps> = ({
       "min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50",
       className
     )}>
+      {/* 弱网/离线状态提示横幅 */}
+      <OfflineBanner />
       {showHeader && (
         <motion.header 
           initial={{ opacity: 0, y: -20 }}

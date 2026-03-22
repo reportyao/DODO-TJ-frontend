@@ -1,7 +1,33 @@
 import { supabase } from './supabase'
 
 /**
- * 上传图片到Supabase Storage
+ * 图片上传工具模块
+ * 
+ * 【性能优化】
+ * - 压缩转WebP：减少60-80%文件大小
+ * - 弱网自适应：根据网络状态调整压缩参数
+ * - 并发上传：多张图片并发处理（而非串行）
+ * - 长缓存：cacheControl 设为1年（图片URL含hash，天然支持缓存破坏）
+ */
+
+/** 获取当前网络状态，用于自适应压缩参数 */
+function getNetworkQuality(): 'fast' | 'slow' {
+  const connection = (navigator as any).connection || 
+    (navigator as any).mozConnection || 
+    (navigator as any).webkitConnection;
+  
+  if (connection) {
+    const type = connection.effectiveType;
+    if (type === '2g' || type === 'slow-2g' || type === '3g') {
+      return 'slow';
+    }
+  }
+  return 'fast';
+}
+
+/**
+ * 上传单张图片到 Supabase Storage
+ * 
  * @param file 图片文件
  * @param compress 是否压缩（默认true）
  * @param bucket 存储桶名称
@@ -37,9 +63,17 @@ export async function uploadImage(
         // 动态导入 browser-image-compression 以避免加载失败
         const imageCompression = (await import('browser-image-compression')).default
         
+        // 【弱网自适应】根据网络状态调整压缩参数
+        const networkQuality = getNetworkQuality()
+        const maxSizeMB = networkQuality === 'slow' ? 0.5 : 1  // 弱网时压缩到0.5MB
+        const maxDimension = networkQuality === 'slow' ? 1280 : 1920  // 弱网时降低分辨率
+        
+        console.log('[uploadImage] Network quality:', networkQuality, 
+          '| maxSizeMB:', maxSizeMB, '| maxDimension:', maxDimension)
+        
         const compressedFile = await imageCompression(file, {
-          maxSizeMB: 1, // 最大文件大小 1MB
-          maxWidthOrHeight: 1920, // 最大分辨率 1920px
+          maxSizeMB,
+          maxWidthOrHeight: maxDimension,
           useWebWorker: true,
           fileType: 'image/webp', // 转换为 WebP 格式
         })
@@ -70,7 +104,8 @@ export async function uploadImage(
     const { error: uploadError, data: uploadData } = await supabase.storage
       .from(bucket)
       .upload(filePath, fileToUpload, {
-        cacheControl: '3600',
+        // 【性能优化】设置为1年缓存（图片URL含时间戳hash，天然支持缓存破坏）
+        cacheControl: '31536000',
         upsert: false,
         contentType: contentType,
       })
@@ -91,7 +126,6 @@ export async function uploadImage(
     return publicUrl
   } catch (error) {
     console.error('[uploadImage] Failed:', error)
-    // 提供更详细的错误信息
     if (error instanceof Error) {
       throw new Error(`Image upload failed: ${error.message}`)
     }
@@ -100,12 +134,16 @@ export async function uploadImage(
 }
 
 /**
- * 上传多张图片
+ * 上传多张图片（并发处理）
+ * 
+ * 【性能优化】使用 Promise.all 并发上传，而非串行逐个上传
+ * 3张图片的上传时间从 ~9秒 降低到 ~3秒（假设单张3秒）
+ * 
  * @param files 图片文件数组
  * @param compress 是否压缩
  * @param bucket 存储桶名称
  * @param folder 文件夹路径 (可选)
- * @returns 图片URL数组
+ * @returns 图片URL数组（顺序与输入一致）
  */
 export async function uploadImages(
   files: File[],
@@ -120,24 +158,20 @@ export async function uploadImages(
     folder 
   })
   
-  const results: string[] = []
-  
-  // 逐个上传而不是并行，以便更好地处理错误
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i]
-    console.log(`[uploadImages] Uploading file ${i + 1}/${files.length}:`, file.name)
-    
-    try {
-      const url = await uploadImage(file, compress, bucket, folder)
-      results.push(url)
-    } catch (error) {
-      console.error(`[uploadImages] Failed to upload file ${i + 1}:`, error)
-      throw error
-    }
+  // 【并发上传】所有图片同时开始上传
+  const uploadPromises = files.map((file, i) => {
+    console.log(`[uploadImages] Queuing file ${i + 1}/${files.length}:`, file.name)
+    return uploadImage(file, compress, bucket, folder)
+  })
+
+  try {
+    const results = await Promise.all(uploadPromises)
+    console.log('[uploadImages] Batch upload complete:', results)
+    return results
+  } catch (error) {
+    console.error('[uploadImages] Batch upload failed:', error)
+    throw error
   }
-  
-  console.log('[uploadImages] Batch upload complete:', results)
-  return results
 }
 
 /**

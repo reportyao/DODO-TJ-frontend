@@ -12,6 +12,13 @@
   <title>DODO - WhatsApp & PWA</title>
   <!-- Build: __BUILD_TIME__ -->
 
+  <!-- ============================================================ -->
+  <!-- 性能优化：DNS预解析 + 预连接                                  -->
+  <!-- 减少首次API请求的DNS查找和TLS握手时间（约200-500ms）          -->
+  <!-- ============================================================ -->
+  <link rel="dns-prefetch" href="https://qcrcgpwlfouqslokwbzl.supabase.co" />
+  <link rel="preconnect" href="https://qcrcgpwlfouqslokwbzl.supabase.co" crossorigin />
+
   <style>
     /* 防止加载时闪烁 */
     #root {

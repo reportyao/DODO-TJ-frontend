@@ -116,6 +116,7 @@ export const ProductList: React.FC<ProductListProps> = ({
                     src={product.image_url}
                     alt={getProductTitle(product)}
                     loading="lazy"
+                    decoding="async"
                     style={{
                       position: 'absolute',
                       top: 0,

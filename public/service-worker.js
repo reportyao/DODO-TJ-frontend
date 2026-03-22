@@ -1,17 +1,27 @@
 /**
- * DODO PWA Service Worker v8
+ * DODO PWA Service Worker v9
  * 
- * 极简策略：
- * - 不缓存 HTML、JS、CSS（避免旧版本缓存导致白屏）
- * - 只缓存图片和 API 响应（提升体验）
- * - 安装时立即激活，激活时清除所有旧缓存
+ * 【缓存策略】
+ * - HTML/JS/CSS：不缓存（避免旧版本导致白屏）
+ * - 图片：Cache-First（命中直接返回，未命中再网络请求）
+ * - 可缓存API：Stale-While-Revalidate（返回缓存同时后台更新）
+ * - 其他请求：直接走网络，不拦截
+ * 
+ * 【v9 更新内容】
+ * - 增强图片URL匹配：支持 Supabase Storage 的 /object/public/ 路径
+ * - 图片缓存上限从50提升到200，减少频繁淘汰
+ * - 增加 banners 表查询的API缓存
+ * - 增加离线状态下的友好提示
  */
 
-const CACHE_VERSION = 'v8';
+const CACHE_VERSION = 'v9';
 const CACHE_NAMES = {
   IMAGES: `dodo-images-${CACHE_VERSION}`,
   API: `dodo-api-${CACHE_VERSION}`,
 };
+
+// 图片缓存上限
+const IMAGE_CACHE_LIMIT = 200;
 
 // 需要缓存的 API 端点模式
 const API_CACHE_PATTERNS = [
@@ -19,14 +29,16 @@ const API_CACHE_PATTERNS = [
   /\/rest\/v1\/products/,
   /\/rest\/v1\/pickup_points/,
   /\/rest\/v1\/coupons/,
+  /\/rest\/v1\/banners/,      // 轮播图数据（变化不频繁）
 ];
 
-// 不应该缓存的 API 端点
+// 不应该缓存的 API 端点（资金和认证相关，必须实时）
 const NO_CACHE_PATTERNS = [
   /\/rest\/v1\/user_sessions/,
   /\/rest\/v1\/wallet_transactions/,
   /\/rest\/v1\/wallets/,
   /\/rest\/v1\/orders/,
+  /\/rest\/v1\/commissions/,
   /\/auth\//,
   /\/rpc\//,
   /\/functions\//,
@@ -36,7 +48,7 @@ const NO_CACHE_PATTERNS = [
  * 安装事件：跳过等待，立即激活
  */
 self.addEventListener('install', (event) => {
-  console.log('[SW v8] Installing...');
+  console.log('[SW v9] Installing...');
   self.skipWaiting();
 });
 
@@ -44,14 +56,14 @@ self.addEventListener('install', (event) => {
  * 激活事件：清除所有旧缓存，立即接管
  */
 self.addEventListener('activate', (event) => {
-  console.log('[SW v8] Activating...');
+  console.log('[SW v9] Activating...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           // 删除所有不属于当前版本的缓存
           if (!Object.values(CACHE_NAMES).includes(cacheName)) {
-            console.log('[SW v8] Deleting old cache:', cacheName);
+            console.log('[SW v9] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -89,17 +101,27 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 其他所有请求（HTML、JS、CSS 等）：直接走网络，不拦截
-  // 这是关键：不 respondWith 就等于不拦截，浏览器正常从网络加载
 });
 
+/**
+ * 判断是否为图片请求
+ * 【v9增强】支持 Supabase Storage 的 /object/public/ 路径
+ * 这些URL可能不以常见图片扩展名结尾，但确实是图片资源
+ */
 function isImageRequest(url) {
-  return (
-    url.pathname.endsWith('.png') ||
-    url.pathname.endsWith('.jpg') ||
-    url.pathname.endsWith('.jpeg') ||
-    url.pathname.endsWith('.gif') ||
-    url.pathname.endsWith('.webp')
-  );
+  // 1. 传统扩展名匹配
+  const imageExtensions = /\.(png|jpg|jpeg|gif|webp|svg|ico|bmp|avif)(\?.*)?$/i;
+  if (imageExtensions.test(url.pathname)) {
+    return true;
+  }
+  
+  // 2. Supabase Storage 公开图片路径匹配
+  // 格式: /storage/v1/object/public/{bucket}/{path}
+  if (url.pathname.includes('/storage/v1/object/public/')) {
+    return true;
+  }
+
+  return false;
 }
 
 function isCacheableAPI(url) {
@@ -113,43 +135,67 @@ function isCacheableAPI(url) {
 
 /**
  * 图片缓存策略：缓存优先，限制数量
+ * 
+ * 【缓存键说明】
+ * 对于 Supabase Storage URL，使用去掉查询参数的路径作为缓存键
+ * 避免同一张图片因不同的 token 参数被重复缓存
  */
-function imageCacheStrategy(request) {
-  return caches.match(request).then((cached) => {
-    if (cached) return cached;
-    return fetch(request).then((response) => {
-      if (!response || response.status !== 200) return response;
-      const clone = response.clone();
-      caches.open(CACHE_NAMES.IMAGES).then((cache) => {
-        cache.put(request, clone);
-        // 限制图片缓存数量
-        cache.keys().then((keys) => {
-          if (keys.length > 50) cache.delete(keys[0]);
-        });
+async function imageCacheStrategy(request) {
+  const cache = await caches.open(CACHE_NAMES.IMAGES);
+  
+  // 尝试从缓存中匹配（忽略查询参数以提高命中率）
+  const cached = await cache.match(request, { ignoreSearch: true });
+  if (cached) return cached;
+
+  try {
+    const response = await fetch(request);
+    if (!response || response.status !== 200) return response;
+    
+    const clone = response.clone();
+    // 异步写入缓存，不阻塞响应
+    cache.put(request, clone).then(() => {
+      // 限制图片缓存数量，淘汰最旧的
+      cache.keys().then((keys) => {
+        if (keys.length > IMAGE_CACHE_LIMIT) {
+          // 批量删除超出部分（每次清理10个，减少频繁操作）
+          const deleteCount = Math.min(keys.length - IMAGE_CACHE_LIMIT, 10);
+          for (let i = 0; i < deleteCount; i++) {
+            cache.delete(keys[i]);
+          }
+        }
       });
-      return response;
-    }).catch(() => {
-      return createPlaceholderImage();
     });
-  });
+    
+    return response;
+  } catch (error) {
+    // 网络失败时返回占位图
+    return createPlaceholderImage();
+  }
 }
 
 /**
  * Stale-While-Revalidate：返回缓存同时后台更新
+ * 确保用户总是能快速看到数据（即使是旧的），同时在后台静默更新
  */
-function staleWhileRevalidate(request) {
-  return caches.open(CACHE_NAMES.API).then((cache) => {
-    return cache.match(request).then((cached) => {
-      const fetchPromise = fetch(request).then((response) => {
-        if (response && response.status === 200) {
-          cache.put(request, response.clone());
-        }
-        return response;
-      }).catch(() => cached);
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(CACHE_NAMES.API);
+  const cached = await cache.match(request);
 
-      return cached || fetchPromise;
+  // 后台更新（无论是否有缓存）
+  const fetchPromise = fetch(request)
+    .then((response) => {
+      if (response && response.status === 200) {
+        cache.put(request, response.clone());
+      }
+      return response;
+    })
+    .catch((error) => {
+      console.warn('[SW v9] API fetch failed, using cache:', error.message);
+      return cached;
     });
-  });
+
+  // 有缓存则立即返回，否则等待网络
+  return cached || fetchPromise;
 }
 
 function createPlaceholderImage() {
@@ -197,4 +243,4 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-console.log('[SW v8] Loaded successfully');
+console.log('[SW v9] Loaded successfully');

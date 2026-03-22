@@ -13,6 +13,8 @@ interface LazyImageProps {
   onLoad?: () => void
   onError?: () => void
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down'
+  /** 加载优先级：'high' 用于首屏可见图片，'low' 用于屏幕外图片 */
+  priority?: 'high' | 'low' | 'auto'
 }
 
 /**
@@ -46,6 +48,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   onLoad,
   onError,
   objectFit = 'cover',
+  priority = 'auto',
 }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
@@ -115,7 +118,10 @@ export const LazyImage: React.FC<LazyImageProps> = ({
       <img
         src={src}
         alt={alt}
-        loading="lazy"
+        loading={priority === 'high' ? 'eager' : 'lazy'}
+        decoding="async"
+        // @ts-ignore - fetchpriority 是新的 HTML 属性，TS 尚未完全支持
+        fetchpriority={priority === 'auto' ? undefined : priority}
         onLoad={handleLoad}
         onError={handleError}
         style={imgStyle}

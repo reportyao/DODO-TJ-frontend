@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-// getOptimizedImageUrl removed to fix image issues
+import { queryKeys, staleTimes } from '../lib/react-query';
 
 interface Banner {
   id: string;
@@ -15,121 +16,104 @@ interface Banner {
   link_type: string;
 }
 
-// 缓存 banner 数据，避免每次组件挂载都重新请求
-let cachedBanners: Banner[] | null = null;
-let cacheTimestamp: number = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5分钟缓存
-
+/**
+ * 首页轮播图组件
+ * 
+ * 【性能优化】
+ * - 使用 react-query 管理 banner 数据缓存（30分钟 staleTime）
+ * - 只预加载当前和下一张图片（而非全部），减少首屏网络请求
+ * - 非当前图片使用 loading="lazy" 延迟加载
+ * - 语言切换时重置预加载状态
+ */
 const BannerCarousel: React.FC = () => {
   const { i18n } = useTranslation();
-  const [banners, setBanners] = useState<Banner[]>(cachedBanners || []);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(!cachedBanners);
   const [imagesLoaded, setImagesLoaded] = useState(false);
-  const preloadedRef = useRef<boolean>(false);
-  const loadedCountRef = useRef<number>(0);
+  const preloadedRef = useRef<Set<number>>(new Set());
+
+  // 使用 react-query 缓存 banner 数据，替代手动模块级缓存
+  const { data: banners = [], isLoading } = useQuery<Banner[]>({
+    queryKey: queryKeys.banners,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('banners')
+        .select('id, title, image_url, image_url_zh, image_url_ru, image_url_tg, link_url, link_type')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: staleTimes.static, // 30分钟：轮播图配置很少变化
+    placeholderData: (previousData) => previousData,
+  });
 
   // 根据当前语言获取对应的图片URL
   const getLocalizedImageUrl = useCallback((banner: Banner): string => {
     const lang = i18n.language;
     
-    // 根据语言选择对应的图片URL
-    if (lang === 'zh' && banner.image_url_zh) {
-      return banner.image_url_zh;
-    }
-    if (lang === 'ru' && banner.image_url_ru) {
-      return banner.image_url_ru;
-    }
-    if (lang === 'tg' && banner.image_url_tg) {
-      return banner.image_url_tg;
-    }
+    if (lang === 'zh' && banner.image_url_zh) return banner.image_url_zh;
+    if (lang === 'ru' && banner.image_url_ru) return banner.image_url_ru;
+    if (lang === 'tg' && banner.image_url_tg) return banner.image_url_tg;
     
-    // 如果当前语言没有对应图片，按优先级回退
-    // 优先级：当前语言 > 中文 > 俄语 > 塔吉克语 > 默认图片
+    // 回退优先级：中文 > 俄语 > 塔吉克语 > 默认
     if (banner.image_url_zh) return banner.image_url_zh;
     if (banner.image_url_ru) return banner.image_url_ru;
     if (banner.image_url_tg) return banner.image_url_tg;
     
-    // 最后使用默认的image_url
     return banner.image_url;
   }, [i18n.language]);
 
-  // 预加载所有图片
-  const preloadImages = useCallback((bannerList: Banner[]) => {
-    if (preloadedRef.current || bannerList.length === 0) return;
-    preloadedRef.current = true;
-    loadedCountRef.current = 0;
-    
-    const totalImages = bannerList.length;
-    
-    bannerList.forEach((banner) => {
-      const img = new Image();
-      img.onload = () => {
-        loadedCountRef.current += 1;
-        if (loadedCountRef.current >= totalImages) {
-          setImagesLoaded(true);
-        }
-      };
-      img.onerror = () => {
-        loadedCountRef.current += 1;
-        if (loadedCountRef.current >= totalImages) {
-          setImagesLoaded(true);
-        }
-      };
-      // 预加载当前语言对应的优化图片
-      img.src = getLocalizedImageUrl(banner);
-    });
-    
-    // 超时后强制显示
-    setTimeout(() => {
-      setImagesLoaded(true);
-    }, 3000);
-  }, [getLocalizedImageUrl]);
+  // 【性能优化】只预加载当前和下一张图片
+  const preloadAdjacentImages = useCallback((index: number) => {
+    if (banners.length === 0) return;
 
-  // 当语言变化时，重新预加载图片
+    const indicesToPreload = [
+      index,
+      (index + 1) % banners.length,
+    ];
+
+    indicesToPreload.forEach((i) => {
+      if (preloadedRef.current.has(i)) return;
+      preloadedRef.current.add(i);
+
+      const img = new Image();
+      const banner = banners[i];
+      if (banner) {
+        img.src = getLocalizedImageUrl(banner);
+      }
+    });
+  }, [banners, getLocalizedImageUrl]);
+
+  // 首次加载时预加载前两张图片
   useEffect(() => {
     if (banners.length > 0) {
-      preloadedRef.current = false;
-      loadedCountRef.current = 0;
-      setImagesLoaded(false);
-      preloadImages(banners);
+      preloadAdjacentImages(0);
+      // 首张图片加载完成或超时后显示
+      const img = new Image();
+      img.onload = () => setImagesLoaded(true);
+      img.onerror = () => setImagesLoaded(true);
+      img.src = getLocalizedImageUrl(banners[0]);
+      
+      // 2秒超时强制显示
+      const timeout = setTimeout(() => setImagesLoaded(true), 2000);
+      return () => clearTimeout(timeout);
     }
-  }, [i18n.language, banners, preloadImages]);
+  }, [banners, getLocalizedImageUrl, preloadAdjacentImages]);
 
+  // 语言变化时重置预加载状态
   useEffect(() => {
-    const fetchBanners = async () => {
-      // 检查缓存是否有效
-      const now = Date.now();
-      if (cachedBanners && (now - cacheTimestamp) < CACHE_DURATION) {
-        setBanners(cachedBanners);
-        setIsLoading(false);
-        preloadImages(cachedBanners);
-        return;
-      }
+    preloadedRef.current = new Set();
+    setImagesLoaded(false);
+    if (banners.length > 0) {
+      preloadAdjacentImages(currentIndex);
+    }
+  }, [i18n.language]); // eslint-disable-line react-hooks/exhaustive-deps
 
-      try {
-        const { data, error } = await (supabase as any)
-          .from('banners')
-          .select('id, title, image_url, image_url_zh, image_url_ru, image_url_tg, link_url, link_type')
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
-
-        if (error) throw error;
-        
-        const bannerData = data || [];
-        cachedBanners = bannerData;
-        cacheTimestamp = now;
-        setBanners(bannerData);
-        preloadImages(bannerData);
-      } catch (error) {
-        console.error('Failed to fetch banners:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchBanners();
-  }, [preloadImages]);
+  // 轮播切换时预加载下一张
+  useEffect(() => {
+    preloadAdjacentImages(currentIndex);
+  }, [currentIndex, preloadAdjacentImages]);
 
   // 自动轮播
   useEffect(() => {
@@ -142,7 +126,7 @@ const BannerCarousel: React.FC = () => {
     return () => clearInterval(interval);
   }, [banners.length, imagesLoaded]);
 
-  if (isLoading) {
+  if (isLoading && banners.length === 0) {
     return (
       <div className="relative h-40 bg-gray-200 rounded-2xl animate-pulse"></div>
     );
@@ -156,10 +140,14 @@ const BannerCarousel: React.FC = () => {
 
   const BannerContent = () => (
     <div className="relative h-40 overflow-hidden rounded-2xl bg-gray-100">
-      {/* 渲染所有图片，通过 opacity 和 transform 控制平滑过渡 */}
       {banners.map((banner, index) => {
         const isActive = index === currentIndex;
         const imageUrl = getLocalizedImageUrl(banner);
+        // 【性能优化】非当前和相邻的图片使用 lazy loading
+        const isNearby = Math.abs(index - currentIndex) <= 1 || 
+          (currentIndex === 0 && index === banners.length - 1) ||
+          (currentIndex === banners.length - 1 && index === 0);
+        
         return (
           <div
             key={`${banner.id}-${i18n.language}`}
@@ -174,6 +162,8 @@ const BannerCarousel: React.FC = () => {
             <img
               src={imageUrl}
               alt={banner.title}
+              loading={isNearby ? 'eager' : 'lazy'}
+              decoding="async"
               style={{
                 width: '100%',
                 height: '100%',

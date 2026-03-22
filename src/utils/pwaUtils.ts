@@ -15,7 +15,7 @@ let serviceWorkerRegistration: ServiceWorkerRegistration | null = null;
  * 注册 Service Worker
  * 
  * 策略：先清除所有旧版本缓存，再注册新版 SW。
- * 新版 SW (v8+) 不再缓存 HTML/JS/CSS，只缓存图片和 API 响应，
+ * 新版 SW (v9+) 不再缓存 HTML/JS/CSS，只缓存图片和 API 响应，
  * 从根本上避免旧缓存导致白屏的问题。
  */
 export async function registerServiceWorker(): Promise<void> {
@@ -28,7 +28,7 @@ export async function registerServiceWorker(): Promise<void> {
     // 先清除所有旧版本的缓存（防止旧 SW 缓存的 HTML/JS 导致白屏）
     try {
       const cacheNames = await caches.keys();
-      const oldCaches = cacheNames.filter(name => !name.includes('v8'));
+      const oldCaches = cacheNames.filter(name => !name.includes('v9'));
       if (oldCaches.length > 0) {
         console.log('[PWA] Clearing old caches:', oldCaches);
         await Promise.all(oldCaches.map(name => caches.delete(name)));

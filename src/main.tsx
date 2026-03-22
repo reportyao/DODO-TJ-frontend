@@ -13,6 +13,7 @@ import './index.css';
 import App from './App';
 import { UserProvider } from './contexts/UserContext';
 import { SupabaseProvider } from './contexts/SupabaseContext';
+import { NetworkProvider } from './contexts/NetworkContext';
 import { registerServiceWorker } from './utils/pwaUtils';
 
 // 检查版本，防止加载旧版本（必须在最前面）
@@ -39,11 +40,13 @@ function AppWrapper() {
       <QueryClientProvider client={queryClient}>
         <I18nextProvider i18n={i18n}>
           <ErrorBoundary>
-            <SupabaseProvider>
-              <UserProvider>
-                <App />
-              </UserProvider>
-            </SupabaseProvider>
+            <NetworkProvider>
+              <SupabaseProvider>
+                <UserProvider>
+                  <App />
+                </UserProvider>
+              </SupabaseProvider>
+            </NetworkProvider>
           </ErrorBoundary>
         </I18nextProvider>
       </QueryClientProvider>

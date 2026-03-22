@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSupabase } from '../contexts/SupabaseContext';
 import { supabase, Lottery } from '../lib/supabase';
-import { queryKeys } from '../lib/react-query';
+import { queryKeys, staleTimes } from '../lib/react-query';
 import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper'
 
 interface GroupBuyProduct {
@@ -19,7 +19,11 @@ interface GroupBuyProduct {
 
 /**
  * 首页商城数据 hook
- * 使用 react-query 管理缓存、自动重试和后台刷新
+ * 
+ * 【性能优化】
+ * - staleTime 5分钟：商品列表变化不频繁，减少不必要的网络请求
+ * - placeholderData：页面切换时立即显示上次数据，后台静默刷新
+ * - networkMode offlineFirst：弱网/离线时优先返回缓存
  */
 export function useLotteries() {
   const { lotteryService } = useSupabase();
@@ -33,8 +37,9 @@ export function useLotteries() {
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
     },
-    // 5 分钟内数据视为新鲜，不会重新请求
-    staleTime: 1000 * 60 * 5,
+    staleTime: staleTimes.list,
+    // 保留上次成功的数据作为占位，避免页面切换时闪白
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -60,7 +65,7 @@ export function useGroupBuyProducts() {
       }
       return [];
     },
-    // 5 分钟内数据视为新鲜
-    staleTime: 1000 * 60 * 5,
+    staleTime: staleTimes.list,
+    placeholderData: (previousData) => previousData,
   });
 }

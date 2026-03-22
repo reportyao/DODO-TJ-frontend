@@ -1,26 +1,38 @@
 import { QueryClient } from '@tanstack/react-query';
 
-// Create a client
+/**
+ * React Query 全局配置
+ * 
+ * 【缓存策略说明】
+ * - staleTime: 数据被视为"新鲜"的时间，新鲜期内不会重新请求
+ * - gcTime: 数据在缓存中保留的时间（即使已过期），用于即时显示旧数据
+ * - retry: 失败重试次数，使用指数退避策略
+ * - refetchOnWindowFocus: 关闭（避免频繁请求，移动端切换应用时触发）
+ * - refetchOnReconnect: 开启（断网恢复后自动刷新）
+ * - networkMode: 'offlineFirst' 允许在离线时返回缓存数据
+ */
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Stale time: Data considered fresh for this duration
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      // 默认 staleTime: 5分钟（各 hook 可覆盖）
+      staleTime: 1000 * 60 * 5,
       
-      // Cache time: Data kept in cache for this duration
-      gcTime: 1000 * 60 * 30, // 30 minutes (renamed from cacheTime in v5)
+      // 缓存保留30分钟（即使数据过期，切换页面时仍可即时显示旧数据）
+      gcTime: 1000 * 60 * 30,
       
-      // Retry configuration
+      // 重试配置：2次重试，指数退避（1s, 2s, 最大30s）
       retry: 2,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       
-      // Refetch configuration  
+      // 页面切换和网络恢复行为
       refetchOnWindowFocus: false,
       refetchOnReconnect: true,
-      refetchOnMount: false,
-      
-      // Network mode
-      networkMode: 'online',
+      refetchOnMount: true, // 页面挂载时如果数据stale则刷新
+
+      // 【弱网优化】offlineFirst模式：
+      // 优先返回缓存数据，同时在后台尝试网络请求
+      // 离线时不会报错，而是返回缓存中的旧数据
+      networkMode: 'offlineFirst',
     },
     mutations: {
       retry: 1,
@@ -29,14 +41,16 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Query keys for consistent cache management
+// ============================================================
+// Query Keys：统一管理缓存键，确保缓存一致性
+// ============================================================
 export const queryKeys = {
-  // User queries
+  // 用户相关
   user: ['user'] as const,
   userProfile: (userId: string) => ['user', 'profile', userId] as const,
   userWallets: (userId: string) => ['user', 'wallets', userId] as const,
   
-  // Lottery queries
+  // 商城（抽奖）相关
   lotteries: {
     all: ['lotteries'] as const,
     lists: () => ['lotteries', 'list'] as const,
@@ -45,44 +59,49 @@ export const queryKeys = {
     result: (id: string) => ['lotteries', 'result', id] as const,
   },
   
-  // Prize queries
+  // 奖品相关
   prizes: {
     all: ['prizes'] as const,
     user: (userId: string) => ['prizes', 'user', userId] as const,
   },
   
-  // Resale queries
+  // 转售相关
   resales: {
     all: ['resales'] as const,
     lists: () => ['resales', 'list'] as const,
     user: (userId: string) => ['resales', 'user', userId] as const,
   },
   
-  // Referral queries
+  // 邀请相关
   referrals: {
     stats: (userId: string) => ['referrals', 'stats', userId] as const,
     invited: (userId: string) => ['referrals', 'invited', userId] as const,
   },
   
-  // Showoff queries
+  // 晒单相关
   showoffs: {
     all: ['showoffs'] as const,
     lists: () => ['showoffs', 'list'] as const,
     user: (userId: string) => ['showoffs', 'user', userId] as const,
   },
   
-  // Payment queries
+  // 支付配置
   paymentConfigs: ['payment', 'configs'] as const,
+
+  // 轮播图
+  banners: ['banners'] as const,
 };
 
-// Prefetch helpers
-export const prefetchHelpers = {
-  async prefetchLotteries(status?: string) {
-    // Implementation would go here when we convert services to use React Query
-    console.log('Prefetching lotteries:', status);
-  },
-  
-  async prefetchUserData(userId: string) {
-    console.log('Prefetching user data:', userId);
-  },
+// ============================================================
+// 不同数据类型的推荐 staleTime（供各 hook 引用）
+// ============================================================
+export const staleTimes = {
+  /** 静态配置类数据（轮播图、取货点、优惠券规则）：30分钟 */
+  static: 1000 * 60 * 30,
+  /** 商品列表类数据（商城列表）：5分钟 */
+  list: 1000 * 60 * 5,
+  /** 用户资产类数据（钱包余额）：1分钟 */
+  realtime: 1000 * 60 * 1,
+  /** 详情页数据：3分钟 */
+  detail: 1000 * 60 * 3,
 };
