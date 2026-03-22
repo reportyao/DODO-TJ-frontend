@@ -222,7 +222,8 @@ const PromoterDepositPage: React.FC = () => {
     const filtered = value.replace(/[^\d]/g, '')
     setCustomAmount(filtered)
     const num = parseInt(filtered, 10)
-    if (!isNaN(num) && num >= 10 && num <= 500) {
+    const maxAmount = stats?.daily_limit || 500
+    if (!isNaN(num) && num >= 10 && num <= maxAmount) {
       setAmount(num)
     } else {
       setAmount(null)
@@ -569,7 +570,7 @@ const PromoterDepositPage: React.FC = () => {
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={handleConfirm}
-                disabled={!amount || amount < 10 || amount > 500}
+                disabled={!amount || amount < 10}
                 className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {t('promoterDeposit.nextStep')}
@@ -708,7 +709,7 @@ const PromoterDepositPage: React.FC = () => {
                     {t('promoterDeposit.todayRemaining')}
                   </span>
                   <span className="text-sm text-gray-700">
-                    {depositResult.today_count}/10 {t('promoterDeposit.times')} · {depositResult.today_total}/{depositResult.daily_limit} TJS
+                    {depositResult.today_count ?? '--'}/{depositResult.daily_count_limit || 10} {t('promoterDeposit.times')} · {depositResult.today_total ?? '--'}/{depositResult.daily_limit ?? '--'} TJS
                   </span>
                 </div>
               </div>

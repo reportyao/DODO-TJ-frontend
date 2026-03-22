@@ -237,8 +237,8 @@ serve(async (req) => {
           }
         }
 
-        if (!amount || amount < 10 || amount > 500) {
-          throw new Error('充值金额必须在 10-500 TJS 之间')
+        if (!amount || amount < 10) {
+          throw new Error('充值金额不能小于 10 TJS')
         }
 
         // 验证是地推人员
@@ -275,8 +275,8 @@ serve(async (req) => {
             NOT_PROMOTER: '您不是地推人员',
             PROMOTER_INACTIVE: '您的地推账号未激活',
             SELF_DEPOSIT_FORBIDDEN: '不能给自己充值',
-            INVALID_AMOUNT: '充值金额必须在 10-500 TJS 之间',
-            DAILY_COUNT_EXCEEDED: '今日充值次数已达上限（10次）',
+            INVALID_AMOUNT: '充值金额不合法',
+            DAILY_COUNT_EXCEEDED: '今日充值次数已达上限',
             DAILY_LIMIT_EXCEEDED: `今日充值额度不足，剩余额度: ${result.remaining || 0} TJS`,
           }
 
