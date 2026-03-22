@@ -215,43 +215,52 @@ const ProfilePage: React.FC = () => {
         className="bg-gradient-to-r from-blue-600 to-purple-600 text-white mx-4 mt-4 rounded-2xl p-6"
       >
         <div className="flex items-center space-x-4">
-	          {/* 头像 */}
-	          <div className="relative">
-	            {user?.avatar_url ? (
-	              <img 
-	                src={user.avatar_url} 
-	                alt="Avatar"
-	                style={{ width: '64px', height: '64px', borderRadius: '9999px', border: '4px solid rgba(255,255,255,0.2)', objectFit: 'cover', maxWidth: 'none' }}
+          {/* 头像 + 用户信息（点击跳转到编辑页） */}
+          <div 
+            className="flex items-center space-x-4 flex-1 cursor-pointer active:opacity-80 transition-opacity"
+            onClick={() => navigate('/profile/edit')}
+          >
+            {/* 头像 */}
+            <div className="relative flex-shrink-0">
+              {user?.avatar_url ? (
+                <img 
+                  src={user.avatar_url} 
+                  alt="Avatar"
+                  style={{ width: '64px', height: '64px', borderRadius: '9999px', border: '4px solid rgba(255,255,255,0.2)', objectFit: 'cover', maxWidth: 'none' }}
                   onError={(e) => {
                     console.error('Avatar load failed:', user.avatar_url);
-                    // 如果加载失败，隐藏图片显示占位符
                     (e.target as HTMLImageElement).style.display = 'none';
                     (e.target as HTMLImageElement).parentElement!.querySelector('.avatar-placeholder')!.classList.remove('hidden');
                   }}
-	              />
-	            ) : null}
+                />
+              ) : null}
               <div className={`w-16 h-16 bg-white/20 rounded-full flex items-center justify-center avatar-placeholder ${user?.avatar_url ? 'hidden' : ''}`}>
                 <span className="text-2xl font-bold">
                   {user?.first_name?.[0] || 'U'}
                 </span>
               </div>
             
-            {user?.is_verified && (
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                <CheckCircleIcon className="w-4 h-4 text-white" />
-              </div>
-            )}
-          </div>
+              {user?.is_verified && (
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                  <CheckCircleIcon className="w-4 h-4 text-white" />
+                </div>
+              )}
+            </div>
 
-          {/* 用户信息 - 显示用户ID */}
-          <div className="flex-1">
-            <h2 className="text-xl font-bold">
-              {user?.first_name || t('profile.defaultName')}
-            </h2>
-            <div className="flex items-center space-x-2 mt-2">
-              <span className="px-2 py-1 rounded-full text-xs font-medium bg-white/20 font-mono">
-                ID: {shortUserId}
-              </span>
+            {/* 用户信息 - 显示用户ID */}
+            <div className="flex-1">
+              <div className="flex items-center space-x-1">
+                <h2 className="text-xl font-bold">
+                  {user?.first_name || t('profile.defaultName')}
+                </h2>
+                <ChevronRightIcon className="w-4 h-4 text-white/60" />
+              </div>
+              <p className="text-xs text-white/70 mt-0.5">{t('profile.tapToEditProfile') || '点击编辑个人资料'}</p>
+              <div className="flex items-center space-x-2 mt-1">
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-white/20 font-mono">
+                  ID: {shortUserId}
+                </span>
+              </div>
             </div>
           </div>
 

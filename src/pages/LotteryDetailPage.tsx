@@ -67,7 +67,7 @@ const LotteryDetailPage: React.FC = () => {
   const [isFullPurchasing, setIsFullPurchasing] = useState<boolean>(false);
   const [myTickets, setMyTickets] = useState<string[]>([]);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState<boolean>(false);
-  const [isRulesExpanded, setIsRulesExpanded] = useState<boolean>(false);
+  const [isRulesExpanded, setIsRulesExpanded] = useState<boolean>(true);
   const [useCoupon, setUseCoupon] = useState<boolean>(true);
   const [validCouponCount, setValidCouponCount] = useState<number>(0);
   const [couponTotalAmount, setCouponTotalAmount] = useState<number>(0);
@@ -147,8 +147,32 @@ const LotteryDetailPage: React.FC = () => {
 
       setLottery(lotteryWithInventory);
       
-      // 如果已售罄或已开奖，跳转到开奖页面
-      if (data && (data.status === 'SOLD_OUT' || data.status === 'COMPLETED')) {
+      // 如果已完成开奖，检查是否有新一轮 ACTIVE 期（同一商品）
+      if (data && data.status === 'COMPLETED') {
+        try {
+          // 查找同一商品的最新 ACTIVE 期
+          const { data: nextRound } = await supabase
+            .from('lotteries')
+            .select('id')
+            .eq('status', 'ACTIVE')
+            .eq('title', data.title)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (nextRound && nextRound.id !== id) {
+            // 有新一轮，跳转到新一轮的详情页
+            console.log('[LotteryDetail] Found next round:', nextRound.id);
+            navigate(`/lottery/${nextRound.id}`, { replace: true });
+            return;
+          }
+        } catch (nextRoundError) {
+          console.warn('[LotteryDetail] Failed to check next round:', nextRoundError);
+        }
+        // 没有新一轮，跳转到开奖结果页
+        navigate(`/lottery/${id}/result`);
+      } else if (data && data.status === 'SOLD_OUT') {
+        // 已售罄但还未开奖，跳转到开奖结果页（等待开奖）
         navigate(`/lottery/${id}/result`);
       }
 

@@ -11,6 +11,8 @@ import {
   EyeSlashIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
+import AvatarUpload from '../components/AvatarUpload'
+import { supabase } from '../lib/supabase'
 
 const RegisterPage: React.FC = () => {
   const { t } = useTranslation()
@@ -26,6 +28,8 @@ const RegisterPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
 
   // 从 URL 参数中获取邀请码
   useEffect(() => {
@@ -54,6 +58,10 @@ const RegisterPage: React.FC = () => {
       toast.error(t('auth.passwordMismatch'))
       return
     }
+    if (isUploadingAvatar) {
+      toast.error(t('profile.waitForAvatarUpload') || '请等待头像上传完成')
+      return
+    }
 
     setIsLoading(true)
     try {
@@ -64,6 +72,32 @@ const RegisterPage: React.FC = () => {
         firstName.trim() || undefined,
         referralCode.trim() || undefined
       )
+
+      // 注册成功后，如果有头像，更新到 users 表
+      if (avatarUrl) {
+        try {
+          const storedUser = localStorage.getItem('custom_user')
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser)
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+              .eq('id', parsedUser.id)
+
+            if (updateError) {
+              console.error('[RegisterPage] Failed to save avatar:', updateError)
+            } else {
+              // 更新本地缓存
+              parsedUser.avatar_url = avatarUrl
+              localStorage.setItem('custom_user', JSON.stringify(parsedUser))
+              console.log('[RegisterPage] Avatar saved successfully')
+            }
+          }
+        } catch (avatarError) {
+          console.error('[RegisterPage] Avatar save error:', avatarError)
+          // 头像保存失败不阻断注册流程
+        }
+      }
 
       // 注册成功后跳转（UserContext 已处理 toast 和状态）
       navigate('/', { replace: true })
@@ -89,6 +123,18 @@ const RegisterPage: React.FC = () => {
 
         {/* Register Form */}
         <form onSubmit={handleRegister} className="bg-white rounded-2xl shadow-lg p-6 space-y-4">
+          {/* Avatar Upload */}
+          <div className="pb-2">
+            <AvatarUpload
+              currentAvatarUrl={avatarUrl}
+              fallbackInitial={firstName?.[0] || 'U'}
+              size={80}
+              onUploadSuccess={(url) => setAvatarUrl(url)}
+              onUploadingChange={(uploading) => setIsUploadingAvatar(uploading)}
+              disabled={isLoading}
+            />
+          </div>
+
           {/* Phone Number */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -209,7 +255,7 @@ const RegisterPage: React.FC = () => {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isUploadingAvatar}
             className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all mt-2"
           >
             {isLoading ? (

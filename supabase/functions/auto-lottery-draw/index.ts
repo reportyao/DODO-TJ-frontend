@@ -433,6 +433,77 @@ serve(async (req) => {
 
     console.log(`[AutoLotteryDraw] Draw completed successfully for lottery ${lotteryId}`);
 
+    // ============================================================
+    // 15. 自动创建新一轮：克隆当前 lottery，重置为 ACTIVE 状态
+    // ============================================================
+    let newRoundId: string | null = null;
+    try {
+      const newId = generateUUID();
+      // 计算新期号：如果有 period 字段则递增，否则用时间戳
+      const currentPeriod = lottery.period ? parseInt(lottery.period) : 0;
+      const newPeriod = currentPeriod > 0 ? String(currentPeriod + 1) : String(Date.now());
+      const now = new Date().toISOString();
+      // 新一轮的结束时间 = 当前时间 + 7天
+      const newEndTime = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      const newRound = {
+        id: newId,
+        title: lottery.title,
+        title_i18n: lottery.title_i18n || null,
+        description: lottery.description,
+        description_i18n: lottery.description_i18n || null,
+        image_url: lottery.image_url,
+        image_urls: lottery.image_urls,
+        original_price: lottery.original_price,
+        ticket_price: lottery.ticket_price,
+        total_tickets: lottery.total_tickets,
+        sold_tickets: 0,
+        status: 'ACTIVE',
+        draw_time: null,
+        drawn_at: null,
+        sort_order: lottery.sort_order,
+        is_featured: lottery.is_featured,
+        full_purchase_enabled: lottery.full_purchase_enabled,
+        full_purchase_price: lottery.full_purchase_price,
+        price_comparisons: lottery.price_comparisons,
+        inventory_product_id: lottery.inventory_product_id,
+        inventory_product_sku: lottery.inventory_product_sku,
+        specifications_i18n: lottery.specifications_i18n,
+        material_i18n: lottery.material_i18n,
+        currency: lottery.currency || 'TJS',
+        max_per_user: lottery.max_per_user,
+        actual_draw_time: null,
+        draw_algorithm_data: {},
+        end_time: newEndTime,
+        period: newPeriod,
+        product_id: lottery.product_id,
+        start_time: now,
+        unlimited_purchase: lottery.unlimited_purchase || false,
+        vrf_proof: null,
+        vrf_timestamp: null,
+        winning_numbers: null,
+        winning_ticket_number: null,
+        winning_user_id: null,
+        algorithm_id: lottery.algorithm_id,
+        created_at: now,
+        updated_at: now,
+      };
+
+      const { error: insertError } = await supabaseClient
+        .from('lotteries')
+        .insert(newRound);
+
+      if (insertError) {
+        console.error(`[AutoLotteryDraw] Failed to create new round: ${insertError.message}`);
+      } else {
+        newRoundId = newId;
+        console.log(`[AutoLotteryDraw] New round created: ${newId}, period: ${newPeriod}`);
+      }
+    } catch (newRoundError: unknown) {
+      console.error('[AutoLotteryDraw] Failed to create new round:', newRoundError);
+      // 新一轮创建失败不影响开奖结果
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -450,6 +521,7 @@ serve(async (req) => {
           draw_time: drawTime,
           total_entries: result.totalEntries,
           winning_index: result.winningIndex,
+          new_round_id: newRoundId,
         },
       }),
       {
