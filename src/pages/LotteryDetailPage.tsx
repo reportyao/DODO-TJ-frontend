@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useSupabase } from '../contexts/SupabaseContext';
 import { useUser } from '../contexts/UserContext';
 import { Tables, Enums } from '../types/supabase';
-import { ArrowLeftIcon, ClockIcon, UserGroupIcon, StarIcon, XCircleIcon, ChevronLeftIcon, ChevronRightIcon, TicketIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, ClockIcon, UserGroupIcon, StarIcon, XCircleIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, TicketIcon, ShieldCheckIcon, SparklesIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { LazyImage } from '../components/LazyImage';
 import { Button } from '../components/ui/button';
 import { Separator } from '../components/ui/separator';
@@ -67,6 +67,7 @@ const LotteryDetailPage: React.FC = () => {
   const [isFullPurchasing, setIsFullPurchasing] = useState<boolean>(false);
   const [myTickets, setMyTickets] = useState<string[]>([]);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState<boolean>(false);
+  const [isRulesExpanded, setIsRulesExpanded] = useState<boolean>(false);
   const [useCoupon, setUseCoupon] = useState<boolean>(true);
   const [validCouponCount, setValidCouponCount] = useState<number>(0);
   const [couponTotalAmount, setCouponTotalAmount] = useState<number>(0);
@@ -635,82 +636,23 @@ const LotteryDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* 参与码展示区域 */}
-        <div className="space-y-4">
-          {/* 用户已拥有的参与码 */}
-          {user && myTickets.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl shadow-md p-4 border border-blue-100"
-            >
-              <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <TicketIcon className="w-5 h-5 text-blue-600" />
-                {t('lottery.myTickets')}
-              </h3>
-              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1">
-                {myTickets.map((code, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1.5 rounded-lg font-mono text-sm font-semibold bg-blue-50 text-blue-700 border border-blue-200"
-                  >
-                    {code}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-          )}
 
-          {/* 用户购买后将获得的参与码展示 - 仅在商品未售罄时显示 */}
-          {isActive && remainingTickets > 0 && quantity > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl shadow-md p-4 border border-purple-200"
-            >
-              <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                </svg>
-                {t('lottery.willGetParticipationCodes')}
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {Array.from({ length: quantity }, (_, i) => {
-                  // 后端公式：participation_code = 1000000 + ticket_number - 1
-                  // ticket_number 从1开始，下一个 ticket_number = sold_tickets + 1 + i
-                  // 所以 participation_code = 1000000 + sold_tickets + i
-                  const nextCodeNumber = 1000000 + lottery.sold_tickets + i;
-                  const codeStr = String(nextCodeNumber).padStart(7, '0');
-                  return (
-                    <span
-                      key={i}
-                      className="px-3 py-1.5 rounded-lg font-mono text-sm font-semibold bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-sm"
-                    >
-                      {codeStr}
-                    </span>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                {t('lottery.participationCodeHint')}
-              </p>
-            </motion.div>
-          )}
-        </div>
-
-        {/* Lottery Info Card */}
+        {/* ============================================ */}
+        {/* 区域一：商品信息区 */}
+        {/* ============================================ */}
         <div className="bg-white rounded-xl shadow-md p-4 space-y-4">
+          {/* 标题 + 状态标签 */}
           <div className="flex justify-between items-start">
-            <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+            <h2 className="text-xl font-bold text-gray-900 flex-1 mr-3">{title}</h2>
             <span className={cn(
-              "px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap",
+              "px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0",
               getLotteryStatusColor(lottery.status)
             )}>
               {getLotteryStatusText(lottery.status, t)}
             </span>
           </div>
 
-          {/* 补贴标签与免运费标签 */}
+          {/* 补贴 + 免邮标签 */}
           <div className="flex flex-wrap gap-2">
             <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-100">
               🎁 {t('subsidyPool.subsidyTag')}
@@ -720,20 +662,18 @@ const LotteryDetailPage: React.FC = () => {
             </span>
           </div>
 
-          {/* 商品介绍 - 智能分段 + 折叠展开 */}
+          {/* 商品描述 - 默认3行折叠 */}
           {description && (
             <div className="space-y-2">
               <div className={cn(
-                "text-gray-600 leading-relaxed whitespace-pre-line",
+                "text-gray-600 text-sm leading-relaxed whitespace-pre-line",
                 !isDescriptionExpanded && "line-clamp-3"
               )}>
-                {/* 智能分段：将文本按句号分段 */}
-                {description.split(/(?<=[.。!！?？])\s+/).map((paragraph, index) => (
-                  <p key={index} className="mb-2 last:mb-0">{paragraph.trim()}</p>
+                {description.split(/(?<=[.。!！?？])\s+/).map((paragraph: string, index: number) => (
+                  <p key={index} className="mb-1 last:mb-0">{paragraph.trim()}</p>
                 ))}
               </div>
-              {/* 展开/收起按钮 */}
-              {description.length > 100 && (
+              {description.length > 80 && (
                 <button
                   onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
                   className="text-blue-600 text-sm font-medium hover:text-blue-700 transition-colors flex items-center gap-1"
@@ -741,12 +681,12 @@ const LotteryDetailPage: React.FC = () => {
                   {isDescriptionExpanded ? (
                     <>
                       <span>{t('common.collapse')}</span>
-                      <ChevronRightIcon className="w-4 h-4 transform rotate-90" />
+                      <ChevronDownIcon className="w-4 h-4 transform rotate-180 transition-transform" />
                     </>
                   ) : (
                     <>
                       <span>{t('common.expandMore')}</span>
-                      <ChevronRightIcon className="w-4 h-4 transform -rotate-90" />
+                      <ChevronDownIcon className="w-4 h-4 transition-transform" />
                     </>
                   )}
                 </button>
@@ -754,256 +694,326 @@ const LotteryDetailPage: React.FC = () => {
             </div>
           )}
 
-          {/* Price Display */}
-          <div className="text-center py-2">
-            <p className="text-xs text-gray-500 mb-1">{t('lottery.ticketPrice')}</p>
-            <p className="text-3xl font-bold text-red-500">{formatCurrency(lottery.currency, lottery.ticket_price)}</p>
+          {/* 价格 + 免邮 */}
+          <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-3xl font-extrabold text-red-500">
+                  {formatCurrency(lottery.currency, fullPurchasePrice)}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-sm font-medium">
+                <span>🚚</span>
+                <span>{t('subsidyPool.freeShippingTag')}</span>
+              </div>
+            </div>
           </div>
 
           {/* 比价清单 */}
           {priceComparisons.length > 0 && (
-            <div className="bg-gray-100 rounded-lg p-3 space-y-2">
-              <p className="text-sm font-medium text-gray-700">{t('lottery.priceComparison')}</p>
-              {priceComparisons.map((item, index) => (
-                <div key={index} className="flex items-center text-sm text-gray-600">
-                  <XCircleIcon className="w-4 h-4 text-red-500 mr-2" />
-                  <span>{item.platform}:</span>
-                  <span className="ml-2 text-gray-500">{formatCurrency(lottery.currency, item.price)}</span>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-2.5">
+              <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                📊 {t('lottery.priceComparison')}
+              </p>
+              {priceComparisons.map((item: PriceComparisonItem, index: number) => (
+                <div key={index} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">{item.platform}</span>
+                  <span className="text-gray-400 line-through">{formatCurrency(lottery.currency, item.price)}</span>
                 </div>
               ))}
-            </div>
-          )}
-
-          {/* Price and Tickets */}
-          <div className="grid grid-cols-3 gap-4 text-center border-t pt-4">
-            <div>
-              <p className="text-xs text-gray-500">{t('lottery.ticketPrice')}</p>
-              <p className="text-lg font-bold text-green-600">{formatCurrency(lottery.currency, lottery.ticket_price)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">{t('lottery.totalTickets')}</p>
-              <p className="text-lg font-bold text-gray-900">{lottery.total_tickets}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">{t('lottery.maxPerUser')}</p>
-              <p className="text-lg font-bold text-gray-900">{lottery.max_per_user}</p>
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="pt-4">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center text-sm text-gray-500">
-                <UserGroupIcon className="w-4 h-4 mr-1" />
-                {t('lottery.soldTickets')}: {lottery.sold_tickets}/{lottery.total_tickets}
+              <div className="flex items-center justify-between text-sm border-t border-gray-200 pt-2">
+                <span className="text-green-700 font-semibold">{t('lottery.ourPlatform')}</span>
+                <span className="text-green-700 font-bold flex items-center gap-1">
+                  {formatCurrency(lottery.currency, fullPurchasePrice)}
+                  <CheckCircleIcon className="w-4 h-4" />
+                </span>
               </div>
-              <span className="text-sm text-gray-500">
-                {progress.toFixed(1)}%
-              </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div
-                className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(progress, 100)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* 移除活动结束倒计时 */}
-
-          {/* 180秒开奖倒计时 */}
-          {isSoldOut && lottery.draw_time && (
-            <CountdownTimer 
-              drawTime={lottery.draw_time} 
-              onCountdownEnd={async () => {
-                // 倒计时结束后调用统一开奖入口 auto-lottery-draw
-                try {
-                  console.log('[LotteryDetail] 倒计时结束，开始开奖:', id);
-                  const { data, error } = await supabase.functions.invoke('auto-lottery-draw', {
-                    body: { lotteryId: id }
-                  });
-                  if (error || !data?.success) {
-                    console.error('[LotteryDetail] Draw failed:', error?.message || data?.error);
-                  } else {
-                    console.log('[LotteryDetail] Draw successful:', data);
-                  }
-                  // 刷新页面查看开奖结果
-                  await fetchLottery();
-                } catch (error: any) {
-                  console.error('[LotteryDetail] Draw error:', error);
-                  // 即使开奖失败也刷新页面，可能已经被其他路径开奖了
-                  await fetchLottery();
-                }
-              }}
-            />
           )}
 
-          {/* 购买区域 - 左右两栏布局 */}
-          <div className="bg-white rounded-xl shadow-md p-4 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">{t('lottery.purchaseOptions')}</h3>
+          {/* 全款购买按钮 */}
+          {isActive && (
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleFullPurchase}
+              disabled={!canFullPurchase || isSoldOut || isFullPurchasing}
+              className={cn(
+                "w-full py-3.5 rounded-xl font-bold text-base shadow-md transition-all duration-200",
+                canFullPurchase && !isSoldOut && !isFullPurchasing
+                  ? "bg-gradient-to-r from-orange-500 to-red-500 text-white hover:shadow-lg"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              )}
+            >
+              {isFullPurchasing 
+                ? t('common.submitting') 
+                : !fullPurchaseEnabled 
+                  ? t('lottery.fullPurchaseDisabled') 
+                  : fullPurchaseStock <= 0 
+                    ? t('lottery.fullPurchaseOutOfStock') 
+                    : `${formatCurrency(lottery.currency, fullPurchasePrice)} ${t('lottery.buyAllNow')}`
+              }
+            </motion.button>
+          )}
+        </div>
+
+        {/* ============================================ */}
+        {/* 过渡引导区 */}
+        {/* ============================================ */}
+        {isActive && remainingTickets > 0 && (
+          <div className="flex items-center gap-3 px-2 py-3">
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
+            <p className="text-sm font-semibold text-purple-600 whitespace-nowrap flex items-center gap-1.5">
+              <SparklesIcon className="w-4 h-4" />
+              {t('lottery.tryLuckTransition')}
+              <SparklesIcon className="w-4 h-4" />
+            </p>
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
+          </div>
+        )}
+
+        {/* ============================================ */}
+        {/* 区域二：福气活动区 */}
+        {/* ============================================ */}
+        {isActive && remainingTickets > 0 && (
+          <div className="bg-gradient-to-br from-purple-50 via-white to-pink-50 rounded-xl shadow-md p-4 space-y-4 border border-purple-100">
             
-            <div className="space-y-3">
-              {/* 购买信息卡片 */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* 左侧：一元夺宝信息 */}
-                <div className="border border-gray-200 rounded-xl p-4 space-y-3">
-                  <h4 className="text-sm font-medium text-gray-700 text-center">{t('lottery.luckyPurchase')}</h4>
-                  
-                  {/* 数量选择器 */}
-                  <div className="flex items-center justify-center space-x-3">
-                    <button
-                      onClick={() => handleQuantityChange(-1)}
-                      disabled={quantity <= 1}
-                      className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed flex items-center justify-center text-lg font-bold"
-                    >
-                      -
-                    </button>
-                    <span className="text-xl font-bold text-gray-900 w-12 text-center">{quantity}</span>
-                    <button
-                      onClick={() => handleQuantityChange(1)}
-                      disabled={!lottery || quantity >= (lottery.total_tickets - lottery.sold_tickets)}
-                      className="w-8 h-8 rounded-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-100 disabled:cursor-not-allowed flex items-center justify-center text-lg font-bold text-white"
-                    >
-                      +
-                    </button>
-                  </div>
-                  
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">{t('lottery.totalPrice')}</p>
-                    <p className="text-lg font-bold text-blue-600">
-                      {formatCurrency(lottery?.currency || 'TJS', (lottery?.ticket_price || 0) * quantity)}
-                    </p>
-                  </div>
-
-                  <p className="text-xs text-center text-gray-500 border-t border-gray-100 pt-2 mt-2">
-                    {t('lottery.remainingTickets')}: {lottery ? lottery.total_tickets - lottery.sold_tickets : 0}
-                  </p>
-                  {/* 未中奖返券提示 */}
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
-                    <p className="text-xs text-amber-700 font-medium text-center">
-                      🛡️ {t('coupon.refundNotice')}
-                    </p>
-                  </div>
-                </div>
-
-                {/* 右侧：全款购买信息 */}
-                <div className="border border-orange-200 bg-orange-50 rounded-xl p-4 space-y-3">
-                  <h4 className="text-sm font-medium text-orange-700 text-center">{t('lottery.fullPurchase')}</h4>
-                  
-                  <p className="text-xs text-center text-orange-600">{t('lottery.fullPurchaseHint')}</p>
-                  
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">{t('lottery.fullPurchasePrice')}</p>
-                    <p className="text-lg font-bold text-orange-600">
-                      {formatCurrency(lottery?.currency || 'TJS', fullPurchasePrice)}
-                    </p>
-                  </div>
-
-                  {/* 补贴标签 */}
-                  <div className="bg-red-50 border border-red-200 rounded-lg px-2 py-1.5">
-                    <p className="text-xs text-red-600 font-medium text-center">
-                      🎁 {t('subsidyPool.subsidyTag')}
-                    </p>
-                  </div>
-                </div>
+            {/* 活动标题 */}
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <SparklesIcon className="w-4 h-4 text-white" />
               </div>
-              
-              {/* 支付明细区域 - 抵扣券开关与动态计算 */}
-              {isActive && (
-                <div className="bg-gray-50 rounded-xl p-4 space-y-3 border border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-700">{t('payment.detail')}</h4>
-                  
-                  {/* 抵扣券开关 */}
-                  {validCouponCount > 0 && (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">{t('coupon.switchLabel')}</span>
-                        <span className="text-xs text-gray-400">{t('coupon.remaining', { count: validCouponCount })}</span>
-                      </div>
-                      <button
-                        onClick={() => setUseCoupon(!useCoupon)}
-                        className={cn(
-                          "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                          useCoupon ? "bg-green-500" : "bg-gray-300"
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                            useCoupon ? "translate-x-6" : "translate-x-1"
-                          )}
-                        />
-                      </button>
-                    </div>
-                  )}
+              <h3 className="text-lg font-bold text-gray-900">{t('lottery.luckyActivityTitle')}</h3>
+            </div>
 
-                  {/* 支付明细计算 - 一元购模式 */}
-                  {(() => {
-                    const totalPrice = lottery.ticket_price * quantity;
-                    const couponDeduct = (useCoupon && validCouponCount > 0) ? Math.min(couponTotalAmount, totalPrice) : 0;
-                    const pointsPay = Math.max(0, totalPrice - couponDeduct);
-                    return (
-                      <div className="space-y-1.5 text-sm">
-                        <div className="flex justify-between text-gray-600">
-                          <span>{t('payment.totalAmount')}</span>
-                          <span className="font-medium">{formatCurrency('TJS', totalPrice)}</span>
-                        </div>
-                        {couponDeduct > 0 && (
-                          <div className="flex justify-between text-green-600">
-                            <span>{t('payment.couponDeduction')}</span>
-                            <span className="font-medium">-{formatCurrency('TJS', couponDeduct)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between text-gray-600">
-                          <span>🍀 {t('payment.pointsPayment')}</span>
-                          <span className="font-medium">{formatCurrency('TJS', pointsPay)}</span>
-                        </div>
-                        <div className="border-t border-gray-200 pt-1.5 flex justify-between font-semibold text-gray-900">
-                          <span>{t('payment.actualPayment')}</span>
-                          <span>{formatCurrency('TJS', pointsPay)}</span>
-                        </div>
-                        <p className="text-xs text-blue-500">🍀 {t('payment.pointsAsValue')}</p>
-                      </div>
-                    );
-                  })()}
+            {/* 每份价格 */}
+            <div className="text-center py-2">
+              <p className="text-sm text-gray-500 mb-1">{t('lottery.perSharePrice')}</p>
+              <p className="text-3xl font-extrabold text-purple-600">
+                {formatCurrency(lottery.currency, lottery.ticket_price)}
+                <span className="text-sm font-normal text-gray-500 ml-1">/{t('lottery.perShare')}</span>
+              </p>
+            </div>
+
+            {/* 玩法说明 - 折叠 */}
+            <div className="bg-white/70 rounded-xl border border-purple-100">
+              <button
+                onClick={() => setIsRulesExpanded(!isRulesExpanded)}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-purple-700"
+              >
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheckIcon className="w-4 h-4" />
+                  {t('lottery.howToPlay')}
+                </span>
+                <ChevronDownIcon className={cn(
+                  "w-4 h-4 transition-transform duration-200",
+                  isRulesExpanded && "rotate-180"
+                )} />
+              </button>
+              {isRulesExpanded && (
+                <div className="px-4 pb-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</div>
+                    <p className="text-sm text-gray-600">{t('lottery.ruleStep1')}</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</div>
+                    <p className="text-sm text-gray-600">{t('lottery.ruleStep2')}</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</div>
+                    <p className="text-sm text-gray-600">{t('lottery.ruleStep3')}</p>
+                  </div>
+                  {/* 核心保障：未获得商品返还等值抵扣券 */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2.5 mt-2">
+                    <p className="text-sm text-green-700 font-semibold flex items-center gap-1.5">
+                      <ShieldCheckIcon className="w-4 h-4 flex-shrink-0" />
+                      {t('lottery.refundGuarantee')}
+                    </p>
+                  </div>
                 </div>
               )}
+            </div>
 
-              {/* 底部按钮 - 水平对齐 */}
-              <div className="grid grid-cols-2 gap-4">
-                <motion.button
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  onClick={handlePurchase}
-                  disabled={!isActive || isSoldOut || isPurchasing}
+            {/* 活动进度 */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center text-sm text-gray-500">
+                  <UserGroupIcon className="w-4 h-4 mr-1" />
+                  {t('lottery.soldTickets')}: {lottery.sold_tickets}/{lottery.total_tickets}
+                </div>
+                <span className="text-sm font-medium text-purple-600">
+                  {progress.toFixed(1)}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(progress, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                {t('lottery.remainingShares', { count: remainingTickets })}
+              </p>
+            </div>
+
+            {/* 180秒开奖倒计时 */}
+            {isSoldOut && lottery.draw_time && (
+              <CountdownTimer 
+                drawTime={lottery.draw_time} 
+                onCountdownEnd={async () => {
+                  try {
+                    console.log('[LotteryDetail] 倒计时结束，开始揭晓:', id);
+                    const { data, error } = await supabase.functions.invoke('auto-lottery-draw', {
+                      body: { lotteryId: id }
+                    });
+                    if (error || !data?.success) {
+                      console.error('[LotteryDetail] Draw failed:', error?.message || data?.error);
+                    } else {
+                      console.log('[LotteryDetail] Draw successful:', data);
+                    }
+                    await fetchLottery();
+                  } catch (error: any) {
+                    console.error('[LotteryDetail] Draw error:', error);
+                    await fetchLottery();
+                  }
+                }}
+              />
+            )}
+
+            {/* 我的参与码 */}
+            {user && myTickets.length > 0 && (
+              <div className="bg-white/80 rounded-xl p-3 border border-blue-100">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+                  <TicketIcon className="w-4 h-4 text-blue-600" />
+                  {t('lottery.myTickets')}
+                </h4>
+                <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
+                  {myTickets.map((code: string, index: number) => (
+                    <span
+                      key={index}
+                      className="px-2.5 py-1 rounded-lg font-mono text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200"
+                    >
+                      {code}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 购买份数选择 */}
+            <div className="bg-white/80 rounded-xl p-4 border border-purple-100">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">{t('lottery.selectShares')}</span>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => handleQuantityChange(-1)}
+                    disabled={quantity <= 1}
+                    className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed flex items-center justify-center text-lg font-bold transition-colors"
+                  >
+                    -
+                  </button>
+                  <span className="text-xl font-bold text-gray-900 w-10 text-center">{quantity}</span>
+                  <button
+                    onClick={() => handleQuantityChange(1)}
+                    disabled={!lottery || quantity >= remainingTickets}
+                    className="w-8 h-8 rounded-full bg-purple-500 hover:bg-purple-600 disabled:bg-gray-100 disabled:cursor-not-allowed flex items-center justify-center text-lg font-bold text-white transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* 将获得的参与码预览 */}
+              {quantity > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <p className="text-xs text-gray-500 mb-1.5">{t('lottery.willGetParticipationCodes')}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Array.from({ length: quantity }, (_, i) => {
+                      const nextCodeNumber = 1000000 + lottery.sold_tickets + i;
+                      const codeStr = String(nextCodeNumber).padStart(7, '0');
+                      return (
+                        <span
+                          key={i}
+                          className="px-2 py-1 rounded-md font-mono text-xs font-semibold bg-gradient-to-br from-purple-500 to-pink-500 text-white"
+                        >
+                          {codeStr}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 抵扣券开关 */}
+            {validCouponCount > 0 && (
+              <div className="flex items-center justify-between bg-white/80 rounded-xl px-4 py-3 border border-purple-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">{t('coupon.switchLabel')}</span>
+                  <span className="text-xs text-gray-400">{t('coupon.remaining', { count: validCouponCount })}</span>
+                </div>
+                <button
+                  onClick={() => setUseCoupon(!useCoupon)}
                   className={cn(
-                    "py-3 rounded-xl font-semibold text-sm shadow-md transition-all duration-200",
-                    isActive && !isSoldOut && !isPurchasing
-                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-lg"
-                      : "bg-gray-300 text-gray-600 cursor-not-allowed"
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                    useCoupon ? "bg-green-500" : "bg-gray-300"
                   )}
                 >
-                  {isPurchasing ? t('common.submitting') : isSoldOut ? t('lottery.soldOut') : isActive ? t('lottery.participateNow') : t('lottery.upcoming')}
-                </motion.button>
-                
-                <motion.button
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  onClick={handleFullPurchase}
-                  disabled={!canFullPurchase || isSoldOut || isFullPurchasing}
-                  className={cn(
-                    "py-3 rounded-xl font-semibold text-sm shadow-md transition-all duration-200",
-                    canFullPurchase && !isSoldOut && !isFullPurchasing
-                      ? "bg-gradient-to-r from-orange-500 to-red-500 text-white hover:shadow-lg"
-                      : "bg-gray-300 text-gray-600 cursor-not-allowed"
-                  )}
-                >
-                  {isFullPurchasing ? t('common.submitting') : !fullPurchaseEnabled ? t('lottery.fullPurchaseDisabled') : fullPurchaseStock <= 0 ? t('lottery.fullPurchaseOutOfStock') : t('lottery.buyAllNow')}
-                </motion.button>
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                      useCoupon ? "translate-x-6" : "translate-x-1"
+                    )}
+                  />
+                </button>
+              </div>
+            )}
+
+            {/* 余额显示 + 合计 */}
+            <div className="flex items-center justify-between text-sm px-1">
+              <div className="flex items-center gap-3 text-gray-500">
+                <span>💰 {formatCurrency('TJS', wallets.find(w => w.type === 'TJS')?.balance || 0)}</span>
+                <span>🍀 {(wallets.find(w => w.type === 'LUCKY_COIN')?.balance || 0).toFixed(1)}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-gray-500">{t('payment.totalAmount')}: </span>
+                <span className="text-lg font-bold text-purple-600">
+                  {formatCurrency(lottery.currency, lottery.ticket_price * quantity)}
+                </span>
               </div>
             </div>
+
+            {/* 核心保障提示 */}
+            <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+              <p className="text-xs text-green-700 font-medium text-center flex items-center justify-center gap-1">
+                <ShieldCheckIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                {t('lottery.refundGuarantee')}
+              </p>
+            </div>
+
+            {/* 参与活动按钮 */}
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handlePurchase}
+              disabled={!isActive || isSoldOut || isPurchasing}
+              className={cn(
+                "w-full py-3.5 rounded-xl font-bold text-base shadow-md transition-all duration-200",
+                isActive && !isSoldOut && !isPurchasing
+                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              )}
+            >
+              {isPurchasing 
+                ? t('common.submitting') 
+                : isSoldOut 
+                  ? t('lottery.soldOut') 
+                  : `${formatCurrency(lottery.currency, lottery.ticket_price * quantity)} ${t('lottery.participateNow')}`
+              }
+            </motion.button>
           </div>
-        </div>
+        )}
 
         {/* Product Details - 只在有内容时显示 */}
         {(specifications || material || details) && (
