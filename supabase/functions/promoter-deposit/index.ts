@@ -257,7 +257,7 @@ serve(async (req) => {
           note,
         })
 
-        // 调用核心 RPC 事务函数
+        // 调用核心 RPC 事务函数（幾等性由 DB 层保证）
         const { data: result, error: rpcError } = await supabaseClient.rpc(
           'perform_promoter_deposit',
           {
@@ -265,6 +265,7 @@ serve(async (req) => {
             p_target_user_id: target_user_id,
             p_amount: amount,
             p_note: note || null,
+            p_idempotency_key: idempotency_key || null,
           }
         )
 
@@ -291,8 +292,8 @@ serve(async (req) => {
           )
         }
 
-        // 记录操作日志
-        await supabaseClient.rpc('log_edge_function_action', {
+        // 记录操作日志（同步等待，确保幂等性检查可用）
+        const { error: logErr } = await supabaseClient.rpc('log_edge_function_action', {
           p_function_name: 'promoter-deposit',
           p_action: 'PROMOTER_DEPOSIT',
           p_user_id: userId,
@@ -308,7 +309,8 @@ serve(async (req) => {
           },
           p_status: 'success',
           p_error_message: null,
-        }).then(({ error: logErr }) => { if (logErr) console.error('Failed to write audit log:', logErr); })
+        })
+        if (logErr) console.error('Failed to write audit log:', logErr)
         return new Response(JSON.stringify(result), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
