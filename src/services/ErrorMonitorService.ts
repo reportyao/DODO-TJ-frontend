@@ -266,6 +266,16 @@ class ErrorMonitorService {
 
     // 监听全局JS错误
     window.addEventListener('error', (event) => {
+      // 过滤 Framer Motion DOM 操作错误（已知的 React 严格模式兼容性问题）
+      if (event.error && (
+        event.error.name === 'NotFoundError' ||
+        (event.error.message && (
+          event.error.message.includes('removeChild') ||
+          event.error.message.includes('insertBefore')
+        ))
+      )) {
+        return;
+      }
       this.captureError({
         error_type: ErrorType.JS_ERROR,
         error_message: event.message,
@@ -277,9 +287,24 @@ class ErrorMonitorService {
     // 监听未处理的Promise拒绝
     window.addEventListener('unhandledrejection', (event) => {
       const error = event.reason;
+      const message = error?.message || String(error);
+      // 过滤 Service Worker 更新失败（开发/代理环境的已知问题）
+      if (message.includes('ServiceWorker') || message.includes('service-worker') || message.includes('Failed to update a ServiceWorker')) {
+        return;
+      }
+      // 过滤 Framer Motion DOM 操作错误
+      if (error && (
+        error.name === 'NotFoundError' ||
+        (error.message && (
+          error.message.includes('removeChild') ||
+          error.message.includes('insertBefore')
+        ))
+      )) {
+        return;
+      }
       this.captureError({
         error_type: ErrorType.UNHANDLED_REJECTION,
-        error_message: error?.message || String(error),
+        error_message: message,
         error_stack: error?.stack,
       });
     });
