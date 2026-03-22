@@ -377,7 +377,8 @@
       "newUserGift": "新用户注册奖励",
       "subsidy": "补贴",
       "systemAdjustment": "系统调整",
-      "other": "其他交易"
+      "other": "其他交易",
+      "commission": "佣金收入"
     },
     "transactionStatus": {
       "completed": "已完成",
@@ -515,7 +516,7 @@
     "level3": "三级好友",
     "level3Desc": "二级好友邀请的用户",
     "commissionNoteTitle": "佣金说明",
-    "commissionNoteContent": "当您邀请的用户在平台消费时,您将获得相应比例的佣金奖励。佣金实时到账，可随时提现。",
+    "commissionNoteContent": "当您邀请的用户在平台消费时,您将获得相应比例的积分佣金奖励。佣金以积分形式实时到账,可在钱包中兑换为余额。",
     "levelDistribution": "邀请层级分布",
     "myInvitations": "我的邀请",
     "noInvitations": "还没有邀请任何好友",

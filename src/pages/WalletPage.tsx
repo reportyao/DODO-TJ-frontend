@@ -193,7 +193,8 @@ const WalletPage: React.FC = () => {
       'BONUS': t('wallet.transactionType.bonus'),
       'NEW_USER_GIFT': t('wallet.transactionType.newUserGift'),
       'SUBSIDY': t('wallet.transactionType.subsidy'),
-      'SYSTEM_ADJUSTMENT': t('wallet.transactionType.systemAdjustment')
+      'SYSTEM_ADJUSTMENT': t('wallet.transactionType.systemAdjustment'),
+      'COMMISSION': t('wallet.transactionType.commission')
     }
     return typeMap[type] || t('wallet.transactionType.other')
   }
@@ -248,6 +249,7 @@ const WalletPage: React.FC = () => {
       case 'FRIEND_CASHBACK':
       case 'DEPOSIT_BONUS':
       case 'FIRST_DEPOSIT_BONUS':
+      case 'COMMISSION':
         return <ArrowDownIcon className="w-5 h-5 text-purple-600" />
       case 'COUPON_DEDUCTION':
         return <ArrowDownIcon className="w-5 h-5 text-orange-500" />
@@ -259,7 +261,7 @@ const WalletPage: React.FC = () => {
   const getAmountIcon = (type: string, walletType?: string) => {
     // 积分类交易使用积分图标，其他使用金钱图标
     // LOTTERY_PURCHASE: 参与商城, EXCHANGE: 余额兑换, SPIN_REWARD: 转盘奖励, COIN_EXCHANGE: 余额兑换积分
-    const pointsTypes = ['SPIN_REWARD', 'LOTTERY_PURCHASE', 'EXCHANGE', 'COIN_EXCHANGE'];
+    const pointsTypes = ['SPIN_REWARD', 'LOTTERY_PURCHASE', 'EXCHANGE', 'COIN_EXCHANGE', 'COMMISSION'];
     if (pointsTypes.includes(type)) {
       return <span className="text-yellow-600 mr-1">🍀</span>
     }

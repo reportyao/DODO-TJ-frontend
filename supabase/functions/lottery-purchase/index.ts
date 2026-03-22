@@ -527,8 +527,10 @@ Deno.serve(async (req) => {
     }
 
     // 处理推荐佣金
+    // 【佣金基数修复】佣金只按余额消费部分(tjs_deducted)计算，不包含积分消费和抵扣券
+    const tjsDeducted = paymentResult.tjs_deducted || 0;
     const hasReferrer = user.referred_by_id || user.referrer_id;
-    if (hasReferrer) {
+    if (hasReferrer && tjsDeducted > 0) {
       try {
         const commissionResponse = await fetch(`${supabaseUrl}/functions/v1/handle-purchase-commission`, {
           method: 'POST',
@@ -539,7 +541,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             order_id: order.id,
             user_id: userId,
-            order_amount: totalAmount
+            order_amount: tjsDeducted
           }),
         });
         

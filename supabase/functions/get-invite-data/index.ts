@@ -352,18 +352,19 @@ serve(async (req) => {
       .eq('user_id', targetUserId)
 
     const totalCommission = commissionsData?.reduce((sum, c) => sum + Number(c.amount), 0) || 0
-    const paidCommission = commissionsData?.filter(c => c.status === 'PAID').reduce((sum, c) => sum + Number(c.amount), 0) || 0
-    const pendingCommission = commissionsData?.filter(c => c.status === 'PENDING').reduce((sum, c) => sum + Number(c.amount), 0) || 0
+    // settled = 已发放到积分钱包, pending = 待发放
+    const paidCommission = commissionsData?.filter(c => c.status === 'settled').reduce((sum, c) => sum + Number(c.amount), 0) || 0
+    const pendingCommission = commissionsData?.filter(c => c.status === 'pending').reduce((sum, c) => sum + Number(c.amount), 0) || 0
 
     /**
-     * 获取用户现金余额（佣金奖励统一发放到现金钱包）
+     * 获取用户积分钱包余额（佣金奖励发放到 LUCKY_COIN 积分钱包）
      */
     const { data: walletData } = await supabase
       .from('wallets')
       .select('balance')
       .eq('user_id', targetUserId)
-      .eq('type', 'TJS')
-      .eq('currency', 'TJS')
+      .eq('type', 'LUCKY_COIN')
+      .eq('currency', 'POINTS')
       .single()
 
     const bonusBalance = walletData?.balance || 0

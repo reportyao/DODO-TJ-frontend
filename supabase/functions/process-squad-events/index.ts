@@ -328,6 +328,28 @@ async function handleCommission(event: QueuedEvent): Promise<void> {
       if (createError) {
         throw new Error(`Failed to create wallet: ${createError.message}`);
       }
+      // 【修复】创建新钱包时也要记录 wallet_transactions 流水
+      const { data: newWallet } = await supabase
+        .from('wallets')
+        .select('id')
+        .eq('user_id', currentUserId)
+        .eq('type', 'LUCKY_COIN')
+        .eq('currency', 'POINTS')
+        .single();
+      if (newWallet) {
+        await supabase.from('wallet_transactions').insert({
+          wallet_id: newWallet.id,
+          type: 'COMMISSION',
+          amount: commissionAmount,
+          balance_before: 0,
+          balance_after: commissionAmount,
+          status: 'COMPLETED',
+          description: `L${level}佣金 - 来自下级购买`,
+          reference_id: order_id,
+          processed_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        });
+      }
       console.log(`[Worker] Created new LUCKY_COIN wallet for user ${currentUserId} with balance ${commissionAmount}`);
     } else {
       // 更新积分钱包余额
@@ -352,6 +374,8 @@ async function handleCommission(event: QueuedEvent): Promise<void> {
       if (updateError || !updatedWallet) {
         // 【资金安全修复 v4】乐观锁失败，使用 3 次重试机制
         let retrySuccess = false;
+        let finalBalance = 0;
+        let finalBalanceBefore = 0;
         for (let attempt = 1; attempt <= 3; attempt++) {
           console.warn(`[Worker] Optimistic lock failed, retry attempt ${attempt}/3...`);
           const { data: freshWallet } = await supabase
@@ -366,7 +390,8 @@ async function handleCommission(event: QueuedEvent): Promise<void> {
             throw new Error(`Failed to find wallet for retry`);
           }
 
-          const retryBalance = parseFloat(freshWallet.balance || '0') + commissionAmount;
+          finalBalanceBefore = parseFloat(freshWallet.balance || '0');
+          const retryBalance = finalBalanceBefore + commissionAmount;
           const { error: retryError, data: retryData } = await supabase
             .from('wallets')
             .update({
@@ -381,7 +406,21 @@ async function handleCommission(event: QueuedEvent): Promise<void> {
 
           if (!retryError && retryData) {
             retrySuccess = true;
+            finalBalance = retryBalance;
             console.log(`[Worker] Updated LUCKY_COIN wallet (after retry ${attempt}) for user ${currentUserId}, new balance: ${retryBalance}`);
+            // 【修复】重试成功后也要写入 wallet_transactions 流水
+            await supabase.from('wallet_transactions').insert({
+              wallet_id: freshWallet.id,
+              type: 'COMMISSION',
+              amount: commissionAmount,
+              balance_before: finalBalanceBefore,
+              balance_after: retryBalance,
+              status: 'COMPLETED',
+              description: `L${level}佣金 - 来自下级购买`,
+              reference_id: order_id,
+              processed_at: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+            });
             break;
           }
         }
@@ -390,6 +429,19 @@ async function handleCommission(event: QueuedEvent): Promise<void> {
         }
       } else {
         console.log(`[Worker] Updated LUCKY_COIN wallet for user ${currentUserId}, new balance: ${newBalance}`);
+        // 【修复】佣金入账时创建 wallet_transactions 流水记录
+        await supabase.from('wallet_transactions').insert({
+          wallet_id: wallet.id,
+          type: 'COMMISSION',
+          amount: commissionAmount,
+          balance_before: currentBalance,
+          balance_after: newBalance,
+          status: 'COMPLETED',
+          description: `L${level}佣金 - 来自下级购买`,
+          reference_id: order_id,
+          processed_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        });
       }
     }
 

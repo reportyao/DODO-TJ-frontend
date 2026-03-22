@@ -48,7 +48,7 @@ BEGIN
   -- ============================================================
   -- Step 1: 验证地推人员身份和状态
   -- ============================================================
-  SELECT pp.user_id, pp.promoter_status, pp.daily_deposit_limit
+  SELECT pp.user_id, pp.promoter_status, pp.daily_deposit_limit, pp.daily_count_limit
   INTO v_promoter
   FROM promoter_profiles pp
   WHERE pp.user_id = p_promoter_id;
@@ -118,8 +118,8 @@ BEGIN
     AND created_at >= (v_today::timestamp AT TIME ZONE 'Asia/Dushanbe')
     AND created_at < ((v_today + INTERVAL '1 day')::timestamp AT TIME ZONE 'Asia/Dushanbe');
 
-  -- 每日最多 10 次
-  IF v_today_count >= 10 THEN
+  -- 每日最多 N 次（从 promoter_profiles.daily_count_limit 读取，默认10次）
+  IF v_today_count >= COALESCE(v_promoter.daily_count_limit, 10) THEN
     RETURN json_build_object('success', false, 'error', 'DAILY_COUNT_EXCEEDED');
   END IF;
 
@@ -351,6 +351,7 @@ BEGIN
     'today_count', v_today_count + 1,
     'today_total', v_today_total + p_amount,
     'daily_limit', COALESCE(v_promoter.daily_deposit_limit, 5000),
+    'daily_count_limit', COALESCE(v_promoter.daily_count_limit, 10),
     'is_first_deposit', v_is_first_deposit
   );
 

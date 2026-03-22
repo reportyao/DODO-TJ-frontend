@@ -170,12 +170,12 @@ serve(async (req) => {
           .from('wallet_transactions')
           .insert({
             wallet_id: wallet.id,
-            type: 'COMMISSION_PAYOUT',
+            type: 'COMMISSION',
             amount: commissionAmount,
             balance_before: currentBalance,
             balance_after: newBalance,
             status: 'COMPLETED',
-            description: `L${commission.level} referral commission payout`,
+            description: `L${commission.level}级推荐佣金发放`,
             related_id: commission_id,
             processed_at: new Date().toISOString(),
             created_at: new Date().toISOString()
@@ -202,8 +202,8 @@ serve(async (req) => {
         const { error: updateCommissionError } = await supabaseClient
           .from('commissions')
           .update({ 
-            status: 'paid',
-            paid_at: new Date().toISOString(),
+            status: 'settled',
+            settled_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', commission_id)

@@ -252,7 +252,7 @@ const InvitePage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-green-600">
-                    {formatCurrency('TJS', stats.total_commission)}
+                    🍀 {(stats.total_commission || 0).toFixed(0)}
                   </p>
                   <p className="text-xs text-gray-500">{t('invite.totalCommission')}</p>
                 </div>
@@ -436,7 +436,7 @@ const InvitePage: React.FC = () => {
                   <div className="text-right">
                     <p className="text-sm text-gray-500">{t('invite.contributedCommission')}</p>
                     <p className="font-bold text-green-600">
-                      {formatCurrency('TJS', invitedUser.commission_earned)}
+                      🍀 {(invitedUser.commission_earned || 0).toFixed(0)}
                     </p>
                   </div>
                 </div>
