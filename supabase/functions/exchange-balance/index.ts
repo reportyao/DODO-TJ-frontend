@@ -1,3 +1,26 @@
+/**
+ * ============================================================
+ * exchange-balance Edge Function（余额兑换积分）
+ * ============================================================
+ * 
+ * 功能：用户将现金余额(TJS)兑换为积分(LUCKY_COIN)
+ * 
+ * 核心流程：
+ *   1. 验证用户会话 (session_token)
+ *   2. 调用 exchange_balance_atomic RPC 事务函数
+ *   3. 事务内完成：扣减现金 + 增加积分 + 记录流水
+ * 
+ * 安全机制：
+ *   - exchange_balance_atomic 使用 FOR UPDATE 行锁防止并发
+ *   - 可用余额 = balance - frozen_balance，不会兑换冻结金额
+ *   - 兑换比例 1:1（TJS → LUCKY_COIN）
+ * 
+ * 触发器：
+ *   - 兑换成功后会触发 trigger_commission_for_exchange
+ *   - 自动给上级推荐人发放佣金
+ * ============================================================
+ */
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 

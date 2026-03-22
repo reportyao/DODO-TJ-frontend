@@ -1,3 +1,27 @@
+/**
+ * ============================================================
+ * approve-withdrawal Edge Function（提现审核）
+ * ============================================================
+ * 
+ * 功能：管理员审核用户提现申请
+ * 
+ * 支持操作：
+ *   - APPROVED: 审核通过，立即扣除余额 + 解冻
+ *   - REJECTED: 审核拒绝，解冻冻结金额
+ *   - COMPLETED: 转账完成，更新状态（不再扣款）
+ * 
+ * 资金安全机制：
+ *   - 乐观锁（wallet.version）防止并发余额覆盖
+ *   - 状态检查（eq('status', 'PENDING')）防止重复审批
+ *   - APPROVED 失败时自动回滚钱包余额
+ *   - 完整的钱包流水记录（balance_before/after）
+ * 
+ * 认证方式：
+ *   - x-admin-id header（管理后台）
+ *   - Authorization header（Supabase Auth 兼容）
+ * ============================================================
+ */
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 

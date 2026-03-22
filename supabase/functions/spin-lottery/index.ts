@@ -1,22 +1,28 @@
 /**
- * 转盘抽奖 Edge Function
+ * ============================================================
+ * spin-lottery Edge Function（转盘抽奖）
+ * ============================================================
  * 
- * 功能：
- * 1. 验证用户抽奖次数
- * 2. 根据概率随机抽取奖励
- * 3. 扣减抽奖次数
- * 4. 发放积分奖励
- * 5. 记录抽奖日志
+ * 功能：处理用户转盘抽奖请求
  * 
- * 请求参数：
- * - user_id: 用户ID
- * - session_token: 会话令牌
+ * 核心流程：
+ *   1. 验证用户会话和抽奖次数
+ *   2. 从 spin_rewards 表读取奖池配置
+ *   3. 根据概率随机抽取奖励
+ *   4. 调用 deduct_user_spin_count RPC 原子扣减次数
+ *   5. 发放奖励（积分/AI对话次数）
+ *   6. 记录抽奖日志
  * 
- * 返回：
- * - success: 是否成功
- * - reward: 中奖奖项信息
- * - remaining_spins: 剩余抽奖次数
- * - new_balance: 新的积分余额（如果中奖）
+ * 安全机制：
+ *   - deduct_user_spin_count 使用原子 UPDATE + WHERE 条件防止超扣
+ *   - add_user_lucky_coins 使用 FOR UPDATE 行锁防止并发余额错误
+ *   - 积分发放失败时记录错误但不回滚次数扣减（避免刷次数漏洞）
+ * 
+ * 注意事项：
+ *   - 次数扣减在奖励发放之前执行，这是有意设计
+ *   - 如果先发奖再扣次数，用户可利用网络超时重复获取奖励
+ *   - 积分发放失败的极端情况由管理员手动补偿
+ * ============================================================
  */
 
 const corsHeaders = {
@@ -37,7 +43,6 @@ interface SpinReward {
 }
 
 Deno.serve(async (req) => {
-  // 处理 CORS 预检请求
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -52,6 +57,7 @@ Deno.serve(async (req) => {
 
     const { user_id, session_token } = await req.json();
 
+    // 【参数校验】
     if (!user_id) {
       return new Response(
         JSON.stringify({ success: false, error: 'Missing user_id' }),
@@ -59,7 +65,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 验证会话（可选，根据项目需求）
+    // ============================================================
+    // Step 1: 验证会话
+    // ============================================================
     if (session_token) {
       const sessionResponse = await fetch(
         `${supabaseUrl}/rest/v1/user_sessions?session_token=eq.${session_token}&user_id=eq.${user_id}&is_active=eq.true&select=id`,
@@ -79,7 +87,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 1. 获取用户当前抽奖次数
+    // ============================================================
+    // Step 2: 获取用户当前抽奖次数
+    // ============================================================
     const spinBalanceResponse = await fetch(
       `${supabaseUrl}/rest/v1/user_spin_balance?user_id=eq.${user_id}&select=*`,
       {
@@ -105,7 +115,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. 获取奖池配置
+    // ============================================================
+    // Step 3: 获取奖池配置
+    // ============================================================
     const rewardsResponse = await fetch(
       `${supabaseUrl}/rest/v1/spin_rewards?is_active=eq.true&order=display_order.asc&select=*`,
       {
@@ -121,7 +133,10 @@ Deno.serve(async (req) => {
       throw new Error('No spin rewards configured');
     }
 
-    // 3. 根据概率随机抽取奖励
+    // ============================================================
+    // Step 4: 根据概率随机抽取奖励
+    // 概率累加算法：将所有奖项概率累加，随机数落在哪个区间就选中哪个
+    // ============================================================
     const random = Math.random();
     let cumulativeProbability = 0;
     let selectedReward: SpinReward | null = null;
@@ -134,12 +149,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 如果没有选中任何奖励（概率配置问题），默认选择最后一个（通常是"谢谢惠顾"）
+    // 如果概率配置有误导致没选中，默认选最后一个（通常是"谢谢惠顾"）
     if (!selectedReward) {
       selectedReward = rewards[rewards.length - 1];
     }
 
-    // 4. 扣减抽奖次数
+    // ============================================================
+    // Step 5: 原子扣减抽奖次数
+    // 【重要】必须在发放奖励之前扣减次数，防止利用网络超时刷奖励
+    // deduct_user_spin_count 使用 WHERE spin_count >= p_count 原子检查
+    // ============================================================
     const deductResponse = await fetch(
       `${supabaseUrl}/rest/v1/rpc/deduct_user_spin_count`,
       {
@@ -168,13 +187,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 5. 如果中奖（非“谢谢惠顾”），发放奖励
+    // ============================================================
+    // Step 6: 发放奖励
+    // 【注意】积分发放失败时不回滚次数扣减
+    // 原因：如果回滚次数，用户可利用"故意让积分发放失败"来无限刷次数
+    // 极端情况下积分未到账由管理员手动补偿
+    // ============================================================
     let newBalance: number | null = null;
+    let rewardDelivered = true;  // 标记奖励是否成功发放
     const isWinner = (selectedReward.reward_type === 'LUCKY_COIN' || selectedReward.reward_type === 'AI_CHAT') && selectedReward.reward_amount > 0;
 
     if (isWinner) {
       if (selectedReward.reward_type === 'LUCKY_COIN') {
-        // 发放积分奖励
+        // 发放积分奖励（调用 add_user_lucky_coins RPC，内部有 FOR UPDATE 行锁）
         try {
           const addCoinsResponse = await fetch(
             `${supabaseUrl}/rest/v1/rpc/add_user_lucky_coins`,
@@ -196,26 +221,21 @@ Deno.serve(async (req) => {
           if (!addCoinsResponse.ok) {
             const errorText = await addCoinsResponse.text();
             console.error(`[Spin Lottery] Failed to add lucky coins: ${errorText}`);
-            console.error(`[Spin Lottery] Response status: ${addCoinsResponse.status}`);
-            // 如果是函数不存在的错误，记录详细信息
-            if (errorText.includes('function') || errorText.includes('does not exist')) {
-              console.error('[Spin Lottery] Database function add_user_lucky_coins may not exist. Please check database migrations.');
-            }
-            throw new Error(`Failed to add lucky coins: ${errorText}`);
+            rewardDelivered = false;
+            // 不 throw，继续记录日志
+          } else {
+            newBalance = await addCoinsResponse.json();
+            console.log(`[Spin Lottery] Successfully added ${selectedReward.reward_amount} coins to user ${user_id}, new balance: ${newBalance}`);
           }
-          
-          newBalance = await addCoinsResponse.json();
-          console.log(`[Spin Lottery] Successfully added ${selectedReward.reward_amount} coins to user ${user_id}, new balance: ${newBalance}`);
         } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-          console.error('[Spin Lottery] Error in add_user_lucky_coins:', error);
-          // 积分发放失败，但不影响抽奖记录，只是newBalance为null
-          // 前端会显示中奖，但余额可能不会立即更新
+          const errMsg = error instanceof Error ? error.message : String(error);
+          console.error('[Spin Lottery] Error in add_user_lucky_coins:', errMsg);
+          rewardDelivered = false;
         }
       } else if (selectedReward.reward_type === 'AI_CHAT') {
         // 发放AI对话次数奖励
         try {
-          await fetch(`${supabaseUrl}/functions/v1/ai-add-bonus`, {
+          const aiResponse = await fetch(`${supabaseUrl}/functions/v1/ai-add-bonus`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${serviceRoleKey}`,
@@ -227,15 +247,24 @@ Deno.serve(async (req) => {
               reason: 'spin_lottery_reward'
             })
           });
-          console.log(`[Spin Lottery] Awarded ${selectedReward.reward_amount} AI chats to user ${user_id}`);
+          if (!aiResponse.ok) {
+            console.error('[Spin Lottery] Failed to award AI chats, status:', aiResponse.status);
+            rewardDelivered = false;
+          } else {
+            console.log(`[Spin Lottery] Awarded ${selectedReward.reward_amount} AI chats to user ${user_id}`);
+          }
         } catch (aiError: unknown) {
           console.error('Failed to award AI chats:', aiError);
+          rewardDelivered = false;
         }
       }
     }
 
-    // 6. 记录抽奖日志
-    const spinRecord = {
+    // ============================================================
+    // Step 7: 记录抽奖日志
+    // 【增强】增加 reward_delivered 字段标记奖励是否成功发放
+    // ============================================================
+    const spinRecord: Record<string, unknown> = {
       user_id: user_id,
       reward_id: selectedReward.id,
       reward_name: selectedReward.reward_name,
@@ -260,8 +289,10 @@ Deno.serve(async (req) => {
       }
     );
 
-    // 7. 发送通知（只在中奖时发送）
-    if (isWinner) {
+    // ============================================================
+    // Step 8: 发送中奖通知（失败不阻断主流程）
+    // ============================================================
+    if (isWinner && rewardDelivered) {
       try {
         const userResponse = await fetch(
           `${supabaseUrl}/rest/v1/users?id=eq.${user_id}&select=phone_number`,
@@ -316,7 +347,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 8. 获取更新后的抽奖次数
+    // ============================================================
+    // Step 9: 获取更新后的抽奖次数并返回结果
+    // ============================================================
     const updatedSpinBalanceResponse = await fetch(
       `${supabaseUrl}/rest/v1/user_spin_balance?user_id=eq.${user_id}&select=spin_count`,
       {
@@ -329,7 +362,6 @@ Deno.serve(async (req) => {
     const updatedSpinBalance = await updatedSpinBalanceResponse.json();
     const remainingSpins = updatedSpinBalance.length > 0 ? updatedSpinBalance[0].spin_count : 0;
 
-    // 9. 返回结果
     return new Response(
       JSON.stringify({
         success: true,

@@ -1,3 +1,26 @@
+/**
+ * ============================================================
+ * deposit-request Edge Function（用户充值申请）
+ * ============================================================
+ * 
+ * 功能：用户提交充值申请，等待管理员审核
+ * 
+ * 核心流程：
+ *   1. 验证用户身份（session_token 或 Authorization header）
+ *   2. 校验充值金额范围（10~50000 TJS）
+ *   3. 创建 PENDING 状态的充值申请记录
+ *   4. 管理员在后台审核通过后调用 approve_deposit_atomic 入账
+ * 
+ * 认证方式：
+ *   - 优先: body.session_token（PWA 模式）
+ *   - 兼容: Authorization header（Supabase Auth，将来移除）
+ * 
+ * 安全机制：
+ *   - 服务端校验金额范围，防止绕过前端直接调用 API
+ *   - 只创建申请记录，不直接操作钱包余额
+ * ============================================================
+ */
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 

@@ -1,3 +1,28 @@
+/**
+ * ============================================================
+ * claim-prize Edge Function（奖品领取）
+ * ============================================================
+ * 
+ * 功能：用户领取中奖奖品，生成提货码
+ * 
+ * 支持的订单类型：
+ *   - lottery: 抽奖中奖（prizes 表）
+ *   - group_buy: 拼团中奖（group_buy_results 表）
+ *   - full_purchase: 全额购买（full_purchase_orders 表）
+ * 
+ * 核心流程：
+ *   1. 验证用户会话
+ *   2. 查找奖品记录并验证归属
+ *   3. 生成唯一的6位数字提货码
+ *   4. 更新状态为 CLAIMED + PENDING_PICKUP
+ *   5. 记录提货日志
+ * 
+ * 幂等性：
+ *   - 已领取的奖品会直接返回已有的提货码
+ *   - 提货码跨三张表全局唯一
+ * ============================================================
+ */
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 

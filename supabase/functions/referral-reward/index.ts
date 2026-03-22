@@ -1,6 +1,29 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+/**
+ * ============================================================
+ * referral-reward Edge Function
+ * ============================================================
+ * 
+ * 功能：处理邀请奖励发放（区别于 handle-purchase-commission 的购买佣金）
+ * 
+ * 使用场景：
+ *   - LOTTERY_PURCHASE: 抽奖购买时触发邀请奖励
+ *   - COIN_EXCHANGE: 积分兑换时触发邀请奖励
+ *   - DEPOSIT: 充值时触发邀请奖励
+ * 
+ * 与 handle-purchase-commission 的区别：
+ *   - handle-purchase-commission: 购买订单佣金，发到积分钱包(LUCKY_COIN)
+ *   - referral-reward: 邀请奖励，发到现金钱包(TJS)
+ * 
+ * 安全机制：
+ *   - 防重复：from_user_id + user_id + transaction_type + level 唯一性检查
+ *   - 乐观锁：wallet.version 防止并发余额覆盖
+ *   - 佣金率从 commission_settings 表动态读取
+ * ============================================================
+ */
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
@@ -26,15 +49,25 @@ serve(async (req) => {
 
     const { user_id, transaction_type, amount, currency }: ReferralRewardRequest = await req.json()
 
-    // 获取用户信息
-    // 修复: 同时查询 referred_by_id 和 referrer_id 以兼容旧数据
+    // 【参数校验】确保必要参数存在
+    if (!user_id || !transaction_type || !amount || amount <= 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid parameters' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      )
+    }
+
+    // ============================================================
+    // Step 1: 获取用户推荐关系
+    // 【兼容修复】同时查询 referred_by_id 和 referrer_id
+    // ============================================================
     const { data: user, error: userError } = await supabaseClient
       .from('users')
       .select('referred_by_id, referrer_id')
       .eq('id', user_id)
       .single()
 
-    // 优先使用 referred_by_id，如果为空则使用 referrer_id
+    // 优先使用 referred_by_id（新字段），回退到 referrer_id（旧字段）
     const referrerId = user?.referred_by_id || user?.referrer_id
     
     if (userError || !user || !referrerId) {
@@ -44,7 +77,12 @@ serve(async (req) => {
       )
     }
 
-    // 从数据库读取佣金配置
+    // ============================================================
+    // Step 2: 从数据库读取佣金配置
+    // 【BUG修复】原代码 var/const 作用域问题导致回退配置可能不生效
+    // ============================================================
+    let commissionRates: Record<number, number> = {}
+    
     const { data: commissionConfig, error: configError } = await supabaseClient
       .from('commission_settings')
       .select('*')
@@ -53,59 +91,73 @@ serve(async (req) => {
     
     if (configError || !commissionConfig || commissionConfig.length === 0) {
       console.error('Failed to load commission config:', configError)
-      // 如果配置加载失败，使用默认配置
-      const commissionRates = {
+      // 配置加载失败时使用默认配置
+      commissionRates = {
         1: 0.10, // 一级 10%
         2: 0.05, // 二级 5%
         3: 0.02  // 三级 2%
       }
     } else {
       // 使用数据库配置
-      var commissionRates: Record<number, number> = {}
       commissionConfig.forEach(config => {
-        commissionRates[config.level] = config.rate
+        commissionRates[config.level] = parseFloat(config.rate)
       })
     }
 
+    // ============================================================
+    // Step 3: 遍历三级推荐链，计算奖励
+    // ============================================================
     const rewards: Array<{
       referrer_id: string
       level: number
       amount: number
     }> = []
 
-    // 递归查找上级推荐人(最多3级)
     let currentReferrerId = referrerId
     let level = 1
 
     while (currentReferrerId && level <= 3) {
-      const commissionAmount = amount * commissionRates[level as keyof typeof commissionRates]
-      
-      rewards.push({
-        referrer_id: currentReferrerId,
-        level,
-        amount: commissionAmount
-      })
+      const rate = commissionRates[level]
+      if (!rate || rate <= 0) {
+        // 该级别没有配置佣金率，跳过但继续查找下一级
+        const { data: referrer } = await supabaseClient
+          .from('users')
+          .select('referred_by_id, referrer_id')
+          .eq('id', currentReferrerId)
+          .single()
+        currentReferrerId = referrer?.referred_by_id || referrer?.referrer_id || null
+        level++
+        continue
+      }
+
+      const commissionAmount = Math.round(amount * rate * 100) / 100  // 保留两位小数
+
+      // 【安全校验】佣金金额必须大于 0
+      if (commissionAmount > 0) {
+        rewards.push({
+          referrer_id: currentReferrerId,
+          level,
+          amount: commissionAmount
+        })
+      }
 
       // 查找下一级推荐人
-      // 修复: 同时查询两个字段
       const { data: referrer } = await supabaseClient
         .from('users')
         .select('referred_by_id, referrer_id')
         .eq('id', currentReferrerId)
         .single()
 
-      currentReferrerId = referrer?.referred_by_id || referrer?.referrer_id
+      currentReferrerId = referrer?.referred_by_id || referrer?.referrer_id || null
       level++
     }
 
-    // 发放奖励
+    // ============================================================
+    // Step 4: 逐级发放奖励
+    // ============================================================
     const results = []
     for (const reward of rewards) {
-      /**
-       * 防重复检查：检查是否已经给该用户发放过该类型的奖励
-       * 使用 from_user_id + user_id + transaction_type + level 作为唯一标识
-       * 同时检查旧字段名以兼容历史数据
-       */
+      // 【防重复检查】确保同一笔交易不会重复发放
       const { data: existingReward } = await supabaseClient
         .from('commissions')
         .select('id')
@@ -119,26 +171,22 @@ serve(async (req) => {
         continue
       }
 
-      // 1. 创建Commission记录
-      // 统一字段名，与 handle-purchase-commission 保持一致
+      // 创建 Commission 记录
       const { data: commission, error: commissionError } = await supabaseClient
         .from('commissions')
         .insert({
-          // 主字段
-          user_id: reward.referrer_id,      // 获得佣金的用户
-          from_user_id: user_id,            // 产生佣金的用户
-          // 兼容字段
-          referrer_id: reward.referrer_id,
-          referee_id: user_id,
-          source_user_id: user_id,
-          beneficiary_id: reward.referrer_id,
-          // 业务字段
+          user_id: reward.referrer_id,       // 获得奖励的用户（上级）
+          from_user_id: user_id,             // 产生奖励的用户（下级）
+          referrer_id: reward.referrer_id,   // 兼容字段
+          referee_id: user_id,               // 兼容字段
+          source_user_id: user_id,           // 兼容字段
+          beneficiary_id: reward.referrer_id,// 兼容字段
           level: reward.level,
           amount: reward.amount,
-          currency: currency,
+          currency: currency || 'TJS',
           transaction_type: transaction_type,
-          type: 'REFERRAL_REWARD',          // 区分与 REFERRAL_COMMISSION
-          status: 'settled'                 // 统一使用 settled
+          type: 'REFERRAL_REWARD',
+          status: 'settled'
         })
         .select()
         .single()
@@ -148,86 +196,106 @@ serve(async (req) => {
         continue
       }
 
-      /**
-       * 2. 更新推荐人现金钱包余额
-       * 
-       * 钱包类型说明（重要）：
-       * - 现金钱包: type='TJS', currency='TJS'
-       * - 积分钱包: type='LUCKY_COIN', currency='POINTS'
-       * 
-       * 佣金奖励统一发放到现金钱包
-       */
+      // ============================================================
+      // 【钱包更新】发放到现金钱包(TJS)
+      // 使用乐观锁 + 重试机制防止并发余额覆盖
+      // ============================================================
+      const walletCurrency = currency || 'TJS'
       const { data: wallet, error: walletError } = await supabaseClient
         .from('wallets')
-        .select('id, balance, version')  // 修复 v3: 查询 version 字段用于乐观锁
+        .select('id, balance, version')
         .eq('user_id', reward.referrer_id)
-        .eq('type', 'TJS')             // 现金钱包类型
-        .eq('currency', currency)      // 使用请求中的货币类型
+        .eq('type', 'TJS')
+        .eq('currency', walletCurrency)
         .single()
 
       if (wallet && !walletError) {
-        // 【资金安全修复 v3】添加乐观锁防止并发更新导致余额错误
-        // 修复: 使用 wallet.id 而不是 user_id 来定位钱包，更精确
-        const currentBalance = parseFloat(wallet.balance || '0')
-        const newBalance = currentBalance + reward.amount
-        const currentVersion = wallet.version || 1
+        let updateSuccess = false
+        let retries = 3
+        let currentWallet = wallet
 
-        const { error: updateError, data: updatedWallet } = await supabaseClient
-          .from('wallets')
-          .update({
-            balance: newBalance,
-            version: currentVersion + 1,  // 乐观锁: 版本号+1
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', wallet.id)            // 修复: 使用 wallet.id 而不是 user_id
-          .eq('version', currentVersion)  // 乐观锁: 只有版本号匹配才能更新
-          .select()
-          .single()
+        while (retries > 0 && !updateSuccess) {
+          const currentBalance = parseFloat(currentWallet.balance || '0')
+          const newBalance = currentBalance + reward.amount
+          const currentVersion = currentWallet.version || 1
 
-        if (updateError || !updatedWallet) {
-          console.error('Failed to update wallet (possible concurrent conflict):', updateError)
-          continue
+          const { error: updateError, data: updatedWallet } = await supabaseClient
+            .from('wallets')
+            .update({
+              balance: newBalance,
+              version: currentVersion + 1,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', currentWallet.id)
+            .eq('version', currentVersion)  // 乐观锁
+            .select()
+            .single()
+
+          if (!updateError && updatedWallet) {
+            updateSuccess = true
+
+            // 记录钱包交易流水
+            await supabaseClient
+              .from('wallet_transactions')
+              .insert({
+                wallet_id: wallet.id,
+                type: 'REFERRAL_REWARD',
+                amount: reward.amount,
+                balance_before: currentBalance,
+                balance_after: newBalance,
+                currency: walletCurrency,
+                status: 'COMPLETED',
+                description: `L${reward.level}邀请奖励`,
+                processed_at: new Date().toISOString(),
+                created_at: new Date().toISOString(),
+                metadata: {
+                  referee_id: user_id,
+                  level: reward.level,
+                  transaction_type: transaction_type
+                }
+              })
+
+            // 发送通知
+            await supabaseClient
+              .from('notifications')
+              .insert({
+                user_id: reward.referrer_id,
+                type: 'REFERRAL_REWARD',
+                title: '邀请奖励到账',
+                content: `您的${reward.level}级好友消费,您获得了 ${reward.amount.toFixed(2)} ${walletCurrency} 奖励`,
+                is_read: false
+              })
+
+            results.push({
+              referrer_id: reward.referrer_id,
+              level: reward.level,
+              amount: reward.amount,
+              status: 'success'
+            })
+          } else {
+            retries--
+            if (retries > 0) {
+              // 重新读取最新钱包数据
+              const { data: freshWallet } = await supabaseClient
+                .from('wallets')
+                .select('id, balance, version')
+                .eq('id', currentWallet.id)
+                .single()
+              if (freshWallet) {
+                currentWallet = freshWallet
+              } else {
+                console.error('Failed to refresh wallet for retry')
+                break
+              }
+            }
+          }
         }
 
-        // 3. 创建钱包交易记录
-        // 【资金安全修复 v4】添加 balance_before 和 balance_after，确保流水可审计
-        await supabaseClient
-          .from('wallet_transactions')
-          .insert({
-            wallet_id: wallet.id,
-            type: 'REFERRAL_REWARD',
-            amount: reward.amount,
-            balance_before: currentBalance,
-            balance_after: newBalance,
-            currency: currency,
-            status: 'COMPLETED',
-            description: `L${reward.level}邀请奖励`,
-            processed_at: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-            metadata: {
-              referee_id: user_id,
-              level: reward.level,
-              transaction_type: transaction_type
-            }
-          })
-
-        // 4. 发送通知
-        await supabaseClient
-          .from('notifications')
-          .insert({
-            user_id: reward.referrer_id,
-            type: 'REFERRAL_REWARD',
-            title: '邀请奖励到账',
-            content: `您的${reward.level}级好友消费,您获得了 ${reward.amount.toFixed(2)} ${currency} 奖励`,
-            is_read: false
-          })
-
-        results.push({
-          referrer_id: reward.referrer_id,
-          level: reward.level,
-          amount: reward.amount,
-          status: 'success'
-        })
+        if (!updateSuccess) {
+          console.error(`Failed to update wallet after 3 retries for user ${reward.referrer_id}`)
+        }
+      } else {
+        console.error('Wallet not found for user:', reward.referrer_id, 'type: TJS, currency:', walletCurrency)
       }
     }
 
