@@ -676,8 +676,10 @@ const LotteryDetailPage: React.FC = () => {
               </h3>
               <div className="flex flex-wrap gap-2">
                 {Array.from({ length: quantity }, (_, i) => {
-                  // 参与码从0开始，sold_tickets表示已售出数量，下一个参与码就是sold_tickets + i
-                  const nextCodeNumber = lottery.sold_tickets + i;
+                  // 后端公式：participation_code = 1000000 + ticket_number - 1
+                  // ticket_number 从1开始，下一个 ticket_number = sold_tickets + 1 + i
+                  // 所以 participation_code = 1000000 + sold_tickets + i
+                  const nextCodeNumber = 1000000 + lottery.sold_tickets + i;
                   const codeStr = String(nextCodeNumber).padStart(7, '0');
                   return (
                     <span
