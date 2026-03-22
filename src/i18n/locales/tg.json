@@ -1727,7 +1727,17 @@
     "remainingLimit": "Лимити боқимонда",
     "depositHistory": "Таърихи пуркуниҳо",
     "noHistory": "Сабтҳо нестанд",
-    "bonus": "Ҷоиза"
+    "bonus": "Ҷоиза",
+    "amountRangeDynamic": "Диапазон: {{min}} - {{max}} TJS",
+    "phoneNumber": "Телефон",
+    "errors": {
+      "notPromoter": "Шумо промоутер нестед",
+      "promoterInactive": "Аккаунти промоутер фаъол нест",
+      "invalidAmount": "Маблағи пуркунӣ нодуруст",
+      "amountMustBeInteger": "Маблағ бояд адади бутун бошад",
+      "dailyCountExceeded": "Лимити рӯзонаи шумора ба охир расид",
+      "dailyLimitExceeded": "Лимити рӯзонаи маблағ кифоя нест"
+    }
   },
   "coupon": {
     "expired": "Мӯҳлаташ гузашт",

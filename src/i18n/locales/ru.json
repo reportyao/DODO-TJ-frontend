@@ -1727,7 +1727,17 @@
     "remainingLimit": "Остаток лимита",
     "depositHistory": "История пополнений",
     "noHistory": "Нет записей",
-    "bonus": "Бонус"
+    "bonus": "Бонус",
+    "amountRangeDynamic": "Диапазон: {{min}} - {{max}} TJS",
+    "phoneNumber": "Телефон",
+    "errors": {
+      "notPromoter": "Вы не являетесь промоутером",
+      "promoterInactive": "Аккаунт промоутера не активирован",
+      "invalidAmount": "Некорректная сумма пополнения",
+      "amountMustBeInteger": "Сумма должна быть целым числом",
+      "dailyCountExceeded": "Достигнут дневной лимит по количеству",
+      "dailyLimitExceeded": "Недостаточно дневного лимита"
+    }
   },
   "coupon": {
     "expired": "Истёк",

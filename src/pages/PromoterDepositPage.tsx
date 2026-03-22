@@ -200,15 +200,37 @@ const PromoterDepositPage: React.FC = () => {
         toast.error(t('promoterDeposit.userNotFound'))
       }
     } catch (err: any) {
-      toast.error(err.message || t('promoterDeposit.searchFailed'))
+      toast.error(mapErrorMessage(err.message) || t('promoterDeposit.searchFailed'))
     } finally {
       setIsSearching(false)
     }
   }
 
+  // ========== 错误消息映射（将后端中文错误消息映射为翻译key） ==========
+  const mapErrorMessage = (msg: string): string => {
+    const errorMap: Record<string, string> = {
+      'NOT_PROMOTER': t('promoterDeposit.errors.notPromoter', '您不是地推人员'),
+      'PROMOTER_INACTIVE': t('promoterDeposit.errors.promoterInactive', '地推账号未激活'),
+      'SELF_DEPOSIT_FORBIDDEN': t('promoterDeposit.cannotDepositSelf'),
+      'INVALID_AMOUNT': t('promoterDeposit.errors.invalidAmount', '充值金额不合法'),
+      'AMOUNT_MUST_BE_INTEGER': t('promoterDeposit.errors.amountMustBeInteger', '金额必须为整数'),
+      'DAILY_COUNT_EXCEEDED': t('promoterDeposit.errors.dailyCountExceeded', '今日充值次数已达上限'),
+      'DAILY_LIMIT_EXCEEDED': t('promoterDeposit.errors.dailyLimitExceeded', '今日充值额度不足'),
+    }
+    // 检查是否是已知的错误码
+    if (errorMap[msg]) return errorMap[msg]
+    // 检查是否包含已知的中文错误消息
+    if (msg.includes('不是地推人员')) return errorMap['NOT_PROMOTER']
+    if (msg.includes('未激活') || msg.includes('已被停用')) return errorMap['PROMOTER_INACTIVE']
+    if (msg.includes('不能小于')) return errorMap['INVALID_AMOUNT']
+    if (msg.includes('次数已达上限')) return errorMap['DAILY_COUNT_EXCEEDED']
+    if (msg.includes('额度不足')) return errorMap['DAILY_LIMIT_EXCEEDED']
+    return msg
+  }
+
   // ========== 扫码功能（PWA 模式不支持，提示用户使用手动搜索） ==========
   const handleScanQr = () => {
-    toast.error(t('promoterDeposit.scanNotSupported'))
+    toast(t('promoterDeposit.scanNotSupported'), { icon: 'ℹ️' })
   }
 
   // ========== 选择金额 ==========
@@ -260,10 +282,10 @@ const PromoterDepositPage: React.FC = () => {
         loadStats()
         toast.success(t('promoterDeposit.depositSuccess'))
       } else {
-        toast.error(result?.error || t('promoterDeposit.depositFailed'))
+        toast.error(mapErrorMessage(result?.error) || t('promoterDeposit.depositFailed'))
       }
     } catch (err: any) {
-      toast.error(err.message || t('promoterDeposit.depositFailed'))
+      toast.error(mapErrorMessage(err.message) || t('promoterDeposit.depositFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -532,7 +554,7 @@ const PromoterDepositPage: React.FC = () => {
                         : 'bg-gray-50 text-gray-700 border border-gray-200'
                     }`}
                   >
-                    {value}
+                    {value} <span className="text-xs font-normal opacity-70">TJS</span>
                   </motion.button>
                 ))}
               </div>
@@ -554,7 +576,7 @@ const PromoterDepositPage: React.FC = () => {
 
               {/* 金额范围提示 */}
               <p className="text-xs text-gray-400 text-center mb-4">
-                {t('promoterDeposit.amountRange')}
+                {t('promoterDeposit.amountRangeDynamic', { min: 10, max: stats?.daily_limit || 500 })}
               </p>
 
               {/* 备注输入 */}
@@ -614,6 +636,16 @@ const PromoterDepositPage: React.FC = () => {
                     {targetUser.id.substring(0, 8)}
                   </span>
                 </div>
+                {targetUser.phone_number && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">
+                      {t('promoterDeposit.phoneNumber', '电话')}
+                    </span>
+                    <span className="text-sm font-mono text-gray-900">
+                      {targetUser.phone_number}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">
                     {t('promoterDeposit.depositAmountLabel')}
@@ -709,7 +741,7 @@ const PromoterDepositPage: React.FC = () => {
                     {t('promoterDeposit.todayRemaining')}
                   </span>
                   <span className="text-sm text-gray-700">
-                    {depositResult.today_count ?? '--'}/{depositResult.daily_count_limit || 10} {t('promoterDeposit.times')} · {depositResult.today_total ?? '--'}/{depositResult.daily_limit ?? '--'} TJS
+                    {depositResult.today_count ?? '--'}/10 {t('promoterDeposit.times')} · {depositResult.today_total ?? '--'}/{depositResult.daily_limit ?? '--'} TJS
                   </span>
                 </div>
               </div>

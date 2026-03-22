@@ -226,11 +226,17 @@ serve(async (req) => {
 
           if (existingLog) {
             console.log(`[promoter-deposit] Idempotency hit for key: ${idempotency_key}`)
+            // 返回与正常充值一致的字段，确保前端成功页面能正常显示
             return new Response(
               JSON.stringify({
                 success: true,
                 message: '充值已成功处理（重复请求）',
-                deposit_id: existingLog.details?.deposit_id
+                deposit_id: existingLog.details?.deposit_id,
+                amount: existingLog.details?.amount || amount,
+                bonus_amount: 0,
+                today_count: null,
+                today_total: null,
+                daily_limit: null,
               }),
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )

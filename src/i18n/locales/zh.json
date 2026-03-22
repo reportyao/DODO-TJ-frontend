@@ -1727,7 +1727,17 @@
     "remainingLimit": "剩余额度",
     "depositHistory": "充值记录",
     "noHistory": "暂无充值记录",
-    "bonus": "奖励"
+    "bonus": "奖励",
+    "amountRangeDynamic": "充值金额范围：{{min}} - {{max}} TJS",
+    "phoneNumber": "电话",
+    "errors": {
+      "notPromoter": "您不是地推人员",
+      "promoterInactive": "地推账号未激活",
+      "invalidAmount": "充值金额不合法",
+      "amountMustBeInteger": "金额必须为整数",
+      "dailyCountExceeded": "今日充值次数已达上限",
+      "dailyLimitExceeded": "今日充值额度不足"
+    }
   },
   "coupon": {
     "expired": "已过期",

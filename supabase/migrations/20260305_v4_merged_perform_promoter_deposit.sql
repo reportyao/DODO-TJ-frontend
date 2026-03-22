@@ -69,10 +69,11 @@ BEGIN
   END IF;
 
   -- ============================================================
-  -- Step 3: 验证金额范围 (10 ~ 500 TJS) 且必须为整数
+  -- Step 3: 验证金额范围 (最低10 TJS，最高不超过每日额度) 且必须为整数
   -- [ISSUE-AMT-001 FIX] 增加整数验证
+  -- [BUG-FIX] 单笔上限从硬编码500改为使用daily_deposit_limit
   -- ============================================================
-  IF p_amount < 10 OR p_amount > 500 THEN
+  IF p_amount < 10 OR p_amount > COALESCE(v_promoter.daily_deposit_limit, 5000) THEN
     RETURN json_build_object('success', false, 'error', 'INVALID_AMOUNT');
   END IF;
 
