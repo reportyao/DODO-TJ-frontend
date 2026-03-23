@@ -4,14 +4,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * get-subsidy-pool: 获取补贴资金池数据
  * 
- * 统计已发放的总赠送积分（充值赠送等），
- * 前端用 10,000,000 TJS 减去已发放总额，得到剩余资金池。
+ * 优先从 system_config.subsidy_pool 读取已发放总额（实体化补贴池），
+ * 如果不存在则回退到动态计算（统计 BONUS 交易总额）。
  * 
- * 数据来源：wallet_transactions 表中 type 为 BONUS / DEPOSIT_BONUS / FIRST_DEPOSIT_BONUS 的记录
- * 
- * 【修复 C4】移除不存在的 wallet_type 列过滤
- * 【修复 C5】添加 BONUS 类型（process_deposit_with_bonus 实际写入的类型）
- * 改为通过 JOIN wallets 表过滤 LUCKY_COIN 钱包的交易记录
+ * 前端用 total_pool 减去 total_issued 得到剩余资金池。
  */
 
 const corsHeaders = {
@@ -21,7 +17,6 @@ const corsHeaders = {
 };
 
 serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -31,51 +26,58 @@ serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 【修复】先获取所有 LUCKY_COIN 钱包 ID
-    const { data: lcWallets, error: walletError } = await supabase
-      .from("wallets")
-      .select("id")
-      .eq("type", "LUCKY_COIN");
-
-    if (walletError) {
-      console.error("Error querying LUCKY_COIN wallets:", walletError);
-      return new Response(
-        JSON.stringify({ error: "Failed to query wallet data" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const lcWalletIds = (lcWallets || []).map((w: { id: string }) => w.id);
-
+    const TOTAL_POOL = 10_000_000;
     let totalIssued = 0;
+    let source = "dynamic"; // 数据来源标识
 
-    if (lcWalletIds.length > 0) {
-      // 统计 LUCKY_COIN 钱包中所有赠送类型的交易总额
-      // BONUS: 充值赠送（process_deposit_with_bonus 写入的类型）
-      // DEPOSIT_BONUS: 充值赠送（历史兼容）
-      // FIRST_DEPOSIT_BONUS: 充值赠送(历史)（已废弃，但历史数据需要统计）
-      const { data, error } = await supabase
-        .from("wallet_transactions")
-        .select("amount")
-        .in("type", ["BONUS", "DEPOSIT_BONUS", "FIRST_DEPOSIT_BONUS"])
-        .in("wallet_id", lcWalletIds);
+    // 优先从 system_config 读取实体化的补贴池数据
+    const { data: configData, error: configError } = await supabase
+      .from("system_config")
+      .select("value")
+      .eq("key", "subsidy_pool")
+      .single();
 
-      if (error) {
-        console.error("Error querying subsidy data:", error);
+    if (!configError && configData?.value?.total_issued !== undefined) {
+      totalIssued = Number(configData.value.total_issued);
+      source = "config";
+    } else {
+      // 回退：动态计算（统计 LUCKY_COIN 钱包中所有 BONUS 交易）
+      const { data: lcWallets, error: walletError } = await supabase
+        .from("wallets")
+        .select("id")
+        .eq("type", "LUCKY_COIN");
+
+      if (walletError) {
+        console.error("Error querying LUCKY_COIN wallets:", walletError);
         return new Response(
-          JSON.stringify({ error: "Failed to query subsidy data" }),
+          JSON.stringify({ error: "Failed to query wallet data" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // 计算已发放总额
-      totalIssued = (data || []).reduce((sum: number, row: { amount: number }) => {
-        return sum + Math.abs(row.amount);
-      }, 0);
+      const lcWalletIds = (lcWallets || []).map((w: { id: string }) => w.id);
+
+      if (lcWalletIds.length > 0) {
+        const { data, error } = await supabase
+          .from("wallet_transactions")
+          .select("amount")
+          .in("type", ["BONUS", "DEPOSIT_BONUS", "FIRST_DEPOSIT_BONUS"])
+          .in("wallet_id", lcWalletIds);
+
+        if (error) {
+          console.error("Error querying subsidy data:", error);
+          return new Response(
+            JSON.stringify({ error: "Failed to query subsidy data" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        totalIssued = (data || []).reduce((sum: number, row: { amount: number }) => {
+          return sum + Math.abs(row.amount);
+        }, 0);
+      }
     }
 
-    // 资金池总额 10,000,000 TJS
-    const TOTAL_POOL = 10_000_000;
     const remaining = Math.max(0, TOTAL_POOL - totalIssued);
 
     return new Response(
@@ -83,6 +85,7 @@ serve(async (req: Request) => {
         total_pool: TOTAL_POOL,
         total_issued: Math.round(totalIssued * 100) / 100,
         remaining: Math.round(remaining * 100) / 100,
+        source,
         updated_at: new Date().toISOString(),
       }),
       { 
@@ -90,7 +93,6 @@ serve(async (req: Request) => {
         headers: { 
           ...corsHeaders, 
           "Content-Type": "application/json",
-          // 缓存60秒，减少频繁查询
           "Cache-Control": "public, max-age=60",
         } 
       }
