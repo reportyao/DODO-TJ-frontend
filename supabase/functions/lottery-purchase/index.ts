@@ -377,7 +377,8 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         p_lottery_id: lotteryId,
         p_user_id: userId,
-        p_quantity: quantity
+        p_quantity: quantity,
+        p_order_id: order.id,
       }),
     });
 

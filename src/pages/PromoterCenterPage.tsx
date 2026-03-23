@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../contexts/UserContext'
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { formatCurrency, copyToClipboard } from '../lib/utils'
 import {
   ArrowLeftIcon,
@@ -140,30 +140,31 @@ const PromoterCenterPage: React.FC = () => {
     else setIsLoading(true)
 
     try {
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/rpc/get_promoter_center_data`,
-        {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            p_user_id: user.id,
-            p_time_range: timeRange,
-          }),
-        }
-      )
+      const sessionToken = localStorage.getItem('custom_session_token')
+      if (!sessionToken) {
+        setNotPromoter(true)
+        return
+      }
 
-      if (response.ok) {
-        const result = await response.json()
-        if (result.success === false && result.error === 'NOT_PROMOTER') {
-          setNotPromoter(true)
-        } else {
-          setData(result)
-          setNotPromoter(false)
-        }
+      const { data: result, error } = await supabase.functions.invoke('promoter-center', {
+        body: {
+          action: 'get_data',
+          session_token: sessionToken,
+          time_range: timeRange,
+        },
+      })
+
+      if (error) {
+        console.error('[PromoterCenter] Failed to fetch data:', error)
+        toast.error(t('common.error'))
+        return
+      }
+
+      if (result && result.success === false && result.error === 'NOT_PROMOTER') {
+        setNotPromoter(true)
+      } else {
+        setData(result)
+        setNotPromoter(false)
       }
     } catch (error) {
       console.error('[PromoterCenter] Failed to fetch data:', error)
@@ -184,38 +185,39 @@ const PromoterCenterPage: React.FC = () => {
     setIsChecking(true)
 
     try {
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/rpc/increment_contact_count`,
-        {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            p_promoter_id: user.id,
-            p_log_date: new Date().toISOString().split('T')[0],
-          }),
-        }
-      )
+      const sessionToken = localStorage.getItem('custom_session_token')
+      if (!sessionToken) {
+        toast.error(t('common.error'))
+        return
+      }
 
-      if (response.ok) {
-        const result = await response.json()
-        if (result.success) {
-          // 更新本地数据
-          setData(prev => prev ? {
-            ...prev,
-            today_log: {
-              ...prev.today_log,
-              contact_count: result.contact_count,
-              has_logged: true,
-            }
-          } : prev)
-          toast.success(`+1 ✅ ${t('promoter.contactCount')}: ${result.contact_count}`)
-        } else {
-          toast.error(result.message || t('common.error'))
-        }
+      const { data: result, error } = await supabase.functions.invoke('promoter-center', {
+        body: {
+          action: 'check_in',
+          session_token: sessionToken,
+          log_date: new Date().toISOString().split('T')[0],
+        },
+      })
+
+      if (error) {
+        console.error('[PromoterCenter] Check-in failed:', error)
+        toast.error(t('common.error'))
+        return
+      }
+
+      if (result && result.success) {
+        // 更新本地数据
+        setData(prev => prev ? {
+          ...prev,
+          today_log: {
+            ...prev.today_log,
+            contact_count: result.contact_count,
+            has_logged: true,
+          }
+        } : prev)
+        toast.success(`+1 ✅ ${t('promoter.contactCount')}: ${result.contact_count}`)
+      } else {
+        toast.error((result && result.message) || t('common.error'))
       }
     } catch (error) {
       console.error('[PromoterCenter] Check-in failed:', error)
