@@ -15,12 +15,20 @@ let supabaseAnonKey =
   import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
   import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// 运行时安全检查：确保 anonKey 是 JWT 格式（以 eyJ 开头）
+// 如果部署环境错误地将 publishable key (sb_publishable_...) 设为 ANON_KEY，自动回退
+const FALLBACK_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcmNncHdsZm91cXNsb2t3YnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzMzMzcsImV4cCI6MjA4OTUwOTMzN30.KFR8C1O0BnGWvR6GSCCq8opP2EljMwwOQrtn8snXqM0';
+
+if (supabaseAnonKey && !supabaseAnonKey.startsWith('eyJ')) {
+  console.warn('[Supabase] Detected non-JWT anonKey (possibly publishable key), falling back to JWT key');
+  supabaseAnonKey = FALLBACK_ANON_JWT;
+}
+
 // 屏底方案：如果环境变量加载失败，使用硬编码的生产环境配置
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('[Supabase] Environment variables not found, using fallback production config');
   supabaseUrl = 'https://qcrcgpwlfouqslokwbzl.supabase.co';
-  // 使用 anon JWT key 作为屏底（必须是 JWT 格式，不能使用 publishable key）
-  supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcmNncHdsZm91cXNsb2t3YnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzMzMzcsImV4cCI6MjA4OTUwOTMzN30.KFR8C1O0BnGWvR6GSCCq8opP2EljMwwOQrtn8snXqM0';
+  supabaseAnonKey = FALLBACK_ANON_JWT;
 }
 
 if (!supabaseUrl || !supabaseAnonKey) {

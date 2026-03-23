@@ -29,6 +29,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase'
+import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper'
 import toast from 'react-hot-toast'
 
 // ============================================================
@@ -105,10 +106,8 @@ const PromoterDepositPage: React.FC = () => {
     })
 
     if (error) {
-      // 尝试从 error 中提取具体错误信息
-      const errorMsg = typeof error === 'object' && error.message
-        ? error.message
-        : String(error)
+      // 使用 extractEdgeFunctionError 正确提取业务错误信息
+      const errorMsg = await extractEdgeFunctionError(error)
       throw new Error(errorMsg)
     }
 
