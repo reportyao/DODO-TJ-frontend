@@ -175,8 +175,17 @@ export const ProductList: React.FC<ProductListProps> = ({
           ))}
         </div>
       ) : (
-        <div className="text-center py-8 text-gray-400">
-          {emptyText || t('common.noData')}
+        <div className="text-center py-12">
+          <picture>
+            <source srcSet="/brand/empty_cart.webp" type="image/webp" />
+            <img 
+              src="/brand/empty_cart.png" 
+              alt="No items"
+              className="w-32 h-32 mx-auto mb-3 opacity-80"
+              style={{ objectFit: 'contain' }}
+            />
+          </picture>
+          <p className="text-gray-400 text-sm">{emptyText || t('common.noData')}</p>
         </div>
       )}
     </div>

@@ -211,7 +211,15 @@ const MyPrizesPage: React.FC = () => {
 
         {prizes.length === 0 && (
           <div className="text-center py-12">
-            <TrophyIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <picture>
+              <source srcSet="/brand/empty_orders.webp" type="image/webp" />
+              <img 
+                src="/brand/empty_orders.png" 
+                alt="No prizes"
+                className="w-36 h-36 mx-auto mb-4 opacity-80"
+                style={{ objectFit: 'contain' }}
+              />
+            </picture>
             <p className="text-gray-500 mb-2">{t('myPrizes.noPrizes')}</p>
             <button
               onClick={() => navigate('/lottery')}

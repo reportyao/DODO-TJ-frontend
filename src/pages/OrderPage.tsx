@@ -333,7 +333,15 @@ const OrderPage: React.FC = () => {
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center">
-            <TicketIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <picture>
+              <source srcSet="/brand/empty_orders.webp" type="image/webp" />
+              <img 
+                src="/brand/empty_orders.png" 
+                alt="No orders"
+                className="w-36 h-36 mx-auto mb-4 opacity-80"
+                style={{ objectFit: 'contain' }}
+              />
+            </picture>
             <p className="text-gray-500">{t('order.noOrders')}</p>
           </div>
         ) : (

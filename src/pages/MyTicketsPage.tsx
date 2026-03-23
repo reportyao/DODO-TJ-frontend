@@ -263,7 +263,15 @@ const MyTicketsPage: React.FC = () => {
 
         {tickets.length === 0 && (
           <div className="text-center py-12">
-            <TicketIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <picture>
+              <source srcSet="/brand/empty_cart.webp" type="image/webp" />
+              <img 
+                src="/brand/empty_cart.png" 
+                alt="No tickets"
+                className="w-36 h-36 mx-auto mb-4 opacity-80"
+                style={{ objectFit: 'contain' }}
+              />
+            </picture>
             <p className="text-gray-500">{t('myTickets.noTickets')}</p>
           </div>
         )}

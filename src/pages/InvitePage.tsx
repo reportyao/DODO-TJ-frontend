@@ -393,7 +393,15 @@ const InvitePage: React.FC = () => {
           </div>
         ) : invitedUsers.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center">
-            <UserPlusIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <picture>
+              <source srcSet="/brand/empty_orders.webp" type="image/webp" />
+              <img 
+                src="/brand/empty_orders.png" 
+                alt="No invitations"
+                className="w-32 h-32 mx-auto mb-4 opacity-80"
+                style={{ objectFit: 'contain' }}
+              />
+            </picture>
             <p className="text-gray-500">{t('invite.noInvitations')}</p>
             <p className="text-sm text-gray-400 mt-2">{t('invite.shareToEarn')}</p>
           </div>

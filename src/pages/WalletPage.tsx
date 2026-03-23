@@ -384,8 +384,17 @@ const WalletPage: React.FC = () => {
                   <p>{t('common.loading')}</p>
                 </div>
               ) : transactions.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  <p>{t('wallet.noTransactions')}</p>
+                <div className="p-8 text-center">
+                  <picture>
+                    <source srcSet="/brand/empty_wallet.webp" type="image/webp" />
+                    <img 
+                      src="/brand/empty_wallet.png" 
+                      alt="No transactions"
+                      className="w-32 h-32 mx-auto mb-3 opacity-80"
+                      style={{ objectFit: 'contain' }}
+                    />
+                  </picture>
+                  <p className="text-gray-500 text-sm">{t('wallet.noTransactions')}</p>
                 </div>
               ) : (
                 transactions.map((transaction) => (

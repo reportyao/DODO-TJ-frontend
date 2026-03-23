@@ -183,7 +183,15 @@ const CouponListPage: React.FC = () => {
           </div>
         ) : currentCoupons.length === 0 ? (
           <div className="text-center py-16">
-            <TicketIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <picture>
+              <source srcSet="/brand/empty_cart.webp" type="image/webp" />
+              <img 
+                src="/brand/empty_cart.png" 
+                alt="No coupons"
+                className="w-32 h-32 mx-auto mb-4 opacity-80"
+                style={{ objectFit: 'contain' }}
+              />
+            </picture>
             <p className="text-gray-500 font-medium">{t('coupon.noCoupons')}</p>
             <p className="text-gray-400 text-sm mt-2">{t('coupon.noCouponsHint')}</p>
           </div>

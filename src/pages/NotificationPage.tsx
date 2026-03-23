@@ -583,7 +583,15 @@ const NotificationPage: React.FC = () => {
           </div>
         ) : filteredNotifications.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center">
-            <BellIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <picture>
+              <source srcSet="/brand/empty_orders.webp" type="image/webp" />
+              <img 
+                src="/brand/empty_orders.png" 
+                alt="No notifications"
+                className="w-32 h-32 mx-auto mb-4 opacity-80"
+                style={{ objectFit: 'contain' }}
+              />
+            </picture>
             <p className="text-gray-500">{t('notification.noNotifications')}</p>
           </div>
         ) : (

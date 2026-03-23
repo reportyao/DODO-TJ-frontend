@@ -60,9 +60,15 @@ const LoginPage: React.FC = () => {
       <div className="w-full max-w-md">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary-dark rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
-            <span className="text-white text-3xl font-bold">D</span>
-          </div>
+          <picture>
+            <source srcSet="/dodo-logo.webp" type="image/webp" />
+            <img 
+              src="/dodo-logo.png" 
+              alt="DODO Logo"
+              className="w-24 h-24 mx-auto mb-3 drop-shadow-lg"
+              style={{ objectFit: 'contain' }}
+            />
+          </picture>
           <h1 className="text-2xl font-bold text-gray-900">DODO</h1>
           <p className="text-gray-500 mt-1">{t('auth.loginSubtitle')}</p>
         </div>
