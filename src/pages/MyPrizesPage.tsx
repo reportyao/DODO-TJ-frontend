@@ -11,6 +11,7 @@ import {
   TicketIcon,
   ClockIcon
 } from '@heroicons/react/24/outline';
+import PhoneInput from '../components/ui/PhoneInput';
 import { LazyImage } from '../components/LazyImage';
 import { formatDateTime } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -332,13 +333,10 @@ const ShippingModal: React.FC<{
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('myPrizes.phone')} *
             </label>
-            <input
-              type="tel"
-              required
+            <PhoneInput
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="+992 XXX XXX XXX"
+              onChange={(val) => setFormData({ ...formData, phone: val })}
+              required
             />
           </div>
 

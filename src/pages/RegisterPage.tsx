@@ -3,13 +3,13 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../contexts/UserContext'
 import {
-  PhoneIcon,
   LockClosedIcon,
   UserIcon,
   TicketIcon,
   EyeIcon,
   EyeSlashIcon,
 } from '@heroicons/react/24/outline'
+import PhoneInput from '../components/ui/PhoneInput'
 import toast from 'react-hot-toast'
 import AvatarUpload from '../components/AvatarUpload'
 import { supabase } from '../lib/supabase'
@@ -140,17 +140,12 @@ const RegisterPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {t('auth.phoneNumber')} <span className="text-red-500">*</span>
             </label>
-            <div className="relative">
-              <PhoneIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+992 XXX XXX XXX"
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
-                autoComplete="tel"
-              />
-            </div>
+            <PhoneInput
+              value={phoneNumber}
+              onChange={setPhoneNumber}
+              autoComplete="tel"
+              required
+            />
           </div>
 
           {/* Name (optional) */}

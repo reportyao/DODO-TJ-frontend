@@ -6,13 +6,13 @@ import { useSupabase } from '../contexts/SupabaseContext'
 import {
   ArrowLeftIcon,
   UserIcon,
-  PhoneIcon,
   LockClosedIcon,
   EyeIcon,
   EyeSlashIcon,
   CheckIcon,
   ChevronRightIcon,
 } from '@heroicons/react/24/outline'
+import PhoneInput from '../components/ui/PhoneInput'
 import toast from 'react-hot-toast'
 import AvatarUpload from '../components/AvatarUpload'
 import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper'
@@ -334,12 +334,9 @@ const ProfileEditPage: React.FC = () => {
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   {t('profile.newPhone') || '新手机号'}
                 </label>
-                <input
-                  type="tel"
+                <PhoneInput
                   value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
-                  placeholder="+992 XXX XXX XXX"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+                  onChange={setNewPhone}
                   autoComplete="tel"
                 />
               </div>
@@ -347,19 +344,16 @@ const ProfileEditPage: React.FC = () => {
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   {t('profile.confirmNewPhone') || '再次输入新手机号'}
                 </label>
-                <input
-                  type="tel"
+                <PhoneInput
                   value={confirmPhone}
-                  onChange={(e) => setConfirmPhone(e.target.value)}
-                  placeholder="+992 XXX XXX XXX"
-                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400 ${
-                    confirmPhone && newPhone && confirmPhone !== newPhone
-                      ? 'border-red-300 bg-red-50'
-                      : confirmPhone && newPhone && confirmPhone === newPhone
-                      ? 'border-green-300 bg-green-50'
-                      : 'border-gray-200'
-                  }`}
+                  onChange={setConfirmPhone}
                   autoComplete="tel"
+                  className={confirmPhone && newPhone && confirmPhone !== newPhone
+                    ? 'border-red-300'
+                    : confirmPhone && newPhone && confirmPhone === newPhone
+                    ? 'border-green-300'
+                    : ''
+                  }
                 />
                 {confirmPhone && newPhone && confirmPhone !== newPhone && (
                   <p className="text-xs text-red-500 mt-1">
