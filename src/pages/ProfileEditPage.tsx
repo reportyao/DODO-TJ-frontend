@@ -88,11 +88,13 @@ const ProfileEditPage: React.FC = () => {
 
     setIsSavingBasic(true)
     try {
+      const sessionToken = localStorage.getItem('custom_session_token')
       const { data, error } = await supabase.functions.invoke('update-profile', {
         body: {
           action: 'update_basic',
           first_name: firstName.trim() || null,
           avatar_url: avatarUrl,
+          session_token: sessionToken,
         },
       })
 
@@ -130,11 +132,13 @@ const ProfileEditPage: React.FC = () => {
 
     setIsSavingPhone(true)
     try {
+      const sessionToken = localStorage.getItem('custom_session_token')
       const { data, error } = await supabase.functions.invoke('update-profile', {
         body: {
           action: 'update_phone',
           new_phone: newPhone.trim(),
           confirm_phone: confirmPhone.trim(),
+          session_token: sessionToken,
         },
       })
 
@@ -183,12 +187,14 @@ const ProfileEditPage: React.FC = () => {
 
     setIsSavingPassword(true)
     try {
+      const sessionToken = localStorage.getItem('custom_session_token')
       const { data, error } = await supabase.functions.invoke('update-profile', {
         body: {
           action: 'update_password',
           old_password: oldPassword,
           new_password: newPassword,
           confirm_password: confirmPassword,
+          session_token: sessionToken,
         },
       })
 

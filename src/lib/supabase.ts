@@ -8,12 +8,18 @@ export type Lottery = Tables<'lotteries'>;
 
 // 检查环境变量，优先使用 NEXT_PUBLIC_ (Next.js 风格) 或 VITE_ (Vite 风格)
 let supabaseUrl = import.meta.env.NEXT_PUBLIC_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
-let supabaseAnonKey = import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+// 重要：必须使用 anon JWT key（不能使用 publishable key）
+// publishable key 格式为 "sb_publishable_..."  不是 JWT，会导致 PostgREST 返回 401
+// supabase-js 将 anonKey 同时作为 apikey 和 Authorization Bearer header 发送
+let supabaseAnonKey = 
+  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
+  import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// 兜底方案：如果环境变量加载失败，使用硬编码的生产环境配置
+// 屏底方案：如果环境变量加载失败，使用硬编码的生产环境配置
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('[Supabase] Environment variables not found, using fallback production config');
   supabaseUrl = 'https://qcrcgpwlfouqslokwbzl.supabase.co';
+  // 使用 anon JWT key 作为屏底（必须是 JWT 格式，不能使用 publishable key）
   supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcmNncHdsZm91cXNsb2t3YnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzMzMzcsImV4cCI6MjA4OTUwOTMzN30.KFR8C1O0BnGWvR6GSCCq8opP2EljMwwOQrtn8snXqM0';
 }
 

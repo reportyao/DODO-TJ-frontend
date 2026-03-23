@@ -165,30 +165,33 @@ const MarketCreatePage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // 调用API创建转售
+      // 调用API创建转售（使用 session_token 在 body 中认证）
+      const sessionToken = localStorage.getItem('custom_session_token');
+      if (!sessionToken) {
+        throw new Error(t('auth.loginRequired'));
+      }
       const response = await fetch(
         `${SUPABASE_URL}/functions/v1/create-resale`,
         {
           method: 'POST',
           headers: {
             'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${localStorage.getItem('custom_session_token') || SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            prizeId: selectedTicket,
+            ticket_id: selectedTicket,
             price: parseFloat(sellingPrice),
             description: `${t('market.resale')} ${selectedTicketData?.lottery_title}`,
+            session_token: sessionToken,
           }),
         }
       );
-
       const result = await response.json();
       
       if (!result.success) {
         throw new Error(result.error || t('error.operationFailed'));
       }
-
       toast.success(t('market.publishSuccess'));
       navigate('/market');
     } catch (error) {

@@ -48,13 +48,25 @@ function normalizePhone(phone: string): string {
 }
 
 // 从 Authorization header 中提取 session token 并验证用户身份
-async function authenticateUser(req: Request, supabase: any): Promise<{ userId: string } | null> {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
+async function authenticateUser(req: Request, supabase: any, bodyToken?: string): Promise<{ userId: string } | null> {
+  // 优先从 body 中读取 session_token（兼容前端通过 body 传递的方式）
+  // 其次从 Authorization header 中读取（兼容直接设置 header 的方式）
+  let token = bodyToken;
+  if (!token) {
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const candidate = authHeader.replace('Bearer ', '');
+      // 过滤掉 anon key（anon key 是 JWT，以 eyJ 开头且很长）
+      // 自定义 session token 格式不同，不是 JWT
+      if (candidate && !candidate.startsWith('eyJ')) {
+        token = candidate;
+      }
+    }
   }
 
-  const token = authHeader.replace('Bearer ', '');
+  if (!token) {
+    return null;
+  }
   
   // 查找活跃的 session
   const { data: session, error } = await supabase
@@ -84,17 +96,18 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // 1. 验证用户身份
-    const auth = await authenticateUser(req, supabase);
+    // 先读取 body，以便从中提取 session_token
+    const body = await req.json();
+    const { action, session_token: bodySessionToken } = body;
+
+    // 1. 验证用户身份（优先使用 body 中的 session_token，其次使用 Authorization header）
+    const auth = await authenticateUser(req, supabase, bodySessionToken);
     if (!auth) {
       return new Response(
         JSON.stringify({ error: { message: '未授权，请重新登录' } }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const body = await req.json();
-    const { action } = body;
 
     // ============================================================
     // 动作分发

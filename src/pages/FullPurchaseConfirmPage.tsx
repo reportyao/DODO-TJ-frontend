@@ -10,6 +10,7 @@ import { formatCurrency, getLocalizedText, cn } from '../lib/utils';
 import toast from 'react-hot-toast';
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper';
 
 type Lottery = Tables<'lotteries'>;
 type PickupPoint = Tables<'pickup_points'>;
@@ -146,8 +147,8 @@ const FullPurchaseConfirmPage: React.FC = () => {
 
       if (error) {
         console.error('Edge Function error:', error);
-        // 尝试从错误对象中提取详细信息
-        const errorMessage = error.message || error.toString();
+        // 使用 extractEdgeFunctionError 正确提取业务错误信息
+        const errorMessage = await extractEdgeFunctionError(error);
         throw new Error(errorMessage);
       }
 
