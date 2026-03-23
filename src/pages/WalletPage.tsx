@@ -313,32 +313,32 @@ const WalletPage: React.FC = () => {
         <SubsidyPoolCard />
       </div>
 
-      {/* 快捷操作 */}
+      {/* 快捷操作 - 提现隐藏后改为 3 列，按钮更大更饱满 */}
       <div className="px-4 mt-6">
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-4">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate('/deposit')}
-            className="bg-white rounded-xl p-3 shadow-sm text-center"
+            className="bg-white rounded-2xl py-4 px-3 shadow-sm text-center"
           >
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-1.5">
-              <ArrowDownIcon className="w-5 h-5 text-green-600" />
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-2">
+              <ArrowDownIcon className="w-6 h-6 text-green-600" />
             </div>
-            <p className="text-xs font-medium text-gray-900">{t('wallet.deposit')}</p>
+            <p className="text-sm font-medium text-gray-900">{t('wallet.deposit')}</p>
           </motion.button>
 
-          {/* 提现功能暂时隐藏 - 待开放时再启用
+          {/* 提现功能暂时隐藏 - 待开放时再启用，同时将 grid-cols-3 改回 grid-cols-4
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate('/withdraw')}
-            className="bg-white rounded-xl p-3 shadow-sm text-center"
+            className="bg-white rounded-2xl py-4 px-3 shadow-sm text-center"
           >
-            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mx-auto mb-1.5">
-              <ArrowUpIcon className="w-5 h-5 text-red-600" />
+            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mx-auto mb-2">
+              <ArrowUpIcon className="w-6 h-6 text-red-600" />
             </div>
-            <p className="text-xs font-medium text-gray-900">{t('wallet.withdraw')}</p>
+            <p className="text-sm font-medium text-gray-900">{t('wallet.withdraw')}</p>
           </motion.button>
           */}
 
@@ -346,26 +346,26 @@ const WalletPage: React.FC = () => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate('/exchange')}
-            className="bg-white rounded-xl p-3 shadow-sm text-center"
+            className="bg-white rounded-2xl py-4 px-3 shadow-sm text-center"
           >
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center mx-auto mb-1.5">
-              <ArrowPathIcon className="w-5 h-5 text-primary" />
+            <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mx-auto mb-2">
+              <ArrowPathIcon className="w-6 h-6 text-primary" />
             </div>
-            <p className="text-xs font-medium text-gray-900">{t('wallet.exchange')}</p>
+            <p className="text-sm font-medium text-gray-900">{t('wallet.exchange')}</p>
           </motion.button>
 
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate('/coupons')}
-            className="bg-white rounded-xl p-3 shadow-sm text-center relative"
+            className="bg-white rounded-2xl py-4 px-3 shadow-sm text-center relative"
           >
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-1.5">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-orange-600">
+            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-orange-600">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" />
               </svg>
             </div>
-            <p className="text-xs font-medium text-gray-900">{t('coupon.title')}</p>
+            <p className="text-sm font-medium text-gray-900">{t('coupon.title')}</p>
           </motion.button>
         </div>
       </div>
