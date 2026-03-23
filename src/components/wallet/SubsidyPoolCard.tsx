@@ -120,10 +120,14 @@ export const SubsidyPoolCard: React.FC = () => {
     return () => clearInterval(interval);
   }, [marqueeItems.length]);
 
-  // 计算进度百分比
-  const progressPercent = data
-    ? Math.max(5, Math.round((data.remaining / data.total_pool) * 100))
-    : 95;
+  // 计算进度百分比（已发放比例，最小显示1%以保证进度条可见）
+  const issuedPercent = data
+    ? Math.max(1, Math.round((data.total_issued / data.total_pool) * 100))
+    : 1;
+  // 已发放精确百分比（保留两位小数，用于显示）
+  const issuedPercentDisplay = data
+    ? ((data.total_issued / data.total_pool) * 100).toFixed(2)
+    : '0.00';
 
   const formatMarqueeText = useCallback((item: MarqueeItem): string => {
     return `${item.name}(${item.phone}) ${t('subsidyPool.marqueeDeposit')} ${item.amount} TJS ${t('subsidyPool.marqueeBonus')} ${item.bonus} ${t('subsidyPool.marqueePoints')}`;
@@ -182,16 +186,16 @@ export const SubsidyPoolCard: React.FC = () => {
           <div className="h-2 bg-white/20 rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: `${progressPercent}%` }}
+              animate={{ width: `${issuedPercent}%` }}
               transition={{ duration: 1.5, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-yellow-300 to-yellow-100 rounded-full"
+              className="h-full bg-gradient-to-r from-yellow-300 to-yellow-100 rounded-full shadow-sm"
             />
           </div>
           <div className="flex justify-between mt-1">
             <span className="text-white/60 text-[10px]">
               {t('subsidyPool.totalPool')}: {formatFullNumber(data?.total_pool || 10_000_000)} TJS
             </span>
-            <span className="text-white/60 text-[10px]">{t('subsidyPool.remaining')} {progressPercent}%</span>
+            <span className="text-white/60 text-[10px]">{t('subsidyPool.issued')} {issuedPercentDisplay}%</span>
           </div>
         </div>
 

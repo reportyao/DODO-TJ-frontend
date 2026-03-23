@@ -58,26 +58,42 @@ function getAuthHeaders() {
 }
 
 /**
- * 获取带有 session token 的认证 Supabase 客户端
+ * 获取带有 session token 的认证 Supabase 客户端（单例缓存版）
  * 用于需要 RLS 策略验证的查询（如 full_purchase_orders, prizes 等）
- * 每次调用都会读取最新的 session_token，确保 token 更新后立即生效
  *
  * 注意：使用自定义 x-session-token header 传递 session token
  * 而非覆盖 Authorization header（覆盖会导致 supabase-js JWT 验证失败）
  * 数据库 RLS 策略通过 get_session_token_from_header() 函数读取此 header
+ *
+ * 单例缓存：相同 token 复用同一实例，避免 "Multiple GoTrueClient instances" 警告
  */
+let _cachedAuthClient: ReturnType<typeof createClient<Database>> | null = null;
+let _cachedToken: string | null = null;
+
 export function getAuthenticatedClient() {
   const sessionToken = localStorage.getItem('custom_session_token');
-  if (sessionToken) {
-    return createClient<Database>(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          'x-session-token': sessionToken
-        }
-      }
-    });
+  if (!sessionToken) {
+    return supabase;
   }
-  return supabase;
+  // token 未变化时复用缓存实例，避免每次都创建新的 GoTrueClient
+  if (sessionToken === _cachedToken && _cachedAuthClient) {
+    return _cachedAuthClient;
+  }
+  _cachedToken = sessionToken;
+  _cachedAuthClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        'x-session-token': sessionToken
+      }
+    },
+    auth: {
+      // 禁用自动刷新和持久化，避免多实例冲突
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    }
+  });
+  return _cachedAuthClient;
 }
 
 // 导出常用的类型
