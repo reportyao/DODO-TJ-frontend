@@ -57,6 +57,25 @@ function getAuthHeaders() {
   return {};
 }
 
+/**
+ * 获取带有 session token 的认证 Supabase 客户端
+ * 用于需要 RLS 策略验证的查询（如 full_purchase_orders, prizes 等）
+ * 每次调用都会读取最新的 session_token，确保 token 更新后立即生效
+ */
+export function getAuthenticatedClient() {
+  const sessionToken = localStorage.getItem('custom_session_token');
+  if (sessionToken) {
+    return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`
+        }
+      }
+    });
+  }
+  return supabase;
+}
+
 // 导出常用的类型
 
 export type UserProfile = Tables<'users'>;

@@ -123,7 +123,7 @@ const CouponListPage: React.FC = () => {
             >
               <div className="flex items-center space-x-2 mb-1">
                 <TicketIcon className="w-5 h-5 opacity-80" />
-                <span className="text-sm opacity-80">{t('coupon.validCount')}</span>
+                <span className="text-sm opacity-80">{t('coupon.validCount', { count: validCount })}</span>
               </div>
               <p className="text-3xl font-black">{validCount}</p>
             </motion.div>
@@ -237,7 +237,7 @@ const CouponListPage: React.FC = () => {
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center text-xs text-gray-400">
                       <ClockIcon className="w-3.5 h-3.5 mr-1" />
-                      {t('coupon.validUntil')} {formatDate(coupon.expires_at)}
+                      {t('coupon.validUntil', { date: formatDate(coupon.expires_at) })}
                     </div>
                     {isCouponActive(coupon) && (
                       <button

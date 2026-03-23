@@ -328,6 +328,7 @@ const WalletPage: React.FC = () => {
             <p className="text-xs font-medium text-gray-900">{t('wallet.deposit')}</p>
           </motion.button>
 
+          {/* 提现功能暂时隐藏 - 待开放时再启用
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -339,6 +340,7 @@ const WalletPage: React.FC = () => {
             </div>
             <p className="text-xs font-medium text-gray-900">{t('wallet.withdraw')}</p>
           </motion.button>
+          */}
 
           <motion.button
             whileHover={{ scale: 1.02 }}

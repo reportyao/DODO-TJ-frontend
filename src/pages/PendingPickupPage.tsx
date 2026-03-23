@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSupabase } from '../contexts/SupabaseContext';
+import { getAuthenticatedClient } from '../lib/supabase';
 import { useUser } from '../contexts/UserContext';
 import { ArrowLeftIcon, CubeIcon, TruckIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
@@ -83,9 +84,12 @@ const PendingPickupPage: React.FC = () => {
     try {
       const pendingItems: PendingPickupItem[] = [];
 
+      // 使用带有 session token 的认证客户端，绕过 RLS 策略验证
+      const authClient = getAuthenticatedClient();
+
       // 1. 获取全款购买订单（full_purchase_orders）- 未提货的
       try {
-        const { data: fullPurchaseOrders, error: fullPurchaseError } = await (supabase as any)
+        const { data: fullPurchaseOrders, error: fullPurchaseError } = await (authClient as any)
           .from('full_purchase_orders')
           .select(`
             id, 
@@ -136,7 +140,7 @@ const PendingPickupPage: React.FC = () => {
 
       // 2. 获取中奖记录（prizes）- 未提货的
       try {
-        const { data: prizes, error: prizesError } = await (supabase as any)
+        const { data: prizes, error: prizesError } = await (authClient as any)
           .from('prizes')
           .select(`
             id, 
@@ -185,7 +189,7 @@ const PendingPickupPage: React.FC = () => {
 
       // 3. 获取拼团中奖记录（group_buy_results）- 未提货的
       try {
-        const { data: groupBuyResults, error: groupBuyResultsError } = await (supabase as any)
+        const { data: groupBuyResults, error: groupBuyResultsError } = await (authClient as any)
           .from('group_buy_results')
           .select(`
             id, 

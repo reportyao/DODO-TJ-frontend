@@ -30,7 +30,8 @@ const InvitePage: React.FC = () => {
   const inviteCode = user?.referral_code || user?.invite_code || 'LOADING...'; // 优先使用 referral_code，兼容旧的 invite_code
   // 使用 PWA 域名生成分享链接
   const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
-  const inviteLink = `${appDomain}?ref=${inviteCode}`;
+  // 分享链接直接指向注册页面，邀请码自动填入
+  const inviteLink = `${appDomain}/register?ref=${inviteCode}`;
 
   // 加载佣金配置 - 独立于用户登录状态
   const loadCommissionConfig = useCallback(async () => {
