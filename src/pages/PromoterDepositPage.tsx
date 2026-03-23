@@ -337,7 +337,7 @@ const PromoterDepositPage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mx-4 mt-4 bg-gradient-to-r from-primary to-primary rounded-2xl p-4 text-white"
+          className="mx-4 mt-4 bg-gradient-to-r from-primary to-primary-dark rounded-2xl p-4 text-white"
         >
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium opacity-80">

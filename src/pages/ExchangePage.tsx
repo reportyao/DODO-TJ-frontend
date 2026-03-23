@@ -152,7 +152,7 @@ export default function ExchangePage() {
         <button
           onClick={handleExchange}
           disabled={submitting}
-          className="w-full bg-gradient-to-r from-primary to-primary text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50"
+          className="w-full bg-gradient-to-r from-primary to-primary-dark text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50"
         >
           {submitting ? t("common.exchanging") : t("wallet.confirmExchange")}
         </button>

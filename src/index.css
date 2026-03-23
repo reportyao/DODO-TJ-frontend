@@ -2,19 +2,108 @@
 
 @source "../src";
 
+/*
+ * DODO App 配色规范 — Tailwind v4 @theme 定义
+ * =============================================
+ *
+ * Tailwind v4 使用 @theme 指令定义自定义颜色。
+ * 格式: --color-{name}-{shade}: <color>;
+ * 使用: bg-{name}-{shade}, text-{name}-{shade}, from-{name}-{shade}, to-{name}-{shade}
+ *
+ * 【品牌配色体系】
+ *
+ * 1. 主色 (Primary) — 暗金色系
+ *    - primary:       #B8860B  → 按钮、品牌元素、选中态、导航高亮
+ *    - primary-light: #E0B98A  → 背景渐变、卡片高亮、hover 态、浅色标签
+ *    - primary-dark:  #8B6914  → 按钮 pressed 态、深色强调
+ *    ⚠️ primary-light 亮度较高，上面的文本必须用深色
+ *
+ * 2. 辅助色 (Accent) — 宝石绿
+ *    - accent:        #006B6B  → 次要按钮、CTA、强调链接
+ *    - accent-light:  #E0F2F1  → 宝石绿浅色背景
+ *    - accent-dark:   #004D4D  → 深色宝石绿
+ *
+ * 3. 功能色 (Semantic)
+ *    - success:       #2E7D32  → 成功状态
+ *    - warning:       #E65100  → 警告状态
+ *    - error:         #C62828  → 错误/危险
+ *
+ * 4. 中性色 (Neutral)
+ *    - background:    #FDFDFD  → 页面背景
+ *    - foreground:    #333333  → 主要文本
+ *
+ * 【渐变规范】
+ *   - 品牌渐变: from-primary to-primary-dark → 金色渐变
+ *   - 高亮渐变: from-primary-light to-primary → 浅金到深金
+ *   - 辅助渐变: from-accent to-accent-dark → 宝石绿渐变
+ *
+ * 【禁止用法】
+ *   - 不要使用 blue-xxx（已从品牌色中移除）
+ *   - 不要使用 purple-xxx（已从品牌色中移除）
+ *   - 不要在 primary-light 背景上使用白色文本
+ */
+
+@theme {
+  /* ── 主色：暗金色系 ── */
+  --color-primary: #B8860B;
+  --color-primary-light: #E0B98A;
+  --color-primary-dark: #8B6914;
+  --color-primary-50: #FDF8ED;
+  --color-primary-100: #F9EDCF;
+  --color-primary-200: #F0D89E;
+  --color-primary-300: #E0B98A;
+  --color-primary-400: #D4A44E;
+  --color-primary-500: #B8860B;
+  --color-primary-600: #9A7009;
+  --color-primary-700: #8B6914;
+  --color-primary-800: #6B5010;
+  --color-primary-900: #4A370B;
+  --color-primary-950: #2D2107;
+
+  /* ── 辅助色：宝石绿 ── */
+  --color-accent: #006B6B;
+  --color-accent-light: #E0F2F1;
+  --color-accent-dark: #004D4D;
+  --color-accent-50: #E0F2F1;
+  --color-accent-100: #B2DFDB;
+  --color-accent-200: #80CBC4;
+  --color-accent-300: #4DB6AC;
+  --color-accent-400: #26A69A;
+  --color-accent-500: #009688;
+  --color-accent-600: #00897B;
+  --color-accent-700: #006B6B;
+  --color-accent-800: #004D4D;
+  --color-accent-900: #003333;
+  --color-accent-950: #001A1A;
+
+  /* ── 功能色：成功 ── */
+  --color-success: #2E7D32;
+  --color-success-light: #E8F5E9;
+  --color-success-50: #E8F5E9;
+  --color-success-500: #2E7D32;
+  --color-success-600: #256B29;
+  --color-success-700: #1B5E20;
+
+  /* ── 功能色：警告 ── */
+  --color-warning: #E65100;
+  --color-warning-light: #FFF3E0;
+  --color-warning-50: #FFF3E0;
+  --color-warning-500: #E65100;
+  --color-warning-600: #D84900;
+
+  /* ── 功能色：错误/危险 ── */
+  --color-destructive: #C62828;
+  --color-destructive-light: #FFEBEE;
+  --color-destructive-50: #FFEBEE;
+  --color-destructive-500: #C62828;
+  --color-destructive-600: #B71C1C;
+  --color-destructive-foreground: #FFFFFF;
+}
+
 @layer base {
   /*
-   * DODO App CSS 变量 — 配色规范
-   * ============================
-   *
-   * 这些变量为 Tailwind CSS 的语义化颜色提供底层值。
-   * HSL 格式: H S% L%（不带 hsl() 包裹，由 Tailwind 自动处理）
-   *
-   * 主色系:     暗金色 #B8860B → hsl(43, 89%, 38%)
-   * 辅助色:     宝石绿 #006B6B → hsl(180, 100%, 21%)
-   * 背景色:     米白   #FDFDFD → hsl(0, 0%, 99%)
-   * 前景/文本:  炭黑   #333333 → hsl(0, 0%, 20%)
-   * 边框:       浅灰   #E5E7EB → hsl(220, 13%, 91%)
+   * CSS 变量 — 用于 shadcn/ui 组件的语义化颜色
+   * HSL 格式: H S% L%（不带 hsl() 包裹）
    */
   :root {
     --radius: 0.5rem;
@@ -23,11 +112,11 @@
     --background: 0 0% 99%;          /* #FDFDFD 米白 */
     --foreground: 0 0% 20%;          /* #333333 炭黑 */
 
-    /* 主色 — 暗金色 */
+    /* 主色 — 暗金色（用于 shadcn 组件） */
     --primary: 43 89% 38%;           /* #B8860B */
     --primary-foreground: 0 0% 100%; /* #FFFFFF */
 
-    /* 辅助色 — 宝石绿 */
+    /* 辅助色 — 宝石绿（用于 shadcn 组件） */
     --accent: 180 100% 21%;          /* #006B6B */
     --accent-foreground: 0 0% 100%;  /* #FFFFFF */
 
@@ -118,22 +207,14 @@
 
 /*
  * ⚠️ 关键修复：覆盖 Tailwind v4 preflight 的 img { height: auto; max-width: 100% }
- *
- * Tailwind v4 preflight 设置了 img { max-width: 100%; height: auto }
- * 这会导致在固定尺寸容器中使用 object-fit: cover 的图片无法正确填充。
- *
- * 以下规则放在 @layer 外部，优先级高于 @layer base 中的 preflight。
- * 使用 !important 确保在各种浏览器环境中都能生效。
  */
 
-/* 当 img 有内联 style 设置了 position:absolute 时，覆盖 preflight */
 img[style*="absolute"] {
   max-width: none !important;
   height: auto !important;
   height: unset !important;
 }
 
-/* 兜底：当 img 使用 Tailwind class 时确保正确显示 */
 img.object-cover,
 img.object-contain,
 img.h-full,

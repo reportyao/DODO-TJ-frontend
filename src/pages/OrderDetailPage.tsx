@@ -471,7 +471,7 @@ const OrderDetailPage: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-primary to-primary rounded-2xl p-5 shadow-lg text-white"
+            className="bg-gradient-to-br from-primary to-primary-dark rounded-2xl p-5 shadow-lg text-white"
           >
             <div className="flex items-center space-x-2 mb-4">
               <TicketIcon className="w-5 h-5" />

@@ -367,7 +367,7 @@ const PromoterCenterPage: React.FC = () => {
         <motion.button
           whileTap={{ scale: 0.98 }}
           onClick={() => navigate('/promoter-deposit')}
-          className="w-full bg-gradient-to-r from-primary to-primary-dark text-white rounded-2xl p-4 shadow-lg shadow-blue-200 flex items-center justify-between"
+          className="w-full bg-gradient-to-r from-primary to-primary-dark text-white rounded-2xl p-4 shadow-lg shadow-amber-200 flex items-center justify-between"
         >
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -572,7 +572,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-gradient-to-r from-primary to-primary rounded-2xl p-4 text-white"
+        className="bg-gradient-to-r from-primary to-primary-dark rounded-2xl p-4 text-white"
       >
         <div className="flex items-center justify-between">
           <div>
@@ -839,7 +839,7 @@ const TeamTab: React.FC<TeamTabProps> = ({ team, t }) => {
                 transition={{ delay: index * 0.05 }}
                 className="p-4 flex items-center space-x-3"
               >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                   {member.avatar_url ? (
                     <img src={member.avatar_url} alt="" style={{ width: '40px', height: '40px', borderRadius: '9999px', objectFit: 'cover', maxWidth: 'none' }}
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
@@ -925,7 +925,7 @@ const LeaderboardTab: React.FC<LeaderboardTabProps> = ({ leaderboard, t }) => {
               </div>
 
               {/* 头像 */}
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                 {person.avatar_url ? (
                   <img src={person.avatar_url} alt="" style={{ width: '40px', height: '40px', borderRadius: '9999px', objectFit: 'cover', maxWidth: 'none' }}
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />

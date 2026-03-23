@@ -189,7 +189,7 @@ const LotteryPage: React.FC = () => {
               className="bg-white rounded-3xl w-full max-w-md max-h-[85vh] overflow-hidden shadow-2xl"
             >
               {/* 弹窗头部 */}
-              <div className="sticky top-0 bg-gradient-to-r from-primary to-primary text-white px-6 py-5 flex items-center justify-between">
+              <div className="sticky top-0 bg-gradient-to-r from-primary to-primary-dark text-white px-6 py-5 flex items-center justify-between">
                 <h3 className="text-xl font-black flex items-center gap-2">
                   <InformationCircleIcon className="w-7 h-7" />
                   {t('lottery.rulesTitle')}
@@ -259,7 +259,7 @@ const LotteryPage: React.FC = () => {
                 {/* 关闭按钮 */}
                 <button
                   onClick={() => setIsRulesModalOpen(false)}
-                  className="w-full mt-10 py-4 bg-gradient-to-r from-primary to-primary text-white rounded-2xl font-bold shadow-lg shadow-purple-100 active:scale-[0.98] transition-all"
+                  className="w-full mt-10 py-4 bg-gradient-to-r from-primary to-primary-dark text-white rounded-2xl font-bold shadow-lg shadow-amber-100 active:scale-[0.98] transition-all"
                 >
                   {t('common.confirm')}
                 </button>

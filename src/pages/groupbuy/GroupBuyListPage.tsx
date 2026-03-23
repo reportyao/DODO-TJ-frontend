@@ -107,7 +107,7 @@ export default function GroupBuyListPage() {
       <div className="px-4 mt-4">
         <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-1 h-5 bg-gradient-to-b from-primary to-primary rounded-full"></div>
+            <div className="w-1 h-5 bg-gradient-to-b from-primary to-primary-dark rounded-full"></div>
             <h2 className="font-semibold text-gray-800">{t('groupBuy.howItWorks.title')}</h2>
           </div>
           <div className="space-y-2 text-sm text-gray-600">
@@ -239,7 +239,7 @@ export default function GroupBuyListPage() {
                 })()}
 
                 {product.active_sessions_count > 0 && (
-                  <div className="absolute top-3 right-3 bg-gradient-to-r from-primary to-primary text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
+                  <div className="absolute top-3 right-3 bg-gradient-to-r from-primary to-primary-dark text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
                     <Users className="w-4 h-4" />
                     {product.active_sessions_count}
                   </div>
@@ -302,7 +302,7 @@ export default function GroupBuyListPage() {
                 )}
 
                 {/* Action Button */}
-                <button className="w-full mt-4 bg-gradient-to-r from-primary to-primary text-white py-3 rounded-xl font-bold hover:from-primary hover:to-primary transition-colors">
+                <button className="w-full mt-4 bg-gradient-to-r from-primary to-primary-dark text-white py-3 rounded-xl font-bold hover:from-primary-dark hover:to-primary-dark transition-colors">
                   {product.active_sessions_count > 0
                     ? t('groupBuy.joinGroup')
                     : t('groupBuy.startGroup')}

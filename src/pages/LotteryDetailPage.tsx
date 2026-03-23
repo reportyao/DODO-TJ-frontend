@@ -804,7 +804,7 @@ const LotteryDetailPage: React.FC = () => {
             
             {/* 活动标题 */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
                 <SparklesIcon className="w-4 h-4 text-white" />
               </div>
               <h3 className="text-lg font-bold text-gray-900">{t('lottery.luckyActivityTitle')}</h3>
@@ -872,7 +872,7 @@ const LotteryDetailPage: React.FC = () => {
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
-                  className="bg-gradient-to-r from-primary to-primary h-2.5 rounded-full transition-all duration-300"
+                  className="bg-gradient-to-r from-primary to-primary-dark h-2.5 rounded-full transition-all duration-300"
                   style={{ width: `${Math.min(progress, 100)}%` }}
                 />
               </div>
@@ -959,7 +959,7 @@ const LotteryDetailPage: React.FC = () => {
                       return (
                         <span
                           key={i}
-                          className="px-2 py-1 rounded-md font-mono text-xs font-semibold bg-gradient-to-br from-primary to-primary text-white"
+                          className="px-2 py-1 rounded-md font-mono text-xs font-semibold bg-gradient-to-br from-primary to-primary-dark text-white"
                         >
                           {codeStr}
                         </span>
@@ -1025,7 +1025,7 @@ const LotteryDetailPage: React.FC = () => {
               className={cn(
                 "w-full py-3.5 rounded-xl font-bold text-base shadow-md transition-all duration-200",
                 isActive && !isSoldOut && !isPurchasing
-                  ? "bg-gradient-to-r from-primary to-primary text-white hover:shadow-lg"
+                  ? "bg-gradient-to-r from-primary to-primary-dark text-white hover:shadow-lg"
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
               )}
             >

@@ -82,10 +82,10 @@ const SpinWheel: React.FC<{
       return 'bg-gray-100 text-gray-600';
     }
     const colors = [
-      'bg-gradient-to-br from-primary to-primary text-white',
-      'bg-gradient-to-br from-primary to-primary text-white',
+      'bg-gradient-to-br from-primary to-primary-dark text-white',
+      'bg-gradient-to-br from-primary to-primary-dark text-white',
       'bg-gradient-to-br from-green-500 to-green-600 text-white',
-      'bg-gradient-to-br from-primary to-primary text-white',
+      'bg-gradient-to-br from-primary to-primary-dark text-white',
       'bg-gradient-to-br from-primary to-primary-dark text-white',
     ];
     return colors[index % colors.length];
@@ -370,7 +370,7 @@ const SpinLotteryPage: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-amber-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-amber-200 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
@@ -391,7 +391,7 @@ const SpinLotteryPage: React.FC = () => {
   return (
     <div className="pb-20 bg-gray-50 min-h-screen">
       {/* 顶部标题区域 */}
-      <div className="bg-gradient-to-r from-primary to-primary text-white px-4 py-6">
+      <div className="bg-gradient-to-r from-primary to-primary-dark text-white px-4 py-6">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-white/20 rounded-full mb-3">
             <TrophyIcon className="w-7 h-7" />
@@ -427,7 +427,7 @@ const SpinLotteryPage: React.FC = () => {
                 w-full py-4 rounded-xl font-bold text-lg transition-all
                 ${isSpinning || (spinData?.spin_balance.spin_count || 0) <= 0
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-primary to-primary text-white hover:shadow-lg active:scale-98'
+                  : 'bg-gradient-to-r from-primary to-primary-dark text-white hover:shadow-lg active:scale-98'
                 }
               `}
             >
@@ -478,7 +478,7 @@ const SpinLotteryPage: React.FC = () => {
           <div className="flex space-x-2">
             <button
               onClick={shareInvite}
-              className="flex-1 flex items-center justify-center space-x-2 py-3 bg-gradient-to-r from-primary to-primary text-white rounded-xl font-medium hover:shadow-lg transition-all"
+              className="flex-1 flex items-center justify-center space-x-2 py-3 bg-gradient-to-r from-primary to-primary-dark text-white rounded-xl font-medium hover:shadow-lg transition-all"
             >
               <ShareIcon className="w-5 h-5" />
               <span>{t('spin.inviteButton')}</span>

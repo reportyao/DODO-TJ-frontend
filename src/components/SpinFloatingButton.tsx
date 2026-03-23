@@ -58,7 +58,7 @@ const SpinFloatingButton: React.FC<SpinFloatingButtonProps> = ({ spinCount = 0 }
             scale: [1, 1.05, 1.05, 1.05, 1.05, 1.02, 1.02, 1]
           } : {}}
           transition={{ duration: 0.8 }}
-          className="relative w-12 h-12 bg-gradient-to-br from-primary to-primary rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
+          className="relative w-12 h-12 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
         >
           <GiftIcon className="w-6 h-6 text-white" />
           

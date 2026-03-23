@@ -10,7 +10,7 @@ export function DailyProverb() {
 
   if (loading || !proverb) {
     return (
-      <div className="bg-gradient-to-br from-primary to-primary rounded-2xl p-6 h-48 animate-pulse" />
+      <div className="bg-gradient-to-br from-primary to-primary-dark rounded-2xl p-6 h-48 animate-pulse" />
     );
   }
 
@@ -18,7 +18,7 @@ export function DailyProverb() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-primary to-primary rounded-2xl p-6 text-white shadow-lg"
+      className="bg-gradient-to-br from-primary to-primary-dark rounded-2xl p-6 text-white shadow-lg"
     >
       {/* 标题 */}
       <div className="flex items-center gap-2 mb-4">

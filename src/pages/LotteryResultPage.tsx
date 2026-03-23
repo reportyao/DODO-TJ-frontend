@@ -455,7 +455,7 @@ const LotteryResultPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-50 to-amber-50 pb-20">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary to-primary text-white px-4 py-3 sticky top-0 z-10 shadow-lg">
+      <div className="bg-gradient-to-r from-primary to-primary-dark text-white px-4 py-3 sticky top-0 z-10 shadow-lg">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <button
             onClick={() => navigate('/lottery')}
@@ -942,7 +942,7 @@ const LotteryResultPage: React.FC = () => {
                 <button
                   onClick={handleSubmitClaim}
                   disabled={isSubmitting}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-primary text-white rounded-xl font-medium hover:from-primary-dark hover:to-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-primary-dark text-white rounded-xl font-medium hover:from-primary-dark hover:to-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-200"
                 >
                   {isSubmitting ? t('common.submitting') : t('common.confirm')}
                 </button>

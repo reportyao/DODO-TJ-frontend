@@ -572,7 +572,7 @@ const ShowoffPage: React.FC = () => {
       {/* Floating Action Button (FAB) */}
       <motion.button
         onClick={handleCreateShowoff}
-        className="fixed right-6 bottom-24 w-14 h-14 bg-gradient-to-r from-primary to-primary text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-50"
+        className="fixed right-6 bottom-24 w-14 h-14 bg-gradient-to-r from-primary to-primary-dark text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-50"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
       >

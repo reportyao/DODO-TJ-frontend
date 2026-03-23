@@ -400,7 +400,7 @@ const OrderManagementPage: React.FC = () => {
                     <div className="mt-4 pt-4 border-t border-dashed border-gray-100 flex justify-end space-x-3">
                       <button
                         onClick={(e) => { e.stopPropagation(); navigate(`/group-buy/result/${order.session_id}`); }}
-                        className="px-4 py-2 bg-gradient-to-r from-primary to-primary text-white text-xs font-bold rounded-xl shadow-md shadow-purple-200 active:scale-95 transition-all"
+                        className="px-4 py-2 bg-gradient-to-r from-primary to-primary-dark text-white text-xs font-bold rounded-xl shadow-md shadow-amber-200 active:scale-95 transition-all"
                       >
                         {t('orders.actionClaim')}
                       </button>

@@ -38,10 +38,10 @@ const NewUserGiftModal: React.FC<NewUserGiftModalProps> = ({
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
         className="relative z-10 w-[90%] max-w-sm"
       >
-        <div className="bg-gradient-to-b from-primary to-primary rounded-3xl p-1">
+        <div className="bg-gradient-to-b from-primary to-primary-dark rounded-3xl p-1">
           <div className="bg-white rounded-[22px] overflow-hidden">
             {/* 顶部装饰 */}
-            <div className="bg-gradient-to-r from-primary to-primary pt-8 pb-12 px-6 relative overflow-hidden">
+            <div className="bg-gradient-to-r from-primary to-primary-dark pt-8 pb-12 px-6 relative overflow-hidden">
               {/* 装饰性星星 */}
               <div className="absolute top-4 left-4 animate-pulse">
                 <SparklesIcon className="w-6 h-6 text-yellow-300" />
@@ -97,7 +97,7 @@ const NewUserGiftModal: React.FC<NewUserGiftModalProps> = ({
                   <div className="bg-gradient-to-r from-amber-50 to-amber-50 rounded-xl p-4 mb-4">
                     <p className="text-sm text-gray-500 mb-1">{t('newUserGift.youReceived')}</p>
                     <div className="flex items-center justify-center space-x-2">
-                      <span className="text-4xl font-bold bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">
+                      <span className="text-4xl font-bold bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">
                         {giftAmount}
                       </span>
                       <span className="text-lg text-gray-600">{t('newUserGift.points')}</span>
@@ -107,7 +107,7 @@ const NewUserGiftModal: React.FC<NewUserGiftModalProps> = ({
                   {/* 确认按钮 */}
                   <button
                     onClick={onClose}
-                    className="w-full py-4 bg-gradient-to-r from-primary to-primary text-white rounded-xl font-bold text-lg hover:shadow-lg transition-all active:scale-98"
+                    className="w-full py-4 bg-gradient-to-r from-primary to-primary-dark text-white rounded-xl font-bold text-lg hover:shadow-lg transition-all active:scale-98"
                   >
                     {t('newUserGift.receiveButton')}
                   </button>

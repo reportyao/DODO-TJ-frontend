@@ -897,7 +897,7 @@ export default function GroupBuyDetailPage() {
                       {isParticipated ? (
                         <button
                           onClick={() => handleShare(session.session_code)}
-                          className="flex-1 bg-gradient-to-r from-primary to-primary text-white py-2 rounded-lg font-bold hover:from-primary hover:to-primary transition-colors flex items-center justify-center gap-2"
+                          className="flex-1 bg-gradient-to-r from-primary to-primary-dark text-white py-2 rounded-lg font-bold hover:from-primary-dark hover:to-primary-dark transition-colors flex items-center justify-center gap-2"
                         >
                           <Share2 className="w-5 h-5" />
                           {t('groupBuy.share')}
@@ -907,7 +907,7 @@ export default function GroupBuyDetailPage() {
                           <button
                             onClick={() => handleJoinGroup(session.id)}
                             disabled={isProcessing}
-                            className="flex-1 bg-gradient-to-r from-primary to-primary text-white py-2 rounded-lg font-bold hover:from-primary hover:to-primary transition-colors disabled:opacity-50"
+                            className="flex-1 bg-gradient-to-r from-primary to-primary-dark text-white py-2 rounded-lg font-bold hover:from-primary-dark hover:to-primary-dark transition-colors disabled:opacity-50"
                           >
                             {isProcessing ? t('common.processing') : t('groupBuy.joinNow')}
                           </button>
@@ -940,7 +940,7 @@ export default function GroupBuyDetailPage() {
           <button
             onClick={() => handleJoinGroup()}
             disabled={joiningSessionId === 'new'}
-            className="w-full bg-gradient-to-r from-primary to-primary text-white py-3.5 rounded-xl font-bold text-base hover:from-primary hover:to-primary transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-primary to-primary-dark text-white py-3.5 rounded-xl font-bold text-base hover:from-primary-dark hover:to-primary-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <ShoppingBag className="w-5 h-5" />
             <span>

@@ -134,21 +134,21 @@ const ProfilePage: React.FC = () => {
       icon: ShoppingBagIcon,
       title: t('profile.pendingPickup'),
       subtitle: t('profile.viewPendingPickup'),
-      color: 'from-primary to-primary',
+      color: 'from-primary to-primary-dark',
       action: () => navigate('/pending-pickup'),
     },
     {
       icon: UsersIcon,
       title: t('invite.myTeam'),
       subtitle: t('invite.viewTeamInfo'),
-      color: 'from-primary to-primary',
+      color: 'from-primary to-primary-dark',
       action: () => navigate('/invite'),
     },
     {
       icon: ClipboardDocumentListIcon,
       title: t('orders.title'),
       subtitle: t('profile.viewOrders'),
-      color: 'from-primary to-primary',
+      color: 'from-primary to-primary-dark',
       action: () => navigate('/orders-management'),
     },
   ]
@@ -212,7 +212,7 @@ const ProfilePage: React.FC = () => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-primary to-primary text-white mx-4 mt-4 rounded-2xl p-6"
+        className="bg-gradient-to-r from-primary to-primary-dark text-white mx-4 mt-4 rounded-2xl p-6"
       >
         <div className="flex items-center space-x-4">
           {/* 头像 + 用户信息（点击跳转到编辑页） */}

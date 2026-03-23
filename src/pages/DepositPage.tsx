@@ -529,7 +529,7 @@ export default function DepositPage() {
         <button
           onClick={handleSubmit}
           disabled={submitting || uploading}
-          className="w-full bg-gradient-to-r from-primary to-primary text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 flex items-center justify-center"
+          className="w-full bg-gradient-to-r from-primary to-primary-dark text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 flex items-center justify-center"
         >
           {submitting ? (
             <>

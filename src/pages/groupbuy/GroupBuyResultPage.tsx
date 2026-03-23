@@ -409,7 +409,7 @@ export default function GroupBuyResultPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 pb-20">
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary to-primary text-white p-6 rounded-b-3xl shadow-lg">
+        <div className="bg-gradient-to-r from-primary to-primary-dark text-white p-6 rounded-b-3xl shadow-lg">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-white hover:text-amber-100 mb-4"
@@ -440,7 +440,7 @@ export default function GroupBuyResultPage() {
         <div className="p-4 space-y-3">
           <button
             onClick={() => navigate(`/group-buy/${result.session?.product_id || result.product?.id}`)}
-            className="w-full bg-gradient-to-r from-primary to-primary text-white py-4 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-shadow"
+            className="w-full bg-gradient-to-r from-primary to-primary-dark text-white py-4 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-shadow"
           >
             {t('groupBuy.viewSession')}
           </button>
@@ -515,7 +515,7 @@ export default function GroupBuyResultPage() {
             {/* 引导去商城 */}
             <button
               onClick={() => navigate('/lottery')}
-              className="mt-4 px-6 py-3 bg-gradient-to-r from-primary to-primary text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-shadow"
+              className="mt-4 px-6 py-3 bg-gradient-to-r from-primary to-primary-dark text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-shadow"
             >
               {t('groupBuy.goToPointsMall')}
             </button>
@@ -743,7 +743,7 @@ export default function GroupBuyResultPage() {
                 <button
                   onClick={handleClaimPrize}
                   disabled={isSubmitting || !selectedPointId || pickupPoints.length === 0}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-primary text-white rounded-xl font-medium hover:from-primary-dark hover:to-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-primary-dark text-white rounded-xl font-medium hover:from-primary-dark hover:to-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? t('common.submitting') : t('common.confirm')}
                 </button>

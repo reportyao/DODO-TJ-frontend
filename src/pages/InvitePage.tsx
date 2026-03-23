@@ -168,7 +168,7 @@ const InvitePage: React.FC = () => {
   return (
     <div className="pb-20 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary to-primary text-white px-4 py-8">
+      <div className="bg-gradient-to-r from-primary to-primary-dark text-white px-4 py-8">
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-3">
             <GiftIcon className="w-8 h-8" />
@@ -408,7 +408,7 @@ const InvitePage: React.FC = () => {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary flex items-center justify-center text-white font-semibold">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white font-semibold">
                       {invitedUser.avatar_url ? (
                         <img
                           src={invitedUser.avatar_url}

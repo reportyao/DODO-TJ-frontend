@@ -199,7 +199,7 @@ export default function WithdrawPage() {
         <button
           onClick={handleSubmit}
           disabled={submitting}
-          className="w-full bg-gradient-to-r from-primary to-primary text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50"
+          className="w-full bg-gradient-to-r from-primary to-primary-dark text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50"
         >
           {submitting ? t('common.submitting') : t('wallet.submitWithdrawRequest')}
         </button>
