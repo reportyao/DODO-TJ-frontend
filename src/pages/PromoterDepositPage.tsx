@@ -85,6 +85,9 @@ const PromoterDepositPage: React.FC = () => {
   const [history, setHistory] = useState<DepositRecord[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [depositResult, setDepositResult] = useState<any>(null)
+  // 多用户搜索结果列表（模糊匹配时返回多条）
+  const [searchResults, setSearchResults] = useState<TargetUser[]>([])
+  const [showSearchResults, setShowSearchResults] = useState(false)
 
   // ========== 获取 session_token ==========
   const getSessionToken = useCallback(() => {
@@ -188,7 +191,13 @@ const PromoterDepositPage: React.FC = () => {
       })
 
       if (result?.success) {
-        // 检查是否是自己
+        // 多条结果：展示列表供选择
+        if (result.multiple && result.users?.length > 0) {
+          setSearchResults(result.users)
+          setShowSearchResults(true)
+          return
+        }
+        // 单条结果：检查是否是自己
         if (result.user.id === user?.id) {
           toast.error(t('promoterDeposit.cannotDepositSelf'))
           return
@@ -491,10 +500,51 @@ const PromoterDepositPage: React.FC = () => {
                   t('promoterDeposit.searchUser')
                 )}
               </motion.button>
+
+              {/* 多用户搜索结果列表 */}
+              {showSearchResults && searchResults.length > 0 && (
+                <div className="mt-3 border border-gray-100 rounded-xl overflow-hidden">
+                  <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                    <span className="text-xs text-gray-500">{t('promoterDeposit.multipleResults', '找到多个用户，请选择')}</span>
+                    <button onClick={() => setShowSearchResults(false)} className="text-gray-400 hover:text-gray-600">
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {searchResults.map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => {
+                        if (u.id === user?.id) {
+                          toast.error(t('promoterDeposit.cannotDepositSelf'))
+                          return
+                        }
+                        setTargetUser(u)
+                        setShowSearchResults(false)
+                        setStep('amount')
+                      }}
+                      className="w-full flex items-center space-x-3 px-3 py-3 hover:bg-amber-50 transition-colors border-b border-gray-50 last:border-0"
+                    >
+                      <div className="w-9 h-9 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        {u.avatar_url ? (
+                          <img src={u.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover" />
+                        ) : (
+                          <UserCircleIcon className="w-6 h-6 text-amber-600" />
+                        )}
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium text-gray-900">
+                          {u.first_name || u.last_name ? `${u.first_name || ''} ${u.last_name || ''}`.trim() : t('promoterDeposit.anonymousUser', '匿名用户')}
+                        </p>
+                        <p className="text-xs text-gray-500">{u.phone_number || u.id.slice(0, 8)}</p>
+                      </div>
+                      <span className="text-xs text-primary font-medium">{t('promoterDeposit.select', '选择')}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
-
         {/* ========== Step 2: 选择金额 ========== */}
         {step === 'amount' && targetUser && (
           <motion.div
