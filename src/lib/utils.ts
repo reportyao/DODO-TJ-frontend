@@ -92,10 +92,10 @@ export function getLotteryStatusText(status: string, t?: (key: string) => string
 export function getLotteryStatusColor(status: string): string {
   const colorMap: Record<string, string> = {
     'ACTIVE': 'bg-green-100 text-green-700',
-    'UPCOMING': 'bg-blue-100 text-blue-700',
+    'UPCOMING': 'bg-amber-100 text-primary-dark',
     'COMPLETED': 'bg-gray-100 text-gray-700',
     'SOLD_OUT': 'bg-red-100 text-red-700',
-    'DRAWN': 'bg-purple-100 text-purple-700',
+    'DRAWN': 'bg-amber-100 text-primary-dark',
     'CANCELLED': 'bg-gray-100 text-gray-500'
   };
   return colorMap[status] || 'bg-gray-100 text-gray-700';

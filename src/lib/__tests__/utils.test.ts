@@ -88,7 +88,7 @@ describe('utils', () => {
   describe('getLotteryStatusColor', () => {
     it('should return correct color classes', () => {
       expect(getLotteryStatusColor('ACTIVE')).toBe('bg-green-100 text-green-700');
-      expect(getLotteryStatusColor('UPCOMING')).toBe('bg-blue-100 text-blue-700');
+      expect(getLotteryStatusColor('UPCOMING')).toBe('bg-amber-100 text-primary-dark');
       expect(getLotteryStatusColor('COMPLETED')).toBe('bg-gray-100 text-gray-700');
       expect(getLotteryStatusColor('SOLD_OUT')).toBe('bg-red-100 text-red-700');
     });

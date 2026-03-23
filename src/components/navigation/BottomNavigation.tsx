@@ -107,7 +107,7 @@ export const BottomNavigation: React.FC = () => {
                   className={cn(
                     "flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200",
                     isActive 
-                      ? "text-blue-600 bg-blue-50" 
+                      ? "text-primary bg-amber-50" 
                       : "text-gray-600 hover:text-gray-900"
                   )}
                 >
@@ -117,7 +117,7 @@ export const BottomNavigation: React.FC = () => {
                     {isActive && (
                       <motion.div
                         layoutId="activeTab"
-                        className="absolute -inset-1 bg-blue-100 rounded-lg -z-10"
+                        className="absolute -inset-1 bg-amber-100 rounded-lg -z-10"
                         initial={false}
                         transition={{
                           type: "spring",
@@ -130,7 +130,7 @@ export const BottomNavigation: React.FC = () => {
                   
                   <span className={cn(
                     "text-xs font-medium mt-1",
-                    isActive ? "text-blue-600" : "text-gray-600"
+                    isActive ? "text-primary" : "text-gray-600"
                   )}>
                     {item.name}
                   </span>

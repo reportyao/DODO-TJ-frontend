@@ -69,13 +69,13 @@ export const PWAUpdateNotification: React.FC<PWAUpdateNotificationProps> = ({
 
   return (
     <div className="fixed top-4 left-4 right-4 z-50 max-w-sm mx-auto">
-      <div className="bg-blue-50 rounded-lg shadow-lg border border-blue-200 overflow-hidden">
+      <div className="bg-amber-50 rounded-lg shadow-lg border border-amber-200 overflow-hidden">
         {/* 内容区域 */}
         <div className="p-4">
           <div className="flex items-start gap-3">
             {/* 图标 */}
             <div className="flex-shrink-0 mt-1">
-              <RefreshCw className="w-6 h-6 text-blue-600" />
+              <RefreshCw className="w-6 h-6 text-primary" />
             </div>
 
             {/* 文本内容 */}
@@ -101,7 +101,7 @@ export const PWAUpdateNotification: React.FC<PWAUpdateNotificationProps> = ({
         </div>
 
         {/* 操作按钮 */}
-        <div className="bg-blue-100 px-4 py-3 flex gap-2 border-t border-blue-200">
+        <div className="bg-amber-100 px-4 py-3 flex gap-2 border-t border-amber-200">
           <button
             onClick={handleDismiss}
             disabled={isUpdating}
@@ -112,7 +112,7 @@ export const PWAUpdateNotification: React.FC<PWAUpdateNotificationProps> = ({
           <button
             onClick={handleUpdate}
             disabled={isUpdating}
-            className="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            className="flex-1 px-3 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary-dark disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             {isUpdating ? (
               <>

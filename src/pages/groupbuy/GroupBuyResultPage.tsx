@@ -253,9 +253,9 @@ export default function GroupBuyResultPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
@@ -264,13 +264,13 @@ export default function GroupBuyResultPage() {
 
   if (!result) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 flex items-center justify-center">
         <div className="text-center">
           <XCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600">{t('groupBuy.noResult')}</p>
           <button
             onClick={() => navigate('/group-buy')}
-            className="mt-4 text-purple-500 hover:text-purple-600 font-medium"
+            className="mt-4 text-primary hover:text-primary font-medium"
           >
             {t('groupBuy.browseProducts')}
           </button>
@@ -389,13 +389,13 @@ export default function GroupBuyResultPage() {
         <div className="p-4 space-y-3">
           <button
             onClick={() => navigate('/group-buy')}
-            className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 text-white py-4 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-shadow"
+            className="w-full bg-gradient-to-r from-primary via-primary to-red-500 text-white py-4 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-shadow"
           >
             {t('groupBuy.browseProducts')}
           </button>
           <button
             onClick={() => navigate('/wallet')}
-            className="w-full bg-white text-purple-500 py-4 rounded-2xl font-bold shadow-md hover:shadow-lg transition-shadow"
+            className="w-full bg-white text-primary py-4 rounded-2xl font-bold shadow-md hover:shadow-lg transition-shadow"
           >
             {t('wallet.checkBalance')}
           </button>
@@ -407,12 +407,12 @@ export default function GroupBuyResultPage() {
   // 【新增】会话仍在进行中
   if (result.status === 'ACTIVE') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 pb-20">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 pb-20">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-6 rounded-b-3xl shadow-lg">
+        <div className="bg-gradient-to-r from-primary to-primary text-white p-6 rounded-b-3xl shadow-lg">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-white hover:text-blue-100 mb-4"
+            className="flex items-center gap-2 text-white hover:text-amber-100 mb-4"
           >
             <ChevronLeft className="w-6 h-6" />
             {t('common.back')}
@@ -426,7 +426,7 @@ export default function GroupBuyResultPage() {
         {/* In Progress Notice */}
         <div className="p-4">
           <div className="bg-white rounded-3xl p-8 text-center shadow-lg">
-            <Clock className="w-16 h-16 text-blue-500 mx-auto mb-4 animate-pulse" />
+            <Clock className="w-16 h-16 text-primary mx-auto mb-4 animate-pulse" />
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
               {t('groupBuy.waitingForParticipants')}
             </h2>
@@ -440,13 +440,13 @@ export default function GroupBuyResultPage() {
         <div className="p-4 space-y-3">
           <button
             onClick={() => navigate(`/group-buy/${result.session?.product_id || result.product?.id}`)}
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-4 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-shadow"
+            className="w-full bg-gradient-to-r from-primary to-primary text-white py-4 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-shadow"
           >
             {t('groupBuy.viewSession')}
           </button>
           <button
             onClick={() => navigate('/group-buy')}
-            className="w-full bg-white text-purple-500 py-4 rounded-2xl font-bold shadow-md hover:shadow-lg transition-shadow"
+            className="w-full bg-white text-primary py-4 rounded-2xl font-bold shadow-md hover:shadow-lg transition-shadow"
           >
             {t('groupBuy.browseProducts')}
           </button>
@@ -457,12 +457,12 @@ export default function GroupBuyResultPage() {
 
   // 已开奖的情况（SUCCESS）
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 pb-20">
       {/* Header - 简化为返回按钮 */}
-      <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 text-white p-4 rounded-b-3xl shadow-lg">
+      <div className="bg-gradient-to-r from-primary via-primary to-red-500 text-white p-4 rounded-b-3xl shadow-lg">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-white hover:text-pink-100"
+          className="flex items-center gap-2 text-white hover:text-amber-100"
         >
           <ChevronLeft className="w-6 h-6" />
           {t('common.back')}
@@ -490,23 +490,23 @@ export default function GroupBuyResultPage() {
         ) : isParticipant ? (
           // 【新增】未中奖参与者的提示
           <div className="bg-white rounded-3xl p-8 text-center shadow-lg">
-            <Coins className="w-16 h-16 text-purple-500 mx-auto mb-4" />
+            <Coins className="w-16 h-16 text-primary mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
               {t('groupBuy.notWinnerTitle')}
             </h2>
             <p className="text-gray-600 mb-4">{t('groupBuy.betterLuckNextTime')}</p>
             
             {/* 积分退回提示 */}
-            <div className="bg-purple-50 rounded-xl p-4 mt-4">
-              <div className="flex items-center justify-center gap-2 text-purple-700 mb-2">
+            <div className="bg-amber-50 rounded-xl p-4 mt-4">
+              <div className="flex items-center justify-center gap-2 text-primary-dark mb-2">
                 <Coins className="w-5 h-5" />
                 <span className="font-bold">{t('groupBuy.pointsRefundNotice')}</span>
               </div>
-              <p className="text-purple-600 text-sm">
+              <p className="text-primary text-sm">
                 {t('groupBuy.pointsRefundDescription')}
               </p>
               {userOrder?.refund_lucky_coins && (
-                <p className="text-purple-700 font-bold mt-2">
+                <p className="text-primary-dark font-bold mt-2">
                   +{userOrder.refund_lucky_coins} {t('wallet.luckyCoins')}
                 </p>
               )}
@@ -515,14 +515,14 @@ export default function GroupBuyResultPage() {
             {/* 引导去商城 */}
             <button
               onClick={() => navigate('/lottery')}
-              className="mt-4 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-shadow"
+              className="mt-4 px-6 py-3 bg-gradient-to-r from-primary to-primary text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-shadow"
             >
               {t('groupBuy.goToPointsMall')}
             </button>
           </div>
         ) : (
           <div className="bg-white rounded-3xl p-8 text-center shadow-lg">
-            <Trophy className="w-16 h-16 text-purple-500 mx-auto mb-4" />
+            <Trophy className="w-16 h-16 text-primary mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
               {t('groupBuy.drawCompleted')}
             </h2>
@@ -536,10 +536,10 @@ export default function GroupBuyResultPage() {
         <div className="p-4">
           <div className="bg-white rounded-2xl shadow-md p-4">
             <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-purple-500" />
+              <MapPin className="w-5 h-5 text-primary" />
               {t('orders.pickupPointInfo')}
             </h3>
-            <div className="bg-purple-50 rounded-xl p-4">
+            <div className="bg-amber-50 rounded-xl p-4">
               <p className="font-medium text-gray-800">
                 {getLocalizedText(result.pickup_point.name_i18n) || result.pickup_point.name}
               </p>
@@ -549,7 +549,7 @@ export default function GroupBuyResultPage() {
               {result.pickup_point.contact_phone && (
                 <a
                   href={`tel:${result.pickup_point.contact_phone}`}
-                  className="text-sm text-purple-600 hover:underline mt-1 inline-block"
+                  className="text-sm text-primary hover:underline mt-1 inline-block"
                 >
                   {result.pickup_point.contact_phone}
                 </a>
@@ -578,7 +578,7 @@ export default function GroupBuyResultPage() {
               </h3>
               <div className="flex items-center justify-between text-sm text-gray-600">
                 <span>{t('groupBuy.pricePerPerson')}</span>
-                <span className="text-purple-600 font-bold">
+                <span className="text-primary font-bold">
                   TJS {result.product.price_per_person}
                 </span>
               </div>
@@ -615,7 +615,7 @@ export default function GroupBuyResultPage() {
         <div className="p-4">
           <div className="bg-white rounded-2xl shadow-md p-6">
             <h3 className="font-bold text-lg text-gray-800 mb-4 flex items-center gap-2">
-              <Users className="w-5 h-5 text-purple-500" />
+              <Users className="w-5 h-5 text-primary" />
               {t('groupBuy.allParticipants')}
             </h3>
             <div className="space-y-3">
@@ -628,8 +628,8 @@ export default function GroupBuyResultPage() {
                       : 'bg-gray-50'
                   }`}
                 >
-                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                    <span className="font-bold text-purple-600">{index + 1}</span>
+                  <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                    <span className="font-bold text-primary">{index + 1}</span>
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-gray-800">{participant.username}</p>
@@ -688,9 +688,9 @@ export default function GroupBuyResultPage() {
 
             <div className="p-6 space-y-4">
               {result.product && (
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4">
+                <div className="bg-gradient-to-r from-amber-50 to-amber-50 rounded-xl p-4">
                   <div className="flex items-center space-x-3 mb-2">
-                    <Gift className="w-6 h-6 text-purple-600" />
+                    <Gift className="w-6 h-6 text-primary" />
                     <h4 className="font-bold text-gray-800">
                       {getLocalizedText(result.product.title)}
                     </h4>
@@ -707,7 +707,7 @@ export default function GroupBuyResultPage() {
                   <select
                     value={selectedPointId}
                     onChange={(e) => setSelectedPointId(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
                     required
                   >
                     {pickupPoints.map((point) => (
@@ -723,7 +723,7 @@ export default function GroupBuyResultPage() {
                 )}
               </div>
 
-              <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-800">
+              <div className="bg-amber-50 rounded-xl p-4 text-sm text-primary-dark">
                 <p className="font-medium mb-1">{t('orders.claimNotice')}</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
                   <li>{t('orders.claimNotice1')}</li>
@@ -743,7 +743,7 @@ export default function GroupBuyResultPage() {
                 <button
                   onClick={handleClaimPrize}
                   disabled={isSubmitting || !selectedPointId || pickupPoints.length === 0}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-700 hover:to-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-primary text-white rounded-xl font-medium hover:from-primary-dark hover:to-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? t('common.submitting') : t('common.confirm')}
                 </button>

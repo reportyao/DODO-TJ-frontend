@@ -92,7 +92,7 @@ export default function DebugPage() {
 
   const testElementStyles = () => {
     const testDiv = document.createElement('div');
-    testDiv.className = 'bg-blue-500 text-white p-4 rounded';
+    testDiv.className = 'bg-primary text-white p-4 rounded';
     testDiv.textContent = 'Tailwind 测试元素';
     testDiv.style.position = 'fixed';
     testDiv.style.top = '50%';
@@ -153,7 +153,7 @@ export default function DebugPage() {
   };
 
   return (
-    <div style={{ padding: '16px', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+    <div style={{ padding: '16px', backgroundColor: '#FDFDFD', minHeight: '100vh' }}>
       <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>🔍 增强调试信息</h1>
       
       <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
@@ -199,7 +199,7 @@ export default function DebugPage() {
               key={i} 
               style={{ 
                 marginBottom: '4px',
-                color: log.type === 'error' ? '#ef4444' : log.type === 'warn' ? '#f59e0b' : '#4ade80'
+                color: log.type === 'error' ? '#C62828' : log.type === 'warn' ? '#f59e0b' : '#2E7D32'
               }}
             >
               [{log.time}] {log.message}
@@ -215,7 +215,7 @@ export default function DebugPage() {
             onClick={testElementStyles}
             style={{ 
               padding: '10px 20px', 
-              backgroundColor: '#2563eb', 
+              backgroundColor: '#B8860B', 
               color: 'white', 
               border: 'none', 
               borderRadius: '6px',
@@ -228,7 +228,7 @@ export default function DebugPage() {
             onClick={copyLogs}
             style={{ 
               padding: '10px 20px', 
-              backgroundColor: '#16a34a', 
+              backgroundColor: '#2E7D32', 
               color: 'white', 
               border: 'none', 
               borderRadius: '6px',

@@ -11,6 +11,7 @@ import {
   EyeSlashIcon,
   CheckIcon,
   ChevronRightIcon,
+  PhoneIcon,
 } from '@heroicons/react/24/outline'
 import PhoneInput from '../components/ui/PhoneInput'
 import toast from 'react-hot-toast'
@@ -269,7 +270,7 @@ const ProfileEditPage: React.FC = () => {
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             placeholder={t('profile.namePlaceholder') || '请输入您的姓名'}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
           />
         </div>
 
@@ -278,7 +279,7 @@ const ProfileEditPage: React.FC = () => {
           <button
             onClick={handleSaveBasic}
             disabled={isSavingBasic || isUploadingAvatar}
-            className="w-full mt-4 py-3 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+            className="w-full mt-4 py-3 bg-gradient-to-r from-primary to-primary-dark text-white font-semibold rounded-xl shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
           >
             {isSavingBasic ? (
               <>
@@ -309,8 +310,8 @@ const ProfileEditPage: React.FC = () => {
             className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                <PhoneIcon className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                <PhoneIcon className="w-5 h-5 text-primary" />
               </div>
               <div className="text-left">
                 <p className="text-sm font-medium text-gray-900">
@@ -370,7 +371,7 @@ const ProfileEditPage: React.FC = () => {
               <button
                 onClick={handleSavePhone}
                 disabled={isSavingPhone || !newPhone || !confirmPhone}
-                className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 bg-primary text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
               >
                 {isSavingPhone ? (
                   <>
@@ -429,7 +430,7 @@ const ProfileEditPage: React.FC = () => {
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
                     placeholder={t('profile.enterCurrentPassword') || '请输入当前密码'}
-                    className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+                    className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 placeholder-gray-400"
                     autoComplete="current-password"
                   />
                   <button
@@ -453,7 +454,7 @@ const ProfileEditPage: React.FC = () => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder={t('auth.passwordPlaceholder') || '至少6位'}
-                    className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+                    className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 placeholder-gray-400"
                     autoComplete="new-password"
                   />
                   <button
@@ -477,7 +478,7 @@ const ProfileEditPage: React.FC = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder={t('auth.confirmPasswordPlaceholder') || '再次输入密码'}
-                    className={`w-full px-4 py-3 pr-12 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400 ${
+                    className={`w-full px-4 py-3 pr-12 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 placeholder-gray-400 ${
                       confirmPassword && newPassword && confirmPassword !== newPassword
                         ? 'border-red-300 bg-red-50'
                         : confirmPassword && newPassword && confirmPassword === newPassword
@@ -547,8 +548,8 @@ const ProfileEditPage: React.FC = () => {
 
       {/* 提示信息 */}
       <div className="mx-4 mt-4 mb-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <p className="text-sm text-blue-800">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <p className="text-sm text-primary-dark">
             <strong>{t('common.note') || '提示'}:</strong>{' '}
             {t('profile.editNote') || '个人信息修改后需重新审核'}
           </p>

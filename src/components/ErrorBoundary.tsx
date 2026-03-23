@@ -161,7 +161,7 @@ export class ErrorBoundary extends React.Component<
               <div className="space-y-3">
                 <button
                   onClick={this.handleReload}
-                  className="w-full bg-[#2B5D3A] text-white py-3 px-4 rounded-lg hover:bg-[#234a2e] transition-colors font-medium text-base"
+                  className="w-full bg-[#B8860B] text-white py-3 px-4 rounded-lg hover:bg-[#8B6914] transition-colors font-medium text-base"
                 >
                   {getErrorTexts().retryButton}
                 </button>
@@ -189,7 +189,7 @@ export class ErrorBoundary extends React.Component<
             <div className="space-y-3">
               <button
                 onClick={this.handleReload}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="w-full bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark transition-colors font-medium"
               >
                 {texts.reloadApp}
               </button>

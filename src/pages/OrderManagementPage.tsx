@@ -169,8 +169,8 @@ const OrderManagementPage: React.FC = () => {
   const getStatusBadge = (order: UnifiedOrder) => {
     if (order.pickup_status) {
       const pickupStatusMap: Record<string, { text: string; color: string }> = {
-        'PENDING_CLAIM': { text: t('orders.statusCongratulations'), color: 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700' },
-        'PENDING_PICKUP': { text: t('orders.statusPendingPickup'), color: 'bg-blue-100 text-blue-700' },
+        'PENDING_CLAIM': { text: t('orders.statusCongratulations'), color: 'bg-gradient-to-r from-amber-100 to-amber-100 text-primary-dark' },
+        'PENDING_PICKUP': { text: t('orders.statusPendingPickup'), color: 'bg-amber-100 text-primary-dark' },
         'PICKED_UP': { text: t('orders.statusPickedUp'), color: 'bg-green-100 text-green-700' },
         'EXPIRED': { text: t('orders.statusExpired'), color: 'bg-red-100 text-red-700' },
       };
@@ -203,7 +203,7 @@ const OrderManagementPage: React.FC = () => {
       // 如果拼团进行中
       if (order.session_status === 'ACTIVE') {
         return (
-          <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-primary-dark">
             {t('orders.statusGrouping')}
           </span>
         );
@@ -212,16 +212,16 @@ const OrderManagementPage: React.FC = () => {
     }
 
     const statusMap: Record<string, { text: string; color: string }> = {
-      'PENDING': { text: order.order_type === 'group_buy' ? t('orders.statusGrouping') : t('orders.statusWaiting'), color: 'bg-blue-100 text-blue-700' },
-      'ACTIVE': { text: t('orders.statusGrouping'), color: 'bg-blue-100 text-blue-700' },
-      'PAID': { text: t('orders.statusPaid'), color: 'bg-blue-100 text-blue-700' },
-      'WON': { text: t('orders.statusCongratulations'), color: 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700' },
+      'PENDING': { text: order.order_type === 'group_buy' ? t('orders.statusGrouping') : t('orders.statusWaiting'), color: 'bg-amber-100 text-primary-dark' },
+      'ACTIVE': { text: t('orders.statusGrouping'), color: 'bg-amber-100 text-primary-dark' },
+      'PAID': { text: t('orders.statusPaid'), color: 'bg-amber-100 text-primary-dark' },
+      'WON': { text: t('orders.statusCongratulations'), color: 'bg-gradient-to-r from-amber-100 to-amber-100 text-primary-dark' },
       'LOST': { text: t('orders.statusFinished'), color: 'bg-gray-100 text-gray-700' },
       'REFUNDED': { text: t('orders.statusRefunded'), color: 'bg-orange-100 text-orange-700' },
       'EXPIRED': { text: t('orders.statusFinished'), color: 'bg-gray-100 text-gray-700' },
-      'SHIPPING': { text: t('orders.statusShipping'), color: 'bg-blue-100 text-blue-700' },
+      'SHIPPING': { text: t('orders.statusShipping'), color: 'bg-amber-100 text-primary-dark' },
       'SHIPPED': { text: t('orders.statusShipped'), color: 'bg-green-100 text-green-700' },
-      'RESOLD': { text: t('orders.statusResold'), color: 'bg-purple-100 text-purple-700' },
+      'RESOLD': { text: t('orders.statusResold'), color: 'bg-amber-100 text-primary-dark' },
       'COMPLETED': { text: t('orders.statusCompleted'), color: 'bg-green-100 text-green-700' },
     };
 
@@ -256,9 +256,9 @@ const OrderManagementPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 pb-20">
       {/* 头部 */}
-      <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 text-white shadow-lg">
+      <div className="bg-gradient-to-r from-primary via-primary to-red-500 text-white shadow-lg">
         <div className="max-w-2xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
@@ -290,19 +290,19 @@ const OrderManagementPage: React.FC = () => {
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as OrderType)}
                 className={`relative flex items-center space-x-2 whitespace-nowrap transition-all ${
-                  activeTab === tab.key ? 'text-purple-600 font-bold' : 'text-gray-500 hover:text-gray-700'
+                  activeTab === tab.key ? 'text-primary font-bold' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 <span>{tab.label}</span>
                 {tab.count > 0 && (
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                    activeTab === tab.key ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-500'
+                    activeTab === tab.key ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'
                   }`}>
                     {tab.count}
                   </span>
                 )}
                 {activeTab === tab.key && (
-                  <motion.div layoutId="activeTab" className="absolute -bottom-4 left-0 right-0 h-1 bg-purple-600 rounded-full" />
+                  <motion.div layoutId="activeTab" className="absolute -bottom-4 left-0 right-0 h-1 bg-primary rounded-full" />
                 )}
               </button>
             ))}
@@ -320,7 +320,7 @@ const OrderManagementPage: React.FC = () => {
           <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-red-50">
             <ExclamationCircleIcon className="w-16 h-16 text-red-200 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-gray-900 mb-2">{t('orders.loadError')}</h3>
-            <button onClick={() => refetch()} className="px-6 py-2 bg-purple-600 text-white rounded-xl font-medium">
+            <button onClick={() => refetch()} className="px-6 py-2 bg-primary text-white rounded-xl font-medium">
               {t('common.retry')}
             </button>
           </div>
@@ -343,7 +343,7 @@ const OrderManagementPage: React.FC = () => {
                   {/* 订单头部 */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-2 text-gray-500">
-                      <div className="p-1.5 bg-gray-50 rounded-lg group-hover:bg-purple-50 group-hover:text-purple-600 transition-colors">
+                      <div className="p-1.5 bg-gray-50 rounded-lg group-hover:bg-amber-50 group-hover:text-primary transition-colors">
                         {getOrderTypeIcon(order.order_type)}
                       </div>
                       <span className="text-xs font-medium tracking-tight">#{order.order_number}</span>
@@ -360,13 +360,13 @@ const OrderManagementPage: React.FC = () => {
                         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
                       />
                       {order.order_type === 'group_buy' && (
-                        <div className="absolute -top-2 -left-2 bg-blue-600 text-white p-1 rounded-lg shadow-lg">
+                        <div className="absolute -top-2 -left-2 bg-primary text-white p-1 rounded-lg shadow-lg">
                           <UsersIcon className="w-3 h-3" />
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-bold text-gray-900 line-clamp-2 mb-1 group-hover:text-purple-600 transition-colors">
+                      <h3 className="text-sm font-bold text-gray-900 line-clamp-2 mb-1 group-hover:text-primary transition-colors">
                         {getLocalizedText(order.product_title)}
                       </h3>
                       <div className="flex items-center space-x-3 text-[11px] text-gray-500">
@@ -375,7 +375,7 @@ const OrderManagementPage: React.FC = () => {
                           {formatDateTime(order.created_at)}
                         </div>
                         {order.order_type === 'lottery' && order.lottery_period && (
-                          <div className="flex items-center text-purple-600 font-medium">
+                          <div className="flex items-center text-primary font-medium">
                             <TicketIcon className="w-3 h-3 mr-1" />
                             {t('lottery.period')} {order.lottery_period}
                           </div>
@@ -391,7 +391,7 @@ const OrderManagementPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex items-center">
-                      <ChevronRightIcon className="w-5 h-5 text-gray-300 group-hover:text-purple-400 transition-colors" />
+                      <ChevronRightIcon className="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors" />
                     </div>
                   </div>
 
@@ -400,7 +400,7 @@ const OrderManagementPage: React.FC = () => {
                     <div className="mt-4 pt-4 border-t border-dashed border-gray-100 flex justify-end space-x-3">
                       <button
                         onClick={(e) => { e.stopPropagation(); navigate(`/group-buy/result/${order.session_id}`); }}
-                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold rounded-xl shadow-md shadow-purple-200 active:scale-95 transition-all"
+                        className="px-4 py-2 bg-gradient-to-r from-primary to-primary text-white text-xs font-bold rounded-xl shadow-md shadow-purple-200 active:scale-95 transition-all"
                       >
                         {t('orders.actionClaim')}
                       </button>

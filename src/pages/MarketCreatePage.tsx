@@ -218,7 +218,7 @@ const MarketCreatePage: React.FC = () => {
           <button
             onClick={handleSubmit}
             disabled={isLoading || !selectedTicket || !sellingPrice}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? t('common.submitting') : t('market.publish')}
           </button>
@@ -231,7 +231,7 @@ const MarketCreatePage: React.FC = () => {
           <h3 className="font-semibold text-gray-900 mb-3">{t('market.selectTicketToSell')}</h3>
           {isLoadingTickets ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : myTickets.length === 0 ? (
             <div className="text-center py-8">
@@ -247,7 +247,7 @@ const MarketCreatePage: React.FC = () => {
                   onClick={() => setSelectedTicket(ticket.id)}
                   className={`w-full flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${
                     selectedTicket === ticket.id
-                      ? 'border-blue-600 bg-blue-50'
+                      ? 'border-primary bg-amber-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
@@ -261,8 +261,8 @@ const MarketCreatePage: React.FC = () => {
                   <div className="flex-1 text-left">
                     <p className="font-medium text-gray-900">{ticket.lottery_title}</p>
                     <div className="flex items-center space-x-2 mt-1">
-                      <TicketIcon className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm text-blue-600">{t('market.ticketNumbers')}: {ticket.ticket_numbers}</span>
+                      <TicketIcon className="w-4 h-4 text-primary" />
+                      <span className="text-sm text-primary">{t('market.ticketNumbers')}: {ticket.ticket_numbers}</span>
                     </div>
                     <div className="flex items-center space-x-2 mt-1">
                       <BanknotesIcon className="w-4 h-4 text-gray-500" />
@@ -278,7 +278,7 @@ const MarketCreatePage: React.FC = () => {
                     </div>
                   </div>
                   {selectedTicket === ticket.id && (
-                    <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                       <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
@@ -309,7 +309,7 @@ const MarketCreatePage: React.FC = () => {
                   value={sellingPrice}
                   onChange={(e) => setSellingPrice(e.target.value)}
                   placeholder={t('market.enterSellingPrice')}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   step="0.01"
                   min="0"
                 />
@@ -347,7 +347,7 @@ const MarketCreatePage: React.FC = () => {
 
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">{t('market.sellingPrice')}</span>
-                  <span className="text-lg font-bold text-blue-600">
+                  <span className="text-lg font-bold text-primary">
                     {formatCurrency(selectedTicketData.currency, parseFloat(sellingPrice))}
                   </span>
                 </div>

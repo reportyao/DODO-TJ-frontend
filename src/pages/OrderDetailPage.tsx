@@ -213,8 +213,8 @@ const OrderDetailPage: React.FC = () => {
       },
       'PENDING_PICKUP': { 
         text: t('orders.statusPendingPickup'), 
-        color: 'text-blue-700', 
-        bgColor: 'bg-blue-100',
+        color: 'text-primary-dark', 
+        bgColor: 'bg-amber-100',
         icon: <TruckIcon className="w-5 h-5" />
       },
       'PENDING_CLAIM': { 
@@ -244,14 +244,14 @@ const OrderDetailPage: React.FC = () => {
       },
       'IN_TRANSIT_CHINA': { 
         text: t('logistics.inTransitChina'), 
-        color: 'text-blue-700', 
-        bgColor: 'bg-blue-100',
+        color: 'text-primary-dark', 
+        bgColor: 'bg-amber-100',
         icon: <TruckIcon className="w-5 h-5" />
       },
       'IN_TRANSIT_TAJIKISTAN': { 
         text: t('logistics.inTransitTajikistan'), 
-        color: 'text-purple-700', 
-        bgColor: 'bg-purple-100',
+        color: 'text-primary-dark', 
+        bgColor: 'bg-amber-100',
         icon: <TruckIcon className="w-5 h-5" />
       },
       'READY_FOR_PICKUP': { 
@@ -297,20 +297,20 @@ const OrderDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
       </div>
     );
   }
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex flex-col items-center justify-center px-4">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 flex flex-col items-center justify-center px-4">
         <GiftIcon className="w-16 h-16 text-gray-400 mb-4" />
         <p className="text-gray-600 mb-4">{t('orders.noOrders')}</p>
         <button
           onClick={() => navigate(-1)}
-          className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition"
         >
           {t('common.back')}
         </button>
@@ -326,9 +326,9 @@ const OrderDetailPage: React.FC = () => {
   const remainingDays = getRemainingDays();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 pb-20">
       {/* 头部 */}
-      <div className="bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 text-white shadow-lg">
+      <div className="bg-gradient-to-r from-primary via-primary to-orange-500 text-white shadow-lg">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -404,7 +404,7 @@ const OrderDetailPage: React.FC = () => {
           className="bg-white rounded-2xl p-5 shadow-sm"
         >
           <div className="flex items-center space-x-2 mb-4">
-            <ShoppingBagIcon className="w-5 h-5 text-purple-600" />
+            <ShoppingBagIcon className="w-5 h-5 text-primary" />
             <h2 className="text-base font-bold text-gray-900">{t('order.productInfo')}</h2>
           </div>
           
@@ -439,11 +439,11 @@ const OrderDetailPage: React.FC = () => {
           ) : null}
           
           {/* 支付金额 */}
-          <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
             <span className="text-sm text-gray-600">{t('order.paymentAmount')}</span>
             <div className="flex items-baseline gap-1">
               <span className="text-sm text-gray-500">{order.currency}</span>
-              <span className="text-xl font-bold text-purple-600">
+              <span className="text-xl font-bold text-primary">
                 {order.total_amount}
               </span>
             </div>
@@ -471,7 +471,7 @@ const OrderDetailPage: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl p-5 shadow-lg text-white"
+            className="bg-gradient-to-br from-primary to-primary rounded-2xl p-5 shadow-lg text-white"
           >
             <div className="flex items-center space-x-2 mb-4">
               <TicketIcon className="w-5 h-5" />
@@ -511,14 +511,14 @@ const OrderDetailPage: React.FC = () => {
             className="bg-white rounded-2xl p-5 shadow-sm"
           >
             <div className="flex items-center space-x-2 mb-4">
-              <MapPinIcon className="w-5 h-5 text-purple-600" />
+              <MapPinIcon className="w-5 h-5 text-primary" />
               <h2 className="text-base font-bold text-gray-900">{t('orders.pickupPointInfo')}</h2>
             </div>
 
             <div className="space-y-3">
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                  <MapPinIcon className="w-4 h-4 text-purple-600" />
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <MapPinIcon className="w-4 h-4 text-primary" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">{t('orders.pickupPointName')}</p>
@@ -529,8 +529,8 @@ const OrderDetailPage: React.FC = () => {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <TruckIcon className="w-4 h-4 text-blue-600" />
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <TruckIcon className="w-4 h-4 text-primary" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">{t('orders.pickupPointAddress')}</p>
@@ -549,7 +549,7 @@ const OrderDetailPage: React.FC = () => {
                     <p className="text-sm text-gray-500">{t('orders.pickupPointPhone')}</p>
                     <a 
                       href={`tel:${order.pickup_point.contact_phone}`}
-                      className="font-medium text-purple-600 hover:underline"
+                      className="font-medium text-primary hover:underline"
                     >
                       {order.pickup_point.contact_phone}
                     </a>
@@ -565,7 +565,7 @@ const OrderDetailPage: React.FC = () => {
                     {order.pickup_point.photos.map((photo, index) => (
                       <div
                         key={index}
-                        className="w-20 h-20 rounded-lg overflow-hidden cursor-pointer border border-gray-200 hover:border-purple-400 transition-colors"
+                        className="w-20 h-20 rounded-lg overflow-hidden cursor-pointer border border-gray-200 hover:border-primary transition-colors"
                         onClick={() => setPreviewPhoto(photo)}
                       >
                         <img
@@ -589,10 +589,10 @@ const OrderDetailPage: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl p-5 shadow-sm border-2 border-purple-200"
+            className="bg-white rounded-2xl p-5 shadow-sm border-2 border-amber-200"
           >
             <div className="flex items-center space-x-2 mb-4">
-              <MapPinIcon className="w-5 h-5 text-purple-600" />
+              <MapPinIcon className="w-5 h-5 text-primary" />
               <h2 className="text-base font-bold text-gray-900">{t('orders.selectPickupPoint')}</h2>
             </div>
 
@@ -601,7 +601,7 @@ const OrderDetailPage: React.FC = () => {
               <select
                 value={selectedPickupPointId}
                 onChange={(e) => setSelectedPickupPointId(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="">{t('orders.pleaseSelect')}</option>
                 {order.available_pickup_points.map((point) => (
@@ -614,7 +614,7 @@ const OrderDetailPage: React.FC = () => {
               <button
                 onClick={handleUpdatePickupPoint}
                 disabled={!selectedPickupPointId || isUpdatingPickupPoint}
-                className="w-full py-3 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 focus:ring-4 focus:ring-purple-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                className="w-full py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark focus:ring-4 focus:ring-primary/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 {isUpdatingPickupPoint ? (
                   <>
@@ -640,7 +640,7 @@ const OrderDetailPage: React.FC = () => {
           className="bg-white rounded-2xl p-5 shadow-sm"
         >
           <div className="flex items-center space-x-2 mb-4">
-            <CalendarIcon className="w-5 h-5 text-purple-600" />
+            <CalendarIcon className="w-5 h-5 text-primary" />
             <h2 className="text-base font-bold text-gray-900">{t('order.orderInfo')}</h2>
           </div>
 
@@ -671,7 +671,7 @@ const OrderDetailPage: React.FC = () => {
 
             <div className="flex items-center justify-between py-2">
               <span className="text-sm text-gray-500">{t('order.paymentAmount')}</span>
-              <span className="font-bold text-purple-600">{formatCurrency(order.currency, order.total_amount)}</span>
+              <span className="font-bold text-primary">{formatCurrency(order.currency, order.total_amount)}</span>
             </div>
           </div>
         </motion.div>

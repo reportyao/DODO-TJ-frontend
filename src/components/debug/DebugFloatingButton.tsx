@@ -406,7 +406,7 @@ export const DebugFloatingButton: React.FC = () => {
             <div className="flex gap-2">
               <button
                 onClick={() => setIsMinimized(!isMinimized)}
-                className="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700"
+                className="px-3 py-1 bg-primary rounded text-sm hover:bg-primary-dark"
               >
                 {isMinimized ? '展开' : '收起'}
               </button>
@@ -439,7 +439,7 @@ export const DebugFloatingButton: React.FC = () => {
             <div className="overflow-y-auto p-4 space-y-4" style={{ maxHeight: 'calc(80vh - 60px)' }}>
               {/* 构建信息 */}
               <div className="bg-gray-800 rounded p-3">
-                <h3 className="font-bold mb-2 text-cyan-400">📦 构建信息</h3>
+                <h3 className="font-bold mb-2 text-accent">📦 构建信息</h3>
                 <div className="text-xs space-y-1">
                   <div>版本: <span className="text-green-400">{getDebugInfo().build.version}</span></div>
                   <div>构建时间: <span className="text-yellow-400">{new Date(getDebugInfo().build.buildTime).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</span></div>
@@ -448,7 +448,7 @@ export const DebugFloatingButton: React.FC = () => {
 
               {/* 平台环境 */}
               <div className="bg-gray-800 rounded p-3">
-                <h3 className="font-bold mb-2 text-purple-400">📱 平台环境</h3>
+                <h3 className="font-bold mb-2 text-primary">📱 平台环境</h3>
                 <div className="text-xs space-y-1">
                   <div>PWA模式: <span className={getDebugInfo().platform.isPWA ? 'text-green-400' : 'text-red-400'}>
                     {getDebugInfo().platform.isPWA ? '是 ✅' : '否 ❌'}
@@ -461,7 +461,7 @@ export const DebugFloatingButton: React.FC = () => {
 
               {/* 认证状态 */}
               <div className="bg-gray-800 rounded p-3">
-                <h3 className="font-bold mb-2 text-blue-400">🔐 认证状态</h3>
+                <h3 className="font-bold mb-2 text-primary">🔐 认证状态</h3>
                 <div className="text-xs space-y-1">
                   <div>有用户: <span className={getDebugInfo().auth.hasUser ? 'text-green-400' : 'text-red-400'}>
                     {getDebugInfo().auth.hasUser ? '是 ✅' : '否 ❌'}
@@ -474,7 +474,7 @@ export const DebugFloatingButton: React.FC = () => {
               {/* 认证检查记录 */}
               {authChecks.length > 0 && (
                 <div className="bg-gray-800 rounded p-3">
-                  <h3 className="font-bold mb-2 text-blue-400">🔍 认证检查记录 ({authChecks.length})</h3>
+                  <h3 className="font-bold mb-2 text-primary">🔍 认证检查记录 ({authChecks.length})</h3>
                   <div className="space-y-2 text-xs max-h-40 overflow-y-auto">
                     {authChecks.map((check, idx) => (
                       <div key={idx} className={`p-2 rounded ${check.success ? 'bg-green-900/30' : 'bg-red-900/30'}`}>
@@ -558,7 +558,7 @@ export const DebugFloatingButton: React.FC = () => {
                         <span className={`ml-2 px-1 rounded text-xs ${
                           log.level === 'error' ? 'bg-red-600' : 
                           log.level === 'warn' ? 'bg-yellow-600' : 
-                          'bg-blue-600'
+                          'bg-primary'
                         }`}>{log.level}</span>
                         <div className="mt-1 break-all">{log.message}</div>
                       </div>

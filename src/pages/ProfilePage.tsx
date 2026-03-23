@@ -134,21 +134,21 @@ const ProfilePage: React.FC = () => {
       icon: ShoppingBagIcon,
       title: t('profile.pendingPickup'),
       subtitle: t('profile.viewPendingPickup'),
-      color: 'from-blue-500 to-blue-600',
+      color: 'from-primary to-primary',
       action: () => navigate('/pending-pickup'),
     },
     {
       icon: UsersIcon,
       title: t('invite.myTeam'),
       subtitle: t('invite.viewTeamInfo'),
-      color: 'from-purple-500 to-purple-600',
+      color: 'from-primary to-primary',
       action: () => navigate('/invite'),
     },
     {
       icon: ClipboardDocumentListIcon,
       title: t('orders.title'),
       subtitle: t('profile.viewOrders'),
-      color: 'from-purple-500 to-pink-600',
+      color: 'from-primary to-primary',
       action: () => navigate('/orders-management'),
     },
   ]
@@ -212,7 +212,7 @@ const ProfilePage: React.FC = () => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white mx-4 mt-4 rounded-2xl p-6"
+        className="bg-gradient-to-r from-primary to-primary text-white mx-4 mt-4 rounded-2xl p-6"
       >
         <div className="flex items-center space-x-4">
           {/* 头像 + 用户信息（点击跳转到编辑页） */}
@@ -301,7 +301,7 @@ const ProfilePage: React.FC = () => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleCopyReferralLink}
-            className="flex-1 bg-blue-50 text-blue-600 py-2 px-4 rounded-lg font-medium flex items-center justify-center space-x-1"
+            className="flex-1 bg-amber-50 text-primary py-2 px-4 rounded-lg font-medium flex items-center justify-center space-x-1"
           >
             <ClipboardDocumentIcon className="w-4 h-4" />
             <span>{t('common.copy') || t('invite.copyCode')}</span>

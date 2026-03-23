@@ -87,7 +87,7 @@ const LotteryPage: React.FC = () => {
           {/* 规则说明按钮 - 左侧 */}
           <button
             onClick={() => setIsRulesModalOpen(true)}
-            className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-purple-50 text-purple-600 hover:bg-purple-100 transition-all"
+            className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-50 text-primary hover:bg-amber-100 transition-all"
           >
             <InformationCircleIcon className="w-4 h-4" />
             <span className="hidden xs:inline">{t('lottery.rulesButton')}</span>
@@ -189,7 +189,7 @@ const LotteryPage: React.FC = () => {
               className="bg-white rounded-3xl w-full max-w-md max-h-[85vh] overflow-hidden shadow-2xl"
             >
               {/* 弹窗头部 */}
-              <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-5 flex items-center justify-between">
+              <div className="sticky top-0 bg-gradient-to-r from-primary to-primary text-white px-6 py-5 flex items-center justify-between">
                 <h3 className="text-xl font-black flex items-center gap-2">
                   <InformationCircleIcon className="w-7 h-7" />
                   {t('lottery.rulesTitle')}
@@ -208,7 +208,7 @@ const LotteryPage: React.FC = () => {
                   {/* 参与方式 */}
                   <section>
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="w-1.5 h-6 bg-purple-600 rounded-full"></div>
+                      <div className="w-1.5 h-6 bg-primary rounded-full"></div>
                       <h4 className="text-gray-900 font-black text-lg">
                         {t('lottery.rulesParticipation')}
                       </h4>
@@ -221,7 +221,7 @@ const LotteryPage: React.FC = () => {
                   {/* 开奖机制 */}
                   <section>
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="w-1.5 h-6 bg-pink-600 rounded-full"></div>
+                      <div className="w-1.5 h-6 bg-primary rounded-full"></div>
                       <h4 className="text-gray-900 font-black text-lg">
                         {t('lottery.rulesDraw')}
                       </h4>
@@ -259,7 +259,7 @@ const LotteryPage: React.FC = () => {
                 {/* 关闭按钮 */}
                 <button
                   onClick={() => setIsRulesModalOpen(false)}
-                  className="w-full mt-10 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold shadow-lg shadow-purple-100 active:scale-[0.98] transition-all"
+                  className="w-full mt-10 py-4 bg-gradient-to-r from-primary to-primary text-white rounded-2xl font-bold shadow-lg shadow-purple-100 active:scale-[0.98] transition-all"
                 >
                   {t('common.confirm')}
                 </button>

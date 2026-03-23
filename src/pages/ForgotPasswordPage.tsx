@@ -83,7 +83,7 @@ const ForgotPasswordPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
@@ -124,7 +124,7 @@ const ForgotPasswordPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setStep('verify')}
-              className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="w-full text-sm text-primary hover:text-primary-dark font-medium"
             >
               {t('auth.haveResetToken')}
             </button>
@@ -147,7 +147,7 @@ const ForgotPasswordPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setStep('verify')}
-              className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all"
+              className="w-full py-3 bg-gradient-to-r from-primary to-primary-dark text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all"
             >
               {t('auth.enterResetToken')}
             </button>
@@ -176,7 +176,7 @@ const ForgotPasswordPage: React.FC = () => {
                   value={resetToken}
                   onChange={(e) => setResetToken(e.target.value)}
                   placeholder={t('auth.resetTokenPlaceholder')}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400 font-mono text-sm"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-gray-900 placeholder-gray-400 font-mono text-sm"
                   readOnly={!!tokenFromUrl}
                 />
               </div>
@@ -194,7 +194,7 @@ const ForgotPasswordPage: React.FC = () => {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder={t('auth.passwordPlaceholder')}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                  className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                   autoComplete="new-password"
                 />
                 <button
@@ -219,7 +219,7 @@ const ForgotPasswordPage: React.FC = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder={t('auth.confirmPasswordPlaceholder')}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                   autoComplete="new-password"
                 />
               </div>
@@ -248,7 +248,7 @@ const ForgotPasswordPage: React.FC = () => {
 
         {/* Back to Login */}
         <p className="text-center mt-6 text-gray-600">
-          <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold flex items-center justify-center gap-1">
+          <Link to="/login" className="text-primary hover:text-primary-dark font-semibold flex items-center justify-center gap-1">
             <ArrowLeftIcon className="w-4 h-4" />
             {t('auth.backToLogin')}
           </Link>

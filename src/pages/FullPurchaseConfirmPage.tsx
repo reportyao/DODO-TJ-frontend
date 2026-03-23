@@ -273,7 +273,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
         {/* Pickup Point Selection */}
         <div className="bg-white rounded-xl shadow-md p-4 space-y-3">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <MapPinIcon className="w-5 h-5 text-blue-500" />
+            <MapPinIcon className="w-5 h-5 text-primary" />
             {t('orders.selectPickupPoint')}
           </h3>
 
@@ -288,7 +288,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
                   className={cn(
                     "w-full text-left p-4 rounded-lg border-2 transition-all duration-200",
                     selectedPointId === point.id
-                      ? "border-blue-500 bg-blue-50"
+                      ? "border-primary bg-amber-50"
                       : "border-gray-200 bg-white hover:border-gray-300"
                   )}
                 >
@@ -307,7 +307,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
                       )}
                     </div>
                     {selectedPointId === point.id && (
-                      <CheckCircleIcon className="w-6 h-6 text-blue-500 flex-shrink-0 ml-2" />
+                      <CheckCircleIcon className="w-6 h-6 text-primary flex-shrink-0 ml-2" />
                     )}
                   </div>
                 </motion.button>
@@ -400,7 +400,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
                 </div>
               );
             })()}
-            <p className="text-xs text-blue-500">🍀 {t('payment.pointsAsValue')}</p>
+            <p className="text-xs text-primary">🍀 {t('payment.pointsAsValue')}</p>
           </div>
         </div>
 
@@ -420,7 +420,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
           className={cn(
             "w-full py-3 rounded-xl font-semibold text-white shadow-md transition-all duration-200 sticky bottom-4",
             !isSubmitting && selectedPointId
-              ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-lg"
+              ? "bg-gradient-to-r from-green-500 to-accent hover:shadow-lg"
               : "bg-gray-300 cursor-not-allowed"
           )}
         >

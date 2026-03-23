@@ -339,7 +339,7 @@ function SquadBuyConfirmModal({
         </div>
 
         {/* Benefits */}
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-3 mb-4">
+        <div className="bg-gradient-to-br from-amber-50 to-amber-50 rounded-xl p-3 mb-4">
           <p className="text-xs font-semibold text-gray-700 mb-2 text-center">
             {t('groupBuy.squadBuy.youWillGet')}
           </p>
@@ -365,7 +365,7 @@ function SquadBuyConfirmModal({
                 <span className="text-white text-xs">✓</span>
               </div>
               <span className="text-gray-700">
-                <span className="font-bold text-blue-600">{groupSize * 10}</span> {t('groupBuy.squadBuy.aiChats')}
+                <span className="font-bold text-primary">{groupSize * 10}</span> {t('groupBuy.squadBuy.aiChats')}
               </span>
             </div>
           </div>
@@ -709,9 +709,9 @@ export default function GroupBuyDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
@@ -720,13 +720,13 @@ export default function GroupBuyDetailPage() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500">{t('groupBuy.productNotFound')}</p>
           <button
             onClick={() => navigate('/group-buy')}
-            className="mt-4 text-purple-500 hover:text-purple-600"
+            className="mt-4 text-primary hover:text-primary"
           >
             {t('common.back')}
           </button>
@@ -736,12 +736,12 @@ export default function GroupBuyDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 text-white p-4">
+      <div className="bg-gradient-to-r from-primary via-primary to-red-500 text-white p-4">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-white hover:text-pink-100"
+          className="flex items-center gap-2 text-white hover:text-amber-100"
         >
           <ChevronLeft className="w-6 h-6" />
           {t('common.back')}
@@ -777,7 +777,7 @@ export default function GroupBuyDetailPage() {
             {getLocalizedText(product.description).length > 100 && (
               <button
                 onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                className="text-blue-600 text-sm font-medium hover:text-blue-700 transition-colors flex items-center gap-1"
+                className="text-primary text-sm font-medium hover:text-primary-dark transition-colors flex items-center gap-1"
               >
                 {isDescriptionExpanded ? (
                   <>
@@ -796,9 +796,9 @@ export default function GroupBuyDetailPage() {
         )}
 
         {/* Price */}
-        <div className="bg-purple-50 rounded-2xl p-4 mb-4">
+        <div className="bg-amber-50 rounded-2xl p-4 mb-4">
           <div className="flex items-end gap-2 mb-2">
-            <div className="text-purple-600 font-bold text-3xl">
+            <div className="text-primary font-bold text-3xl">
               TJS {product.price_per_person}
             </div>
             <div className="text-gray-400 line-through text-lg mb-1">
@@ -847,11 +847,11 @@ export default function GroupBuyDetailPage() {
                 return (
                   <div
                     key={session.id}
-                    className="bg-white border-2 border-purple-200 rounded-xl p-4"
+                    className="bg-white border-2 border-amber-200 rounded-xl p-4"
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <Users className="w-5 h-5 text-purple-500" />
+                        <Users className="w-5 h-5 text-primary" />
                         <span className="font-bold text-gray-800">
                           {session.current_participants}/{session.max_participants}
                         </span>
@@ -870,7 +870,7 @@ export default function GroupBuyDetailPage() {
                           <img
                             src={order.users?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(order.users?.first_name || 'U')}&background=random&size=48`}
                             alt={order.users?.first_name || 'User'}
-                            style={{ width: '48px', height: '48px', borderRadius: '9999px', border: '2px solid #e9d5ff', objectFit: 'cover', maxWidth: 'none' }}
+                            style={{ width: '48px', height: '48px', borderRadius: '9999px', border: '2px solid #FEF3C7', objectFit: 'cover', maxWidth: 'none' }}
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(order.users?.first_name || 'U')}&background=random&size=48`;
                             }}
@@ -897,7 +897,7 @@ export default function GroupBuyDetailPage() {
                       {isParticipated ? (
                         <button
                           onClick={() => handleShare(session.session_code)}
-                          className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white py-2 rounded-lg font-bold hover:from-blue-600 hover:to-purple-600 transition-colors flex items-center justify-center gap-2"
+                          className="flex-1 bg-gradient-to-r from-primary to-primary text-white py-2 rounded-lg font-bold hover:from-primary hover:to-primary transition-colors flex items-center justify-center gap-2"
                         >
                           <Share2 className="w-5 h-5" />
                           {t('groupBuy.share')}
@@ -907,7 +907,7 @@ export default function GroupBuyDetailPage() {
                           <button
                             onClick={() => handleJoinGroup(session.id)}
                             disabled={isProcessing}
-                            className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 rounded-lg font-bold hover:from-purple-600 hover:to-pink-600 transition-colors disabled:opacity-50"
+                            className="flex-1 bg-gradient-to-r from-primary to-primary text-white py-2 rounded-lg font-bold hover:from-primary hover:to-primary transition-colors disabled:opacity-50"
                           >
                             {isProcessing ? t('common.processing') : t('groupBuy.joinNow')}
                           </button>
@@ -940,7 +940,7 @@ export default function GroupBuyDetailPage() {
           <button
             onClick={() => handleJoinGroup()}
             disabled={joiningSessionId === 'new'}
-            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3.5 rounded-xl font-bold text-base hover:from-purple-600 hover:to-pink-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-primary to-primary text-white py-3.5 rounded-xl font-bold text-base hover:from-primary hover:to-primary transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <ShoppingBag className="w-5 h-5" />
             <span>

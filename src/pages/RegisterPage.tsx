@@ -110,11 +110,11 @@ const RegisterPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         {/* Logo / Brand */}
         <div className="text-center mb-6">
-          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
+          <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary-dark rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
             <span className="text-white text-3xl font-bold">D</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">DODO</h1>
@@ -160,7 +160,7 @@ const RegisterPage: React.FC = () => {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder={t('auth.firstNamePlaceholder')}
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                 autoComplete="given-name"
               />
             </div>
@@ -178,7 +178,7 @@ const RegisterPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t('auth.passwordPlaceholder')}
-                className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                 autoComplete="new-password"
               />
               <button
@@ -203,7 +203,7 @@ const RegisterPage: React.FC = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder={t('auth.confirmPasswordPlaceholder')}
-                className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                 autoComplete="new-password"
               />
               <button
@@ -234,7 +234,7 @@ const RegisterPage: React.FC = () => {
                 className={`w-full pl-10 pr-4 py-3 border rounded-xl transition-all text-gray-900 placeholder-gray-400 uppercase ${
                   searchParams.get('ref')
                     ? 'border-green-300 bg-green-50 text-green-800 cursor-not-allowed'
-                    : 'border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                    : 'border-gray-200 focus:ring-2 focus:ring-primary focus:border-transparent'
                 }`}
                 readOnly={!!searchParams.get('ref')}
               />
@@ -251,7 +251,7 @@ const RegisterPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading || isUploadingAvatar}
-            className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all mt-2"
+            className="w-full py-3 bg-gradient-to-r from-primary to-primary-dark text-white font-semibold rounded-xl shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all mt-2"
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
@@ -272,7 +272,7 @@ const RegisterPage: React.FC = () => {
           {t('auth.hasAccount')}{' '}
           <Link
             to="/login"
-            className="text-blue-600 hover:text-blue-700 font-semibold"
+            className="text-primary hover:text-primary-dark font-semibold"
           >
             {t('auth.loginNow')}
           </Link>

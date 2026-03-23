@@ -85,7 +85,7 @@ export default function GroupBuyListPage() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
@@ -107,7 +107,7 @@ export default function GroupBuyListPage() {
       <div className="px-4 mt-4">
         <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-1 h-5 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
+            <div className="w-1 h-5 bg-gradient-to-b from-primary to-primary rounded-full"></div>
             <h2 className="font-semibold text-gray-800">{t('groupBuy.howItWorks.title')}</h2>
           </div>
           <div className="space-y-2 text-sm text-gray-600">
@@ -239,7 +239,7 @@ export default function GroupBuyListPage() {
                 })()}
 
                 {product.active_sessions_count > 0 && (
-                  <div className="absolute top-3 right-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
+                  <div className="absolute top-3 right-3 bg-gradient-to-r from-primary to-primary text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
                     <Users className="w-4 h-4" />
                     {product.active_sessions_count}
                   </div>
@@ -257,7 +257,7 @@ export default function GroupBuyListPage() {
 
                 {/* Price Info */}
                 <div className="flex items-end gap-2 mb-3">
-                  <div className="text-purple-600 font-bold text-2xl">
+                  <div className="text-primary font-bold text-2xl">
                     TJS {product.price_per_person}
                   </div>
                   <div className="text-gray-400 line-through text-sm mb-1">
@@ -290,9 +290,9 @@ export default function GroupBuyListPage() {
                       {product.active_sessions.slice(0, 3).map((session) => (
                         <div
                           key={session.id}
-                          className="flex-shrink-0 bg-purple-50 rounded-lg px-3 py-2 text-xs"
+                          className="flex-shrink-0 bg-amber-50 rounded-lg px-3 py-2 text-xs"
                         >
-                          <div className="font-medium text-purple-600">
+                          <div className="font-medium text-primary">
                             {session.current_participants}/{session.group_size}
                           </div>
                         </div>
@@ -302,7 +302,7 @@ export default function GroupBuyListPage() {
                 )}
 
                 {/* Action Button */}
-                <button className="w-full mt-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-bold hover:from-purple-600 hover:to-pink-600 transition-colors">
+                <button className="w-full mt-4 bg-gradient-to-r from-primary to-primary text-white py-3 rounded-xl font-bold hover:from-primary hover:to-primary transition-colors">
                   {product.active_sessions_count > 0
                     ? t('groupBuy.joinGroup')
                     : t('groupBuy.startGroup')}

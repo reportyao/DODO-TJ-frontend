@@ -69,10 +69,10 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
   const getColorClasses = () => {
     if (minutes >= 2) {
       return {
-        bg: 'bg-blue-100',
-        border: 'border-blue-500',
-        text: 'text-blue-800',
-        timer: 'text-blue-600',
+        bg: 'bg-amber-100',
+        border: 'border-primary',
+        text: 'text-primary-dark',
+        timer: 'text-primary',
       };
     } else if (minutes >= 1) {
       return {

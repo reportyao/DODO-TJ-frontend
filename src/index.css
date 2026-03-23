@@ -3,36 +3,105 @@
 @source "../src";
 
 @layer base {
+  /*
+   * DODO App CSS 变量 — 配色规范
+   * ============================
+   *
+   * 这些变量为 Tailwind CSS 的语义化颜色提供底层值。
+   * HSL 格式: H S% L%（不带 hsl() 包裹，由 Tailwind 自动处理）
+   *
+   * 主色系:     暗金色 #B8860B → hsl(43, 89%, 38%)
+   * 辅助色:     宝石绿 #006B6B → hsl(180, 100%, 21%)
+   * 背景色:     米白   #FDFDFD → hsl(0, 0%, 99%)
+   * 前景/文本:  炭黑   #333333 → hsl(0, 0%, 20%)
+   * 边框:       浅灰   #E5E7EB → hsl(220, 13%, 91%)
+   */
   :root {
     --radius: 0.5rem;
+
+    /* 页面基础 */
+    --background: 0 0% 99%;          /* #FDFDFD 米白 */
+    --foreground: 0 0% 20%;          /* #333333 炭黑 */
+
+    /* 主色 — 暗金色 */
+    --primary: 43 89% 38%;           /* #B8860B */
+    --primary-foreground: 0 0% 100%; /* #FFFFFF */
+
+    /* 辅助色 — 宝石绿 */
+    --accent: 180 100% 21%;          /* #006B6B */
+    --accent-foreground: 0 0% 100%;  /* #FFFFFF */
+
+    /* 次要/静音 */
+    --secondary: 0 0% 96%;           /* #F5F5F5 */
+    --secondary-foreground: 0 0% 20%; /* #333333 */
+    --muted: 0 0% 96%;               /* #F5F5F5 */
+    --muted-foreground: 0 0% 46%;    /* #757575 */
+
+    /* 功能色 */
+    --destructive: 0 72% 47%;        /* #C62828 深红 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* 边框/输入框 */
+    --border: 220 13% 91%;           /* #E5E7EB */
+    --input: 220 13% 91%;            /* #E5E7EB */
+    --ring: 43 89% 38%;              /* 同主色，用于 focus ring */
+
+    /* 卡片/弹出层 */
+    --card: 0 0% 100%;               /* #FFFFFF */
+    --card-foreground: 0 0% 20%;     /* #333333 */
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 20%;
+
+    /* 侧边栏（如有） */
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%
-  }
-  .dark {
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-primary: 43 89% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%
+    --sidebar-accent: 180 100% 21%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 43 89% 38%;
   }
-  
+
+  /* 暗色模式（预留，当前不启用） */
+  .dark {
+    --background: 0 0% 7%;
+    --foreground: 0 0% 96%;
+    --primary: 43 89% 45%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 180 100% 30%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 43 89% 45%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 96%;
+    --sidebar-background: 0 0% 7%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 43 89% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 180 100% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 43 89% 45%;
+  }
+
   /* 基础样式 */
   html {
-    background-color: #f9fafb !important;
+    background-color: #FDFDFD !important;
     min-height: 100vh;
   }
-  
+
   body {
-    background-color: #f9fafb !important;
+    background-color: #FDFDFD !important;
     margin: 0;
     padding: 0;
     min-height: 100vh;
@@ -40,13 +109,11 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  
+
   #root {
-    background-color: #f9fafb !important;
+    background-color: #FDFDFD !important;
     min-height: 100vh;
   }
-
-
 }
 
 /*

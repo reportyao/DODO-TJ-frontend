@@ -49,7 +49,7 @@ const SpinFloatingButton: React.FC<SpinFloatingButtonProps> = ({ spinCount = 0 }
         aria-label={t('spin.floatingButton')}
       >
         {/* 光晕效果 */}
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary-light rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
         
         {/* 主按钮 */}
         <SafeMotion
@@ -58,7 +58,7 @@ const SpinFloatingButton: React.FC<SpinFloatingButtonProps> = ({ spinCount = 0 }
             scale: [1, 1.05, 1.05, 1.05, 1.05, 1.02, 1.02, 1]
           } : {}}
           transition={{ duration: 0.8 }}
-          className="relative w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
+          className="relative w-12 h-12 bg-gradient-to-br from-primary to-primary rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
         >
           <GiftIcon className="w-6 h-6 text-white" />
           

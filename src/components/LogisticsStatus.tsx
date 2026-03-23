@@ -86,7 +86,7 @@ export const LogisticsStatus: React.FC<LogisticsStatusProps> = ({
 
   const getStatusColor = (index: number): string => {
     if (index < currentIndex) return 'text-green-500 bg-green-100';
-    if (index === currentIndex) return 'text-purple-600 bg-purple-100';
+    if (index === currentIndex) return 'text-primary bg-amber-100';
     return 'text-gray-400 bg-gray-100';
   };
 
@@ -116,7 +116,7 @@ export const LogisticsStatus: React.FC<LogisticsStatusProps> = ({
   return (
     <div className={`bg-white rounded-2xl p-5 shadow-sm ${className}`}>
       <div className="flex items-center space-x-2 mb-6">
-        <TruckIcon className="w-5 h-5 text-purple-600" />
+        <TruckIcon className="w-5 h-5 text-primary" />
         <h2 className="text-base font-bold text-gray-900">
           {t('logistics.title')}
         </h2>
@@ -195,7 +195,7 @@ export const LogisticsStatus: React.FC<LogisticsStatusProps> = ({
             <span className="text-sm text-gray-500">
               {t('logistics.pickupCode')}
             </span>
-            <span className="font-bold text-purple-600 text-lg tracking-wider">{pickupCode}</span>
+            <span className="font-bold text-primary text-lg tracking-wider">{pickupCode}</span>
           </div>
         )}
       </div>

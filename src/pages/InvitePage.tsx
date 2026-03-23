@@ -156,8 +156,8 @@ const InvitePage: React.FC = () => {
 
   const getLevelBadge = (level: number) => {
     const colors = {
-      1: 'bg-blue-100 text-blue-700',
-      2: 'bg-purple-100 text-purple-700',
+      1: 'bg-amber-100 text-primary-dark',
+      2: 'bg-amber-100 text-primary-dark',
       3: 'bg-orange-100 text-orange-700'
     };
     return colors[level as keyof typeof colors] || 'bg-gray-100 text-gray-700';
@@ -168,7 +168,7 @@ const InvitePage: React.FC = () => {
   return (
     <div className="pb-20 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-8">
+      <div className="bg-gradient-to-r from-primary to-primary text-white px-4 py-8">
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-3">
             <GiftIcon className="w-8 h-8" />
@@ -193,7 +193,7 @@ const InvitePage: React.FC = () => {
           <div className="flex space-x-2">
             <button
               onClick={copyInviteLink}
-              className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-white text-purple-600 rounded-xl font-medium hover:bg-white/90 transition-colors"
+              className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-white text-primary rounded-xl font-medium hover:bg-white/90 transition-colors"
             >
               {copied ? (
                 <>
@@ -230,8 +230,8 @@ const InvitePage: React.FC = () => {
               className="bg-white rounded-xl p-4 shadow-sm"
             >
               <div className="flex items-center space-x-3 mb-2">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <UsersIcon className="w-5 h-5 text-blue-600" />
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <UsersIcon className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-900">{stats.total_referrals}</p>
@@ -286,9 +286,9 @@ const InvitePage: React.FC = () => {
         <div className="bg-white rounded-xl p-4">
           <h3 className="font-semibold text-gray-900 mb-3">{t('invite.commissionRules')}</h3>
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
               <div className="flex items-center space-x-3">
-                <span className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-bold">
+                <span className="flex items-center justify-center w-8 h-8 bg-primary text-white rounded-full text-sm font-bold">
                   1
                 </span>
                 <div>
@@ -296,12 +296,12 @@ const InvitePage: React.FC = () => {
                   <p className="text-xs text-gray-500">{t('invite.level1Desc')}</p>
                 </div>
               </div>
-              <span className="text-lg font-bold text-blue-600">{(commissionRates[1] * 100).toFixed(1)}%</span>
+              <span className="text-lg font-bold text-primary">{(commissionRates[1] * 100).toFixed(1)}%</span>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
               <div className="flex items-center space-x-3">
-                <span className="flex items-center justify-center w-8 h-8 bg-purple-600 text-white rounded-full text-sm font-bold">
+                <span className="flex items-center justify-center w-8 h-8 bg-primary text-white rounded-full text-sm font-bold">
                   2
                 </span>
                 <div>
@@ -309,7 +309,7 @@ const InvitePage: React.FC = () => {
                   <p className="text-xs text-gray-500">{t('invite.level2Desc')}</p>
                 </div>
               </div>
-              <span className="text-lg font-bold text-purple-600">{(commissionRates[2] * 100).toFixed(1)}%</span>
+              <span className="text-lg font-bold text-primary">{(commissionRates[2] * 100).toFixed(1)}%</span>
             </div>
 
             <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
@@ -345,7 +345,7 @@ const InvitePage: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-blue-600 rounded-full"
+                      className="h-full bg-primary rounded-full"
                       style={{ width: `${(stats.level1_referrals / stats.total_referrals) * 100}%` }}
                     />
                   </div>
@@ -358,7 +358,7 @@ const InvitePage: React.FC = () => {
                 <div className="flex items-center space-x-2">
                     <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-purple-600 rounded-full"
+                      className="h-full bg-primary rounded-full"
                       style={{ width: `${(stats.level2_referrals / stats.total_referrals) * 100}%` }}
                     />
                   </div>
@@ -388,7 +388,7 @@ const InvitePage: React.FC = () => {
         <h3 className="font-semibold text-gray-900 mb-3">{t('invite.myInvitations')}</h3>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : invitedUsers.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center">
@@ -408,7 +408,7 @@ const InvitePage: React.FC = () => {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary flex items-center justify-center text-white font-semibold">
                       {invitedUser.avatar_url ? (
                         <img
                           src={invitedUser.avatar_url}

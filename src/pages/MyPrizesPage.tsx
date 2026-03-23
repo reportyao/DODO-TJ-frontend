@@ -99,7 +99,7 @@ const MyPrizesPage: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const badges = {
       PENDING: { text: t('myPrizes.statusPending'), color: 'bg-yellow-100 text-yellow-700' },
-      SHIPPING: { text: t('myPrizes.statusShipping'), color: 'bg-blue-100 text-blue-700' },
+      SHIPPING: { text: t('myPrizes.statusShipping'), color: 'bg-amber-100 text-primary-dark' },
       SHIPPED: { text: t('myPrizes.statusDelivered'), color: 'bg-green-100 text-green-700' },
       RESOLD: { text: t('myPrizes.statusResold'), color: 'bg-gray-100 text-gray-700' }
     };
@@ -114,7 +114,7 @@ const MyPrizesPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -192,7 +192,7 @@ const MyPrizesPage: React.FC = () => {
               <div className="mt-4 pt-4 border-t flex space-x-3">
                 <button
                   onClick={() => handleApplyShipping(prize)}
-                  className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+                  className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
                 >
                   <TruckIcon className="w-5 h-5" />
                   <span>{t('myPrizes.applyShipping')}</span>
@@ -215,7 +215,7 @@ const MyPrizesPage: React.FC = () => {
             <p className="text-gray-500 mb-2">{t('myPrizes.noPrizes')}</p>
             <button
               onClick={() => navigate('/lottery')}
-              className="text-blue-600 font-medium hover:underline"
+              className="text-primary font-medium hover:underline"
             >
               {t('myPrizes.goToLottery')} →
             </button>
@@ -324,7 +324,7 @@ const ShippingModal: React.FC<{
               required
               value={formData.recipient_name}
               onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder={t('myPrizes.recipientNamePlaceholder')}
             />
           </div>
@@ -349,7 +349,7 @@ const ShippingModal: React.FC<{
               rows={3}
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
               placeholder={t('myPrizes.addressPlaceholder')}
             />
           </div>
@@ -364,7 +364,7 @@ const ShippingModal: React.FC<{
                 required
                 value={formData.city}
                 onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder={t('myPrizes.cityPlaceholder')}
               />
             </div>
@@ -376,7 +376,7 @@ const ShippingModal: React.FC<{
                 type="text"
                 value={formData.postal_code}
                 onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="734000"
               />
             </div>
@@ -390,7 +390,7 @@ const ShippingModal: React.FC<{
               rows={2}
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
               placeholder={t('myPrizes.notesPlaceholder')}
             />
           </div>
@@ -406,7 +406,7 @@ const ShippingModal: React.FC<{
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? t('common.submitting') : t('common.confirmSubmit')}
             </button>

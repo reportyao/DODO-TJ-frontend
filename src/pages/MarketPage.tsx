@@ -260,7 +260,7 @@ interface MarketListing {
           <h1 className="text-2xl font-bold text-gray-900">{t('market.resaleMarket')}</h1>
           <button
             onClick={handleCreateListing}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg"
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-dark text-white rounded-xl font-medium hover:from-primary-dark hover:to-primary-dark transition-all shadow-lg"
           >
             <PlusIcon className="w-5 h-5" />
             <span>{t('market.sellTicket')}</span>
@@ -275,7 +275,7 @@ interface MarketListing {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('market.searchPlaceholder')}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           />
         </div>
 
@@ -292,7 +292,7 @@ interface MarketListing {
               onClick={() => setSortBy(option.key as any)}
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                 sortBy === option.key
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -306,7 +306,7 @@ interface MarketListing {
       <div className="px-4 py-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : filteredListings.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center">
@@ -315,7 +315,7 @@ interface MarketListing {
             <p className="text-sm text-gray-400 mt-2">{t('market.canResellHint')}</p>
             <button
               onClick={handleCreateListing}
-              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
             >
               {t('market.sellTicket')}
             </button>
@@ -360,8 +360,8 @@ interface MarketListing {
                     </div>
 
                     <div className="flex items-center space-x-2 mb-2">
-                      <TicketIcon className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-600">
+                      <TicketIcon className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium text-primary">
                         {t('market.ticketNumbers')}: {listing.ticket_numbers}
                       </span>
                     </div>
@@ -384,7 +384,7 @@ interface MarketListing {
                       </div>
                       <button
                         onClick={() => handleBuy(listing)}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                        className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium rounded-lg transition-colors"
                       >
                         {t('market.buyNow')}
                       </button>
@@ -399,9 +399,9 @@ interface MarketListing {
 
       {/* Tips */}
       <div className="px-4 pb-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <h4 className="font-medium text-blue-900 mb-2">💡 {t('market.resaleNote')}</h4>
-          <ul className="space-y-1 text-sm text-blue-800">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <h4 className="font-medium text-primary-dark mb-2">💡 {t('market.resaleNote')}</h4>
+          <ul className="space-y-1 text-sm text-primary-dark">
             <li>• {t('market.tip1')}</li>
             <li>• {t('market.tip2')}</li>
             <li>• {t('market.tip3')}</li>

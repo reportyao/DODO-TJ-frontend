@@ -371,7 +371,7 @@ const ShowoffCreatePage: React.FC = () => {
           <button
             onClick={handleSubmit}
             disabled={isLoading}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? `${t('showoff.publish')}...` : t('showoff.publish')}
           </button>
@@ -384,7 +384,7 @@ const ShowoffCreatePage: React.FC = () => {
           <h3 className="font-semibold text-gray-900 mb-3">{t('showoff.selectPrizeRecord')}</h3>
           {isLoadingLotteries ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : winningLotteries.length === 0 ? (
             <div className="text-center py-8">
@@ -400,7 +400,7 @@ const ShowoffCreatePage: React.FC = () => {
                   onClick={() => setSelectedLottery(lottery.id)}
                   className={`w-full flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${
                     selectedLottery === lottery.id
-                      ? 'border-purple-600 bg-purple-50'
+                      ? 'border-primary bg-amber-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
@@ -416,8 +416,8 @@ const ShowoffCreatePage: React.FC = () => {
                       <p className="font-medium text-gray-900">{lottery.prize_name}</p>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         lottery.source_type === 'group_buy' 
-                          ? 'bg-pink-100 text-pink-800' 
-                          : 'bg-purple-100 text-purple-800'
+                          ? 'bg-amber-100 text-primary-dark' 
+                          : 'bg-amber-100 text-primary-dark'
                       }`}>
                         {lottery.source_type === 'group_buy' ? t('showoff.groupBuy') : t('showoff.lottery')}
                       </span>
@@ -428,7 +428,7 @@ const ShowoffCreatePage: React.FC = () => {
                     </p>
                   </div>
                   {selectedLottery === lottery.id && (
-                    <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                       <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
@@ -447,7 +447,7 @@ const ShowoffCreatePage: React.FC = () => {
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={t('showoff.contentPlaceholderLong')}
-            className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+            className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
             maxLength={500}
           />
           <div className="flex items-center justify-between mt-2">
@@ -481,7 +481,7 @@ const ShowoffCreatePage: React.FC = () => {
             ))}
             
             {images.length < 9 && (
-              <label className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-all">
+              <label className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-amber-50 transition-all">
                 <PhotoIcon className="w-8 h-8 text-gray-400" />
                 <span className="text-xs text-gray-500 mt-2">{t('showoff.uploadImages')}</span>
                 <input
@@ -500,9 +500,9 @@ const ShowoffCreatePage: React.FC = () => {
         </div>
 
         {/* Tips */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <h4 className="font-medium text-blue-900 mb-2">{t('showoff.tips')}</h4>
-          <ul className="space-y-1 text-sm text-blue-800">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <h4 className="font-medium text-primary-dark mb-2">{t('showoff.tips')}</h4>
+          <ul className="space-y-1 text-sm text-primary-dark">
             <li>• {t('showoff.tip1')}</li>
             <li>• {t('showoff.tip2')}</li>
             <li>• {t('showoff.tip3')}</li>
@@ -516,7 +516,7 @@ const ShowoffCreatePage: React.FC = () => {
             <h3 className="font-semibold text-gray-900 mb-3">{t('showoff.preview')}</h3>
             <div className="border border-gray-200 rounded-lg p-4">
               <div className="flex items-center space-x-3 mb-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center text-white font-bold">
                   {user?.first_name?.charAt(0) || 'U'}
                 </div>
                 <div>

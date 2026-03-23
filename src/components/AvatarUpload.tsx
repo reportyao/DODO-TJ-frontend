@@ -140,7 +140,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
           />
         ) : (
           <div
-            className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center"
+            className="bg-gradient-to-r from-primary to-primary rounded-full flex items-center justify-center"
             style={{ width: `${size}px`, height: `${size}px` }}
           >
             <UserCircleIcon className="text-white" style={{ width: `${size * 0.67}px`, height: `${size * 0.67}px` }} />
@@ -162,7 +162,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
         {/* 相机图标按钮 */}
         {!isUploading && (
-          <div className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center shadow-lg group-hover:bg-blue-700 transition-colors">
+          <div className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg group-hover:bg-primary-dark transition-colors">
             <CameraIcon className="w-4 h-4 text-white" />
           </div>
         )}

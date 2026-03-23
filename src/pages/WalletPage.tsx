@@ -234,13 +234,13 @@ const WalletPage: React.FC = () => {
       case 'GROUP_BUY_LOST_REFUND':
       case 'GROUP_BUY_REFUND_TO_POINTS':
       case 'GROUP_BUY_REFUND_TO_BALANCE':
-        return <ArrowDownIcon className="w-5 h-5 text-blue-600" />
+        return <ArrowDownIcon className="w-5 h-5 text-primary" />
       case 'COIN_EXCHANGE':
         // 积分增加时显示四叶草图标（SparklesIcon），减少时显示循环箭头
         if (amount && amount > 0) {
           return <SparklesIcon className="w-5 h-5 text-yellow-600" />
         }
-        return <ArrowPathIcon className="w-5 h-5 text-blue-600" />
+        return <ArrowPathIcon className="w-5 h-5 text-primary" />
       case 'SHOWOFF_REWARD':
       case 'SPIN_REWARD':
         return <ArrowDownIcon className="w-5 h-5 text-yellow-600" />
@@ -250,7 +250,7 @@ const WalletPage: React.FC = () => {
       case 'DEPOSIT_BONUS':
       case 'FIRST_DEPOSIT_BONUS':
       case 'COMMISSION':
-        return <ArrowDownIcon className="w-5 h-5 text-purple-600" />
+        return <ArrowDownIcon className="w-5 h-5 text-primary" />
       case 'COUPON_DEDUCTION':
         return <ArrowDownIcon className="w-5 h-5 text-orange-500" />
       default:
@@ -346,8 +346,8 @@ const WalletPage: React.FC = () => {
             onClick={() => navigate('/exchange')}
             className="bg-white rounded-xl p-3 shadow-sm text-center"
           >
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-1.5">
-              <ArrowPathIcon className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center mx-auto mb-1.5">
+              <ArrowPathIcon className="w-5 h-5 text-primary" />
             </div>
             <p className="text-xs font-medium text-gray-900">{t('wallet.exchange')}</p>
           </motion.button>

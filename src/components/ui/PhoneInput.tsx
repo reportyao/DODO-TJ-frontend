@@ -185,7 +185,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
 
   return (
     <div
-      className={`flex rounded-xl border border-gray-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+      className={`flex rounded-xl border border-gray-200 focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
     >
       {/* 国家区号触发按钮 */}
       <button
@@ -219,9 +219,9 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
                   e.preventDefault()
                   handleCountryChange(country)
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 active:bg-blue-100 transition-colors text-left ${
+                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-50 active:bg-amber-100 transition-colors text-left ${
                   selectedCountry.code === country.code
-                    ? 'bg-blue-50 text-blue-700'
+                    ? 'bg-amber-50 text-primary-dark'
                     : 'text-gray-700'
                 }`}
               >

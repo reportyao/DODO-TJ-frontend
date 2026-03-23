@@ -439,7 +439,7 @@ const NotificationPage: React.FC = () => {
       case 'GROUP_BUY_WIN':
         return <TrophyIcon className={`${iconClass} text-yellow-600`} />;
       case 'LOTTERY_REMINDER':
-        return <TicketIcon className={`${iconClass} text-blue-600`} />;
+        return <TicketIcon className={`${iconClass} text-primary`} />;
       case 'DEPOSIT':
       case 'PAYMENT_SUCCESS':
         return <BanknotesIcon className={`${iconClass} text-green-600`} />;
@@ -449,29 +449,29 @@ const NotificationPage: React.FC = () => {
         return <ExclamationTriangleIcon className={`${iconClass} text-red-600`} />;
       case 'MARKET_SOLD':
       case 'MARKET_PURCHASED':
-        return <ShoppingBagIcon className={`${iconClass} text-purple-600`} />;
+        return <ShoppingBagIcon className={`${iconClass} text-primary`} />;
       case 'REFERRAL_REWARD':
         return <BanknotesIcon className={`${iconClass} text-green-600`} />;
       case 'INVITE_SUCCESS':
         return <UsersIcon className={`${iconClass} text-green-600`} />;
       case 'SYSTEM_ANNOUNCEMENT':
-        return <MegaphoneIcon className={`${iconClass} text-blue-600`} />;
+        return <MegaphoneIcon className={`${iconClass} text-primary`} />;
       case 'ACCOUNT_SECURITY':
         return <ShieldCheckIcon className={`${iconClass} text-orange-600`} />;
       case 'COIN_EXCHANGE':
-        return <ArrowPathIcon className={`${iconClass} text-blue-600`} />;
+        return <ArrowPathIcon className={`${iconClass} text-primary`} />;
       case 'GROUP_BUY_LOSE':
         return <UsersIcon className={`${iconClass} text-gray-600`} />;
       case 'GROUP_BUY_TIMEOUT':
         return <UsersIcon className={`${iconClass} text-orange-600`} />;
       case 'LOTTERY_PURCHASE':
-        return <TicketIcon className={`${iconClass} text-purple-600`} />;
+        return <TicketIcon className={`${iconClass} text-primary`} />;
       case 'LOTTERY_WIN':
         return <TrophyIcon className={`${iconClass} text-yellow-600`} />;
       case 'FRIEND_CASHBACK':
         return <BanknotesIcon className={`${iconClass} text-green-600`} />;
       case 'SPIN_REWARD':
-        return <TrophyIcon className={`${iconClass} text-purple-600`} />;
+        return <TrophyIcon className={`${iconClass} text-primary`} />;
       default:
         return <BellIcon className={`${iconClass} text-gray-600`} />;
     }
@@ -483,7 +483,7 @@ const NotificationPage: React.FC = () => {
       case 'GROUP_BUY_WIN':
         return 'bg-yellow-50';
       case 'LOTTERY_REMINDER':
-        return 'bg-blue-50';
+        return 'bg-amber-50';
       case 'DEPOSIT':
       case 'PAYMENT_SUCCESS':
         return 'bg-green-50';
@@ -493,29 +493,29 @@ const NotificationPage: React.FC = () => {
         return 'bg-red-50';
       case 'MARKET_SOLD':
       case 'MARKET_PURCHASED':
-        return 'bg-purple-50';
+        return 'bg-amber-50';
       case 'REFERRAL_REWARD':
         return 'bg-green-50';
       case 'INVITE_SUCCESS':
         return 'bg-green-50';
       case 'SYSTEM_ANNOUNCEMENT':
-        return 'bg-blue-50';
+        return 'bg-amber-50';
       case 'ACCOUNT_SECURITY':
         return 'bg-orange-50';
       case 'COIN_EXCHANGE':
-        return 'bg-blue-50';
+        return 'bg-amber-50';
       case 'GROUP_BUY_LOSE':
         return 'bg-gray-50';
       case 'GROUP_BUY_TIMEOUT':
         return 'bg-orange-50';
       case 'LOTTERY_PURCHASE':
-        return 'bg-purple-50';
+        return 'bg-amber-50';
       case 'LOTTERY_WIN':
         return 'bg-yellow-50';
       case 'FRIEND_CASHBACK':
         return 'bg-green-50';
       case 'SPIN_REWARD':
-        return 'bg-purple-50';
+        return 'bg-amber-50';
       default:
         return 'bg-gray-50';
     }
@@ -546,7 +546,7 @@ const NotificationPage: React.FC = () => {
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                className="text-sm font-medium text-primary hover:text-primary-dark"
               >
                 {t('notification.markAllRead')}
               </button>
@@ -562,7 +562,7 @@ const NotificationPage: React.FC = () => {
               onClick={() => setFilter(filterType)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 filter === filterType
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -579,7 +579,7 @@ const NotificationPage: React.FC = () => {
       <div className="px-4 py-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : filteredNotifications.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center">
@@ -594,7 +594,7 @@ const NotificationPage: React.FC = () => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 className={`bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all ${
-                  !notification.is_read ? 'border-l-4 border-blue-500' : ''
+                  !notification.is_read ? 'border-l-4 border-primary' : ''
                 }`}
               >
                 <div className="flex items-start space-x-3">
@@ -610,7 +610,7 @@ const NotificationPage: React.FC = () => {
                         {notification.title_i18n?.[i18n.language] || notification.title}
                       </h3>
                       {!notification.is_read && (
-                        <span className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full ml-2 mt-2"></span>
+                        <span className="flex-shrink-0 w-2 h-2 bg-primary rounded-full ml-2 mt-2"></span>
                       )}
                     </div>
                     <p className={`text-sm mb-2 ${!notification.is_read ? 'text-gray-700' : 'text-gray-500'}`}>
@@ -625,7 +625,7 @@ const NotificationPage: React.FC = () => {
                       {!notification.is_read && (
                         <button
                           onClick={() => markAsRead(notification.id)}
-                          className="flex items-center space-x-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                          className="flex items-center space-x-1 text-xs font-medium text-primary hover:text-primary-dark"
                         >
                           <CheckIcon className="w-4 h-4" />
                           <span>{t('notification.markRead')}</span>

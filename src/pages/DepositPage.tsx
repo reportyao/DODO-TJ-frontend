@@ -272,7 +272,7 @@ export default function DepositPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-primary via-primary to-red-500 flex items-center justify-center">
         <div className="text-white text-xl">{t('common.loading')}</div>
       </div>
     )
@@ -280,7 +280,7 @@ export default function DepositPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary via-primary to-red-500 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-8 text-center max-w-md">
           <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">{t('wallet.depositRequestSubmitted')}</h2>
@@ -292,7 +292,7 @@ export default function DepositPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 pb-20">
+      <div className="min-h-screen bg-gradient-to-br from-primary via-primary to-red-500 pb-20">
       {/* Header */}
       <div className="bg-white/10 backdrop-blur-md p-4 flex items-center">
         <button onClick={() => navigate(-1)} className="text-white">
@@ -312,8 +312,8 @@ export default function DepositPage() {
                 onClick={() => setSelectedMethod(config)}
                 className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
                   selectedMethod?.id === config.id
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-200 hover:border-purple-300'
+                    ? 'border-primary bg-amber-50'
+                    : 'border-gray-200 hover:border-primary'
                 }`}
               >
                 <div className="font-bold text-gray-800">{config.config_data.method}</div>
@@ -374,7 +374,7 @@ export default function DepositPage() {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder={t('wallet.enterAmount')}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-purple-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary"
           />
           {selectedMethod && (
             <div className="text-xs text-gray-500 mt-2">
@@ -394,7 +394,7 @@ export default function DepositPage() {
                   value={payerName}
                   onChange={(e) => setPayerName(e.target.value)}
                   placeholder={t('wallet.payerName')}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-purple-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary"
                   required
                 />
               )}
@@ -404,7 +404,7 @@ export default function DepositPage() {
                   value={payerAccount}
                   onChange={(e) => setPayerAccount(e.target.value)}
                   placeholder={t('wallet.payerAccount')}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-purple-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary"
                   required
                 />
               )}
@@ -414,7 +414,7 @@ export default function DepositPage() {
                   value={payerPhone}
                   onChange={(e) => setPayerPhone(e.target.value)}
                   placeholder={t('wallet.payerPhone')}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-purple-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary"
                   required
                 />
               )}
@@ -431,29 +431,29 @@ export default function DepositPage() {
             htmlFor="payment-proof-upload"
             className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl transition-all cursor-pointer ${
               uploading 
-                ? 'border-purple-500 bg-purple-50' 
+                ? 'border-primary bg-amber-50' 
                 : uploadStatus === 'error'
                 ? 'border-red-500 bg-red-50'
                 : uploadStatus === 'success'
                 ? 'border-green-500 bg-green-50'
-                : 'border-gray-300 hover:border-purple-500 hover:bg-purple-50'
+                : 'border-gray-300 hover:border-primary hover:bg-amber-50'
             }`}
           >
             {uploading ? (
               <div className="flex flex-col items-center">
-                <Loader2 className="w-8 h-8 text-purple-600 animate-spin mb-2" />
-                <span className="text-sm text-purple-600 font-medium">
+                <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
+                <span className="text-sm text-primary font-medium">
                   {uploadStatus === 'compressing' && (t('deposit.compressing'))}
                   {uploadStatus === 'uploading' && (t('deposit.uploading'))}
                 </span>
                 {/* 进度条 */}
-                <div className="w-48 h-2 bg-purple-200 rounded-full mt-2 overflow-hidden">
+                <div className="w-48 h-2 bg-amber-200 rounded-full mt-2 overflow-hidden">
                   <div 
-                    className="h-full bg-purple-600 rounded-full transition-all duration-300"
+                    className="h-full bg-primary rounded-full transition-all duration-300"
                     style={{ width: `${uploadProgress}%` }}
                   />
                 </div>
-                <span className="text-xs text-purple-500 mt-1">{uploadProgress}%</span>
+                <span className="text-xs text-primary mt-1">{uploadProgress}%</span>
               </div>
             ) : uploadStatus === 'success' ? (
               <div className="flex flex-col items-center">
@@ -529,7 +529,7 @@ export default function DepositPage() {
         <button
           onClick={handleSubmit}
           disabled={submitting || uploading}
-          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 flex items-center justify-center"
+          className="w-full bg-gradient-to-r from-primary to-primary text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 flex items-center justify-center"
         >
           {submitting ? (
             <>

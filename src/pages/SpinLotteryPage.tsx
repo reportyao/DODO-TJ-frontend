@@ -82,11 +82,11 @@ const SpinWheel: React.FC<{
       return 'bg-gray-100 text-gray-600';
     }
     const colors = [
-      'bg-gradient-to-br from-purple-500 to-purple-600 text-white',
-      'bg-gradient-to-br from-blue-500 to-blue-600 text-white',
+      'bg-gradient-to-br from-primary to-primary text-white',
+      'bg-gradient-to-br from-primary to-primary text-white',
       'bg-gradient-to-br from-green-500 to-green-600 text-white',
-      'bg-gradient-to-br from-pink-500 to-pink-600 text-white',
-      'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white',
+      'bg-gradient-to-br from-primary to-primary text-white',
+      'bg-gradient-to-br from-primary to-primary-dark text-white',
     ];
     return colors[index % colors.length];
   };
@@ -370,7 +370,7 @@ const SpinLotteryPage: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-amber-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
@@ -391,7 +391,7 @@ const SpinLotteryPage: React.FC = () => {
   return (
     <div className="pb-20 bg-gray-50 min-h-screen">
       {/* 顶部标题区域 */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-6">
+      <div className="bg-gradient-to-r from-primary to-primary text-white px-4 py-6">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-white/20 rounded-full mb-3">
             <TrophyIcon className="w-7 h-7" />
@@ -427,7 +427,7 @@ const SpinLotteryPage: React.FC = () => {
                 w-full py-4 rounded-xl font-bold text-lg transition-all
                 ${isSpinning || (spinData?.spin_balance.spin_count || 0) <= 0
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-lg active:scale-98'
+                  : 'bg-gradient-to-r from-primary to-primary text-white hover:shadow-lg active:scale-98'
                 }
               `}
             >
@@ -469,7 +469,7 @@ const SpinLotteryPage: React.FC = () => {
       <div className="px-4 mt-4">
         <div className="bg-white rounded-2xl shadow-lg p-4">
           <h3 className="font-bold text-lg mb-3 flex items-center">
-            <UserPlusIcon className="w-5 h-5 mr-2 text-purple-600" />
+            <UserPlusIcon className="w-5 h-5 mr-2 text-primary" />
             {t('spin.inviteFriends')}
           </h3>
           
@@ -478,7 +478,7 @@ const SpinLotteryPage: React.FC = () => {
           <div className="flex space-x-2">
             <button
               onClick={shareInvite}
-              className="flex-1 flex items-center justify-center space-x-2 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+              className="flex-1 flex items-center justify-center space-x-2 py-3 bg-gradient-to-r from-primary to-primary text-white rounded-xl font-medium hover:shadow-lg transition-all"
             >
               <ShareIcon className="w-5 h-5" />
               <span>{t('spin.inviteButton')}</span>
@@ -498,13 +498,13 @@ const SpinLotteryPage: React.FC = () => {
           {/* 邀请统计 */}
           <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-100">
             <div className="text-center">
-              <p className="text-2xl font-bold text-purple-600">
+              <p className="text-2xl font-bold text-primary">
                 {spinData?.invite_stats.total_invited || 0}
               </p>
               <p className="text-xs text-gray-500">{t('spin.totalInvited')}</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-pink-600">
+              <p className="text-2xl font-bold text-primary">
                 {spinData?.invite_stats.total_spins_from_invites || 0}
               </p>
               <p className="text-xs text-gray-500">{t('spin.spinsFromInvites')}</p>
@@ -531,8 +531,8 @@ const SpinLotteryPage: React.FC = () => {
                   className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
                 >
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                      <UserPlusIcon className="w-4 h-4 text-purple-600" />
+                    <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                      <UserPlusIcon className="w-4 h-4 text-primary" />
                     </div>
                     <div>
                       <p className="font-medium text-gray-900">
@@ -560,15 +560,15 @@ const SpinLotteryPage: React.FC = () => {
           <h3 className="font-bold text-lg mb-3">{t('spin.rules')}</h3>
           <ul className="space-y-2 text-sm text-gray-600">
             <li className="flex items-start">
-              <span className="w-5 h-5 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0">1</span>
+              <span className="w-5 h-5 bg-amber-100 text-primary rounded-full flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0">1</span>
               <span>{t('spin.rule1')}</span>
             </li>
             <li className="flex items-start">
-              <span className="w-5 h-5 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0">2</span>
+              <span className="w-5 h-5 bg-amber-100 text-primary rounded-full flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0">2</span>
               <span>{t('spin.rule2')}</span>
             </li>
             <li className="flex items-start">
-              <span className="w-5 h-5 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0">3</span>
+              <span className="w-5 h-5 bg-amber-100 text-primary rounded-full flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0">3</span>
               <span>{t('spin.rule3')}</span>
             </li>
           </ul>

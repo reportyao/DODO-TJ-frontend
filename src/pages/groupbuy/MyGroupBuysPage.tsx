@@ -102,7 +102,7 @@ export default function MyGroupBuysPage() {
       );
     } else if (order.status === 'REFUNDED') {
       return (
-        <div className="flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-bold">
+        <div className="flex items-center gap-1 bg-amber-100 text-primary-dark px-3 py-1 rounded-full text-sm font-bold">
           <RefreshCw className="w-4 h-4" />
           {t('groupBuy.status.refunded')}
         </div>
@@ -117,7 +117,7 @@ export default function MyGroupBuysPage() {
         } else if (order.status === 'LOST' || order.session.status === 'TIMEOUT') {
       // 新增逻辑：未成团或未中奖，显示已退款到余额
       return (
-        <div className="flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-bold">
+        <div className="flex items-center gap-1 bg-amber-100 text-primary-dark px-3 py-1 rounded-full text-sm font-bold">
           <RefreshCw className="w-4 h-4" />
           {t('groupBuy.status.refundedToBalance')}
         </div>
@@ -142,9 +142,9 @@ export default function MyGroupBuysPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
@@ -152,12 +152,12 @@ export default function MyGroupBuysPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 pb-20">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 text-white p-6 rounded-b-3xl shadow-lg">
+      <div className="bg-gradient-to-r from-primary via-primary to-red-500 text-white p-6 rounded-b-3xl shadow-lg">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-white hover:text-pink-100 mb-4"
+          className="flex items-center gap-2 text-white hover:text-amber-100 mb-4"
         >
           <ChevronLeft className="w-6 h-6" />
           {t('common.back')}
@@ -174,7 +174,7 @@ export default function MyGroupBuysPage() {
           onClick={() => setFilter('all')}
           className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
             filter === 'all'
-              ? 'bg-purple-500 text-white'
+              ? 'bg-primary text-white'
               : 'bg-white text-gray-600 hover:bg-gray-50'
           }`}
         >
@@ -184,7 +184,7 @@ export default function MyGroupBuysPage() {
           onClick={() => setFilter('active')}
           className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
             filter === 'active'
-              ? 'bg-purple-500 text-white'
+              ? 'bg-primary text-white'
               : 'bg-white text-gray-600 hover:bg-gray-50'
           }`}
         >
@@ -194,7 +194,7 @@ export default function MyGroupBuysPage() {
           onClick={() => setFilter('completed')}
           className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
             filter === 'completed'
-              ? 'bg-purple-500 text-white'
+              ? 'bg-primary text-white'
               : 'bg-white text-gray-600 hover:bg-gray-50'
           }`}
         >
@@ -210,7 +210,7 @@ export default function MyGroupBuysPage() {
             <p className="text-gray-500">{t('groupBuy.noOrders')}</p>
             <button
               onClick={() => navigate('/group-buy')}
-              className="mt-4 text-purple-500 hover:text-purple-600 font-medium"
+              className="mt-4 text-primary hover:text-primary font-medium"
             >
               {t('groupBuy.browseProducts')}
             </button>
@@ -246,13 +246,13 @@ export default function MyGroupBuysPage() {
                         {order.session.current_participants}/{order.session.group_size}
                       </span>
                     </div>
-                    <div className="text-purple-600 font-bold">TJS {order.amount}</div>
+                    <div className="text-primary font-bold">TJS {order.amount}</div>
                   </div>
 
                   {/* Refund Info */}
                   {order.refund_lucky_coins && (
-                    <div className="mt-2 bg-blue-50 rounded-lg p-2 text-sm">
-                      <span className="text-blue-700">
+                    <div className="mt-2 bg-amber-50 rounded-lg p-2 text-sm">
+                      <span className="text-primary-dark">
                         {t('groupBuy.refundedLuckyCoins')}: {order.refund_lucky_coins}
                       </span>
                     </div>
@@ -262,7 +262,7 @@ export default function MyGroupBuysPage() {
                   {order.status === 'WON' && (
                     <button
                       onClick={() => navigate(`/group-buy/result/${order.session.id}`)}
-                      className="mt-2 text-sm text-purple-500 hover:text-purple-600 font-medium"
+                      className="mt-2 text-sm text-primary hover:text-primary font-medium"
                     >
                       {t('groupBuy.viewResult')} →
                     </button>

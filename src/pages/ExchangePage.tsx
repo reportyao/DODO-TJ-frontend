@@ -63,7 +63,7 @@ export default function ExchangePage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary via-primary to-red-500 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-8 text-center max-w-md">
           <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">{t("wallet.exchangeSuccess")}</h2>
@@ -74,7 +74,7 @@ export default function ExchangePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-primary via-primary to-red-500 pb-20">
       {/* Header */}
       <div className="bg-white/10 backdrop-blur-md p-4 flex items-center">
         <button onClick={() => navigate(-1)} className="text-white">
@@ -87,22 +87,22 @@ export default function ExchangePage() {
         {/* 兑换卡片 */}
         <div className="bg-white rounded-2xl p-6">
           {/* 源钱包（余额） */}
-          <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-4 mb-4">
+          <div className="bg-gradient-to-r from-amber-100 to-amber-100 rounded-xl p-4 mb-4">
             <div className="text-sm text-gray-600 mb-1">{t("wallet.balance")}</div>
-            <div className="text-2xl font-bold text-purple-600">{balance.toFixed(2)} TJS</div>
+            <div className="text-2xl font-bold text-primary">{balance.toFixed(2)} TJS</div>
           </div>
 
           {/* 向下箭头 */}
           <div className="flex justify-center my-4">
-            <div className="bg-purple-500 text-white p-3 rounded-full">
+            <div className="bg-primary text-white p-3 rounded-full">
               <ArrowDown className="w-6 h-6" />
             </div>
           </div>
 
           {/* 目标钱包（积分） */}
-          <div className="bg-gradient-to-r from-pink-100 to-red-100 rounded-xl p-4">
+          <div className="bg-gradient-to-r from-amber-100 to-red-100 rounded-xl p-4">
             <div className="text-sm text-gray-600 mb-1">{t("wallet.luckyCoin")}</div>
-            <div className="text-2xl font-bold text-pink-600">{luckyCoin.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-primary">{luckyCoin.toFixed(2)}</div>
           </div>
         </div>
 
@@ -125,7 +125,7 @@ export default function ExchangePage() {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder={t("wallet.enterAmount")}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-purple-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary"
           />
           <div className="mt-2 text-sm text-gray-500">
             {t("wallet.youWillGet")}: {amount || "0"} {t("wallet.luckyCoin")}
@@ -140,7 +140,7 @@ export default function ExchangePage() {
               <button
                 key={val}
                 onClick={() => setAmount(val.toString())}
-                className="py-2 border-2 border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+                className="py-2 border-2 border-primary text-primary rounded-lg hover:bg-amber-50 transition-colors"
               >
                 {val}
               </button>
@@ -152,7 +152,7 @@ export default function ExchangePage() {
         <button
           onClick={handleExchange}
           disabled={submitting}
-          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50"
+          className="w-full bg-gradient-to-r from-primary to-primary text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50"
         >
           {submitting ? t("common.exchanging") : t("wallet.confirmExchange")}
         </button>

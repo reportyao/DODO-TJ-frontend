@@ -393,7 +393,7 @@ const ShowoffPage: React.FC = () => {
       <div className="px-4 py-4">
         {isLoading && showoffs.length === 0 ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : error && showoffs.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center">
@@ -401,7 +401,7 @@ const ShowoffPage: React.FC = () => {
             <p className="text-gray-500 mb-4">{error}</p>
             <button
               onClick={handleRetry}
-              className="flex items-center space-x-2 mx-auto px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              className="flex items-center space-x-2 mx-auto px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
             >
               <ArrowPathIcon className="w-5 h-5" />
               <span>{t('common.retry')}</span>
@@ -414,7 +414,7 @@ const ShowoffPage: React.FC = () => {
             <p className="text-sm text-gray-400 mt-2">{t('showoff.beTheFirst')}</p>
             <button
               onClick={handleCreateShowoff}
-              className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              className="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
             >
               {t('showoff.publishNow')}
             </button>
@@ -551,8 +551,8 @@ const ShowoffPage: React.FC = () => {
             {hasMore && (
               <div ref={loadMoreRef} className="py-8 flex justify-center">
                 {isLoadingMore && (
-                  <div className="flex items-center space-x-2 text-purple-600">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                  <div className="flex items-center space-x-2 text-primary">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                     <span className="text-sm">{t('common.loading')}</span>
                   </div>
                 )}
@@ -572,7 +572,7 @@ const ShowoffPage: React.FC = () => {
       {/* Floating Action Button (FAB) */}
       <motion.button
         onClick={handleCreateShowoff}
-        className="fixed right-6 bottom-24 w-14 h-14 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-50"
+        className="fixed right-6 bottom-24 w-14 h-14 bg-gradient-to-r from-primary to-primary text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-50"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
       >

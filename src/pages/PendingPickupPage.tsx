@@ -50,9 +50,9 @@ const getLogisticsStatusColor = (status: string | undefined): string => {
     case 'PENDING_SHIPMENT':
       return 'bg-gray-100 text-gray-600';
     case 'IN_TRANSIT_CHINA':
-      return 'bg-blue-100 text-blue-600';
+      return 'bg-amber-100 text-primary';
     case 'IN_TRANSIT_TAJIKISTAN':
-      return 'bg-purple-100 text-purple-600';
+      return 'bg-amber-100 text-primary';
     case 'READY_FOR_PICKUP':
       return 'bg-green-100 text-green-600';
     case 'PICKED_UP':

@@ -700,7 +700,7 @@ const LotteryDetailPage: React.FC = () => {
               {description.length > 80 && (
                 <button
                   onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                  className="text-blue-600 text-sm font-medium hover:text-blue-700 transition-colors flex items-center gap-1"
+                  className="text-primary text-sm font-medium hover:text-primary-dark transition-colors flex items-center gap-1"
                 >
                   {isDescriptionExpanded ? (
                     <>
@@ -786,13 +786,13 @@ const LotteryDetailPage: React.FC = () => {
         {/* ============================================ */}
         {isActive && remainingTickets > 0 && (
           <div className="flex items-center gap-3 px-2 py-3">
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
-            <p className="text-sm font-semibold text-purple-600 whitespace-nowrap flex items-center gap-1.5">
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-primary-light to-transparent" />
+            <p className="text-sm font-semibold text-primary whitespace-nowrap flex items-center gap-1.5">
               <SparklesIcon className="w-4 h-4" />
               {t('lottery.tryLuckTransition')}
               <SparklesIcon className="w-4 h-4" />
             </p>
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-primary-light to-transparent" />
           </div>
         )}
 
@@ -800,11 +800,11 @@ const LotteryDetailPage: React.FC = () => {
         {/* 区域二：福气活动区 */}
         {/* ============================================ */}
         {isActive && remainingTickets > 0 && (
-          <div className="bg-gradient-to-br from-purple-50 via-white to-pink-50 rounded-xl shadow-md p-4 space-y-4 border border-purple-100">
+          <div className="bg-gradient-to-br from-amber-50 via-white to-amber-50 rounded-xl shadow-md p-4 space-y-4 border border-amber-100">
             
             {/* 活动标题 */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary flex items-center justify-center">
                 <SparklesIcon className="w-4 h-4 text-white" />
               </div>
               <h3 className="text-lg font-bold text-gray-900">{t('lottery.luckyActivityTitle')}</h3>
@@ -813,17 +813,17 @@ const LotteryDetailPage: React.FC = () => {
             {/* 每份价格 */}
             <div className="text-center py-2">
               <p className="text-sm text-gray-500 mb-1">{t('lottery.perSharePrice')}</p>
-              <p className="text-3xl font-extrabold text-purple-600">
+              <p className="text-3xl font-extrabold text-primary">
                 {formatCurrency(lottery.currency, lottery.ticket_price)}
                 <span className="text-sm font-normal text-gray-500 ml-1">/{t('lottery.perShare')}</span>
               </p>
             </div>
 
             {/* 玩法说明 - 折叠 */}
-            <div className="bg-white/70 rounded-xl border border-purple-100">
+            <div className="bg-white/70 rounded-xl border border-amber-100">
               <button
                 onClick={() => setIsRulesExpanded(!isRulesExpanded)}
-                className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-purple-700"
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-primary-dark"
               >
                 <span className="flex items-center gap-1.5">
                   <ShieldCheckIcon className="w-4 h-4" />
@@ -837,15 +837,15 @@ const LotteryDetailPage: React.FC = () => {
               {isRulesExpanded && (
                 <div className="px-4 pb-4 space-y-3">
                   <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</div>
+                    <div className="w-6 h-6 rounded-full bg-amber-100 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</div>
                     <p className="text-sm text-gray-600">{t('lottery.ruleStep1')}</p>
                   </div>
                   <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</div>
+                    <div className="w-6 h-6 rounded-full bg-amber-100 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</div>
                     <p className="text-sm text-gray-600">{t('lottery.ruleStep2')}</p>
                   </div>
                   <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</div>
+                    <div className="w-6 h-6 rounded-full bg-amber-100 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</div>
                     <p className="text-sm text-gray-600">{t('lottery.ruleStep3')}</p>
                   </div>
                   {/* 核心保障：未获得商品返还等值抵扣券 */}
@@ -866,13 +866,13 @@ const LotteryDetailPage: React.FC = () => {
                   <UserGroupIcon className="w-4 h-4 mr-1" />
                   {t('lottery.soldTickets')}: {lottery.sold_tickets}/{lottery.total_tickets}
                 </div>
-                <span className="text-sm font-medium text-purple-600">
+                <span className="text-sm font-medium text-primary">
                   {progress.toFixed(1)}%
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-300"
+                  className="bg-gradient-to-r from-primary to-primary h-2.5 rounded-full transition-all duration-300"
                   style={{ width: `${Math.min(progress, 100)}%` }}
                 />
               </div>
@@ -907,16 +907,16 @@ const LotteryDetailPage: React.FC = () => {
 
             {/* 我的参与码 */}
             {user && myTickets.length > 0 && (
-              <div className="bg-white/80 rounded-xl p-3 border border-blue-100">
+              <div className="bg-white/80 rounded-xl p-3 border border-amber-100">
                 <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
-                  <TicketIcon className="w-4 h-4 text-blue-600" />
+                  <TicketIcon className="w-4 h-4 text-primary" />
                   {t('lottery.myTickets')}
                 </h4>
                 <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
                   {myTickets.map((code: string, index: number) => (
                     <span
                       key={index}
-                      className="px-2.5 py-1 rounded-lg font-mono text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200"
+                      className="px-2.5 py-1 rounded-lg font-mono text-xs font-semibold bg-amber-50 text-primary-dark border border-amber-200"
                     >
                       {code}
                     </span>
@@ -926,7 +926,7 @@ const LotteryDetailPage: React.FC = () => {
             )}
 
             {/* 购买份数选择 */}
-            <div className="bg-white/80 rounded-xl p-4 border border-purple-100">
+            <div className="bg-white/80 rounded-xl p-4 border border-amber-100">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">{t('lottery.selectShares')}</span>
                 <div className="flex items-center space-x-3">
@@ -941,7 +941,7 @@ const LotteryDetailPage: React.FC = () => {
                   <button
                     onClick={() => handleQuantityChange(1)}
                     disabled={!lottery || quantity >= remainingTickets}
-                    className="w-8 h-8 rounded-full bg-purple-500 hover:bg-purple-600 disabled:bg-gray-100 disabled:cursor-not-allowed flex items-center justify-center text-lg font-bold text-white transition-colors"
+                    className="w-8 h-8 rounded-full bg-primary hover:bg-primary disabled:bg-gray-100 disabled:cursor-not-allowed flex items-center justify-center text-lg font-bold text-white transition-colors"
                   >
                     +
                   </button>
@@ -959,7 +959,7 @@ const LotteryDetailPage: React.FC = () => {
                       return (
                         <span
                           key={i}
-                          className="px-2 py-1 rounded-md font-mono text-xs font-semibold bg-gradient-to-br from-purple-500 to-pink-500 text-white"
+                          className="px-2 py-1 rounded-md font-mono text-xs font-semibold bg-gradient-to-br from-primary to-primary text-white"
                         >
                           {codeStr}
                         </span>
@@ -972,7 +972,7 @@ const LotteryDetailPage: React.FC = () => {
 
             {/* 抵扣券开关 */}
             {validCouponCount > 0 && (
-              <div className="flex items-center justify-between bg-white/80 rounded-xl px-4 py-3 border border-purple-100">
+              <div className="flex items-center justify-between bg-white/80 rounded-xl px-4 py-3 border border-amber-100">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">{t('coupon.switchLabel')}</span>
                   <span className="text-xs text-gray-400">{t('coupon.remaining', { count: validCouponCount })}</span>
@@ -1002,7 +1002,7 @@ const LotteryDetailPage: React.FC = () => {
               </div>
               <div className="text-right">
                 <span className="text-gray-500">{t('payment.totalAmount')}: </span>
-                <span className="text-lg font-bold text-purple-600">
+                <span className="text-lg font-bold text-primary">
                   {formatCurrency(lottery.currency, lottery.ticket_price * quantity)}
                 </span>
               </div>
@@ -1025,7 +1025,7 @@ const LotteryDetailPage: React.FC = () => {
               className={cn(
                 "w-full py-3.5 rounded-xl font-bold text-base shadow-md transition-all duration-200",
                 isActive && !isSoldOut && !isPurchasing
-                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg"
+                  ? "bg-gradient-to-r from-primary to-primary text-white hover:shadow-lg"
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
               )}
             >
@@ -1084,7 +1084,7 @@ const LotteryDetailPage: React.FC = () => {
                 return (
                   <div key={showoff.id} className="border-b last:border-b-0 pb-4">
                     <div className="flex items-center space-x-3 mb-2">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center text-sm font-bold text-blue-600 overflow-hidden flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-100 to-amber-100 flex items-center justify-center text-sm font-bold text-primary overflow-hidden flex-shrink-0">
                         {displayAvatar ? (
                           <img 
                             src={displayAvatar} 

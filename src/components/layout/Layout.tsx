@@ -126,7 +126,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className={cn(
-      "min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50",
+      "min-h-screen bg-gradient-to-br from-amber-50 via-white to-amber-50",
       className
     )}>
       {/* 弱网/离线状态提示横幅 */}
@@ -155,7 +155,7 @@ export const Layout: React.FC<LayoutProps> = ({
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right">
-                  <p className="text-xs font-semibold text-emerald-600">{t('home.freeShippingLine1')}</p>
+                  <p className="text-xs font-semibold text-accent">{t('home.freeShippingLine1')}</p>
                   <p className="text-xs font-bold text-red-500">{t('home.freeShippingLine2')}</p>
                 </div>
                 {user?.avatar_url && (

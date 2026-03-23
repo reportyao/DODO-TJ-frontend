@@ -337,7 +337,7 @@ const PromoterDepositPage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mx-4 mt-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-4 text-white"
+          className="mx-4 mt-4 bg-gradient-to-r from-primary to-primary rounded-2xl p-4 text-white"
         >
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium opacity-80">
@@ -402,8 +402,8 @@ const PromoterDepositPage: React.FC = () => {
                       className="bg-gray-50 rounded-xl p-3 flex items-center justify-between"
                     >
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <BanknotesIcon className="w-5 h-5 text-blue-600" />
+                        <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                          <BanknotesIcon className="w-5 h-5 text-primary" />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-900">
@@ -462,14 +462,14 @@ const PromoterDepositPage: React.FC = () => {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     placeholder={t('promoterDeposit.searchPlaceholder')}
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
                 <button
                   onClick={handleScanQr}
-                  className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0"
+                  className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0"
                 >
-                  <QrCodeIcon className="w-6 h-6 text-blue-600" />
+                  <QrCodeIcon className="w-6 h-6 text-primary" />
                 </button>
               </div>
 
@@ -478,7 +478,7 @@ const PromoterDepositPage: React.FC = () => {
                 whileTap={{ scale: 0.98 }}
                 onClick={handleSearch}
                 disabled={isSearching || !searchQuery.trim()}
-                className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-primary text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSearching ? (
                   <span className="flex items-center justify-center space-x-2">
@@ -507,7 +507,7 @@ const PromoterDepositPage: React.FC = () => {
           >
             {/* 目标用户信息 */}
             <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center space-x-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
                 {targetUser.avatar_url ? (
                   <img
                     src={targetUser.avatar_url}
@@ -515,7 +515,7 @@ const PromoterDepositPage: React.FC = () => {
                     className="w-12 h-12 rounded-full object-cover"
                   />
                 ) : (
-                  <UserCircleIcon className="w-8 h-8 text-blue-600" />
+                  <UserCircleIcon className="w-8 h-8 text-primary" />
                 )}
               </div>
               <div className="flex-1">
@@ -529,7 +529,7 @@ const PromoterDepositPage: React.FC = () => {
               </div>
               <button
                 onClick={handleReset}
-                className="text-sm text-blue-600 font-medium"
+                className="text-sm text-primary font-medium"
               >
                 {t('promoterDeposit.changeUser')}
               </button>
@@ -550,7 +550,7 @@ const PromoterDepositPage: React.FC = () => {
                     onClick={() => handleSelectAmount(value)}
                     className={`py-3 rounded-xl font-bold text-lg transition-all ${
                       amount === value && !customAmount
-                        ? 'bg-blue-600 text-white shadow-md'
+                        ? 'bg-primary text-white shadow-md'
                         : 'bg-gray-50 text-gray-700 border border-gray-200'
                     }`}
                   >
@@ -567,7 +567,7 @@ const PromoterDepositPage: React.FC = () => {
                   value={customAmount}
                   onChange={(e) => handleCustomAmountChange(e.target.value)}
                   placeholder={t('promoterDeposit.customAmountPlaceholder')}
-                  className="w-full py-3 px-4 bg-gray-50 rounded-xl border border-gray-200 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full py-3 px-4 bg-gray-50 rounded-xl border border-gray-200 text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">
                   TJS
@@ -585,7 +585,7 @@ const PromoterDepositPage: React.FC = () => {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder={t('promoterDeposit.notePlaceholder')}
-                className="w-full py-2 px-4 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+                className="w-full py-2 px-4 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary mb-4"
               />
 
               {/* 确认按钮 */}
@@ -593,7 +593,7 @@ const PromoterDepositPage: React.FC = () => {
                 whileTap={{ scale: 0.98 }}
                 onClick={handleConfirm}
                 disabled={!amount || amount < 10}
-                className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-primary text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {t('promoterDeposit.nextStep')}
               </motion.button>
@@ -650,7 +650,7 @@ const PromoterDepositPage: React.FC = () => {
                   <span className="text-sm text-gray-500">
                     {t('promoterDeposit.depositAmountLabel')}
                   </span>
-                  <span className="text-lg font-bold text-blue-600">
+                  <span className="text-lg font-bold text-primary">
                     {amount} TJS
                   </span>
                 </div>
@@ -677,7 +677,7 @@ const PromoterDepositPage: React.FC = () => {
                   whileTap={{ scale: 0.98 }}
                   onClick={handleDeposit}
                   disabled={isSubmitting}
-                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50"
+                  className="flex-1 py-3 bg-primary text-white rounded-xl font-medium disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center space-x-2">
@@ -749,7 +749,7 @@ const PromoterDepositPage: React.FC = () => {
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={handleReset}
-                className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium"
+                className="w-full py-3 bg-primary text-white rounded-xl font-medium"
               >
                 {t('promoterDeposit.continueDeposit')}
               </motion.button>

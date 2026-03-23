@@ -125,7 +125,7 @@ const MyTicketsPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -153,7 +153,7 @@ const MyTicketsPage: React.FC = () => {
             <ArrowLeftIcon className="w-5 h-5" />
           </button>
           <h1 className="text-lg font-bold flex-1">{t('myTickets.title')}</h1>
-          <TicketIcon className="w-6 h-6 text-blue-600" />
+          <TicketIcon className="w-6 h-6 text-primary" />
         </div>
       </div>
 
@@ -175,7 +175,7 @@ const MyTicketsPage: React.FC = () => {
               <h2 className="text-lg font-bold mb-2">{lottery.title}</h2>
               <div className="flex items-center space-x-4 text-sm">
                 <span className="text-gray-600">
-                  {t('myTickets.ticketPrice')}: <span className="font-semibold text-blue-600">TJS{lottery.ticket_price.toFixed(2)}</span>
+                  {t('myTickets.ticketPrice')}: <span className="font-semibold text-primary">TJS{lottery.ticket_price.toFixed(2)}</span>
                 </span>
                 <span className="text-gray-600">
                   {t('myTickets.progress')}: <span className="font-semibold">{lottery.sold_tickets}/{lottery.total_tickets}</span>
@@ -208,7 +208,7 @@ const MyTicketsPage: React.FC = () => {
         {/* 统计信息 */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-blue-600">{tickets.length}</p>
+            <p className="text-2xl font-bold text-primary">{tickets.length}</p>
             <p className="text-sm text-gray-600 mt-1">{t('myTickets.myEntries')}</p>
           </div>
           <div className="bg-white rounded-xl p-4 text-center">
@@ -252,7 +252,7 @@ const MyTicketsPage: React.FC = () => {
                 </div>
                 <button
                   onClick={() => copyCode(ticket.numbers)}
-                  className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
+                  className="px-4 py-2 bg-amber-50 text-primary rounded-lg text-sm font-medium hover:bg-amber-100 transition-colors"
                 >
                   {t('common.copy')}
                 </button>

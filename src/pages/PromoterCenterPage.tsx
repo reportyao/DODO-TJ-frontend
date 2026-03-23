@@ -262,7 +262,7 @@ const PromoterCenterPage: React.FC = () => {
     return (
       <div className="pb-20 bg-gray-50 min-h-screen">
         {/* 顶部导航栏 */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-4">
+        <div className="bg-gradient-to-r from-green-600 to-accent text-white px-4 py-4">
           <div className="flex items-center space-x-3">
             <button onClick={() => navigate(-1)} className="p-1">
               <ArrowLeftIcon className="w-6 h-6" />
@@ -293,7 +293,7 @@ const PromoterCenterPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="pb-20 bg-gray-50 min-h-screen">
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-4">
+        <div className="bg-gradient-to-r from-green-600 to-accent text-white px-4 py-4">
           <div className="flex items-center space-x-3">
             <button onClick={() => navigate(-1)} className="p-1">
               <ArrowLeftIcon className="w-6 h-6" />
@@ -319,7 +319,7 @@ const PromoterCenterPage: React.FC = () => {
       {/* ============================================================ */}
       {/* 顶部导航栏 + 推广者信息 */}
       {/* ============================================================ */}
-      <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 pt-4 pb-6">
+      <div className="bg-gradient-to-r from-green-600 to-accent text-white px-4 pt-4 pb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
             <button onClick={() => navigate(-1)} className="p-1">
@@ -367,7 +367,7 @@ const PromoterCenterPage: React.FC = () => {
         <motion.button
           whileTap={{ scale: 0.98 }}
           onClick={() => navigate('/promoter-deposit')}
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl p-4 shadow-lg shadow-blue-200 flex items-center justify-between"
+          className="w-full bg-gradient-to-r from-primary to-primary-dark text-white rounded-2xl p-4 shadow-lg shadow-blue-200 flex items-center justify-between"
         >
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -560,7 +560,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
           <div className="flex items-center mb-2">
             <span className="text-2xl">💎</span>
           </div>
-          <p className="text-2xl font-bold text-purple-600">
+          <p className="text-2xl font-bold text-primary">
             {formatCurrency('TJS', stats.commission)}
           </p>
           <p className="text-xs text-gray-500 mt-1">{t('promoter.commission')}</p>
@@ -572,7 +572,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-4 text-white"
+        className="bg-gradient-to-r from-primary to-primary rounded-2xl p-4 text-white"
       >
         <div className="flex items-center justify-between">
           <div>
@@ -616,7 +616,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
           className={`w-full py-4 rounded-2xl font-bold text-lg transition-all flex items-center justify-center space-x-2 ${
             isChecking
               ? 'bg-gray-200 text-gray-400'
-              : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-200 active:shadow-sm'
+              : 'bg-gradient-to-r from-green-500 to-accent text-white shadow-lg shadow-green-200 active:shadow-sm'
           }`}
         >
           {isChecking ? (
@@ -662,7 +662,7 @@ const MaterialsTab: React.FC<MaterialsTabProps> = ({
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-green-600 to-emerald-700 rounded-2xl p-6 text-white"
+        className="bg-gradient-to-br from-green-600 to-accent rounded-2xl p-6 text-white"
       >
         <div className="text-center mb-4">
           <p className="text-sm text-white/80 mb-2">{t('promoter.myInviteCode')}</p>
@@ -707,7 +707,7 @@ const MaterialsTab: React.FC<MaterialsTabProps> = ({
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={onCopyLink}
-          className="w-full py-3 bg-blue-50 text-blue-600 rounded-xl font-medium flex items-center justify-center space-x-2"
+          className="w-full py-3 bg-amber-50 text-primary rounded-xl font-medium flex items-center justify-center space-x-2"
         >
           {copied ? (
             <>
@@ -772,26 +772,26 @@ const TeamTab: React.FC<TeamTabProps> = ({ team, t }) => {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-blue-50 rounded-2xl p-4 text-center"
+          className="bg-amber-50 rounded-2xl p-4 text-center"
         >
-          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
+          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center mx-auto mb-2">
             <span className="text-white font-bold">1</span>
           </div>
-          <p className="text-2xl font-bold text-blue-700">{team.level1_count}</p>
-          <p className="text-xs text-blue-500 mt-1">{t('promoter.level1')}</p>
+          <p className="text-2xl font-bold text-primary-dark">{team.level1_count}</p>
+          <p className="text-xs text-primary mt-1">{t('promoter.level1')}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.05 }}
-          className="bg-purple-50 rounded-2xl p-4 text-center"
+          className="bg-amber-50 rounded-2xl p-4 text-center"
         >
-          <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-2">
+          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center mx-auto mb-2">
             <span className="text-white font-bold">2</span>
           </div>
-          <p className="text-2xl font-bold text-purple-700">{team.level2_count}</p>
-          <p className="text-xs text-purple-500 mt-1">{t('promoter.level2')}</p>
+          <p className="text-2xl font-bold text-primary-dark">{team.level2_count}</p>
+          <p className="text-xs text-primary mt-1">{t('promoter.level2')}</p>
         </motion.div>
 
         <motion.div
@@ -813,7 +813,7 @@ const TeamTab: React.FC<TeamTabProps> = ({ team, t }) => {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
-        className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-4 text-white text-center"
+        className="bg-gradient-to-r from-green-500 to-accent rounded-2xl p-4 text-white text-center"
       >
         <p className="text-sm text-white/80">{t('promoter.totalTeam')}</p>
         <p className="text-4xl font-bold mt-1">{team.total_count}</p>
@@ -839,7 +839,7 @@ const TeamTab: React.FC<TeamTabProps> = ({ team, t }) => {
                 transition={{ delay: index * 0.05 }}
                 className="p-4 flex items-center space-x-3"
               >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                   {member.avatar_url ? (
                     <img src={member.avatar_url} alt="" style={{ width: '40px', height: '40px', borderRadius: '9999px', objectFit: 'cover', maxWidth: 'none' }}
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
@@ -855,7 +855,7 @@ const TeamTab: React.FC<TeamTabProps> = ({ team, t }) => {
                     {new Date(member.joined_at).toLocaleDateString()}
                   </p>
                 </div>
-                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                <span className="px-2 py-1 bg-amber-100 text-primary-dark rounded-full text-xs font-medium">
                   L{member.level}
                 </span>
               </motion.div>
@@ -925,7 +925,7 @@ const LeaderboardTab: React.FC<LeaderboardTabProps> = ({ leaderboard, t }) => {
               </div>
 
               {/* 头像 */}
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                 {person.avatar_url ? (
                   <img src={person.avatar_url} alt="" style={{ width: '40px', height: '40px', borderRadius: '9999px', objectFit: 'cover', maxWidth: 'none' }}
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />

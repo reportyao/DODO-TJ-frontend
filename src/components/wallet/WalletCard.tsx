@@ -39,7 +39,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg",
+        "bg-gradient-to-r from-primary to-primary rounded-2xl p-6 text-white shadow-lg",
         className
       )}
     >

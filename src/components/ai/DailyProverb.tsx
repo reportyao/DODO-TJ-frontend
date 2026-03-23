@@ -10,7 +10,7 @@ export function DailyProverb() {
 
   if (loading || !proverb) {
     return (
-      <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-6 h-48 animate-pulse" />
+      <div className="bg-gradient-to-br from-primary to-primary rounded-2xl p-6 h-48 animate-pulse" />
     );
   }
 
@@ -18,7 +18,7 @@ export function DailyProverb() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg"
+      className="bg-gradient-to-br from-primary to-primary rounded-2xl p-6 text-white shadow-lg"
     >
       {/* 标题 */}
       <div className="flex items-center gap-2 mb-4">
@@ -36,7 +36,7 @@ export function DailyProverb() {
       {/* 切换按钮 */}
       <button
         onClick={nextProverb}
-        className="flex items-center gap-2 text-sm text-blue-100 hover:text-white transition-colors"
+        className="flex items-center gap-2 text-sm text-amber-100 hover:text-white transition-colors"
       >
         <ArrowPathIcon className="w-4 h-4" />
         <span>Дигар нишон диҳед</span>

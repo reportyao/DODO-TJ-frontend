@@ -192,7 +192,7 @@ export default function AIPage() {
                         }
                       }}
                       placeholder={t('ai.placeholder')}
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
                       disabled={sending}
                       maxLength={500}
                       rows={4}
@@ -201,7 +201,7 @@ export default function AIPage() {
                     <button
                       onClick={handleQuickSend}
                       disabled={sending || !quickInput.trim()}
-                      className="p-3 bg-blue-600 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors self-end"
+                      className="p-3 bg-primary text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-dark transition-colors self-end"
                     >
                       <PaperAirplaneIcon className="w-5 h-5" />
                     </button>

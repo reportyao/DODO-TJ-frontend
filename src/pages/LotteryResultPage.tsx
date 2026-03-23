@@ -396,9 +396,9 @@ const LotteryResultPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-50 to-amber-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
           <p className="text-gray-600">{t('common.loading')}...</p>
         </div>
       </div>
@@ -412,7 +412,7 @@ const LotteryResultPage: React.FC = () => {
           <p className="text-gray-500 mb-4">{t('lottery.notFound')}</p>
           <button
             onClick={() => navigate('/lottery')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark"
           >
             {t('lottery.backToHall')}
           </button>
@@ -453,9 +453,9 @@ const LotteryResultPage: React.FC = () => {
   const remainingTime = getRemainingTime();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-50 to-amber-50 pb-20">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-3 sticky top-0 z-10 shadow-lg">
+      <div className="bg-gradient-to-r from-primary to-primary text-white px-4 py-3 sticky top-0 z-10 shadow-lg">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <button
             onClick={() => navigate('/lottery')}
@@ -747,7 +747,7 @@ const LotteryResultPage: React.FC = () => {
                     ${isWinning
                       ? 'bg-gradient-to-br from-yellow-400 to-orange-400 text-white ring-2 ring-yellow-300'
                       : isMine
-                      ? 'bg-blue-100 text-blue-700'
+                      ? 'bg-amber-100 text-primary-dark'
                       : 'bg-gray-100 text-gray-700'
                     }
                   `}
@@ -773,12 +773,12 @@ const LotteryResultPage: React.FC = () => {
                 {t('lottery.fairnessTitle')}
               </h3>
               
-              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                <h4 className="font-semibold text-blue-900 mb-2 flex items-center">
-                  <span className="text-blue-600 mr-2">📊</span>
+              <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                <h4 className="font-semibold text-primary-dark mb-2 flex items-center">
+                  <span className="text-primary mr-2">📊</span>
                   {t('lottery.algorithmIntro')}
                 </h4>
-                <p className="text-sm text-blue-800 leading-relaxed">
+                <p className="text-sm text-primary-dark leading-relaxed">
                   {t('lottery.algorithmDescription')}
                 </p>
               </div>
@@ -847,7 +847,7 @@ const LotteryResultPage: React.FC = () => {
                           </div>
                           <div className="flex flex-col py-1">
                             <span className="text-gray-500 mb-1">{t('lottery.verificationFormula')}</span>
-                            <span className="text-blue-600 font-bold break-words">{translatedFormula}</span>
+                            <span className="text-primary font-bold break-words">{translatedFormula}</span>
                           </div>
                         </>
                       );
@@ -891,9 +891,9 @@ const LotteryResultPage: React.FC = () => {
 
               {/* 内容区域可滚动 */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4">
+                <div className="bg-gradient-to-r from-amber-50 to-amber-50 rounded-xl p-4">
                   <div className="flex items-center space-x-3 mb-2">
-                    <GiftIcon className="w-6 h-6 text-purple-600" />
+                    <GiftIcon className="w-6 h-6 text-primary" />
                     <h4 className="font-bold text-gray-800">{getLocalizedText(lottery.title_i18n, i18n.language)}</h4>
                   </div>
                   <p className="text-sm text-gray-600">{t('orders.claimDescription')}</p>
@@ -906,7 +906,7 @@ const LotteryResultPage: React.FC = () => {
                   <select
                     value={selectedPointId}
                     onChange={(e) => setSelectedPointId(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
                     required
                   >
                     {pickupPoints.map((point) => (
@@ -917,7 +917,7 @@ const LotteryResultPage: React.FC = () => {
                   </select>
                 </div>
 
-                <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-800">
+                <div className="bg-amber-50 rounded-xl p-4 text-sm text-primary-dark">
                   <p className="font-medium mb-1">{t('orders.claimNotice')}</p>
                   <ul className="list-disc list-inside space-y-1 text-xs">
                     <li>{t('orders.claimNotice1')}</li>
@@ -942,7 +942,7 @@ const LotteryResultPage: React.FC = () => {
                 <button
                   onClick={handleSubmitClaim}
                   disabled={isSubmitting}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-700 hover:to-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-primary text-white rounded-xl font-medium hover:from-primary-dark hover:to-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
                 >
                   {isSubmitting ? t('common.submitting') : t('common.confirm')}
                 </button>

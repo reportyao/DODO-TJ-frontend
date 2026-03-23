@@ -103,13 +103,13 @@ const loadingTimeout = setTimeout(() => {
     if (rootElement) {
       const t = getFallbackTexts();
       rootElement.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; background-color: #f9fafb;">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; background-color: #FDFDFD;">
           <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
           <h2 style="font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 10px;">${t.loadFailed}</h2>
           <p style="color: #6b7280; margin-bottom: 20px;">${t.loadFailedDesc}</p>
           <button 
             onclick="window.location.reload()" 
-            style="background-color: #2B5D3A; color: white; padding: 12px 24px; border-radius: 8px; border: none; font-size: 16px; cursor: pointer;"
+            style="background-color: #B8860B; color: white; padding: 12px 24px; border-radius: 8px; border: none; font-size: 16px; cursor: pointer;"
           >
             ${t.retry}
           </button>
@@ -133,13 +133,13 @@ try {
   clearTimeout(loadingTimeout);
   const t = getFallbackTexts();
   rootElement.innerHTML = `
-    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; background-color: #f9fafb;">
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; background-color: #FDFDFD;">
       <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
       <h2 style="font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 10px;">${t.appError}</h2>
       <p style="color: #6b7280; margin-bottom: 20px;">${t.appErrorDesc}</p>
       <button 
         onclick="window.location.reload()" 
-        style="background-color: #2B5D3A; color: white; padding: 12px 24px; border-radius: 8px; border: none; font-size: 16px; cursor: pointer;"
+        style="background-color: #B8860B; color: white; padding: 12px 24px; border-radius: 8px; border: none; font-size: 16px; cursor: pointer;"
       >
         ${t.reload}
       </button>

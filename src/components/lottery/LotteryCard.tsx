@@ -267,7 +267,7 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
-                className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+                className="bg-gradient-to-r from-primary to-primary h-2 rounded-full transition-all duration-300"
                 style={{ width: `${Math.min(progress, 100)}%` }}
               />
             </div>
@@ -319,7 +319,7 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handlePurchase}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+              className="w-full bg-gradient-to-r from-primary to-primary text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
             >
 	              {t('lottery.participate')}
 	            </motion.button>
@@ -332,7 +332,7 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
           )}
 
           {isUpcoming && (
-            <div className="w-full bg-blue-50 text-blue-600 py-3 rounded-xl font-semibold text-center">
+            <div className="w-full bg-amber-50 text-primary py-3 rounded-xl font-semibold text-center">
 	              {t('lottery.upcoming')}
 	            </div>
           )}

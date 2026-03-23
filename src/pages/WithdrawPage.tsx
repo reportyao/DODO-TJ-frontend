@@ -104,7 +104,7 @@ export default function WithdrawPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary via-primary to-red-500 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-8 text-center max-w-md">
           <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">{t('wallet.withdrawRequestSubmitted')}</h2>
@@ -115,7 +115,7 @@ export default function WithdrawPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-primary via-primary to-red-500 pb-20">
       {/* Header */}
       <div className="bg-white/10 backdrop-blur-md p-4 flex items-center">
         <button onClick={() => navigate(-1)} className="text-white">
@@ -128,7 +128,7 @@ export default function WithdrawPage() {
         {/* 可用余额 */}
         <div className="bg-white rounded-2xl p-4">
           <div className="text-sm text-gray-600">{t('wallet.availableBalance')}</div>
-          <div className="text-3xl font-bold text-purple-600">{balance.toFixed(2)} TJS</div>
+          <div className="text-3xl font-bold text-primary">{balance.toFixed(2)} TJS</div>
         </div>
 
         {/* 选择提现方式 */}
@@ -140,8 +140,8 @@ export default function WithdrawPage() {
               onClick={() => setWithdrawalMethod('ALIF_MOBI')}
               className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
                 withdrawalMethod === 'ALIF_MOBI'
-                  ? 'border-purple-500 bg-purple-50'
-                  : 'border-gray-200 hover:border-purple-300'
+                  ? 'border-primary bg-amber-50'
+                  : 'border-gray-200 hover:border-primary'
               }`}
             >
               <div className="font-bold text-gray-800">Alif Mobi</div>
@@ -150,8 +150,8 @@ export default function WithdrawPage() {
               onClick={() => setWithdrawalMethod('DC_BANK')}
               className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
                 withdrawalMethod === 'DC_BANK'
-                  ? 'border-purple-500 bg-purple-50'
-                  : 'border-gray-200 hover:border-purple-300'
+                  ? 'border-primary bg-amber-50'
+                  : 'border-gray-200 hover:border-primary'
               }`}
             >
               <div className="font-bold text-gray-800">DC Bank</div>
@@ -167,7 +167,7 @@ export default function WithdrawPage() {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder={t('wallet.enterAmount')}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-purple-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary"
           />
         </div>
 
@@ -182,14 +182,14 @@ export default function WithdrawPage() {
               value={mobileWalletNumber}
               onChange={(e) => setMobileWalletNumber(e.target.value)}
               placeholder={t('wallet.bankAccount')}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-purple-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary"
             />
             <input
               type="text"
               value={mobileWalletName}
               onChange={(e) => setMobileWalletName(e.target.value)}
               placeholder={t('wallet.phoneNumber')}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-purple-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary"
             />
           </div>
         </div>
@@ -199,7 +199,7 @@ export default function WithdrawPage() {
         <button
           onClick={handleSubmit}
           disabled={submitting}
-          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50"
+          className="w-full bg-gradient-to-r from-primary to-primary text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50"
         >
           {submitting ? t('common.submitting') : t('wallet.submitWithdrawRequest')}
         </button>
