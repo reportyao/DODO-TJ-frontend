@@ -340,12 +340,10 @@ const LotteryDetailPage: React.FC = () => {
     // 计算需要的总金额
     const totalCost = lottery.ticket_price * quantity;
     
-    // 计算抵扣券可抵扣金额（最多抵扣一张，不超过总价）
-    const couponDeduction = (useCoupon && validCouponCount > 0) ? Math.min(couponTotalAmount, totalCost) : 0;
-    const actualPointsNeeded = totalCost - couponDeduction;
+    // 【BUG修复】一元夺宝不使用抵扣券，直接用全额计算
+    const actualPointsNeeded = totalCost;
     
-    // 【修复 M3】检查总可用资产（TJS + LUCKY_COIN + 抵扣券）
-    // 后端 process_mixed_payment 支持三级混合支付：抵扣券 → TJS → LUCKY_COIN
+    // 检查总可用资产（TJS + LUCKY_COIN，不包含抵扣券）
     const tjsWallet = wallets.find(w => w.type === 'TJS');
     const tjsBalance = tjsWallet?.balance || 0;
     const luckyCoinsWallet = wallets.find(w => w.type === 'LUCKY_COIN');
@@ -372,8 +370,8 @@ const LotteryDetailPage: React.FC = () => {
     setIsPurchasing(true);
     
     try {
-      // 调用购买 API，传入 user.id 和 useCoupon 参数
-      const order = await lotteryService.purchaseTickets(lottery.id, quantity, user.id, useCoupon && validCouponCount > 0);
+      // 【BUG修复】一元夺宝购买强制不使用抵扣券，传入 false
+      const order = await lotteryService.purchaseTickets(lottery.id, quantity, user.id, false);
       
       console.log('Purchase successful:', order);
       toast.success(t('lottery.purchaseSuccess'));
@@ -970,29 +968,8 @@ const LotteryDetailPage: React.FC = () => {
               )}
             </div>
 
-            {/* 抵扣券开关 */}
-            {validCouponCount > 0 && (
-              <div className="flex items-center justify-between bg-white/80 rounded-xl px-4 py-3 border border-amber-100">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">{t('coupon.switchLabel')}</span>
-                  <span className="text-xs text-gray-400">{t('coupon.remaining', { count: validCouponCount })}</span>
-                </div>
-                <button
-                  onClick={() => setUseCoupon(!useCoupon)}
-                  className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                    useCoupon ? "bg-green-500" : "bg-gray-300"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                      useCoupon ? "translate-x-6" : "translate-x-1"
-                    )}
-                  />
-                </button>
-              </div>
-            )}
+            {/* 【BUG修复】抵扣券开关已从一元夺宝区域移除 */}
+            {/* iTJS优惠券仅适用于全款购买，不适用于一元夺宝(lottery) */}
 
             {/* 余额显示 + 合计 */}
             <div className="flex items-center justify-between text-sm px-1">

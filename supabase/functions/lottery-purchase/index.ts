@@ -108,8 +108,10 @@ Deno.serve(async (req) => {
       throw new Error('服务器配置错误');
     }
 
-    // 【修改】接收 useCoupon 参数，支持混合支付
-    const { lotteryId, quantity, paymentMethod, session_token, useCoupon, idempotency_key } = await req.json();
+    // 【BUG修复】一元夺宝不允许使用抵扣券，强制忽略前端传入的 useCoupon 参数
+    const { lotteryId, quantity, paymentMethod, session_token, useCoupon: _useCouponIgnored, idempotency_key } = await req.json();
+    // 强制设为 false：iTJS抵扣券仅适用于全款购买，不适用于一元夺宝
+    const useCoupon = false;
 
     if (!lotteryId || !quantity || !paymentMethod) {
       throw new Error('缺少必要参数');

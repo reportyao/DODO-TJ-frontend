@@ -191,7 +191,7 @@ export const SubsidyPoolCard: React.FC = () => {
             <span className="text-white/60 text-[10px]">
               {t('subsidyPool.totalPool')}: {formatFullNumber(data?.total_pool || 10_000_000)} TJS
             </span>
-            <span className="text-white/60 text-[10px]">{progressPercent}%</span>
+            <span className="text-white/60 text-[10px]">{t('subsidyPool.remaining')} {progressPercent}%</span>
           </div>
         </div>
 
