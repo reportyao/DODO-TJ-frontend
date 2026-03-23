@@ -1821,7 +1821,10 @@
     "subsidyPrice": "Субсидированная цена",
     "subsidyTag": "Субсидия",
     "title": "Пул субсидий",
-    "totalPool": "Общий пул субсидий"
+    "totalPool": "Общий пул субсидий",
+    "marqueeDeposit": "пополнил",
+    "marqueeBonus": "бонус",
+    "marqueePoints": "баллов"
   },
   "network": {
     "offline": "Нет подключения к сети, отображаются кэшированные данные",

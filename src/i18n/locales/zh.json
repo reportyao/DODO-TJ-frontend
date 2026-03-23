@@ -1821,7 +1821,10 @@
     "subsidyPrice": "补贴价",
     "subsidyTag": "补贴",
     "title": "补贴池",
-    "totalPool": "总补贴池"
+    "totalPool": "总补贴池",
+    "marqueeDeposit": "充值",
+    "marqueeBonus": "赠送",
+    "marqueePoints": "积分"
   },
   "network": {
     "offline": "当前无网络连接，显示的是缓存数据",

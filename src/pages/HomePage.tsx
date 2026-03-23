@@ -8,6 +8,7 @@ import { PurchaseModal } from '../components/lottery/PurchaseModal';
 import { useSupabase } from '../contexts/SupabaseContext';
 import { ProductList } from '../components/home/ProductList';
 import BannerCarousel from '../components/BannerCarousel';
+import { SubsidyPoolBanner } from '../components/home/SubsidyPoolBanner';
 import toast from 'react-hot-toast';
 import { useLotteries } from '../hooks/useHomeData';
 
@@ -94,6 +95,9 @@ const HomePage: React.FC = () => {
       <div className="px-4 pt-4">
         <BannerCarousel />
       </div>
+
+      {/* 补贴池横条 */}
+      <SubsidyPoolBanner />
 
       {/* 商城商品完整列表 */}
       <ProductList

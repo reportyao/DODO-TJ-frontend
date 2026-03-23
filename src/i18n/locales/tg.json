@@ -1821,7 +1821,10 @@
     "subsidyPrice": "Нархи субсидиядор",
     "subsidyTag": "Субсидия",
     "title": "Фонди субсидия",
-    "totalPool": "Фонди умумии субсидия"
+    "totalPool": "Фонди умумии субсидия",
+    "marqueeDeposit": "пур кард",
+    "marqueeBonus": "бонус",
+    "marqueePoints": "хол"
   },
   "network": {
     "offline": "Пайвастшавӣ ба шабака нест, маълумоти кэш нишон дода мешавад",
