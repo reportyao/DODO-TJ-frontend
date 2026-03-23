@@ -237,10 +237,11 @@ serve(async (req) => {
 
       inventoryProduct = invProduct;
 
-      // 验证库存商品状态
-      if (!inventoryProduct || inventoryProduct.status === 'INACTIVE') {
-        throw new Error('关联的库存商品已下架');
-      }
+      // 【业务逻辑修改】不再检查 inventory_product 的状态
+      // 只依赖 lottery 本身的 status 决定是否可购买
+      // 原因：inventory_product 和 lottery 是独立管理的两个实体，
+      // 管理员可能单独下架库存商品而不影响 lottery 的销售状态
+      // lottery.status === 'ACTIVE' 已经是购买的唯一门槛
 
       // 验证库存是否充足
       if (inventoryProduct.stock <= 0) {
