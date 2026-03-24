@@ -284,7 +284,6 @@ async function handleCommission(event: QueuedEvent): Promise<void> {
         beneficiary_id: currentUserId,
         level: level,
         rate: rate,
-        percent: rate * 100,
         source_amount: order_amount,
         amount: commissionAmount,
         order_id: order_id,
