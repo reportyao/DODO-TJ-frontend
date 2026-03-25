@@ -13,7 +13,7 @@
  * - 更新推送通知图标为新Logo
  */
 
-const CACHE_VERSION = 'v10';
+const CACHE_VERSION = 'v11';
 const CACHE_NAMES = {
   IMAGES: `dodo-images-${CACHE_VERSION}`,
   API: `dodo-api-${CACHE_VERSION}`,
