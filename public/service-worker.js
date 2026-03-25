@@ -1,5 +1,5 @@
 /**
- * DODO PWA Service Worker v10
+ * DODO PWA Service Worker v11
  * 
  * 【缓存策略】
  * - HTML/JS/CSS：不缓存（避免旧版本导致白屏）
@@ -7,10 +7,9 @@
  * - 可缓存API：Stale-While-Revalidate（返回缓存同时后台更新）
  * - 其他请求：直接走网络，不拦截
  * 
- * 【v10 更新内容】
- * - 品牌Logo全面升级为DODO猫咪Logo
- * - 强制清除旧版本缓存（包括旧TezBarakat Logo）
- * - 更新推送通知图标为新Logo
+ * 【v11 更新内容】
+ * - 修复透明底Logo (dodo-logo.webp)
+ * - 强制清除旧版本缓存
  */
 
 const CACHE_VERSION = 'v11';
@@ -47,7 +46,7 @@ const NO_CACHE_PATTERNS = [
  * 安装事件：跳过等待，立即激活
  */
 self.addEventListener('install', (event) => {
-  console.log('[SW v10] Installing...');
+  console.log('[SW v11] Installing...');
   self.skipWaiting();
 });
 
@@ -55,14 +54,14 @@ self.addEventListener('install', (event) => {
  * 激活事件：清除所有旧缓存，立即接管
  */
 self.addEventListener('activate', (event) => {
-  console.log('[SW v10] Activating...');
+  console.log('[SW v11] Activating...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           // 删除所有不属于当前版本的缓存
           if (!Object.values(CACHE_NAMES).includes(cacheName)) {
-            console.log('[SW v10] Deleting old cache:', cacheName);
+            console.log('[SW v11] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -189,7 +188,7 @@ async function staleWhileRevalidate(request) {
       return response;
     })
     .catch((error) => {
-      console.warn('[SW v10] API fetch failed, using cache:', error.message);
+      console.warn('[SW v11] API fetch failed, using cache:', error.message);
       return cached;
     });
 
@@ -242,4 +241,4 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-console.log('[SW v10] Loaded successfully');
+console.log('[SW v11] Loaded successfully');
