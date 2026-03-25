@@ -88,6 +88,8 @@ const PendingPickupPage: React.FC = () => {
       const authClient = getAuthenticatedClient();
 
       // 1. 获取全款购买订单（full_purchase_orders）- 未提货的
+      // 【BUG修复】使用 .or() 兼容 logistics_status 为 null 的情况
+      // Supabase 的 .neq() 不包含 null 值，导致 logistics_status 为 null 的订单被排除
       try {
         const { data: fullPurchaseOrders, error: fullPurchaseError } = await (authClient as any)
           .from('full_purchase_orders')
@@ -98,13 +100,14 @@ const PendingPickupPage: React.FC = () => {
             created_at, 
             status,
             logistics_status,
+            pickup_status,
             pickup_code,
             metadata,
             lotteries(id, title, title_i18n, image_url, image_urls, currency)
           `)
           .eq('user_id', user.id)
           .eq('status', 'COMPLETED')
-          .neq('logistics_status', 'PICKED_UP')
+          .or('logistics_status.is.null,logistics_status.neq.PICKED_UP')
           .order('created_at', { ascending: false });
 
         if (fullPurchaseError) {
@@ -139,6 +142,7 @@ const PendingPickupPage: React.FC = () => {
       }
 
       // 2. 获取中奖记录（prizes）- 未提货的
+      // 【BUG修复】兼容 pickup_status 为 null 的历史数据
       try {
         const { data: prizes, error: prizesError } = await (authClient as any)
           .from('prizes')
@@ -153,7 +157,8 @@ const PendingPickupPage: React.FC = () => {
             lotteries(id, title, title_i18n, image_url, image_urls, currency, ticket_price)
           `)
           .eq('user_id', user.id)
-          .in('pickup_status', ['PENDING_CLAIM', 'PENDING_PICKUP'])
+          .or('pickup_status.in.(PENDING_CLAIM,PENDING_PICKUP),pickup_status.is.null')
+          .neq('pickup_status', 'PICKED_UP')
           .order('created_at', { ascending: false });
 
         if (prizesError) {

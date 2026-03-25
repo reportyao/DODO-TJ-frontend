@@ -167,8 +167,13 @@ serve(async (req) => {
 
       if (fullPurchaseIds.length > 0) {
         const updatePayload: Record<string, any> = { logistics_status: newLogisticsStatus }
+        // 【BUG修复】ARRIVED 时同步更新 pickup_status，确保 pending-pickups 页面能查到
+        if (new_status === 'ARRIVED') {
+          updatePayload.pickup_status = 'PENDING_PICKUP'
+        }
         if (new_status === 'CANCELLED') {
           updatePayload.batch_id = null
+          updatePayload.pickup_status = null
         }
         await supabase
           .from('full_purchase_orders')
@@ -178,8 +183,13 @@ serve(async (req) => {
 
       if (prizeIds.length > 0) {
         const updatePayload: Record<string, any> = { logistics_status: newLogisticsStatus }
+        // 【BUG修复】ARRIVED 时同步更新 pickup_status
+        if (new_status === 'ARRIVED') {
+          updatePayload.pickup_status = 'PENDING_PICKUP'
+        }
         if (new_status === 'CANCELLED') {
           updatePayload.batch_id = null
+          updatePayload.pickup_status = null
         }
         await supabase
           .from('prizes')
@@ -189,8 +199,13 @@ serve(async (req) => {
 
       if (groupBuyIds.length > 0) {
         const updatePayload: Record<string, any> = { logistics_status: newLogisticsStatus }
+        // 【BUG修复】ARRIVED 时同步更新 pickup_status
+        if (new_status === 'ARRIVED') {
+          updatePayload.pickup_status = 'PENDING_PICKUP'
+        }
         if (new_status === 'CANCELLED') {
           updatePayload.batch_id = null
+          updatePayload.pickup_status = null
         }
         await supabase
           .from('group_buy_results')
