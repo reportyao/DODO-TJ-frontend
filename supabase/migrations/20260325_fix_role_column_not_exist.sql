@@ -73,7 +73,7 @@ BEGIN
   
   SELECT EXISTS (
     SELECT 1 FROM admin_users 
-    WHERE id = p_promoter_id AND status = 'active'
+    WHERE id::text = p_promoter_id AND status = 'active'
   ) INTO v_is_admin;
 
   IF NOT v_is_promoter AND NOT v_is_admin THEN
