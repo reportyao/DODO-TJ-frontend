@@ -85,7 +85,7 @@ BEGIN
         SELECT pd.target_user_id AS user_id, pd.amount, pd.created_at
         FROM promoter_deposits pd
         WHERE pd.promoter_id = p_user_id
-        AND pd.status = 'completed'
+        AND UPPER(pd.status) = 'COMPLETED'
         AND pd.created_at >= v_start_date
     ),
     -- 合并当期充值
@@ -114,7 +114,7 @@ BEGIN
         SELECT pd.target_user_id AS user_id, pd.amount
         FROM promoter_deposits pd
         WHERE pd.promoter_id = p_user_id
-        AND pd.status = 'completed'
+        AND UPPER(pd.status) = 'COMPLETED'
         AND pd.created_at >= v_prev_start_date
         AND pd.created_at < v_start_date
     ),
@@ -235,7 +235,7 @@ BEGIN
             'team_name', v_promoter_record.team_name,
             'point_name', v_promoter_record.point_name,
             'hire_date', v_promoter_record.hire_date,
-            'daily_base_salary', v_promoter_record.base_salary
+            'daily_base_salary', v_promoter_record.daily_base_salary
         ),
         'my_stats', v_my_stats,
         'team', v_team_data,
