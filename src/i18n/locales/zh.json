@@ -1281,7 +1281,19 @@
     "coinExchange": "积分兑换",
     "exchangeAmount": "兑换金额: {{amount}} 索莫尼",
     "groupBuyProduct": "拼团商品",
-    "lotteryProduct": "商品"
+    "lotteryProduct": "商品",
+    "depositBonusTitle": "充值赠送积分到账",
+    "depositBonusContent": "您获得充值赠送积分 {{amount}} 积分",
+    "fullPurchaseTitle": "全款购买成功",
+    "fullPurchaseContent": "您已成功全款购买 {{product}}",
+    "logisticsUpdateTitle": "物流状态更新",
+    "logisticsUpdateContent": "您的商品 {{product}} 物流状态已更新为: {{status}}",
+    "pickupCodeTitle": "提货码已生成",
+    "pickupCodeContent": "您的商品 {{product}} 提货码为: {{code}}，请尽快提货",
+    "pickupVerifiedTitle": "提货成功",
+    "pickupVerifiedContent": "您的商品 {{product}} 已成功提货",
+    "lotteryWinTitle": "🎉 一元夺宝中奖！",
+    "lotteryWinPrizeContent": "恭喜！您在一元夺宝中赢得了 {{product}}！"
   },
   "cities": {
     "dushanbe": "杜尚别",

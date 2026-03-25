@@ -106,7 +106,8 @@ export const aiService = {
       });
 
       if (error) {
-        console.error('[AIService] GetQuota error:', error);
+        // Edge Function 不可用时静默降级，避免控制台报错
+        console.debug('[AIService] GetQuota unavailable, using defaults');
         return {
           total_quota: 10,
           used_quota: 0,
@@ -128,7 +129,7 @@ export const aiService = {
 
       return data.data as AIQuota;
     } catch (e) {
-      console.error('[AIService] GetQuota exception:', e);
+      console.debug('[AIService] GetQuota exception, using defaults');
       return {
         total_quota: 10,
         used_quota: 0,

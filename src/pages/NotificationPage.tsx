@@ -14,7 +14,11 @@ import {
   TicketIcon,
   ShoppingBagIcon,
   ArrowPathIcon,
-  UsersIcon
+  UsersIcon,
+  GiftIcon,
+  TruckIcon,
+  QrCodeIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 import { formatDateTime } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -338,7 +342,210 @@ const NotificationPage: React.FC = () => {
         console.error('Failed to fetch referral rewards:', e);
       }
 
-      // 8. 按时间排序
+      // 8. 充值赠送积分到账消息
+      try {
+        const { data: userWallets } = await supabase
+          .from('wallets')
+          .select('id')
+          .eq('user_id', user.id);
+        const walletIds = userWallets?.map(w => w.id) || [];
+        if (walletIds.length > 0) {
+          const { data: bonusData, error: bonusError } = await supabase
+            .from('wallet_transactions')
+            .select('*')
+            .in('wallet_id', walletIds)
+            .in('type', ['BONUS', 'FIRST_DEPOSIT_BONUS', 'DEPOSIT_BONUS'] as any)
+            .order('created_at', { ascending: false })
+            .limit(20);
+          if (!bonusError && bonusData) {
+            bonusData.forEach((tx: any) => {
+              allNotifications.push({
+                id: `bonus_${tx.id}`,
+                user_id: user.id,
+                type: 'DEPOSIT_BONUS',
+                title: t('notifications.depositBonusTitle'),
+                content: t('notifications.depositBonusContent', { amount: Math.abs(tx.amount) }),
+                related_id: tx.id,
+                related_type: 'bonus',
+                is_read: true,
+                created_at: tx.created_at,
+                source: 'wallet_transactions'
+              });
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch bonus notifications:', e);
+      }
+
+      // 9. 全款购买商品成功消息
+      try {
+        const { data: fpOrders, error: fpError } = await supabase
+          .from('full_purchase_orders')
+          .select('*, lottery:lotteries(title_i18n)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        if (!fpError && fpOrders) {
+          fpOrders.forEach((order: any) => {
+            const productTitle = order.lottery?.title_i18n?.[i18n.language] || order.lottery?.title_i18n?.tg || t('notifications.lotteryProduct');
+            allNotifications.push({
+              id: `fullpurchase_${order.id}`,
+              user_id: user.id,
+              type: 'FULL_PURCHASE',
+              title: t('notifications.fullPurchaseTitle'),
+              content: t('notifications.fullPurchaseContent', { product: productTitle }),
+              related_id: order.id,
+              related_type: 'full_purchase',
+              is_read: true,
+              created_at: order.created_at,
+              source: 'full_purchase_orders'
+            });
+          });
+        }
+      } catch (e) {
+        console.error('Failed to fetch full purchase notifications:', e);
+      }
+
+      // 10. 商品物流变化消息 + 提货码生成消息 + 提货码核销消息
+      try {
+        // 从 full_purchase_orders 获取物流和提货状态
+        const { data: fpLogistics, error: fpLogError } = await supabase
+          .from('full_purchase_orders')
+          .select('id, logistics_status, pickup_status, pickup_code, created_at, updated_at, picked_up_at, lottery:lotteries(title_i18n)')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(20);
+        if (!fpLogError && fpLogistics) {
+          fpLogistics.forEach((order: any) => {
+            const productTitle = order.lottery?.title_i18n?.[i18n.language] || order.lottery?.title_i18n?.tg || t('notifications.lotteryProduct');
+            // 物流状态变化消息
+            if (order.logistics_status && order.logistics_status !== 'PENDING_SHIPMENT') {
+              const statusText = getLogisticsStatusText(order.logistics_status, t);
+              allNotifications.push({
+                id: `logistics_${order.id}`,
+                user_id: user.id,
+                type: 'LOGISTICS_UPDATE',
+                title: t('notifications.logisticsUpdateTitle'),
+                content: t('notifications.logisticsUpdateContent', { product: productTitle, status: statusText }),
+                related_id: order.id,
+                related_type: 'logistics',
+                is_read: true,
+                created_at: order.updated_at || order.created_at,
+                source: 'full_purchase_orders'
+              });
+            }
+            // 提货码生成消息
+            if (order.pickup_code && order.pickup_status !== 'PICKED_UP') {
+              allNotifications.push({
+                id: `pickupcode_${order.id}`,
+                user_id: user.id,
+                type: 'PICKUP_CODE_GENERATED',
+                title: t('notifications.pickupCodeTitle'),
+                content: t('notifications.pickupCodeContent', { product: productTitle, code: order.pickup_code }),
+                related_id: order.id,
+                related_type: 'pickup',
+                is_read: true,
+                created_at: order.updated_at || order.created_at,
+                source: 'full_purchase_orders'
+              });
+            }
+            // 提货码核销消息
+            if (order.pickup_status === 'PICKED_UP' && order.picked_up_at) {
+              allNotifications.push({
+                id: `pickedup_${order.id}`,
+                user_id: user.id,
+                type: 'PICKUP_VERIFIED',
+                title: t('notifications.pickupVerifiedTitle'),
+                content: t('notifications.pickupVerifiedContent', { product: productTitle }),
+                related_id: order.id,
+                related_type: 'pickup',
+                is_read: true,
+                created_at: order.picked_up_at,
+                source: 'full_purchase_orders'
+              });
+            }
+          });
+        }
+
+        // 从 prizes 获取物流和提货状态
+        const { data: prizeLogistics, error: prizeLogError } = await supabase
+          .from('prizes')
+          .select('id, status, pickup_status, pickup_code, created_at, updated_at, claimed_at, lottery:lotteries(title_i18n)')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(20);
+        if (!prizeLogError && prizeLogistics) {
+          prizeLogistics.forEach((prize: any) => {
+            const productTitle = prize.lottery?.title_i18n?.[i18n.language] || prize.lottery?.title_i18n?.tg || t('notifications.lotteryProduct');
+            // 提货码生成消息
+            if (prize.pickup_code && prize.pickup_status !== 'PICKED_UP') {
+              allNotifications.push({
+                id: `prize_pickupcode_${prize.id}`,
+                user_id: user.id,
+                type: 'PICKUP_CODE_GENERATED',
+                title: t('notifications.pickupCodeTitle'),
+                content: t('notifications.pickupCodeContent', { product: productTitle, code: prize.pickup_code }),
+                related_id: prize.id,
+                related_type: 'pickup',
+                is_read: true,
+                created_at: prize.updated_at || prize.created_at,
+                source: 'prizes'
+              });
+            }
+            // 提货码核销消息
+            if (prize.pickup_status === 'PICKED_UP' && prize.claimed_at) {
+              allNotifications.push({
+                id: `prize_pickedup_${prize.id}`,
+                user_id: user.id,
+                type: 'PICKUP_VERIFIED',
+                title: t('notifications.pickupVerifiedTitle'),
+                content: t('notifications.pickupVerifiedContent', { product: productTitle }),
+                related_id: prize.id,
+                related_type: 'pickup',
+                is_read: true,
+                created_at: prize.claimed_at,
+                source: 'prizes'
+              });
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Failed to fetch logistics/pickup notifications:', e);
+      }
+
+      // 11. 一元夺宝中奖消息（从 prizes 表获取）
+      // 注意：section 6 已经处理了商城中奖，这里补充从 prizes 直接获取确保不遗漏
+      try {
+        const { data: winPrizes, error: winError } = await supabase
+          .from('prizes')
+          .select('id, status, created_at, lottery:lotteries(title_i18n)')
+          .eq('user_id', user.id)
+          .in('status', ['WON', 'CLAIMED', 'PENDING_PICKUP', 'PENDING_CLAIM'] as any)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        if (!winError && winPrizes) {
+          winPrizes.forEach((prize: any) => {
+            const productTitle = prize.lottery?.title_i18n?.[i18n.language] || prize.lottery?.title_i18n?.tg || t('notifications.lotteryProduct');
+            allNotifications.push({
+              id: `lottery_win_prize_${prize.id}`,
+              user_id: user.id,
+              type: 'LOTTERY_WIN',
+              title: t('notifications.lotteryWinTitle'),
+              content: t('notifications.lotteryWinPrizeContent', { product: productTitle }),
+              related_id: prize.id,
+              related_type: 'prize',
+              is_read: true,
+              created_at: prize.created_at,
+              source: 'prizes'
+            });
+          });
+        }
+      } catch (e) {
+        console.error('Failed to fetch lottery win notifications:', e);
+      }
+
+      // 12. 按时间排序
       allNotifications.sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
@@ -472,6 +679,16 @@ const NotificationPage: React.FC = () => {
         return <BanknotesIcon className={`${iconClass} text-green-600`} />;
       case 'SPIN_REWARD':
         return <TrophyIcon className={`${iconClass} text-primary`} />;
+      case 'DEPOSIT_BONUS':
+        return <GiftIcon className={`${iconClass} text-purple-600`} />;
+      case 'FULL_PURCHASE':
+        return <ShoppingBagIcon className={`${iconClass} text-green-600`} />;
+      case 'LOGISTICS_UPDATE':
+        return <TruckIcon className={`${iconClass} text-blue-600`} />;
+      case 'PICKUP_CODE_GENERATED':
+        return <QrCodeIcon className={`${iconClass} text-orange-600`} />;
+      case 'PICKUP_VERIFIED':
+        return <CheckIcon className={`${iconClass} text-green-600`} />;
       default:
         return <BellIcon className={`${iconClass} text-gray-600`} />;
     }
@@ -516,6 +733,16 @@ const NotificationPage: React.FC = () => {
         return 'bg-green-50';
       case 'SPIN_REWARD':
         return 'bg-amber-50';
+      case 'DEPOSIT_BONUS':
+        return 'bg-purple-50';
+      case 'FULL_PURCHASE':
+        return 'bg-green-50';
+      case 'LOGISTICS_UPDATE':
+        return 'bg-blue-50';
+      case 'PICKUP_CODE_GENERATED':
+        return 'bg-orange-50';
+      case 'PICKUP_VERIFIED':
+        return 'bg-green-50';
       default:
         return 'bg-gray-50';
     }
@@ -658,5 +885,20 @@ const NotificationPage: React.FC = () => {
     </div>
   );
 };
+
+// 物流状态文本转换辅助函数
+function getLogisticsStatusText(status: string, t: (key: string) => string): string {
+  const statusMap: Record<string, string> = {
+    'PENDING_SHIPMENT': '待发货',
+    'IN_TRANSIT_CHINA': '国内运输中',
+    'IN_TRANSIT_TJ': '塔吉克斯坦运输中',
+    'ARRIVED_TJ': '已到达塔吉克斯坦',
+    'READY_FOR_PICKUP': '可以提货',
+    'PICKED_UP': '已提货',
+    'SHIPPED': '已发货',
+    'DELIVERED': '已送达',
+  };
+  return statusMap[status] || status;
+}
 
 export default NotificationPage;

@@ -1282,7 +1282,19 @@
     "coinExchange": "Обмен монет",
     "exchangeAmount": "Сумма обмена: {{amount}} TJS",
     "groupBuyProduct": "Товар совместной покупки",
-    "lotteryProduct": "Товар магазина"
+    "lotteryProduct": "Товар магазина",
+    "depositBonusTitle": "Бонусные баллы зачислены",
+    "depositBonusContent": "Вы получили {{amount}} бонусных баллов",
+    "fullPurchaseTitle": "Покупка успешна",
+    "fullPurchaseContent": "Вы успешно купили {{product}}",
+    "logisticsUpdateTitle": "Обновление статуса доставки",
+    "logisticsUpdateContent": "Статус доставки {{product}}: {{status}}",
+    "pickupCodeTitle": "Код получения готов",
+    "pickupCodeContent": "Код получения {{product}}: {{code}}. Заберите как можно скорее",
+    "pickupVerifiedTitle": "Товар получен",
+    "pickupVerifiedContent": "{{product}} успешно получен",
+    "lotteryWinTitle": "🎉 Вы выиграли!",
+    "lotteryWinPrizeContent": "Поздравляем! Вы выиграли {{product}} в лотерее!"
   },
   "cities": {
     "dushanbe": "Душанбе",

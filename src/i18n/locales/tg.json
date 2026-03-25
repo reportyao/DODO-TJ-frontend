@@ -1282,7 +1282,19 @@
     "coinExchange": "Мубодилаи тангаҳо",
     "exchangeAmount": "Маблағи мубодила: {{amount}} TJS",
     "groupBuyProduct": "Маҳсулоти хариди гурӯҳӣ",
-    "lotteryProduct": "Маҳсулоти мағоза"
+    "lotteryProduct": "Маҳсулоти мағоза",
+    "depositBonusTitle": "Бонуси пуркунӣ ворид шуд",
+    "depositBonusContent": "Шумо {{amount}} холи бонусӣ гирифтед",
+    "fullPurchaseTitle": "Хариди пурра муваффақ",
+    "fullPurchaseContent": "Шумо {{product}}-ро бо нархи пурра харидед",
+    "logisticsUpdateTitle": "Навсозии ҳолати интиқол",
+    "logisticsUpdateContent": "Ҳолати интиқоли {{product}}: {{status}}",
+    "pickupCodeTitle": "Рамзи гирифтан тайёр аст",
+    "pickupCodeContent": "Рамзи гирифтани {{product}}: {{code}}. Лутфан зудтар гиред",
+    "pickupVerifiedTitle": "Маҳсулот гирифта шуд",
+    "pickupVerifiedContent": "{{product}} бо муваффақият гирифта шуд",
+    "lotteryWinTitle": "🎉 Шумо ғолиб шудед!",
+    "lotteryWinPrizeContent": "Табрик! Шумо дар лотерея {{product}}-ро бурдед!"
   },
   "cities": {
     "dushanbe": "Душанбе",

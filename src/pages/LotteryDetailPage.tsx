@@ -361,10 +361,18 @@ const LotteryDetailPage: React.FC = () => {
       return;
     }
 
-    // 检查用户限购
-    if (lottery.max_per_user && quantity > lottery.max_per_user) {
-      toast.error(t('lottery.maxQuantityHint', { max: lottery.max_per_user }));
-      return;
+    // 检查用户限购（需要考虑已购数量）
+    if (lottery.max_per_user) {
+      const alreadyPurchased = myTickets.length;
+      const remaining = lottery.max_per_user - alreadyPurchased;
+      if (remaining <= 0) {
+        toast.error(t('lottery.maxQuantityReached', { max: lottery.max_per_user }));
+        return;
+      }
+      if (quantity > remaining) {
+        toast.error(t('lottery.maxQuantityHint', { max: remaining }));
+        return;
+      }
     }
 
     setIsPurchasing(true);
@@ -379,9 +387,12 @@ const LotteryDetailPage: React.FC = () => {
       // 等待短暂延迟确保数据库事务完成后再刷新
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // 刷新抽奖数据和钱包
-      await fetchLottery();
-      await refreshWallets();
+      // 刷新抽奖数据、钱包和我的参与码（防止重复购买超出限购）
+      await Promise.all([
+        fetchLottery(),
+        refreshWallets(),
+        fetchMyTickets()
+      ]);
       
       // 重置数量为 1
       setQuantity(1);
