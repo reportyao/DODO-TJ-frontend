@@ -244,7 +244,13 @@ const OrderManagementPage: React.FC = () => {
         navigate(`/group-buy/result/${order.session_id}`);
       }
     } else if (order.order_type === 'lottery' && order.lottery_id) {
-      navigate(`/lottery/${order.lottery_id}`);
+      // 已中奖的一元夺宝订单（来自prizes表，有pickup_status）跳转到物流详情页
+      if (order.pickup_status) {
+        navigate(`/order-detail/${order.id}`);
+      } else {
+        // 未开奖或未中奖的订单跳转到商品详情页
+        navigate(`/lottery/${order.lottery_id}`);
+      }
     } else if (order.order_type === 'full_purchase') {
       navigate(`/order-detail/${order.id}`);
     }

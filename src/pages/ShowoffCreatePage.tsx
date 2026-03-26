@@ -92,7 +92,7 @@ const ShowoffCreatePage: React.FC = () => {
       
       if (lotteryIds.length > 0) {
         const lotteriesResponse = await fetch(
-          `${supabaseUrl}/rest/v1/lotteries?id=in.(${lotteryIds.join(',')})&select=id,title,image_url`,
+          `${supabaseUrl}/rest/v1/lotteries?id=in.(${lotteryIds.join(',')})&select=id,title,title_i18n,image_url`,
           {
             headers: {
               'Authorization': `Bearer ${supabaseKey}`,
@@ -169,9 +169,16 @@ const ShowoffCreatePage: React.FC = () => {
       // 5. 转换为 WinningLottery 格式
       // 抽奖中奖记录
       const lotteryWinnings: WinningLottery[] = availablePrizes.map((prize: any) => {
-        // 获取商品名称，优先使用 prize_name，其次使用 lottery.title
-        const lotteryTitle = prize.prize_name || prize.lottery?.title || t('showoff.unknownLottery');
-        // 如果 title 是字符串，直接使用；如果是对象，使用中文版本作为显示
+        // 获取商品名称，优先使用 title_i18n 多语言标题，其次使用 prize_name，最后使用 lottery.title
+        const titleI18n = prize.lottery?.title_i18n;
+        // 如果有多语言标题，优先使用当前语言
+        let lotteryTitle: any;
+        if (titleI18n && typeof titleI18n === 'object') {
+          lotteryTitle = titleI18n;
+        } else {
+          lotteryTitle = prize.prize_name || prize.lottery?.title || t('showoff.unknownLottery');
+        }
+        // 如果 title 是字符串，直接使用；如果是对象，使用当前语言版本
         const displayTitle = typeof lotteryTitle === 'string' ? lotteryTitle : (lotteryTitle[i18n.language] || lotteryTitle.tg || lotteryTitle.ru || lotteryTitle.zh || t('showoff.unknownLottery'));
         
         return {

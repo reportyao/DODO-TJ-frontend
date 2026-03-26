@@ -122,11 +122,27 @@ serve(async (req) => {
         orderType = 'prize'
         const prizeData = prize as Record<string, unknown>
         productId = prizeData.lottery_id as string | null
+        
+        // 查询用户在该 lottery 上的累计购买金额（从 orders 表）
+        let totalPurchaseAmount = 0
+        if (prizeData.lottery_id) {
+          const { data: purchaseOrders } = await supabase
+            .from('orders')
+            .select('total_amount')
+            .eq('user_id', user_id)
+            .eq('lottery_id', prizeData.lottery_id as string)
+            .in('status', ['PAID', 'COMPLETED'])
+          
+          if (purchaseOrders && purchaseOrders.length > 0) {
+            totalPurchaseAmount = purchaseOrders.reduce((sum: number, o: any) => sum + (Number(o.total_amount) || 0), 0)
+          }
+        }
+        
         orderData = {
           ...prizeData,
           order_number: `PRIZE-${(prizeData.id as string).substring(0, 8).toUpperCase()}`,
-          total_amount: 0,
-          currency: 'TJS',
+          total_amount: totalPurchaseAmount,
+          currency: 'LUCKY_COIN',
           metadata: { type: 'prize' }
         }
       }
