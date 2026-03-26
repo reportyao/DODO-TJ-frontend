@@ -247,6 +247,14 @@ const OrderManagementPage: React.FC = () => {
       // 已中奖的一元夺宝订单（来自prizes表，有pickup_status）跳转到物流详情页
       if (order.pickup_status) {
         navigate(`/order-detail/${order.id}`);
+      } else if (order.status === 'WON') {
+        // 中奖的订单（来自orders表，无pickup_status）也应跳转到物流详情页
+        // 需要通过 prize_id 跳转，如果没有则跳转到商品页
+        if ((order as any).prize_id) {
+          navigate(`/order-detail/${(order as any).prize_id}`);
+        } else {
+          navigate(`/lottery/${order.lottery_id}`);
+        }
       } else {
         // 未开奖或未中奖的订单跳转到商品详情页
         navigate(`/lottery/${order.lottery_id}`);

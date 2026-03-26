@@ -406,7 +406,8 @@
     "walletNotFound": "Ҳамён ёфт нашуд, лутфан баланси худро пур кунед",
     "withdrawal": "Баровардан",
     "totalBalance": "Тавозуни умумӣ",
-    "frozenBalance": "Тавозуни яхкарда"
+    "frozenBalance": "Тавозуни яхкарда",
+    "depositHint": "Пуркунии тези баланс"
   },
   "order": {
     "myOrders": "Фармоишҳои ман",
@@ -1799,7 +1800,8 @@
     "sourceDepositBonus": "Бонуси пурпул",
     "sourceLotteryRefund": "Баргашт барои нобурд",
     "sourcePromotion": "Мукофоти акция",
-    "remaining": "Дастрас {{count}} дона"
+    "remaining": "Дастрас {{count}} дона",
+    "viewMyCoupons": "Купонҳои ман"
   },
   "payment": {
     "actualPayment": "Пардохти воқеӣ",

@@ -406,7 +406,8 @@
     "walletNotFound": "未找到钱包，请先充值",
     "withdrawal": "提现",
     "totalBalance": "总余额",
-    "frozenBalance": "冻结余额"
+    "frozenBalance": "冻结余额",
+    "depositHint": "快速充值余额"
   },
   "notification": {
     "notifications": "通知中心",
@@ -1799,7 +1800,8 @@
     "sourceDepositBonus": "充值赠送",
     "sourceLotteryRefund": "未中奖返还",
     "sourcePromotion": "活动奖励",
-    "remaining": "可用 {{count}} 张"
+    "remaining": "可用 {{count}} 张",
+    "viewMyCoupons": "查看我的优惠券"
   },
   "payment": {
     "actualPayment": "实际支付",

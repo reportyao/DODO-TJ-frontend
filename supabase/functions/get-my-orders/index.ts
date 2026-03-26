@@ -336,6 +336,27 @@ serve(async (req) => {
           lotteriesMap = new Map((lotteries || []).map(l => [l.id, l]));
         }
         
+        // 查询中奖记录，用于给中奖的orders记录关联prize_id
+        const wonLotteryIds = oneYuanOrders
+          .filter((o: any) => {
+            const lottery = lotteriesMap.get(o.lottery_id);
+            return lottery && lottery.status === 'COMPLETED' && lottery.winning_user_id === userId;
+          })
+          .map((o: any) => o.lottery_id)
+          .filter(Boolean);
+        
+        let prizesForOrdersMap = new Map();
+        if (wonLotteryIds.length > 0) {
+          const { data: prizesForOrders } = await supabase
+            .from('prizes')
+            .select('id, lottery_id')
+            .eq('user_id', userId)
+            .in('lottery_id', wonLotteryIds);
+          if (prizesForOrders) {
+            prizesForOrdersMap = new Map(prizesForOrders.map((p: any) => [p.lottery_id, p.id]));
+          }
+        }
+
         oneYuanOrders.forEach((order: any) => {
           const lottery = lotteriesMap.get(order.lottery_id);
           const orderType = order.type || 'LOTTERY_PURCHASE';
@@ -390,6 +411,8 @@ serve(async (req) => {
             original_price: lottery?.ticket_price || order.total_amount,
             price_per_person: order.total_amount,
             lottery_id: order.lottery_id,
+            // 中奖关联的 prize_id，用于跳转到物流详情页
+            prize_id: orderStatus === 'WON' ? prizesForOrdersMap.get(order.lottery_id) : null,
             // 额外信息
             quantity: order.quantity || 1,
             payment_method: order.payment_method,

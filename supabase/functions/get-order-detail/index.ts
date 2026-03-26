@@ -131,7 +131,7 @@ serve(async (req) => {
             .select('total_amount')
             .eq('user_id', user_id)
             .eq('lottery_id', prizeData.lottery_id as string)
-            .in('status', ['PAID', 'COMPLETED'])
+            .in('status', ['PAID', 'COMPLETED', 'PENDING'])
           
           if (purchaseOrders && purchaseOrders.length > 0) {
             totalPurchaseAmount = purchaseOrders.reduce((sum: number, o: any) => sum + (Number(o.total_amount) || 0), 0)

@@ -406,7 +406,8 @@
     "walletNotFound": "Кошелёк не найден, пожалуйста, пополните баланс",
     "withdrawal": "Вывод",
     "totalBalance": "Общий баланс",
-    "frozenBalance": "Замороженный баланс"
+    "frozenBalance": "Замороженный баланс",
+    "depositHint": "Быстрое пополнение баланса"
   },
   "order": {
     "myOrders": "Мои заказы",
@@ -1811,7 +1812,8 @@
     "sourceDepositBonus": "Бонус за пополнение",
     "sourceLotteryRefund": "Возврат за проигрыш",
     "sourcePromotion": "Акционная награда",
-    "remaining": "Доступно {{count}} шт."
+    "remaining": "Доступно {{count}} шт.",
+    "viewMyCoupons": "Посмотреть мои купоны"
   },
   "payment": {
     "actualPayment": "Фактическая оплата",
