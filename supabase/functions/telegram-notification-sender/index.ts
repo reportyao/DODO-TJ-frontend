@@ -3,10 +3,11 @@
  *
  * 功能说明：
  *   - 消费 notification_queue 表中 status='pending' 的通知
- *   - 仅处理以下两种通知类型：
+ *   - 仅处理以下通知类型：
  *       1. promoter_deposit  — 地推充值到账（含赠送积分）
  *       2. wallet_deposit    — 普通充值到账
  *       3. batch_arrived     — 提货码通知（商品到达自提点）
+ *       4. lottery_result    — 开奖中奖通知
  *   - 其他类型的通知直接标记为 skipped，不发送
  *   - 使用阿里云 CAMS SendChatappMessage API（V3 签名 ACS3-HMAC-SHA256）
  *
@@ -17,7 +18,8 @@
  *   ALIYUN_CAMS_CUST_SPACE_ID  阿里云 CAMS 实例 ID（CustSpaceId）
  *   ALIYUN_CAMS_TEMPLATE_DEPOSIT   充值到账模板 Code（在阿里云 CAMS 控制台获取）
  *   ALIYUN_CAMS_TEMPLATE_PICKUP    提货码模板 Code（在阿里云 CAMS 控制台获取）
- *   ALIYUN_CAMS_REGION         API 区域，默认 cn-hangzhou
+ *   ALIYUN_CAMS_TEMPLATE_LOTTERY   开奖通知模板 Code（在阿里云 CAMS 控制台获取）
+ *   ALIYUN_CAMS_REGION         API 区域，默认 ap-southeast-1
  *
  * 模板说明（需在阿里云 CAMS 控制台预先创建并审核通过）：
  *
@@ -71,6 +73,7 @@ interface AliyunConfig {
   templateDeposit: string;
   templatePickup: string;
   templateGroupBuyWin: string;
+  templateLottery: string;
   region: string;
   endpoint: string;
 }
@@ -81,6 +84,7 @@ const SUPPORTED_NOTIFICATION_TYPES = new Set([
   'wallet_deposit',    // 普通充值到账
   'batch_arrived',     // 提货码通知
   'group_buy_win',     // 包团成功通知
+  'lottery_result',    // 开奖中奖通知
 ]);
 
 // 语言代码映射（用户 preferred_language → WhatsApp 语言代码）
@@ -371,8 +375,8 @@ function buildDepositTemplateParams(
   }
 
   return {
-    '1': String(amount),
-    '2': bonusText,
+    'amount': String(amount),
+    'bonus': bonusText,
   };
 }
 
@@ -389,10 +393,9 @@ function buildPickupTemplateParams(
   data: Record<string, unknown>
 ): CamsTemplateParam {
   return {
-    '1': String(data.product_name ?? ''),
-    '2': String(data.pickup_point_name ?? ''),
-    '3': String(data.pickup_code ?? ''),
-    '4': String(data.expires_at ?? ''),
+    'product': String(data.product_name ?? ''),
+    'location': String(data.pickup_point_name ?? ''),
+    'code': String(data.pickup_code ?? ''),
   };
 }
 
@@ -428,13 +431,23 @@ function resolveTemplate(
       return { templateCode, templateParams: params, waLanguage };
     }
     case 'group_buy_win': {
-      // 包团成功通知模板变量：{{1}} = 商品名称, {{2}} = 团购码
+      // 包团成功通知模板变量
       const params: CamsTemplateParam = {
-        '1': String(data.product_name ?? ''),
-        '2': String(data.session_code ?? ''),
+        'product': String(data.product_name ?? ''),
+        'session_code': String(data.session_code ?? ''),
       };
       const templateCode = config.templateGroupBuyWin;
-      if (!templateCode) return null; // 未配置模板时跳过
+      if (!templateCode) return null;
+      return { templateCode, templateParams: params, waLanguage };
+    }
+    case 'lottery_result': {
+      // 开奖中奖通知模板变量：$(product) = 商品名, $(draw_number) = 期号
+      const params: CamsTemplateParam = {
+        'product': String(data.product_name ?? ''),
+        'draw_number': String(data.lottery_code ?? data.draw_number ?? ''),
+      };
+      const templateCode = config.templateLottery;
+      if (!templateCode) return null;
       return { templateCode, templateParams: params, waLanguage };
     }
     default:
@@ -623,7 +636,8 @@ serve(async (req: Request) => {
   const aliyunTemplateDeposit = Deno.env.get('ALIYUN_CAMS_TEMPLATE_DEPOSIT') ?? '';
   const aliyunTemplatePickup = Deno.env.get('ALIYUN_CAMS_TEMPLATE_PICKUP') ?? '';
   const aliyunTemplateGroupBuyWin = Deno.env.get('ALIYUN_CAMS_TEMPLATE_GROUP_BUY_WIN') ?? '';
-  const aliyunRegion = Deno.env.get('ALIYUN_CAMS_REGION') ?? 'cn-hangzhou';
+  const aliyunTemplateLottery = Deno.env.get('ALIYUN_CAMS_TEMPLATE_LOTTERY') ?? '';
+  const aliyunRegion = Deno.env.get('ALIYUN_CAMS_REGION') ?? 'ap-southeast-1';
 
   // 验证必要的环境变量
   const missingVars: string[] = [];
@@ -654,10 +668,11 @@ serve(async (req: Request) => {
     templateDeposit: aliyunTemplateDeposit,
     templatePickup: aliyunTemplatePickup,
     templateGroupBuyWin: aliyunTemplateGroupBuyWin,
+    templateLottery: aliyunTemplateLottery,
     region: aliyunRegion,
     // CAMS API endpoint：cams.{region}.aliyuncs.com
     // 注意：部分区域使用统一 endpoint cams.aliyuncs.com
-    endpoint: `cams.aliyuncs.com`,
+    endpoint: `cams.ap-southeast-1.aliyuncs.com`,
   };
 
   // 初始化 Supabase 客户端
