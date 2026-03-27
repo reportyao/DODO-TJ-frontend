@@ -1,4 +1,5 @@
 import { Suspense, useEffect } from "react"
+import { useTranslation } from 'react-i18next'
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import { Toaster } from "react-hot-toast"
 import PWAInstallPrompt from "./components/PWAInstallPrompt"
@@ -74,6 +75,8 @@ const DebugPage = lazyWithRetry(() => import("./pages/DebugPage"))
 
 
 function App() {
+  const { t, i18n } = useTranslation()
+
   // 应用成功挂载后：清除 chunk reload 标记 + 静默预加载核心页面
   useEffect(() => {
     clearChunkReloadFlag()
@@ -85,6 +88,48 @@ function App() {
       ProfilePage,         // 个人中心（底部导航第4个）
     ])
   }, [])
+
+  // 动态更新 SEO meta 标签（随语言切换同步更新）
+  useEffect(() => {
+    // 更新 title
+    document.title = t('seo.title')
+
+    // 更新 description
+    let descMeta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null
+    if (!descMeta) {
+      descMeta = document.createElement('meta')
+      descMeta.name = 'description'
+      document.head.appendChild(descMeta)
+    }
+    descMeta.content = t('seo.description')
+
+    // 更新 keywords
+    let keywordsMeta = document.querySelector('meta[name="keywords"]') as HTMLMetaElement | null
+    if (!keywordsMeta) {
+      keywordsMeta = document.createElement('meta')
+      keywordsMeta.name = 'keywords'
+      document.head.appendChild(keywordsMeta)
+    }
+    keywordsMeta.content = t('seo.keywords')
+
+    // 更新 og:title
+    let ogTitle = document.querySelector('meta[property="og:title"]') as HTMLMetaElement | null
+    if (!ogTitle) {
+      ogTitle = document.createElement('meta')
+      ogTitle.setAttribute('property', 'og:title')
+      document.head.appendChild(ogTitle)
+    }
+    ogTitle.content = t('seo.title')
+
+    // 更新 og:description
+    let ogDesc = document.querySelector('meta[property="og:description"]') as HTMLMetaElement | null
+    if (!ogDesc) {
+      ogDesc = document.createElement('meta')
+      ogDesc.setAttribute('property', 'og:description')
+      document.head.appendChild(ogDesc)
+    }
+    ogDesc.content = t('seo.description')
+  }, [i18n.language, t])
 
   return (
     <RealtimeNotificationsProvider>

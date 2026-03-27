@@ -1843,5 +1843,16 @@
   "network": {
     "offline": "当前无网络连接，显示的是缓存数据",
     "slow": "当前网络较慢，加载可能需要更长时间"
+  },
+  "product": {
+    "startFrom": "福气购买，最低",
+    "perUnit": "TJS可以购买",
+    "luckyBuy": "福气购买",
+    "minPrice": "最低1TJS可以购买"
+  },
+  "seo": {
+    "title": "DODO - 充值送50%TJS",
+    "description": "来自中国，全塔吉克斯坦最便宜的社区电商平台。充值即送50%TJS补贴，中国直邮，全场0运费。",
+    "keywords": "DODO,塔吉克斯坦,中国商品,社区电商,补贴,优惠,购物,TJS"
   }
 }
