@@ -1831,5 +1831,9 @@
   "network": {
     "offline": "当前无网络连接，显示的是缓存数据",
     "slow": "当前网络较慢，加载可能需要更长时间"
+  },
+  "product": {
+    "startFrom": "低至",
+    "perUnit": "份"
   }
 }

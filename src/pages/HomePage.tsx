@@ -78,13 +78,15 @@ const HomePage: React.FC = () => {
     id: l.id,
     type: 'lottery' as const,
     image_url: l.image_url,
-    price: l.ticket_price,
+    price: (l as any).original_price || l.ticket_price * l.total_tickets,
+    ticket_price: l.ticket_price,
     title_i18n: l.title_i18n as Record<string, string> | null,
     name_i18n: l.name_i18n as Record<string, string> | null,
     sold_tickets: l.sold_tickets,
     total_tickets: l.total_tickets,
     status: l.status,
     created_at: l.created_at,
+    price_comparisons: (l as any).price_comparisons || null,
   }));
 
   // 加载中：仅在用户状态初始化期间显示（不阻塞商品列表）
