@@ -28,7 +28,7 @@ const SubsidyPlanPage: React.FC = () => {
       title: t('subsidy.section5Title'),
       content: t('subsidy.section5Content'),
     },
-  ];
+  ].filter(section => section.title.trim() !== '');
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white pb-20">
