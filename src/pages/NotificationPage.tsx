@@ -380,7 +380,7 @@ const NotificationPage: React.FC = () => {
 
       // 9. 全款购买商品成功消息
       try {
-        const { data: fpOrders, error: fpError } = await supabase
+        const { data: fpOrders, error: fpError } = await (supabase as any)
           .from('full_purchase_orders')
           .select('*, lottery:lotteries(title_i18n)')
           .eq('user_id', user.id)
@@ -410,7 +410,7 @@ const NotificationPage: React.FC = () => {
       // 10. 商品物流变化消息 + 提货码生成消息 + 提货码核销消息
       try {
         // 从 full_purchase_orders 获取物流和提货状态
-        const { data: fpLogistics, error: fpLogError } = await supabase
+        const { data: fpLogistics, error: fpLogError } = await (supabase as any)
           .from('full_purchase_orders')
           .select('id, logistics_status, pickup_status, pickup_code, created_at, updated_at, picked_up_at, lottery:lotteries(title_i18n)')
           .eq('user_id', user.id)
