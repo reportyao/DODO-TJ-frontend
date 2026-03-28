@@ -87,11 +87,13 @@ const SUPPORTED_NOTIFICATION_TYPES = new Set([
   'lottery_result',    // 开奖中奖通知
 ]);
 
-// 语言代码映射（用户 preferred_language → WhatsApp 语言代码）
+// 语言代码映射（用户 preferred_language → WhatsApp 模板语言代码）
+// 注意：阿里云 CAMS 上塔吉克语模板使用 fa（波斯语）作为语言代码，因为 WhatsApp 官方不支持 tg 代码
+// zh 回退到 ru，因为当前未创建 zh_CN 模板
 const LANGUAGE_CODE_MAP: Record<string, string> = {
-  zh: 'zh_CN',
+  zh: 'ru',   // 中文用户回退到俄语模板（待创建 zh_CN 模板后可改回 'zh_CN'）
   ru: 'ru',
-  tg: 'tg',  // 塔吉克语，如阿里云不支持则回退到 ru
+  tg: 'fa',   // 塔吉克语用户使用 fa（波斯语）模板，内容实际为塔吉克语
 };
 
 // ============================================================
@@ -271,9 +273,9 @@ async function sendCamsMessage(
   const action = 'SendChatappMessage';
   const apiVersion = '2020-06-06';
 
-  // 规范化手机号：确保以 + 开头（E.164 格式）
-  const normalizedTo = to.startsWith('+') ? to : `+${to}`;
-  const normalizedFrom = config.from.startsWith('+') ? config.from : `+${config.from}`;
+  // 规范化手机号：阿里云 CAMS 要求纯数字格式（不带 + 号）
+  const normalizedTo = to.replace(/^\+/, '');
+  const normalizedFrom = config.from.replace(/^\+/, '');
 
   // 构造请求体
   const requestPayload: SendChatappMessageRequest = {
@@ -413,7 +415,7 @@ function resolveTemplate(
   data: Record<string, unknown>,
   lang: string
 ): { templateCode: string; templateParams: CamsTemplateParam; waLanguage: string } | null {
-  const waLanguage = LANGUAGE_CODE_MAP[lang] ?? LANGUAGE_CODE_MAP['tg'];
+  const waLanguage = LANGUAGE_CODE_MAP[lang] ?? 'fa';  // 默认回退到 fa（塔吉克语模板）
 
   switch (notificationType) {
     case 'promoter_deposit':
