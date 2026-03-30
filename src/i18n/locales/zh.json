@@ -407,7 +407,9 @@
     "withdrawal": "提现",
     "totalBalance": "总余额",
     "frozenBalance": "冻结余额",
-    "depositHint": "快速充值余额"
+    "depositHint": "快速充值余额",
+    "todayCommission": "今日佣金",
+    "commissionUnit": "积分"
   },
   "notification": {
     "notifications": "通知中心",
@@ -1226,7 +1228,12 @@
     "statusPendingClaim": "待领取",
     "participationCode": "参与码",
     "sessionCode": "场次编号",
-    "pickupPointPhotos": "自提点照片"
+    "pickupPointPhotos": "自提点照片",
+    "locationEnabled": "已定位",
+    "locationDisabled": "未获取位置",
+    "nearest": "最近",
+    "viewAllPoints": "查看全部自提点",
+    "distance": "距离"
   },
   "notifications": {
     "congratulations": "恭喜入选!",

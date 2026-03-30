@@ -5,14 +5,12 @@ import { useTranslation } from 'react-i18next'
 // 调试面板通过事件触发，不需要直接导入
 import { 
   HomeIcon, 
-  SparklesIcon, 
   CreditCardIcon, 
   UserIcon,
   PhotoIcon
 } from '@heroicons/react/24/outline'
 import {
   HomeIcon as HomeIconSolid,
-  SparklesIcon as SparklesIconSolid,
   CreditCardIcon as CreditCardIconSolid,
   UserIcon as UserIconSolid,
   PhotoIcon as PhotoIconSolid
@@ -38,12 +36,6 @@ export const BottomNavigation: React.FC = () => {
       path: '/showoff',
       icon: PhotoIcon,
       activeIcon: PhotoIconSolid,
-    },
-    {
-      name: 'AI',
-      path: '/ai',
-      icon: SparklesIcon,
-      activeIcon: SparklesIconSolid,
     },
     {
       name: t('nav.wallet'),

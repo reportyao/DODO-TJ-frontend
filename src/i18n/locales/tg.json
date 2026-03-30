@@ -407,7 +407,9 @@
     "withdrawal": "Баровардан",
     "totalBalance": "Тавозуни умумӣ",
     "frozenBalance": "Тавозуни яхкарда",
-    "depositHint": "Пуркунии тези баланс"
+    "depositHint": "Пуркунии тези баланс",
+    "todayCommission": "Комиссияи имрӯза",
+    "commissionUnit": "Холҳо"
   },
   "order": {
     "myOrders": "Фармоишҳои ман",
@@ -1227,7 +1229,12 @@
     "statusPendingClaim": "Дар интизории гирифтан",
     "participationCode": "Рамзи иштирок",
     "sessionCode": "Рамзи ҷаласа",
-    "pickupPointPhotos": "Сурати нуқтаи қабул"
+    "pickupPointPhotos": "Сурати нуқтаи қабул",
+    "locationEnabled": "Ҷойгиршавӣ муайян шуд",
+    "locationDisabled": "Ҷойгиршавӣ муайян нашуд",
+    "nearest": "Наздиктарин",
+    "viewAllPoints": "Ҳамаи нуқтаҳои қабулро нишон диҳед",
+    "distance": "Масофа"
   },
   "notifications": {
     "congratulations": "Табрик бо бурд!",

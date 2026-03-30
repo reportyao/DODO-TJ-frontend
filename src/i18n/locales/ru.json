@@ -407,7 +407,9 @@
     "withdrawal": "Вывод",
     "totalBalance": "Общий баланс",
     "frozenBalance": "Замороженный баланс",
-    "depositHint": "Быстрое пополнение баланса"
+    "depositHint": "Быстрое пополнение баланса",
+    "todayCommission": "Комиссия за сегодня",
+    "commissionUnit": "Бонусы"
   },
   "order": {
     "myOrders": "Мои заказы",
@@ -1227,7 +1229,12 @@
     "statusPendingClaim": "Ожидает получения",
     "participationCode": "Код участия",
     "sessionCode": "Код сессии",
-    "pickupPointPhotos": "Фото пункта выдачи"
+    "pickupPointPhotos": "Фото пункта выдачи",
+    "locationEnabled": "Определено",
+    "locationDisabled": "Местоположение не определено",
+    "nearest": "Ближайший",
+    "viewAllPoints": "Показать все пункты выдачи",
+    "distance": "Расстояние"
   },
   "notifications": {
     "congratulations": "Поздравляем с выигрышем!",
