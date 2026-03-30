@@ -408,7 +408,7 @@
     "totalBalance": "Общий баланс",
     "frozenBalance": "Замороженный баланс",
     "depositHint": "Быстрое пополнение баланса",
-    "todayCommission": "Комиссия за сегодня",
+    "todayCommission": "Заработок за сегодня",
     "commissionUnit": "Бонусы"
   },
   "order": {
