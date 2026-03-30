@@ -469,9 +469,10 @@ async function handleGetTodayLogs(supabaseClient: any, userId: string) {
   // 转回 UTC
   const todayStartUtc = new Date(todayStart.getTime() - offsetMs)
 
+  // 第一步：查询今日核销日志
   const { data: logs, error } = await supabaseClient
     .from('pickup_logs')
-    .select('id, prize_id, pickup_code, operation_type, order_type, source, notes, proof_image_url, created_at, prizes(prize_name, prize_image)')
+    .select('id, prize_id, pickup_code, operation_type, order_type, source, notes, proof_image_url, created_at')
     .eq('operator_id', userId)
     .gte('created_at', todayStartUtc.toISOString())
     .in('operation_type', ['FRONTEND_VERIFY', 'STAFF_VERIFY'])
@@ -480,20 +481,123 @@ async function handleGetTodayLogs(supabaseClient: any, userId: string) {
     console.error('[FrontendVerifyPickup] Get today logs error:', error)
     throw new Error('获取今日记录失败')
   }
+
+  // 第二步：根据 order_type 分组查询不同表的商品信息
+  let prizeMap: Record<string, { prize_name: string; prize_image: string }> = {}
+  const lotteryIds: string[] = []
+  const groupBuyIds: string[] = []
+  const fullPurchaseIds: string[] = []
+  for (const log of (logs || [])) {
+    if (!log.prize_id) continue
+    if (log.order_type === 'group_buy') groupBuyIds.push(log.prize_id)
+    else if (log.order_type === 'full_purchase') fullPurchaseIds.push(log.prize_id)
+    else lotteryIds.push(log.prize_id) // 默认归为 lottery
+  }
+
+  // 查询 prizes 表（积分商城）
+  if (lotteryIds.length > 0) {
+    const { data: prizes } = await supabaseClient
+      .from('prizes')
+      .select('id, prize_name, prize_image, lottery_id')
+      .in('id', lotteryIds)
+    if (prizes) {
+      // 对于没有 prize_name 的，尝试从 lotteries 表获取
+      const missingLotteryIds = prizes.filter((p: any) => !p.prize_name && p.lottery_id).map((p: any) => p.lottery_id)
+      let lotteryMap: Record<string, any> = {}
+      if (missingLotteryIds.length > 0) {
+        const { data: lotteries } = await supabaseClient
+          .from('lotteries')
+          .select('id, title, title_i18n, image_url')
+          .in('id', missingLotteryIds)
+        if (lotteries) {
+          for (const l of lotteries) lotteryMap[l.id] = l
+        }
+      }
+      for (const p of prizes) {
+        const lottery = lotteryMap[p.lottery_id] || {}
+        prizeMap[p.id] = {
+          prize_name: p.prize_name || getLocalizedText(lottery.title_i18n) || lottery.title || '',
+          prize_image: p.prize_image || lottery.image_url || '',
+        }
+      }
+    }
+  }
+
+  // 查询 group_buy_results 表（拼团）
+  if (groupBuyIds.length > 0) {
+    const { data: gbResults } = await supabaseClient
+      .from('group_buy_results')
+      .select('id, product_id')
+      .in('id', groupBuyIds)
+    if (gbResults) {
+      const productIds = gbResults.filter((r: any) => r.product_id).map((r: any) => r.product_id)
+      let productMap: Record<string, any> = {}
+      if (productIds.length > 0) {
+        const { data: products } = await supabaseClient
+          .from('group_buy_products')
+          .select('id, title, title_i18n, name_i18n, image_url')
+          .in('id', productIds)
+        if (products) {
+          for (const prod of products) productMap[prod.id] = prod
+        }
+      }
+      for (const r of gbResults) {
+        const prod = productMap[r.product_id] || {}
+        prizeMap[r.id] = {
+          prize_name: getLocalizedText(prod.name_i18n) || getLocalizedText(prod.title_i18n) || prod.title || '',
+          prize_image: prod.image_url || '',
+        }
+      }
+    }
+  }
+
+  // 查询 full_purchase_orders 表（全款购买）
+  if (fullPurchaseIds.length > 0) {
+    const { data: fpOrders } = await supabaseClient
+      .from('full_purchase_orders')
+      .select('id, metadata, lottery_id')
+      .in('id', fullPurchaseIds)
+    if (fpOrders) {
+      // 对于 metadata 中没有商品信息的，尝试从 lotteries 获取
+      const fpLotteryIds = fpOrders.filter((o: any) => o.lottery_id).map((o: any) => o.lottery_id)
+      let fpLotteryMap: Record<string, any> = {}
+      if (fpLotteryIds.length > 0) {
+        const { data: lotteries } = await supabaseClient
+          .from('lotteries')
+          .select('id, title, title_i18n, image_url')
+          .in('id', fpLotteryIds)
+        if (lotteries) {
+          for (const l of lotteries) fpLotteryMap[l.id] = l
+        }
+      }
+      for (const o of fpOrders) {
+        const meta = o.metadata || {}
+        const lottery = fpLotteryMap[o.lottery_id] || {}
+        prizeMap[o.id] = {
+          prize_name: getLocalizedText(meta.product_title_i18n) || meta.product_title || getLocalizedText(lottery.title_i18n) || lottery.title || '',
+          prize_image: meta.product_image || lottery.image_url || '',
+        }
+      }
+    }
+  }
+
   // 整理日志，附加商品信息
-  const enrichedLogs = (logs || []).map((log: any) => ({
-    id: log.id,
-    prize_id: log.prize_id,
-    pickup_code: log.pickup_code,
-    operation_type: log.operation_type,
-    order_type: log.order_type,
-    source: log.source,
-    notes: log.notes,
-    proof_image_url: log.proof_image_url,
-    created_at: log.created_at,
-    prize_name: log.prizes?.prize_name || null,
-    prize_image: log.prizes?.prize_image || null,
-  }))
+  const enrichedLogs = (logs || []).map((log: any) => {
+    const prize = prizeMap[log.prize_id] || {}
+    return {
+      id: log.id,
+      prize_id: log.prize_id,
+      pickup_code: log.pickup_code,
+      operation_type: log.operation_type,
+      order_type: log.order_type,
+      source: log.source,
+      notes: log.notes,
+      proof_image_url: log.proof_image_url,
+      created_at: log.created_at,
+      prize_name: prize.prize_name || null,
+      prize_image: prize.prize_image || null,
+    }
+  })
   return {
     success: true,
     data: {
