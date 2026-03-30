@@ -82,6 +82,8 @@ interface TodayLog {
   order_type: string | null
   notes: string | null
   created_at: string
+  prize_name: string | null
+  prize_image: string | null
 }
 
 // ============================================================
@@ -735,11 +737,29 @@ const PickupVerifyPage: React.FC = () => {
                 className="px-4 py-3 flex items-center justify-between"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
-                    <CheckCircleIcon className="w-4 h-4 text-success" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 font-mono">
+                  {/* 商品图片 */}
+                  {log.prize_image ? (
+                    <img
+                      src={log.prize_image}
+                      alt={log.prize_name || ''}
+                      className="w-10 h-10 rounded-lg object-cover flex-shrink-0 bg-gray-100"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
+                      <CheckCircleIcon className="w-5 h-5 text-success" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    {/* 商品标题（多语言） */}
+                    {log.prize_name && (
+                      <p className="text-sm font-medium text-gray-900 truncate max-w-[160px]">
+                        {log.prize_name}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500 font-mono">
                       {log.pickup_code}
                     </p>
                     {log.order_type && (
@@ -765,7 +785,7 @@ const PickupVerifyPage: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+            className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50"
             onClick={() => setShowConfirmModal(false)}
           >
             <motion.div
@@ -773,7 +793,8 @@ const PickupVerifyPage: React.FC = () => {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white rounded-t-2xl w-full max-w-lg p-6 pb-8"
+              className="bg-white rounded-t-2xl w-full max-w-lg p-6"
+              style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))' }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-5" />

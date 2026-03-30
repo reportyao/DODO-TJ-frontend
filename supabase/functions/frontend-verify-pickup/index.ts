@@ -471,22 +471,34 @@ async function handleGetTodayLogs(supabaseClient: any, userId: string) {
 
   const { data: logs, error } = await supabaseClient
     .from('pickup_logs')
-    .select('id, prize_id, pickup_code, operation_type, order_type, source, notes, proof_image_url, created_at')
+    .select('id, prize_id, pickup_code, operation_type, order_type, source, notes, proof_image_url, created_at, prizes(prize_name, prize_image)')
     .eq('operator_id', userId)
     .gte('created_at', todayStartUtc.toISOString())
     .in('operation_type', ['FRONTEND_VERIFY', 'STAFF_VERIFY'])
     .order('created_at', { ascending: false })
-
   if (error) {
     console.error('[FrontendVerifyPickup] Get today logs error:', error)
     throw new Error('获取今日记录失败')
   }
-
+  // 整理日志，附加商品信息
+  const enrichedLogs = (logs || []).map((log: any) => ({
+    id: log.id,
+    prize_id: log.prize_id,
+    pickup_code: log.pickup_code,
+    operation_type: log.operation_type,
+    order_type: log.order_type,
+    source: log.source,
+    notes: log.notes,
+    proof_image_url: log.proof_image_url,
+    created_at: log.created_at,
+    prize_name: log.prizes?.prize_name || null,
+    prize_image: log.prizes?.prize_image || null,
+  }))
   return {
     success: true,
     data: {
-      logs: logs || [],
-      count: logs?.length || 0,
+      logs: enrichedLogs,
+      count: enrichedLogs.length,
     }
   }
 }
