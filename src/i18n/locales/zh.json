@@ -1854,5 +1854,50 @@
     "title": "DODO - 充值送50%TJS",
     "description": "来自中国，全塔吉克斯坦最便宜的社区电商平台。充值即送50%TJS补贴，中国直邮，全场0运费。",
     "keywords": "DODO,塔吉克斯坦,中国商品,社区电商,补贴,优惠,购物,TJS"
+  },
+  "pickupVerify": {
+    "pageTitle": "提货核销",
+    "inputLabel": "提货码",
+    "inputPlaceholder": "请输入6位提货码",
+    "searchBtn": "查询",
+    "searching": "查询中...",
+    "verifyBtn": "确认核销",
+    "verifying": "核销中...",
+    "cancel": "取消",
+    "confirmTitle": "确认核销",
+    "confirmMsg": "确认核销此提货码？核销后不可撤销。",
+    "successMsg": "核销成功！",
+    "notFoundMsg": "未找到该提货码对应的订单",
+    "statusErrorMsg": "该订单状态不允许核销",
+    "notLoggedIn": "请先登录",
+    "productName": "商品名称",
+    "userName": "用户",
+    "pickupCode": "提货码",
+    "pickupPoint": "自提点",
+    "expiresAt": "过期时间",
+    "takePhoto": "拍照留证",
+    "tapToPhoto": "点击拍照",
+    "photoUploaded": "照片已上传",
+    "photoUploadFailed": "照片上传失败",
+    "todayRecords": "今日核销记录",
+    "todayCount": "今日已核销",
+    "noRecords": "暂无核销记录",
+    "autoResetHint": "核销成功后自动重置",
+    "menuTitle": "提货核销",
+    "menuSubtitle": "核销员工作台",
+    "sourceType": {
+      "lottery": "积分商城",
+      "group_buy": "拼团",
+      "full_purchase": "全款购买"
+    },
+    "status": {
+      "pendingClaim": "待领取",
+      "pendingPickup": "待提货",
+      "readyForPickup": "可提货",
+      "pickedUp": "已提货",
+      "expired": "已过期"
+    },
+    "remainingDays": "剩余 {{days}} 天",
+    "menuSubtitleWithPoint": "{{point}} 核销通道"
   }
 }

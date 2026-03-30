@@ -1854,5 +1854,50 @@
     "title": "DODO - Пур кунед ва 50% TJS тӯҳфа гиред",
     "description": "Аз Чин — арзонтарин платформаи тиҷорати ҷамъиятӣ дар Тоҷикистон. Ҳисобро пур кунед ва 50% бонус TJS гиред. Фиристодани мустақим аз Чин, расонидан бепул.",
     "keywords": "DODO,Тоҷикистон,молҳои Чин,харидории фоиданок,бонус,тахфиф,мағозаи онлайн,TJS"
+  },
+  "pickupVerify": {
+    "pageTitle": "Тасдиқи гирифтан",
+    "inputLabel": "Рамзи гирифтан",
+    "inputPlaceholder": "Рамзи 6-рақамиро ворид кунед",
+    "searchBtn": "Ҷустуҷӯ",
+    "searching": "Ҷустуҷӯ...",
+    "verifyBtn": "Тасдиқ кардан",
+    "verifying": "Коркард...",
+    "cancel": "Бекор кардан",
+    "confirmTitle": "Тасдиқи гирифтан",
+    "confirmMsg": "Тасдиқи ин рамзро мекунед? Ин амал бебозгашт аст.",
+    "successMsg": "Тасдиқ бомуваффақият анҷом шуд!",
+    "notFoundMsg": "Фармоиш бо ин рамз ёфт нашуд",
+    "statusErrorMsg": "Ҳолати фармоиш иҷозати тасдиқро намедиҳад",
+    "notLoggedIn": "Лутфан ворид шавед",
+    "productName": "Маҳсулот",
+    "userName": "Корбар",
+    "pickupCode": "Рамзи гирифтан",
+    "pickupPoint": "Нуқтаи гирифтан",
+    "expiresAt": "Мӯҳлати амал",
+    "takePhoto": "Акс гирифтан",
+    "tapToPhoto": "Барои акс зер кунед",
+    "photoUploaded": "Акс бор шуд",
+    "photoUploadFailed": "Хатои боркунии акс",
+    "todayRecords": "Сабтҳои имрӯза",
+    "todayCount": "Имрӯз тасдиқшуда",
+    "noRecords": "Сабтҳо нест",
+    "autoResetHint": "Баъди тасдиқ худкор барқарор мешавад",
+    "menuTitle": "Тасдиқи гирифтан",
+    "menuSubtitle": "Ҷойи кории оператор",
+    "sourceType": {
+      "lottery": "Мағозаи холҳо",
+      "group_buy": "Харидҳои гурӯҳӣ",
+      "full_purchase": "Пардохти пурра"
+    },
+    "status": {
+      "pendingClaim": "Дар интизори гирифтан",
+      "pendingPickup": "Дар интизори додан",
+      "readyForPickup": "Барои додан омода",
+      "pickedUp": "Гирифта шуд",
+      "expired": "Мӯҳлаташ гузашт"
+    },
+    "remainingDays": "{{days}} рӯз монда",
+    "menuSubtitleWithPoint": "Нуқтаи додан: {{point}}"
   }
 }

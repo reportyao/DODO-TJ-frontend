@@ -55,6 +55,7 @@ const PendingPickupPage = lazyWithRetry(() => import("./pages/PendingPickupPage"
 const SubsidyPlanPage = lazyWithRetry(() => import("./pages/SubsidyPlanPage"))
 const PromoterCenterPage = lazyWithRetry(() => import("./pages/PromoterCenterPage"))
 const PromoterDepositPage = lazyWithRetry(() => import("./pages/PromoterDepositPage"))
+const PickupVerifyPage = lazyWithRetry(() => import("./pages/PickupVerifyPage"))
 const CouponListPage = lazyWithRetry(() => import("./pages/CouponListPage"))
 
 // 设置与个人资料编辑
@@ -194,6 +195,7 @@ function App() {
               <Route path="/showoff/my" element={<AuthGuard><ShowoffPage /></AuthGuard>} />
               <Route path="/promoter-center" element={<AuthGuard><PromoterCenterPage /></AuthGuard>} />
               <Route path="/promoter-deposit" element={<AuthGuard><PromoterDepositPage /></AuthGuard>} />
+              <Route path="/pickup-verify" element={<AuthGuard><PickupVerifyPage /></AuthGuard>} />
               <Route path="/market/my-resales" element={<AuthGuard><MarketPage /></AuthGuard>} />
               <Route path="/coupons" element={<AuthGuard><CouponListPage /></AuthGuard>} />
               <Route path="/settings" element={<AuthGuard><SettingsPage /></AuthGuard>} />

@@ -29,7 +29,7 @@ import toast from 'react-hot-toast'
 import QRCode from 'qrcode'
 
 const ProfilePage: React.FC = () => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { user, logout } = useUser()
   const navigate = useNavigate()
 
@@ -55,6 +55,45 @@ const ProfilePage: React.FC = () => {
   const shortUserId = useMemo(() => {
     if (!user?.id) return '------'
     return user.id.substring(0, 8).toUpperCase()
+  }, [user?.id])
+
+  // ========== 核销员身份验证 ==========
+  const [isPickupStaff, setIsPickupStaff] = useState(false)
+  const [staffPointName, setStaffPointName] = useState('')
+
+  useEffect(() => {
+    const checkStaffStatus = async () => {
+      if (!user?.id) return
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/rpc/check_pickup_staff_status`,
+          {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ p_user_id: user.id })
+          }
+        )
+        if (response.ok) {
+          const data = await response.json()
+          setIsPickupStaff(data?.is_staff === true)
+          if (data?.point_name_i18n) {
+            const lang = i18n.language as 'zh' | 'ru' | 'tg'
+            setStaffPointName(
+              data.point_name_i18n[lang] || data.point_name || ''
+            )
+          } else if (data?.point_name) {
+            setStaffPointName(data.point_name)
+          }
+        }
+      } catch (e) {
+        console.log('[ProfilePage] Pickup staff check not available')
+      }
+    }
+    checkStaffStatus()
   }, [user?.id])
 
   // ========== 市场合伙人身份验证 ==========
@@ -194,6 +233,16 @@ const ProfilePage: React.FC = () => {
       subtitle: t('showoff.viewMyShowoffs'),
       action: () => navigate('/showoff/my'),
     },
+    // 核销员入口 - 仅对核销员显示（放在推广者之前，更突出）
+    ...(isPickupStaff ? [{
+      icon: CheckCircleIcon,
+      title: t('pickupVerify.menuTitle') || '提货核销',
+      subtitle: staffPointName
+        ? (t('pickupVerify.menuSubtitleWithPoint', { point: staffPointName }) || `${staffPointName} 核销通道`)
+        : (t('pickupVerify.menuSubtitle') || '自提点专属核销通道'),
+      action: () => navigate('/pickup-verify'),
+      highlight: true,
+    }] : []),
     // 市场合伙人入口 - 仅对活跃推广者显示
     ...(isPromoter ? [{
       icon: MegaphoneIcon,
