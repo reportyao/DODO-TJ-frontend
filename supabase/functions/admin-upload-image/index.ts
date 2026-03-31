@@ -3,6 +3,11 @@
  * 
  * 替代前端直接使用 service_role_key 上传图片的方式。
  * 管理员通过 session_token 认证后，由服务端使用 service_role 权限上传。
+ * 
+ * [v2 修复]
+ *   - 添加文件大小限制（10MB）
+ *   - 添加 bucket 白名单校验
+ *   - 添加文件类型白名单校验
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -12,6 +17,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-session-token",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+// 安全配置
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_BUCKETS = [
+  "lottery-images",
+  "payment-proofs",
+  "banners",
+  "showoff-images",
+  "avatars",
+  "product-images",
+];
+const ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/svg+xml",
+];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -57,8 +80,36 @@ serve(async (req) => {
       );
     }
 
+    // [修复 E1] 文件大小限制
+    if (file.size > MAX_FILE_SIZE) {
+      return new Response(
+        JSON.stringify({ error: `文件大小超过限制 (最大 ${MAX_FILE_SIZE / 1024 / 1024}MB)` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // [修复 E2] Bucket 白名单校验
+    if (!ALLOWED_BUCKETS.includes(bucket)) {
+      return new Response(
+        JSON.stringify({ error: `不允许上传到 bucket: ${bucket}` }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // [修复 E3] 文件类型白名单校验
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      return new Response(
+        JSON.stringify({ error: `不支持的文件类型: ${file.type}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // 生成唯一文件名
-    const ext = file.type === "image/webp" ? "webp" : file.type === "image/png" ? "png" : "jpg";
+    const ext = file.type === "image/webp" ? "webp" 
+      : file.type === "image/png" ? "png" 
+      : file.type === "image/gif" ? "gif"
+      : file.type === "image/svg+xml" ? "svg"
+      : "jpg";
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
     const filePath = folder ? `${folder}/${fileName}` : fileName;
 
@@ -83,6 +134,13 @@ serve(async (req) => {
     const { data: { publicUrl } } = supabase.storage
       .from(bucket)
       .getPublicUrl(filePath);
+
+    // 记录审计日志
+    await supabase.from("admin_audit_logs").insert({
+      admin_id: adminId,
+      action: "upload_image",
+      details: { bucket, path: filePath, size: file.size, type: file.type },
+    }).then(() => {}).catch(() => {}); // 不阻塞主流程
 
     return new Response(
       JSON.stringify({ url: publicUrl }),
