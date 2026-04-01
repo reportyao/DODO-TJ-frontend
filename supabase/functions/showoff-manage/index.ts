@@ -334,7 +334,7 @@ serve(async (req) => {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error('Error in showoff-manage function:', error)
     return new Response(
-      JSON.stringify({ error: errMsg }),
+      JSON.stringify({ error: errMsg, error_code: 'ERR_SERVER_ERROR' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }

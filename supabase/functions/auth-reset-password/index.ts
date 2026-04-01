@@ -58,14 +58,14 @@ Deno.serve(async (req) => {
       const { token, new_password } = body;
 
       if (!token || !new_password) {
-        return new Response(JSON.stringify({ error: { message: '重置Token和新密码是必填项' } }), {
+        return new Response(JSON.stringify({ error: { message: '重置Token和新密码是必填项', code: 'ERR_PARAMS_MISSING' } }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       if (new_password.length < 6) {
-        return new Response(JSON.stringify({ error: { message: '密码长度至少6位' } }), {
+        return new Response(JSON.stringify({ error: { message: '密码长度至少6位', code: 'ERR_PASSWORD_TOO_SHORT' } }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
         .single();
 
       if (sessionError || !resetSession) {
-        return new Response(JSON.stringify({ error: { message: '重置链接无效或已过期' } }), {
+        return new Response(JSON.stringify({ error: { message: '重置链接无效或已过期', code: 'ERR_INVALID_TOKEN' } }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
           .update({ is_active: false })
           .eq('id', resetSession.id);
 
-        return new Response(JSON.stringify({ error: { message: '重置链接已过期，请重新申请' } }), {
+        return new Response(JSON.stringify({ error: { message: '重置链接已过期，请重新申请', code: 'ERR_SESSION_EXPIRED' } }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
       const { phone_number } = body;
 
       if (!phone_number) {
-        return new Response(JSON.stringify({ error: { message: '手机号是必填项' } }), {
+        return new Response(JSON.stringify({ error: { message: '手机号是必填项', code: 'ERR_PHONE_PASSWORD_REQUIRED' } }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
         const cooldown = 2 * 60 * 1000; // 2分钟冷却期
         if (Date.now() - createdAt.getTime() < cooldown) {
           return new Response(JSON.stringify({
-            error: { message: '请求过于频繁，请2分钟后再试' }
+            error: { message: '请求过于频繁，请2分钟后再试', code: 'ERR_RATE_LIMIT' }
           }), {
             status: 429,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -256,7 +256,7 @@ Deno.serve(async (req) => {
 
   } catch (error: any) {
     console.error('Reset password error:', error);
-    return new Response(JSON.stringify({ error: { message: error.message } }), {
+    return new Response(JSON.stringify({ error: { message: error.message, code: 'ERR_SERVER_ERROR' } }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

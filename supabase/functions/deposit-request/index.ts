@@ -18,6 +18,7 @@
  * 安全机制：
  *   - 服务端校验金额范围，防止绕过前端直接调用 API
  *   - 只创建申请记录，不直接操作钱包余额
+ *   - 幂等性保护：基于 idempotency_key 防止重复提交
  * ============================================================
  */
 
@@ -29,17 +30,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
 }
 
+/** 标准化错误响应，包含 error_code 用于前端国际化 */
+function errorResponse(errorCode: string, fallbackMessage: string, status = 400) {
+  return new Response(
+    JSON.stringify({ success: false, error: fallbackMessage, error_code: errorCode }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status }
+  )
+}
+
 // 通用的 session 验证函数（与其他 Edge Functions 保持一致）
 async function validateSession(sessionToken: string) {
   if (!sessionToken) {
-    throw new Error('未授权：缺少认证令牌');
+    throw { code: 'ERR_MISSING_TOKEN', message: '未授权：缺少认证令牌' };
   }
   
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   
   if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('服务器配置错误');
+    throw { code: 'ERR_SERVER_CONFIG', message: '服务器配置错误' };
   }
 
   const sessionResponse = await fetch(
@@ -54,18 +63,18 @@ async function validateSession(sessionToken: string) {
   );
 
   if (!sessionResponse.ok) {
-    throw new Error('验证会话失败');
+    throw { code: 'ERR_SESSION_VALIDATE_FAILED', message: '验证会话失败' };
   }
 
   const sessions = await sessionResponse.json();
   if (sessions.length === 0) {
-    throw new Error('未授权：会话不存在或已失效');
+    throw { code: 'ERR_INVALID_SESSION', message: '未授权：会话不存在或已失效' };
   }
 
   const session = sessions[0];
   const expiresAt = new Date(session.expires_at);
   if (expiresAt < new Date()) {
-    throw new Error('未授权：会话已过期');
+    throw { code: 'ERR_SESSION_EXPIRED', message: '未授权：会话已过期' };
   }
 
   return { userId: session.user_id };
@@ -76,52 +85,36 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  console.log('[deposit-request] 开始处理请求')
-
   try {
     const requestBody = await req.json()
-    console.log('[deposit-request] 请求体:', JSON.stringify({
-      ...requestBody,
-      session_token: requestBody.session_token ? '***' : undefined
-    }))
 
     // ============================================================
     // 1. 认证：优先 session_token，向后兼容 Authorization header
-    //    【安全修复】移除了不安全的 body userId 回退机制
     // ============================================================
     let userId: string;
 
     if (requestBody.session_token) {
-      // 新的自定义 session 认证（PWA 模式）
       const result = await validateSession(requestBody.session_token);
       userId = result.userId;
-      console.log('[deposit-request] session_token 验证通过, userId:', userId)
     } else {
-      // 向后兼容：尝试 Authorization header（Supabase Auth，将来移除）
       const authHeader = req.headers.get('Authorization')
       if (!authHeader) {
-        throw new Error('未授权：缺少 session_token')
+        return errorResponse('ERR_MISSING_SESSION', '未授权：缺少 session_token', 401)
       }
 
       const supabaseClientWithAuth = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-        {
-          global: {
-            headers: { Authorization: authHeader },
-          },
-        }
+        { global: { headers: { Authorization: authHeader } } }
       )
 
       const { data: { user: authUser }, error: userError } = await supabaseClientWithAuth.auth.getUser()
       
       if (userError || !authUser) {
-        console.log('[deposit-request] token验证失败:', userError?.message)
-        throw new Error('未授权：无效的认证令牌')
+        return errorResponse('ERR_INVALID_TOKEN', '未授权：无效的认证令牌', 401)
       }
 
       userId = authUser.id
-      console.log('[deposit-request] 从 Auth token 获取到 userId:', userId)
     }
 
     // 使用 service role client 进行数据库操作
@@ -139,20 +132,28 @@ serve(async (req) => {
       payerName, 
       payerAccount,
       payerPhone,
+      idempotency_key,
     } = requestBody
 
-    console.log('[deposit-request] 解析的字段:', {
-      amount,
-      currency,
-      paymentMethod,
-      paymentProofImages: paymentProofImages?.length || 0,
-      payerName: payerName || '未提供',
-      payerAccount: payerAccount || '未提供',
-      payerPhone: payerPhone || '未提供',
-    })
+    // ============================================================
+    // 1.5 幂等性检查：防止重复提交
+    // ============================================================
+    if (idempotency_key) {
+      const { data: existingRequest } = await supabaseClient
+        .from('deposit_requests')
+        .select('id, status, order_number')
+        .eq('idempotency_key', idempotency_key)
+        .maybeSingle()
+
+      if (existingRequest) {
+        return new Response(
+          JSON.stringify({ success: true, data: existingRequest, message: '充值申请已提交,请等待审核', deduplicated: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        )
+      }
+    }
 
     // 验证用户是否存在
-    console.log('[deposit-request] 验证用户是否存在:', userId)
     const { data: existingUser, error: userCheckError } = await supabaseClient
       .from('users')
       .select('id')
@@ -160,40 +161,32 @@ serve(async (req) => {
       .single()
 
     if (userCheckError || !existingUser) {
-      console.log('[deposit-request] 用户不存在:', userCheckError?.message)
-      throw new Error('用户不存在')
+      return errorResponse('ERR_USER_NOT_FOUND', '用户不存在', 404)
     }
-
-    console.log('[deposit-request] 用户验证通过')
 
     // 验证参数
     if (!amount || amount <= 0) {
-      console.log('[deposit-request] 错误: 充值金额无效:', amount)
-      throw new Error('充值金额必须大于0')
+      return errorResponse('ERR_DEPOSIT_AMOUNT_INVALID', '充值金额必须大于0')
     }
-    // 【安全修复】服务端校验充值金额范围，防止绕过前端直接调用 API
+
     const MIN_DEPOSIT = 10;
     const MAX_DEPOSIT = 50000;
     if (amount < MIN_DEPOSIT) {
-      console.log('[deposit-request] 错误: 充值金额低于最低限额:', amount)
-      throw new Error(`充值金额不能低于最低限额 ${MIN_DEPOSIT} TJS`)
+      return errorResponse('ERR_DEPOSIT_AMOUNT_TOO_LOW', `充值金额不能低于最低限额 ${MIN_DEPOSIT} TJS`)
     }
     if (amount > MAX_DEPOSIT) {
-      console.log('[deposit-request] 错误: 充值金额超过最高限额:', amount)
-      throw new Error(`充值金额不能超过最高限额 ${MAX_DEPOSIT} TJS`)
+      return errorResponse('ERR_DEPOSIT_AMOUNT_TOO_HIGH', `充值金额不能超过最高限额 ${MAX_DEPOSIT} TJS`)
     }
 
     if (!paymentMethod) {
-      console.log('[deposit-request] 错误: 未选择支付方式')
-      throw new Error('请选择支付方式')
+      return errorResponse('ERR_PAYMENT_METHOD_REQUIRED', '请选择支付方式')
     }
 
     // 生成订单号
     const orderNumber = `DP${Date.now()}`
-    console.log('[deposit-request] 生成订单号:', orderNumber)
 
     // 创建充值申请
-    const insertData = {
+    const insertData: Record<string, unknown> = {
       user_id: userId,
       order_number: orderNumber,
       amount: amount,
@@ -206,7 +199,11 @@ serve(async (req) => {
       payer_phone: payerPhone || null,
       status: 'PENDING',
     }
-    console.log('[deposit-request] 插入数据:', JSON.stringify(insertData))
+
+    // 如果有幂等性key，存入记录
+    if (idempotency_key) {
+      insertData.idempotency_key = idempotency_key
+    }
 
     const { data: depositRequest, error: insertError } = await supabaseClient
       .from('deposit_requests')
@@ -215,11 +212,9 @@ serve(async (req) => {
       .single()
 
     if (insertError) {
-      console.error('[deposit-request] 创建充值申请失败:', insertError.message, insertError.details, insertError.hint)
-      throw new Error('创建充值申请失败: ' + insertError.message)
+      console.error('[deposit-request] Insert failed:', insertError.message)
+      return errorResponse('ERR_DEPOSIT_CREATE_FAILED', '创建充值申请失败', 500)
     }
-
-    console.log('[deposit-request] 充值申请创建成功:', depositRequest.id)
 
     return new Response(
       JSON.stringify({
@@ -227,23 +222,13 @@ serve(async (req) => {
         data: depositRequest,
         message: '充值申请已提交,请等待审核',
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
   } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error('[deposit-request] 充值申请错误:', errMsg, error instanceof Error ? error.stack : '')
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: errMsg,
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      }
-    )
+    const err = error as { code?: string; message?: string };
+    const errCode = err.code || 'ERR_SERVER_ERROR';
+    const errMsg = err.message || (error instanceof Error ? error.message : String(error));
+    console.error('[deposit-request] Error:', errCode, errMsg)
+    return errorResponse(errCode, errMsg, errCode.includes('UNAUTHORIZED') || errCode.includes('SESSION') || errCode.includes('TOKEN') ? 401 : 400)
   }
 })

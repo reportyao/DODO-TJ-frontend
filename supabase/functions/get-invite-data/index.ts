@@ -53,7 +53,7 @@ serve(async (req) => {
     // 【安全修复】验证 session_token，确保只有本人可以查看自己的邀请数据
     if (!session_token) {
       return new Response(
-        JSON.stringify({ success: false, error: '未授权：缺少 session_token' }),
+        JSON.stringify({ success: false, error: '未授权：缺少 session_token', error_code: 'ERR_MISSING_SESSION' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -396,7 +396,7 @@ serve(async (req) => {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error('[GetInviteData] Error:', error)
     return new Response(
-      JSON.stringify({ success: false, error: errMsg }),
+      JSON.stringify({ success: false, error: errMsg, error_code: 'ERR_SERVER_ERROR' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

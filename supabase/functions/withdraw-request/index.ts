@@ -1,3 +1,18 @@
+/**
+ * ============================================================
+ * withdraw-request Edge Function（用户提现申请）
+ * ============================================================
+ * 
+ * 功能：用户提交提现申请，冻结对应余额，等待管理员审核
+ * 
+ * 安全机制：
+ *   - 服务端校验提现金额范围（50~10000 TJS）
+ *   - 乐观锁防止并发冻结导致超额冻结
+ *   - 幂等性保护：基于 idempotency_key 防止重复提交
+ *   - 创建提现记录失败时自动回滚冻结余额
+ * ============================================================
+ */
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
 const corsHeaders = {
@@ -5,20 +20,27 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
 }
 
+/** 标准化错误响应，包含 error_code 用于前端国际化 */
+function errorResponse(errorCode: string, fallbackMessage: string, status = 400) {
+  return new Response(
+    JSON.stringify({ success: false, error: fallbackMessage, error_code: errorCode }),
+    { headers: { "Content-Type": "application/json", ...corsHeaders }, status }
+  )
+}
+
 // 通用的 session 验证函数
 async function validateSession(sessionToken: string) {
   if (!sessionToken) {
-    throw new Error('未授权：缺少认证令牌');
+    throw { code: 'ERR_MISSING_TOKEN', message: '未授权：缺少认证令牌' };
   }
   
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   
   if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('服务器配置错误');
+    throw { code: 'ERR_SERVER_CONFIG', message: '服务器配置错误' };
   }
 
-  // 查询 user_sessions 表验证 session
   const sessionResponse = await fetch(
     `${supabaseUrl}/rest/v1/user_sessions?session_token=eq.${sessionToken}&is_active=eq.true&select=*,users(*)`,
     {
@@ -31,35 +53,27 @@ async function validateSession(sessionToken: string) {
   );
 
   if (!sessionResponse.ok) {
-    throw new Error('验证会话失败');
+    throw { code: 'ERR_SESSION_VALIDATE_FAILED', message: '验证会话失败' };
   }
 
   const sessions = await sessionResponse.json();
   
   if (sessions.length === 0) {
-    throw new Error('未授权：会话不存在或已失效');
+    throw { code: 'ERR_INVALID_SESSION', message: '未授权：会话不存在或已失效' };
   }
 
   const session = sessions[0];
-
-  // 检查 session 是否过期
   const expiresAt = new Date(session.expires_at);
-  const now = new Date();
   
-  if (expiresAt < now) {
-    throw new Error('未授权：会话已过期');
+  if (expiresAt < new Date()) {
+    throw { code: 'ERR_SESSION_EXPIRED', message: '未授权：会话已过期' };
   }
 
-  // 检查是否有用户数据
   if (!session.users) {
-    throw new Error('未授权：用户不存在');
+    throw { code: 'ERR_USER_NOT_FOUND', message: '未授权：用户不存在' };
   }
 
-  return {
-    userId: session.user_id,
-    user: session.users,
-    session: session
-  };
+  return { userId: session.user_id, user: session.users, session };
 }
 
 // 生成提现订单号
@@ -70,13 +84,11 @@ function generateOrderNumber(): string {
 }
 
 serve(async (req) => {
-  // 允许 OPTIONS 请求
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // 从 body 中获取 session_token
     const body = await req.json()
     const { 
       session_token, 
@@ -91,24 +103,25 @@ serve(async (req) => {
       idCardName,
       phoneNumber,
       mobileWalletNumber,
-      mobileWalletName
+      mobileWalletName,
+      idempotency_key,
     } = body
 
     if (!session_token) {
-      throw new Error('未授权：缺少 session_token');
+      return errorResponse('ERR_MISSING_SESSION', '未授权：缺少 session_token', 401)
     }
 
     if (!amount || amount <= 0) {
-      throw new Error('提现金额必须大于0');
+      return errorResponse('ERR_WITHDRAW_AMOUNT_INVALID', '提现金额必须大于0')
     }
-    // 【安全修复】服务端校验提现金额范围，防止绕过前端直接调用 API
+
     const MIN_WITHDRAW = 50;
     const MAX_WITHDRAW = 10000;
     if (amount < MIN_WITHDRAW) {
-      throw new Error(`提现金额不能低于最低限额 ${MIN_WITHDRAW} TJS`);
+      return errorResponse('ERR_WITHDRAW_AMOUNT_TOO_LOW', `提现金额不能低于最低限额 ${MIN_WITHDRAW} TJS`)
     }
     if (amount > MAX_WITHDRAW) {
-      throw new Error(`提现金额不能超过最高限额 ${MAX_WITHDRAW} TJS`);
+      return errorResponse('ERR_WITHDRAW_AMOUNT_TOO_HIGH', `提现金额不能超过最高限额 ${MAX_WITHDRAW} TJS`)
     }
 
     // 验证用户 session
@@ -116,6 +129,32 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+    // ============================================================
+    // 幂等性检查：防止重复提交
+    // ============================================================
+    if (idempotency_key) {
+      const idempotencyResponse = await fetch(
+        `${supabaseUrl}/rest/v1/withdrawal_requests?idempotency_key=eq.${idempotency_key}&select=id,status,order_number,amount`,
+        {
+          headers: {
+            'Authorization': `Bearer ${serviceRoleKey}`,
+            'apikey': serviceRoleKey,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (idempotencyResponse.ok) {
+        const existingRequests = await idempotencyResponse.json();
+        if (existingRequests.length > 0) {
+          return new Response(
+            JSON.stringify({ success: true, message: '提现申请已提交', data: existingRequests[0], deduplicated: true }),
+            { headers: { "Content-Type": "application/json", ...corsHeaders }, status: 200 }
+          )
+        }
+      }
+    }
 
     // 1. 获取用户钱包
     const walletResponse = await fetch(
@@ -130,31 +169,28 @@ serve(async (req) => {
     );
 
     if (!walletResponse.ok) {
-      throw new Error('获取钱包信息失败');
+      return errorResponse('ERR_WALLET_INFO_FAILED', '获取钱包信息失败', 500)
     }
 
     const wallets = await walletResponse.json();
     
     if (wallets.length === 0) {
-      throw new Error('未找到用户钱包');
+      return errorResponse('ERR_WALLET_NOT_FOUND', '未找到用户钱包', 404)
     }
 
     const wallet = wallets[0];
 
-    // 2. 检查可用余额是否足够（余额 - 已冻结金额）
+    // 2. 检查可用余额是否足够
     const currentBalance = parseFloat(wallet.balance) || 0;
     const currentFrozenBalance = parseFloat(wallet.frozen_balance) || 0;
     const withdrawAmount = parseFloat(amount);
     const availableBalance = currentBalance - currentFrozenBalance;
 
     if (availableBalance < withdrawAmount) {
-      throw new Error(`可用余额不足，当前可用余额: ${availableBalance.toFixed(2)} ${currency}（总余额: ${currentBalance.toFixed(2)}，已冻结: ${currentFrozenBalance.toFixed(2)}）`);
+      return errorResponse('ERR_INSUFFICIENT_BALANCE', '余额不足')
     }
 
-    // 3. 冻结余额（增加frozen_balance，不减少balance）
-    // 这样用户可以看到余额，但不能使用被冻结的部分
-    // 【资金安全修复 v3】添加乐观锁防止并发冻结导致超额冻结
-    // 场景: 用户快速点击两次提现，可能导致同一笔钱被冻结两次
+    // 3. 冻结余额（乐观锁防止并发）
     const currentVersion = wallet.version || 1;
     const newFrozenBalance = currentFrozenBalance + withdrawAmount;
 
@@ -170,29 +206,48 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           frozen_balance: newFrozenBalance,
-          version: currentVersion + 1,  // 乐观锁: 版本号+1
+          version: currentVersion + 1,
           updated_at: new Date().toISOString()
         })
       }
     );
 
     if (!updateWalletResponse.ok) {
-      const errorText = await updateWalletResponse.text();
-      console.error('冻结余额失败:', errorText);
-      throw new Error('冻结余额失败');
+      console.error('[withdraw-request] Freeze balance failed');
+      return errorResponse('ERR_FREEZE_BALANCE_FAILED', '冻结余额失败', 500)
     }
 
-    // 【乐观锁校验】检查是否有行被更新（如果 version 不匹配，返回空数组）
     const updatedWallets = await updateWalletResponse.json();
     if (!updatedWallets || updatedWallets.length === 0) {
-      console.error('冻结余额失败: 乐观锁版本不匹配，可能存在并发操作');
-      throw new Error('操作失败，请重试（可能存在并发操作）');
+      return errorResponse('ERR_CONCURRENT_OPERATION', '操作失败，请重试（可能存在并发操作）', 409)
     }
 
     // 4. 生成订单号
     const orderNumber = generateOrderNumber();
 
-    // 5. 创建提现请求（状态为PENDING，等待管理员审核）
+    // 5. 创建提现请求
+    const insertBody: Record<string, unknown> = {
+      user_id: userId,
+      order_number: orderNumber,
+      amount: withdrawAmount,
+      currency: currency,
+      withdrawal_method: withdrawalMethod,
+      bank_name: bankName,
+      bank_account_number: bankAccountNumber,
+      bank_account_name: bankAccountName,
+      bank_branch: bankBranch,
+      id_card_number: idCardNumber,
+      id_card_name: idCardName,
+      phone_number: phoneNumber,
+      mobile_wallet_number: mobileWalletNumber,
+      mobile_wallet_name: mobileWalletName,
+      status: 'PENDING'
+    };
+
+    if (idempotency_key) {
+      insertBody.idempotency_key = idempotency_key;
+    }
+
     const insertResponse = await fetch(
       `${supabaseUrl}/rest/v1/withdrawal_requests`,
       {
@@ -203,29 +258,12 @@ serve(async (req) => {
           'Content-Type': 'application/json',
           'Prefer': 'return=representation'
         },
-        body: JSON.stringify({
-          user_id: userId,
-          order_number: orderNumber,
-          amount: withdrawAmount,
-          currency: currency,
-          withdrawal_method: withdrawalMethod,
-          bank_name: bankName,
-          bank_account_number: bankAccountNumber,
-          bank_account_name: bankAccountName,
-          bank_branch: bankBranch,
-          id_card_number: idCardNumber,
-          id_card_name: idCardName,
-          phone_number: phoneNumber,
-          mobile_wallet_number: mobileWalletNumber,
-          mobile_wallet_name: mobileWalletName,
-          status: 'PENDING'
-        })
+        body: JSON.stringify(insertBody)
       }
     );
 
     if (!insertResponse.ok) {
-      // 如果创建提现请求失败，需要回滚钱包冻结
-      // 【资金安全修复 v4】回滚时使用乐观锁检查 version，防止覆盖并发操作
+      // 回滚冻结余额
       await fetch(
         `${supabaseUrl}/rest/v1/wallets?id=eq.${wallet.id}&version=eq.${currentVersion + 1}`,
         {
@@ -237,21 +275,19 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             frozen_balance: currentFrozenBalance,
-            version: currentVersion + 2,  // 回滚时版本号再+1
+            version: currentVersion + 2,
             updated_at: new Date().toISOString()
           })
         }
       );
       
-      const errorText = await insertResponse.text();
-      console.error('创建提现请求失败:', errorText);
-      throw new Error('创建提现请求失败');
+      console.error('[withdraw-request] Create request failed, balance rolled back');
+      return errorResponse('ERR_WITHDRAW_CREATE_FAILED', '创建提现请求失败', 500)
     }
 
     const data = await insertResponse.json();
 
-    // 6. 创建钱包交易记录（状态为PENDING，等待审核）
-    // 注意：此时不记录余额变化，因为余额还没有真正扣除
+    // 6. 创建钱包交易记录
     await fetch(
       `${supabaseUrl}/rest/v1/wallet_transactions`,
       {
@@ -265,10 +301,10 @@ serve(async (req) => {
           wallet_id: wallet.id,
           type: 'WITHDRAWAL_FREEZE',
           amount: -withdrawAmount,
-          balance_before: currentBalance,  // 【修复 4.1】添加 balance_before 确保流水完整
-          balance_after: currentBalance, // 余额不变，只是冻结
+          balance_before: currentBalance,
+          balance_after: currentBalance,
           status: 'PENDING',
-          description: `提现申请已冻结 - 订单号: ${orderNumber}，等待审核`,
+          description: `Withdrawal freeze - Order: ${orderNumber}`,
           related_id: data[0]?.id || null
         })
       }
@@ -289,11 +325,10 @@ serve(async (req) => {
     )
 
   } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error('withdraw_request error:', error)
-    return new Response(
-      JSON.stringify({ success: false, error: errMsg }),
-      { headers: { "Content-Type": "application/json", ...corsHeaders }, status: 400 }
-    )
+    const err = error as { code?: string; message?: string };
+    const errCode = err.code || 'ERR_SERVER_ERROR';
+    const errMsg = err.message || (error instanceof Error ? error.message : String(error));
+    console.error('[withdraw-request] Error:', errCode, errMsg)
+    return errorResponse(errCode, errMsg, errCode.includes('UNAUTHORIZED') || errCode.includes('SESSION') || errCode.includes('TOKEN') ? 401 : 400)
   }
 })

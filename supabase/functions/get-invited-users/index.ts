@@ -262,7 +262,7 @@ serve(async (req) => {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error('[GetInvitedUsers] Error:', error)
     return new Response(
-      JSON.stringify({ success: false, error: errMsg }),
+      JSON.stringify({ success: false, error: errMsg, error_code: 'ERR_SERVER_ERROR' }),
       { headers: { "Content-Type": "application/json", ...corsHeaders }, status: 400 }
     )
   }

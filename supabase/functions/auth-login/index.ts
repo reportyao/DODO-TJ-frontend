@@ -1,3 +1,14 @@
+/**
+ * ============================================================
+ * auth-login Edge Function（用户登录）
+ * ============================================================
+ * 
+ * 功能：用户通过手机号+密码登录，创建会话
+ * 安全：密码使用 HMAC-SHA256 + 应用盐哈希
+ * 国际化：所有错误返回 error_code，前端通过 i18n 翻译
+ * ============================================================
+ */
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
@@ -9,7 +20,15 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// 密码哈希函数 (HMAC-SHA256 + 应用盐) - 与 auth-register / auth-reset-password 保持一致
+/** 标准化错误响应 */
+function errorResponse(errorCode: string, fallbackMessage: string, status = 400) {
+  return new Response(
+    JSON.stringify({ error: { message: fallbackMessage, code: errorCode }, error_code: errorCode }),
+    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+// 密码哈希函数 (HMAC-SHA256 + 应用盐)
 const APP_SALT = Deno.env.get('PASSWORD_SALT') || 'tezbarakat_default_salt_2026';
 
 async function hashPassword(password: string): Promise<string> {
@@ -23,7 +42,7 @@ async function hashPassword(password: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// 标准化手机号：与 auth-register / auth-reset-password 保持一致
+// 标准化手机号
 function normalizePhone(phone: string): string {
   let cleaned = phone.replace(/[\s\-\(\)]/g, '');
   if (!cleaned.startsWith('+')) {
@@ -46,15 +65,10 @@ Deno.serve(async (req) => {
     const { phone_number, password } = await req.json();
 
     if (!phone_number || !password) {
-      return new Response(JSON.stringify({ error: { message: '手机号和密码是必填项' } }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse('ERR_PHONE_PASSWORD_REQUIRED', '手机号和密码是必填项');
     }
 
-    // ============================================================
-    // 1. 标准化手机号并查找用户（兼容多种格式）
-    // ============================================================
+    // 1. 标准化手机号并查找用户
     const normalizedPhone = normalizePhone(phone_number);
     const phoneWithoutPlus = normalizedPhone.replace(/^\+/, '');
 
@@ -66,57 +80,29 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (userError || !user) {
-      // 安全起见：不区分"用户不存在"和"密码错误"
-      return new Response(JSON.stringify({ error: { message: '手机号或密码错误' } }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse('ERR_WRONG_CREDENTIALS', '手机号或密码错误', 401);
     }
 
-    // ============================================================
-    // 2. 检查用户状态（封禁/删除检查）
-    // ============================================================
+    // 2. 检查用户状态
     if (user.is_blocked === true) {
-      return new Response(JSON.stringify({ error: { message: '您的账户已被封禁，请联系客服' } }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse('ERR_USER_BLOCKED', '您的账户已被封禁，请联系客服', 403);
     }
 
     if (user.deleted_at) {
-      return new Response(JSON.stringify({ error: { message: '该账户已被注销' } }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse('ERR_USER_DELETED', '该账户已被注销', 403);
     }
 
-    // ============================================================
     // 3. 验证密码
-    // ============================================================
     if (!user.password_hash) {
-      // 用户可能是从 Telegram 迁移过来的，尚未设置密码
-      return new Response(JSON.stringify({
-        error: {
-          message: '该账户尚未设置密码，请使用"忘记密码"功能设置新密码',
-          code: 'PASSWORD_NOT_SET'
-        }
-      }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse('ERR_PASSWORD_NOT_SET', '该账户尚未设置密码，请使用"忘记密码"功能设置新密码', 401);
     }
 
     const hashedPassword = await hashPassword(password);
     if (user.password_hash !== hashedPassword) {
-      return new Response(JSON.stringify({ error: { message: '手机号或密码错误' } }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse('ERR_WRONG_CREDENTIALS', '手机号或密码错误', 401);
     }
 
-    // ============================================================
     // 4. 更新最后登录时间
-    // ============================================================
     await supabase
       .from('users')
       .update({
@@ -125,9 +111,7 @@ Deno.serve(async (req) => {
       })
       .eq('id', user.id);
 
-    // ============================================================
     // 5. 创建会话
-    // ============================================================
     const sessionToken = crypto.randomUUID();
     const { data: session, error: sessionError } = await supabase
       .from('user_sessions')
@@ -142,20 +126,17 @@ Deno.serve(async (req) => {
       .single();
 
     if (sessionError || !session) {
-      throw new Error('创建会话失败: ' + sessionError?.message);
+      console.error('[auth-login] Session creation failed:', sessionError?.message);
+      return errorResponse('ERR_SESSION_CREATE_FAILED', '创建会话失败', 500);
     }
 
-    // ============================================================
     // 6. 获取钱包信息
-    // ============================================================
     const { data: wallets } = await supabase
       .from('wallets')
       .select('id, type, currency, balance')
       .eq('user_id', user.id);
 
-    // ============================================================
-    // 7. 返回结果 (与 auth-register 保持一致的结构)
-    // ============================================================
+    // 7. 返回结果
     const result = {
       success: true,
       user: {
@@ -181,11 +162,9 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error: any) {
-    console.error('Login error:', error);
-    return new Response(JSON.stringify({ error: { message: error.message } }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('[auth-login] Error:', errMsg);
+    return errorResponse('ERR_SERVER_ERROR', errMsg, 500);
   }
 });
