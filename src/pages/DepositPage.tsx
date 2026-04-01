@@ -54,6 +54,7 @@ export default function DepositPage() {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID())
 
   useEffect(() => {
     fetchPaymentConfigs()
@@ -233,7 +234,7 @@ export default function DepositPage() {
         ...(selectedMethod?.require_payer_name && { payerName }),
         ...(selectedMethod?.require_payer_account && { payerAccount }),
         ...(selectedMethod?.require_payer_phone && { payerPhone }),
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: idempotencyKeyRef.current,
       }
       
       const { data, error } = await supabase.functions.invoke('deposit-request', {
@@ -244,6 +245,8 @@ export default function DepositPage() {
 
       if (data?.success) {
         setSuccess(true)
+        // 提交成功后重新生成幂等键，防止下次提交复用
+        idempotencyKeyRef.current = crypto.randomUUID()
         setTimeout(() => {
           navigate('/wallet')
         }, 2000)

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
@@ -32,6 +32,7 @@ export default function WithdrawPage() {
   
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID())
 
   // 从 UserContext 获取钱包数据
   const balanceWallet = wallets.find(w => w.type === 'TJS' && w.currency === 'TJS')
@@ -70,7 +71,7 @@ export default function WithdrawPage() {
         mobileWalletNumber: mobileWalletNumber,
         mobileWalletName: mobileWalletName,
         phoneNumber: phoneNumber || undefined,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: idempotencyKeyRef.current,
       };
 
       // 根据提现方式添加银行相关字段
@@ -91,6 +92,8 @@ export default function WithdrawPage() {
 
       if (data?.success) {
         setSuccess(true)
+        // 提交成功后重新生成幂等键，防止下次提交复用
+        idempotencyKeyRef.current = crypto.randomUUID()
         setTimeout(() => {
           navigate('/wallet')
         }, 2000)

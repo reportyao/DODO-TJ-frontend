@@ -263,7 +263,49 @@ serve(async (req) => {
     );
 
     if (!insertResponse.ok) {
-      // 回滚冻结余额
+      // 检查是否是 UNIQUE 约束冲突（并发幂等性保护）
+      let insertErrorBody: any = null
+      try { insertErrorBody = await insertResponse.json() } catch (_) {}
+      if (insertErrorBody?.code === '23505' && idempotency_key) {
+        // 回滚冻结余额（因为这是重复请求，不应叠加冻结）
+        await fetch(
+          `${supabaseUrl}/rest/v1/wallets?id=eq.${wallet.id}&version=eq.${currentVersion + 1}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${serviceRoleKey}`,
+              'apikey': serviceRoleKey,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              frozen_balance: currentFrozenBalance,
+              version: currentVersion + 2,
+              updated_at: new Date().toISOString()
+            })
+          }
+        );
+        // 返回已存在的请求
+        const idempotencyResponse = await fetch(
+          `${supabaseUrl}/rest/v1/withdrawal_requests?idempotency_key=eq.${idempotency_key}&select=id,status,order_number,amount`,
+          {
+            headers: {
+              'Authorization': `Bearer ${serviceRoleKey}`,
+              'apikey': serviceRoleKey,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        if (idempotencyResponse.ok) {
+          const existingRequests = await idempotencyResponse.json();
+          if (existingRequests.length > 0) {
+            return new Response(
+              JSON.stringify({ success: true, message: '提现申请已提交', data: existingRequests[0], deduplicated: true }),
+              { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
+            )
+          }
+        }
+      }
+      // 非幂等性冲突的其他插入失败，回滚冻结余额
       await fetch(
         `${supabaseUrl}/rest/v1/wallets?id=eq.${wallet.id}&version=eq.${currentVersion + 1}`,
         {

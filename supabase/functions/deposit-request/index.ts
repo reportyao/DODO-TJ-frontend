@@ -212,6 +212,20 @@ serve(async (req) => {
       .single()
 
     if (insertError) {
+      // 处理 UNIQUE 约束冲突（并发幂等性保护）
+      if (insertError.code === '23505' && idempotency_key) {
+        const { data: existingRequest } = await supabaseClient
+          .from('deposit_requests')
+          .select('id, status, order_number')
+          .eq('idempotency_key', idempotency_key)
+          .maybeSingle()
+        if (existingRequest) {
+          return new Response(
+            JSON.stringify({ success: true, data: existingRequest, message: '充值申请已提交,请等待审核', deduplicated: true }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          )
+        }
+      }
       console.error('[deposit-request] Insert failed:', insertError.message)
       return errorResponse('ERR_DEPOSIT_CREATE_FAILED', '创建充值申请失败', 500)
     }

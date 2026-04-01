@@ -23,10 +23,9 @@ Deno.serve(async (req) => {
 
   return new Response(
     JSON.stringify({
-      error: {
-        code: 'AUTH_DEPRECATED',
-        message: 'Telegram 认证已停用。请使用手机号登录 (auth-login) 或注册 (auth-register)。',
-      },
+      success: false,
+      error: 'Telegram 认证已停用。请使用手机号登录 (auth-login) 或注册 (auth-register)。',
+      error_code: 'ERR_AUTH_DEPRECATED',
     }),
     {
       status: 410, // 410 Gone - 表示资源已永久移除
