@@ -70,6 +70,7 @@ export default function WithdrawPage() {
         mobileWalletNumber: mobileWalletNumber,
         mobileWalletName: mobileWalletName,
         phoneNumber: phoneNumber || undefined,
+        idempotency_key: crypto.randomUUID(),
       };
 
       // 根据提现方式添加银行相关字段

@@ -243,6 +243,7 @@ export default function DepositPage() {
         ...(selectedMethod?.require_payer_name && { payerName }),
         ...(selectedMethod?.require_payer_account && { payerAccount }),
         ...(selectedMethod?.require_payer_phone && { payerPhone }),
+        idempotency_key: crypto.randomUUID(),
       }
       
       console.log('[DepositPage] 提交充值申请:', JSON.stringify(requestBody))
