@@ -90,7 +90,6 @@ const RegisterPage: React.FC = () => {
               // 更新本地缓存
               parsedUser.avatar_url = avatarUrl
               localStorage.setItem('custom_user', JSON.stringify(parsedUser))
-              console.log('[RegisterPage] Avatar saved successfully')
             }
           }
         } catch (avatarError) {

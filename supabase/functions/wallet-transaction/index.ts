@@ -12,7 +12,6 @@ Deno.serve(async (req) => {
         return new Response(null, { status: 200, headers: corsHeaders });
     }
 
-// mapErrorCode 已迁移到共享模块
 
 
     try {

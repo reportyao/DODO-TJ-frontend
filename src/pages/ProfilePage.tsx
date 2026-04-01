@@ -90,7 +90,6 @@ const ProfilePage: React.FC = () => {
           }
         }
       } catch (e) {
-        console.log('[ProfilePage] Pickup staff check not available')
       }
     }
     checkStaffStatus()
@@ -122,7 +121,6 @@ const ProfilePage: React.FC = () => {
           setIsPromoter(data?.success === true)
         }
       } catch (e) {
-        console.log('[ProfilePage] Promoter check not available')
       }
     }
     checkPromoterStatus()
@@ -252,8 +250,6 @@ const ProfilePage: React.FC = () => {
       highlight: true,
     }] : []),
   ]
-
-
 
   return (
     <div className="pb-20 bg-gray-50 min-h-screen">

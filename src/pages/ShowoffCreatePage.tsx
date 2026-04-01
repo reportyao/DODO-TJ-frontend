@@ -40,7 +40,6 @@ const ShowoffCreatePage: React.FC = () => {
   const fetchWinningLotteries = useCallback(async () => {
     setIsLoadingLotteries(true);
     try {
-      console.log('[ShowoffCreatePage] Fetching winning lotteries for user:', user?.id);
       
       if (!user?.id) {
         console.error('[ShowoffCreatePage] User ID is missing');
@@ -51,7 +50,6 @@ const ShowoffCreatePage: React.FC = () => {
       const supabaseKey = SUPABASE_ANON_KEY;
 
       // 1. 直接查询 prizes 表获取用户的中奖记录（抽奖类型）
-      console.log('[ShowoffCreatePage] Fetching prizes...');
       const prizesResponse = await fetch(
         `${supabaseUrl}/rest/v1/prizes?user_id=eq.${user.id}&select=*&order=won_at.desc`,
         {
@@ -69,10 +67,8 @@ const ShowoffCreatePage: React.FC = () => {
       }
 
       const prizes = await prizesResponse.json();
-      console.log('[ShowoffCreatePage] Prizes fetched:', prizes.length);
 
       // 2. 查询拼团中奖记录 - 用户是中奖者的记录
-      console.log('[ShowoffCreatePage] Fetching group buy results...');
       const groupBuyResponse = await fetch(
         `${supabaseUrl}/rest/v1/group_buy_results?user_id=eq.${user.id}&status=eq.PENDING&select=*&order=created_at.desc`,
         {
@@ -84,7 +80,6 @@ const ShowoffCreatePage: React.FC = () => {
       );
 
       const groupBuyResults = groupBuyResponse.ok ? await groupBuyResponse.json() : [];
-      console.log('[ShowoffCreatePage] Group buy results fetched:', groupBuyResults.length);
 
       // 获取关联的彩票信息
       const lotteryIds = [...new Set(prizes.map((p: any) => p.lottery_id).filter(Boolean))];
@@ -156,7 +151,6 @@ const ShowoffCreatePage: React.FC = () => {
       );
 
       const publishedShowoffs = showoffsResponse.ok ? await showoffsResponse.json() : [];
-      console.log('[ShowoffCreatePage] Published showoffs:', publishedShowoffs.length);
       const publishedPrizeIds = new Set(publishedShowoffs.map((s: any) => s.prize_id).filter(Boolean));
 
       // 4. 过滤掉已有 APPROVED 或 PENDING 晒单的中奖记录
@@ -219,13 +213,9 @@ const ShowoffCreatePage: React.FC = () => {
       const allWinnings = [...lotteryWinnings, ...groupBuyWinnings]
         .sort((a, b) => new Date(b.draw_time).getTime() - new Date(a.draw_time).getTime());
 
-      console.log('[ShowoffCreatePage] Available winning records:', allWinnings.length);
-      console.log('[ShowoffCreatePage] - Lottery winnings:', lotteryWinnings.length);
-      console.log('[ShowoffCreatePage] - Group buy winnings:', groupBuyWinnings.length);
       setWinningLotteries(allWinnings);
       
       if (allWinnings.length === 0) {
-        console.log('[ShowoffCreatePage] No winning records available for user');
       }
     } catch (error) {
       console.error('[ShowoffCreatePage] Failed to fetch winning lotteries:', error);
@@ -240,7 +230,6 @@ const ShowoffCreatePage: React.FC = () => {
   }, [fetchWinningLotteries]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('[ShowoffCreatePage] handleImageUpload triggered');
     
     const files = e.target.files;
     if (!files || files.length === 0) {
@@ -249,7 +238,6 @@ const ShowoffCreatePage: React.FC = () => {
     }
 
     const newFiles = Array.from(files);
-    console.log('[ShowoffCreatePage] Files to upload:', newFiles.map(f => ({ name: f.name, size: f.size, type: f.type })));
 
     if (images.length + newFiles.length > 9) {
       toast.error(t('showoff.maxImagesError'));
@@ -261,15 +249,12 @@ const ShowoffCreatePage: React.FC = () => {
       const uploadedUrls: string[] = [];
       
       for (const file of newFiles) {
-        console.log('[ShowoffCreatePage] Uploading file:', file.name);
         // 1. 上传图片 (uploadImage 内部已包含压缩和 WebP 转换)
         const publicUrl = await uploadImage(file, true, 'payment-proofs', 'showoff-images');
-        console.log('[ShowoffCreatePage] File uploaded:', publicUrl);
         uploadedUrls.push(publicUrl);
       }
 
       setImages(prev => [...prev, ...uploadedUrls]);
-      console.log('[ShowoffCreatePage] All images uploaded:', uploadedUrls.length);
       toast.success(t('showoff.imagesUploadedAndOptimized'));
 
     } catch (error) {
@@ -288,7 +273,6 @@ const ShowoffCreatePage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    console.log('[ShowoffCreatePage] handleSubmit called');
     
     if (!selectedLottery) {
       console.error('[ShowoffCreatePage] No lottery selected');
@@ -324,14 +308,6 @@ const ShowoffCreatePage: React.FC = () => {
         return;
       }
       
-      console.log('[ShowoffCreatePage] Creating showoff with data:', {
-        prize_id: selectedLotteryData.id,
-        lottery_id: selectedLotteryData.lottery_id,
-        content_length: content.trim().length,
-        images_count: images.length,
-        user_id: user?.id,
-      });
-
       // 调用晒单创建 API
       // 如果 lottery_title_full 是对象，转换为 JSON 字符串；否则直接使用
       const titleToSave = selectedLotteryData.lottery_title_full 
@@ -349,7 +325,6 @@ const ShowoffCreatePage: React.FC = () => {
         user_id: user?.id, // 传入 user_id 避免 session 问题
       });
 
-      console.log('[ShowoffCreatePage] Showoff created successfully');
       toast.success(t('showoff.showoffSuccessPending'));
       navigate('/showoff');
     } catch (error) {

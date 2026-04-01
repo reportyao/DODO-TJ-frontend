@@ -43,7 +43,6 @@ interface SpinReward {
   is_jackpot: boolean;
 }
 
-// mapErrorCode 已迁移到共享模块
 
 
 Deno.serve(async (req) => {

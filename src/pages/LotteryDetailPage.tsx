@@ -162,7 +162,6 @@ const LotteryDetailPage: React.FC = () => {
 
           if (nextRound && nextRound.id !== id) {
             // 有新一轮，跳转到新一轮的详情页
-            console.log('[LotteryDetail] Found next round:', nextRound.id);
             navigate(`/lottery/${nextRound.id}`, { replace: true });
             return;
           }
@@ -381,7 +380,6 @@ const LotteryDetailPage: React.FC = () => {
       // 【BUG修复】一元夺宝购买强制不使用抵扣券，传入 false
       const order = await lotteryService.purchaseTickets(lottery.id, quantity, user.id, false);
       
-      console.log('Purchase successful:', order);
       toast.success(t('lottery.purchaseSuccess'));
       
       // 等待短暂延迟确保数据库事务完成后再刷新
@@ -669,7 +667,6 @@ const LotteryDetailPage: React.FC = () => {
           </div>
         )}
 
-
         {/* ============================================ */}
         {/* 区域一：商品信息区 */}
         {/* ============================================ */}
@@ -896,14 +893,12 @@ const LotteryDetailPage: React.FC = () => {
                 drawTime={lottery.draw_time} 
                 onCountdownEnd={async () => {
                   try {
-                    console.log('[LotteryDetail] 倒计时结束，开始揭晓:', id);
                     const { data, error } = await supabase.functions.invoke('auto-lottery-draw', {
                       body: { lotteryId: id }
                     });
                     if (error || !data?.success) {
                       console.error('[LotteryDetail] Draw failed:', error?.message || data?.error);
                     } else {
-                      console.log('[LotteryDetail] Draw successful:', data);
                     }
                     await fetchLottery();
                   } catch (error: any) {

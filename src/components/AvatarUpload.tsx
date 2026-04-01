@@ -83,17 +83,11 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
     onUploadingChange?.(true)
 
     try {
-      console.log('[AvatarUpload] Starting avatar upload:', {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-      })
 
       // 使用统一的 uploadImage 函数（内部已包含压缩和 WebP 转换）
       // 头像上传到 payment-proofs bucket 的 avatars 文件夹
       const publicUrl = await uploadImage(file, true, 'payment-proofs', 'avatars')
 
-      console.log('[AvatarUpload] Upload successful:', publicUrl)
       onUploadSuccess(publicUrl)
       toast.success(t('deposit.uploadSuccess') || '上传成功')
     } catch (error) {

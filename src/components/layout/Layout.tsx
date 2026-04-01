@@ -91,7 +91,6 @@ export const Layout: React.FC<LayoutProps> = ({
       }
     } catch (e) {
       // 表可能不存在，忽略错误
-      console.log('Spin balance not available yet')
     }
   }, [user?.id])
 

@@ -149,7 +149,6 @@ const LotteryResultPage: React.FC = () => {
         };
       });
 
-      console.log('[LotteryResult] Found entries:', combinedTickets.length);
       setTickets(combinedTickets as any || []);
 
       // 获取所有参与用户
@@ -283,7 +282,6 @@ const LotteryResultPage: React.FC = () => {
 
     setIsDrawing(true);
     try {
-      console.log('开始开奖:', id);
       // 调用 Edge Function 进行开奖，而不是直接调用 RPC
       const { data, error } = await supabase.functions.invoke('auto-lottery-draw', {
         body: { lotteryId: id }
@@ -292,8 +290,6 @@ const LotteryResultPage: React.FC = () => {
       if (error || !data?.success) {
         throw new Error(error?.message || data?.error || 'Draw failed');
       }
-      
-      console.log('Draw successful:', data);
       
       // 刷新数据
       await fetchLottery();
@@ -311,12 +307,6 @@ const LotteryResultPage: React.FC = () => {
 
   // 点击领取按钮
   const handleClaimPrize = () => {
-    console.log('[ClaimPrize] Button clicked', {
-      prizeInfo,
-      pickupPoints: pickupPoints.length,
-      isLoadingPrizeInfo,
-      isLoadingPickupPoints
-    });
     
     // 如果已经领取过，直接跳转到订单管理页面
     if (prizeInfo?.pickup_code) {
@@ -333,7 +323,6 @@ const LotteryResultPage: React.FC = () => {
     // 修复: 如果 prizeInfo 不存在，说明是首次领取，允许继续
     // 只有当 prizeInfo 存在且没有 pickup_code 时才需要领取
     // 或者 prizeInfo 不存在时也允许领取
-    console.log('[ClaimPrize] Prize info:', prizeInfo);
     
     // 检查是否有可用的自提点
     if (pickupPoints.length === 0) {
@@ -342,7 +331,6 @@ const LotteryResultPage: React.FC = () => {
       return;
     }
     
-    console.log('[ClaimPrize] Opening claim modal');
     setShowClaimModal(true);
   };
 
@@ -800,8 +788,6 @@ const LotteryResultPage: React.FC = () => {
                           console.error('Failed to parse algorithm data:', e);
                         }
                       }
-                      
-                      console.log('[LotteryResult] Algorithm data:', algorithmData);
                       
                       // 如果没有算法数据，显示不可用
                       if (!algorithmData) {

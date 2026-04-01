@@ -153,7 +153,6 @@ const PromoterDepositPage: React.FC = () => {
         }
       }
     } catch (err) {
-      console.log('[PromoterDepositPage] loadQuickAmounts fallback to default')
     }
   }, [])
 

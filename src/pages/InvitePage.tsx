@@ -71,7 +71,6 @@ const InvitePage: React.FC = () => {
     setIsLoading(true);
     try {
       if (!user) {
-        console.log('[InvitePage] User not logged in, skipping data fetch');
         setStats(null);
         setInvitedUsers([]);
         setIsLoading(false);
@@ -110,7 +109,6 @@ const InvitePage: React.FC = () => {
     }
   }, [user, t]);
 
-
   useEffect(() => {
     if (user) {
       fetchInviteData();
@@ -147,7 +145,7 @@ const InvitePage: React.FC = () => {
         url: inviteLink
       }).then(() => {
         toast.success(t('invite.shareSuccess'));
-      }).catch(err => console.log(t('common.error') + ':', err));
+      }).catch(() => { /* ignored */ });
     } else {
       // 回退到 WhatsApp 分享
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text + '\n' + inviteLink)}`;
@@ -163,8 +161,6 @@ const InvitePage: React.FC = () => {
     };
     return colors[level as keyof typeof colors] || 'bg-gray-100 text-gray-700';
   };
-
-
 
   return (
     <div className="pb-20 bg-gray-50 min-h-screen">
@@ -218,8 +214,6 @@ const InvitePage: React.FC = () => {
           </div>
         </div>
       </div>
-
-
 
       {/* Stats Cards */}
       {stats && (
@@ -276,7 +270,6 @@ const InvitePage: React.FC = () => {
                 </div>
               </div>
             </motion.div>
-
 
           </div>
         </div>

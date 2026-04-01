@@ -1,4 +1,3 @@
-import { mapErrorCode } from '../_shared/errorResponse.ts'
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -7,7 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
 }
 
-// mapErrorCode 已迁移到共享模块
 
 
 // 创建单例 Supabase 客户端

@@ -7,7 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
 }
 
-// mapErrorCode 已迁移到共享模块
 
 
 // 通用的 session 验证函数

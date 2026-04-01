@@ -82,7 +82,6 @@ export default function DepositPage() {
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('[DepositPage] handleImageUpload triggered')
     
     const files = e.target.files
     
@@ -92,7 +91,6 @@ export default function DepositPage() {
     }
 
     const fileArray = Array.from(files)
-    console.log('[DepositPage] Files to upload:', fileArray.map(f => ({ name: f.name, size: f.size, type: f.type })))
     
     // 放宽文件类型检查，支持移动端
     const invalidFiles = fileArray.filter(f => {
@@ -120,8 +118,6 @@ export default function DepositPage() {
       setUploadStatus('compressing')
       setUploadProgress(10)
       
-      console.log('[DepositPage] Starting upload process...')
-      
       // 模拟压缩进度
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
@@ -140,8 +136,6 @@ export default function DepositPage() {
       
       clearInterval(progressInterval)
       
-      console.log('[DepositPage] Upload successful, URLs:', urls)
-      
       if (!urls || urls.length === 0) {
         throw new Error('Upload returned empty URLs')
       }
@@ -151,7 +145,6 @@ export default function DepositPage() {
       
       setUploadedImages(prev => {
         const newImages = [...prev, ...urls]
-        console.log('[DepositPage] Updated images state:', newImages)
         return newImages
       })
       
@@ -184,12 +177,9 @@ export default function DepositPage() {
   }
 
   const handleUploadClick = () => {
-    console.log('[DepositPage] handleUploadClick called, uploading:', uploading)
     if (!uploading && fileInputRef.current) {
-      console.log('[DepositPage] Triggering file input click')
       fileInputRef.current.click()
     } else {
-      console.log('[DepositPage] Click blocked - uploading:', uploading, 'inputRef:', !!fileInputRef.current)
     }
   }
 
@@ -246,9 +236,6 @@ export default function DepositPage() {
         idempotency_key: crypto.randomUUID(),
       }
       
-      console.log('[DepositPage] 提交充值申请:', JSON.stringify(requestBody))
-      console.log('[DepositPage] selectedMethod:', JSON.stringify(selectedMethod))
-
       const { data, error } = await supabase.functions.invoke('deposit-request', {
         body: requestBody
       })
@@ -485,7 +472,6 @@ export default function DepositPage() {
               multiple
               onChange={handleImageUpload}
               onClick={(e) => {
-                console.log('[DepositPage] File input clicked')
                 // 清空value以允许选择相同文件
                 e.currentTarget.value = ''
               }}

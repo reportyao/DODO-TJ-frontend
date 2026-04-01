@@ -103,7 +103,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       const storedUser = localStorage.getItem('custom_user');
       
       if (storedToken && storedUser) {
-        console.log('[Session] Found stored session, restoring...');
         const parsedUser = JSON.parse(storedUser);
         
         // 【乐观渲染】立即恢复本地状态并结束 isLoading
@@ -116,7 +115,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
           if (cachedWallets) {
             const parsedWallets = JSON.parse(cachedWallets);
             setWallets(parsedWallets);
-            console.log('[Session] Restored cached wallets');
           }
         } catch {
           // 缓存解析失败，忽略
@@ -160,12 +158,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
             }
           })(),
         ]).then(() => {
-          console.log('[Session] Background refresh complete');
         });
 
         return; // 提前返回，不走 finally 的 setIsLoading
       } else {
-        console.log('[Session] No stored session found');
       }
       
       clearTimeout(timeoutId);
