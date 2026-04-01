@@ -277,8 +277,9 @@ BEGIN
   END IF;
 
   -- [修复 S1] 验证 p_select 只包含合法字符（防止 SQL 注入）
-  -- 允许: 字母、数字、下划线、逗号、星号、空格、点号、括号（用于关联查询语法）、冒号、感叹号
-  IF p_select !~ '^[a-zA-Z0-9_,\*\s\.\(\):!]+$' THEN
+  -- 允许: 字母、数字、下划线、逗号、星号、空格
+  -- 禁止: 括号、冒号、感叹号、点号等（关联查询已在前端 proxy 层处理，不会传到 SQL 层）
+  IF p_select !~ '^[a-zA-Z0-9_,\*\s]+$' THEN
     RAISE EXCEPTION 'INVALID_SELECT: select 参数包含非法字符';
   END IF;
 
