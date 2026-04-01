@@ -7,14 +7,14 @@ import i18n from '../i18n/config'
  * 并自动上报到错误监控系统（ErrorMonitorService → error_logs 表 → 管理后台）。
  * 
  * 国际化支持：
- * 当 Edge Function 返回 error_code 字段时，优先使用 i18n 翻译系统
- * 将错误码映射为当前语言的错误提示。如果没有 error_code 或翻译缺失，
- * 则回退到 error/message 字段的原始文本。
+ * 支持以下三种错误响应格式的 error_code 提取：
+ *   格式A（标准）: { error_code: "ERR_XXX", error: "中文消息" }
+ *   格式B（嵌套）: { error: { code: "ERR_XXX", message: "中文消息" } }
+ *   格式C（纯文本）: { error: "中文消息" }
  * 
- * 问题背景：
- * 当 Edge Function 返回非 2xx 状态码时，Supabase 客户端抛出 FunctionsHttpError，
- * 其 message 固定为 "Edge Function returned a non-2xx status code"，
- * 而实际的业务错误信息在 error.context（Response 对象）中。
+ * 提取到 error_code 后，优先使用 i18n 翻译系统将错误码映射为
+ * 当前语言的错误提示。如果没有 error_code 或翻译缺失，
+ * 则回退到 error/message 字段的原始文本。
  * 
  * 使用方式：
  * 将 `if (error) throw error` 替换为：
@@ -51,13 +51,21 @@ export async function extractEdgeFunctionError(error: unknown): Promise<string> 
         if (typeof response.json === 'function') {
           const body = await response.json()
           
-          // 优先提取 error_code 用于国际化翻译
+          // 提取 error_code（兼容多种响应格式）
+          // 格式A（标准）: { error_code: "ERR_XXX" }
           if (body?.error_code) {
             errorCode = body.error_code
           }
+          // 格式B（嵌套）: { error: { code: "ERR_XXX" } }
+          else if (body?.error && typeof body.error === 'object' && body.error.code) {
+            errorCode = body.error.code
+          }
           
+          // 提取错误消息
           if (body?.error) {
-            errorMessage = typeof body.error === 'object' ? body.error.message || JSON.stringify(body.error) : body.error
+            errorMessage = typeof body.error === 'object'
+              ? body.error.message || JSON.stringify(body.error)
+              : body.error
           } else if (body?.message) {
             errorMessage = body.message
           } else {

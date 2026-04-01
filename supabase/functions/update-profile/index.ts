@@ -1,3 +1,4 @@
+import { mapErrorCode } from '../_shared/errorResponse.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 /**
@@ -104,7 +105,7 @@ Deno.serve(async (req) => {
     const auth = await authenticateUser(req, supabase, bodySessionToken);
     if (!auth) {
       return new Response(
-        JSON.stringify({ error: { message: '未授权，请重新登录', code: 'ERR_UNAUTHORIZED' } }),
+        JSON.stringify({ success: false, error: '未授权，请重新登录', error_code: 'ERR_UNAUTHORIZED' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -159,7 +160,7 @@ Deno.serve(async (req) => {
 
       if (!new_phone || !confirm_phone) {
         return new Response(
-          JSON.stringify({ error: { message: '请输入新手机号', code: 'ERR_NEW_PHONE_REQUIRED' } }),
+          JSON.stringify({ success: false, error: '请输入新手机号', error_code: 'ERR_NEW_PHONE_REQUIRED' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -171,7 +172,7 @@ Deno.serve(async (req) => {
       // 验证两次输入是否一致
       if (normalizedNewPhone !== normalizedConfirmPhone) {
         return new Response(
-          JSON.stringify({ error: { message: '两次输入的手机号不一致', code: 'ERR_PHONE_MISMATCH' } }),
+          JSON.stringify({ success: false, error: '两次输入的手机号不一致', error_code: 'ERR_PHONE_MISMATCH' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -179,7 +180,7 @@ Deno.serve(async (req) => {
       // 验证手机号格式（塔吉克斯坦手机号：+992 + 9位数字）
       if (!/^\+992\d{9}$/.test(normalizedNewPhone)) {
         return new Response(
-          JSON.stringify({ error: { message: '手机号格式不正确，请输入塔吉克斯坦手机号', code: 'ERR_PHONE_FORMAT_INVALID' } }),
+          JSON.stringify({ success: false, error: '手机号格式不正确，请输入塔吉克斯坦手机号', error_code: 'ERR_PHONE_FORMAT_INVALID' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -196,7 +197,7 @@ Deno.serve(async (req) => {
 
       if (existingUser) {
         return new Response(
-          JSON.stringify({ error: { message: '该手机号已被其他账户使用', code: 'ERR_PHONE_ALREADY_USED' } }),
+          JSON.stringify({ success: false, error: '该手机号已被其他账户使用', error_code: 'ERR_PHONE_ALREADY_USED' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -229,28 +230,28 @@ Deno.serve(async (req) => {
 
       if (!old_password) {
         return new Response(
-          JSON.stringify({ error: { message: '请输入当前密码', code: 'ERR_CURRENT_PASSWORD_REQUIRED' } }),
+          JSON.stringify({ success: false, error: '请输入当前密码', error_code: 'ERR_CURRENT_PASSWORD_REQUIRED' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       if (!new_password || !confirm_password) {
         return new Response(
-          JSON.stringify({ error: { message: '请输入新密码', code: 'ERR_NEW_PASSWORD_REQUIRED' } }),
+          JSON.stringify({ success: false, error: '请输入新密码', error_code: 'ERR_NEW_PASSWORD_REQUIRED' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       if (new_password !== confirm_password) {
         return new Response(
-          JSON.stringify({ error: { message: '两次输入的新密码不一致', code: 'ERR_PASSWORD_MISMATCH' } }),
+          JSON.stringify({ success: false, error: '两次输入的新密码不一致', error_code: 'ERR_PASSWORD_MISMATCH' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       if (new_password.length < 6) {
         return new Response(
-          JSON.stringify({ error: { message: '新密码长度至少6位', code: 'ERR_PASSWORD_TOO_SHORT' } }),
+          JSON.stringify({ success: false, error: '新密码长度至少6位', error_code: 'ERR_PASSWORD_TOO_SHORT' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -270,7 +271,7 @@ Deno.serve(async (req) => {
       const oldPasswordHash = await hashPassword(old_password);
       if (oldPasswordHash !== currentUser.password_hash) {
         return new Response(
-          JSON.stringify({ error: { message: '当前密码不正确', code: 'ERR_WRONG_PASSWORD' } }),
+          JSON.stringify({ success: false, error: '当前密码不正确', error_code: 'ERR_WRONG_PASSWORD' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -296,7 +297,7 @@ Deno.serve(async (req) => {
 
     } else {
       return new Response(
-        JSON.stringify({ error: { message: '不支持的操作类型', code: 'ERR_UNSUPPORTED_ACTION' } }),
+        JSON.stringify({ success: false, error: '不支持的操作类型', error_code: 'ERR_UNSUPPORTED_ACTION' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -304,7 +305,7 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     console.error('[update-profile] Error:', error);
     return new Response(
-      JSON.stringify({ error: { message: error.message || '服务器内部错误', code: 'ERR_SERVER_ERROR' } }),
+      JSON.stringify({ success: false, error: error.message || '服务器内部错误', error_code: mapErrorCode(error.message || '服务器内部错误') }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

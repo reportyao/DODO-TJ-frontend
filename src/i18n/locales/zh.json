@@ -1984,6 +1984,11 @@
     "ERR_SERVER_ERROR": "服务器内部错误",
     "ERR_RECORD_NOT_FOUND": "记录不存在或不属于您",
     "ERR_DEPOSIT_SUBMITTED": "充值申请已提交,请等待审核",
-    "ERR_WITHDRAW_SUBMITTED": "提现申请已提交，金额已冻结，等待管理员审核"
+    "ERR_WITHDRAW_SUBMITTED": "提现申请已提交，金额已冻结，等待管理员审核",
+    "ERR_RATE_LIMIT": "请求过于频繁，请稍后再试",
+    "ERR_NICKNAME_EMPTY": "昵称不能为空",
+    "ERR_NICKNAME_TOO_LONG": "昵称长度超过限制",
+    "ERR_AVATAR_URL_INVALID": "头像URL格式不正确",
+    "ERR_PROFILE_UPDATE_FAILED": "更新个人资料失败"
   }
 }

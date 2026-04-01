@@ -1984,6 +1984,11 @@
     "ERR_SERVER_ERROR": "Внутренняя ошибка сервера",
     "ERR_RECORD_NOT_FOUND": "Запись не найдена или не принадлежит вам",
     "ERR_DEPOSIT_SUBMITTED": "Заявка на пополнение подана, ожидайте проверки",
-    "ERR_WITHDRAW_SUBMITTED": "Заявка на вывод подана, сумма заморожена"
+    "ERR_WITHDRAW_SUBMITTED": "Заявка на вывод подана, сумма заморожена",
+    "ERR_RATE_LIMIT": "Слишком много запросов, попробуйте позже",
+    "ERR_NICKNAME_EMPTY": "Имя не может быть пустым",
+    "ERR_NICKNAME_TOO_LONG": "Имя слишком длинное",
+    "ERR_AVATAR_URL_INVALID": "Неверный формат URL аватара",
+    "ERR_PROFILE_UPDATE_FAILED": "Не удалось обновить профиль"
   }
 }

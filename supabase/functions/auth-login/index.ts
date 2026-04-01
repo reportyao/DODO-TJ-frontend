@@ -23,7 +23,7 @@ const corsHeaders = {
 /** 标准化错误响应 */
 function errorResponse(errorCode: string, fallbackMessage: string, status = 400) {
   return new Response(
-    JSON.stringify({ error: { message: fallbackMessage, code: errorCode }, error_code: errorCode }),
+    JSON.stringify({ success: false, error: fallbackMessage, error_code: errorCode }),
     { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }

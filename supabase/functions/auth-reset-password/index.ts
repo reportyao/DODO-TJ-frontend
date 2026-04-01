@@ -1,3 +1,4 @@
+import { mapErrorCode } from '../_shared/errorResponse.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
@@ -58,14 +59,14 @@ Deno.serve(async (req) => {
       const { token, new_password } = body;
 
       if (!token || !new_password) {
-        return new Response(JSON.stringify({ error: { message: '重置Token和新密码是必填项', code: 'ERR_PARAMS_MISSING' } }), {
+        return new Response(JSON.stringify({ success: false, error: '重置Token和新密码是必填项', error_code: 'ERR_PARAMS_MISSING' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       if (new_password.length < 6) {
-        return new Response(JSON.stringify({ error: { message: '密码长度至少6位', code: 'ERR_PASSWORD_TOO_SHORT' } }), {
+        return new Response(JSON.stringify({ success: false, error: '密码长度至少6位', error_code: 'ERR_PASSWORD_TOO_SHORT' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -81,7 +82,7 @@ Deno.serve(async (req) => {
         .single();
 
       if (sessionError || !resetSession) {
-        return new Response(JSON.stringify({ error: { message: '重置链接无效或已过期', code: 'ERR_INVALID_TOKEN' } }), {
+        return new Response(JSON.stringify({ success: false, error: '重置链接无效或已过期', error_code: 'ERR_INVALID_TOKEN' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -95,7 +96,7 @@ Deno.serve(async (req) => {
           .update({ is_active: false })
           .eq('id', resetSession.id);
 
-        return new Response(JSON.stringify({ error: { message: '重置链接已过期，请重新申请', code: 'ERR_SESSION_EXPIRED' } }), {
+        return new Response(JSON.stringify({ success: false, error: '重置链接已过期，请重新申请', error_code: 'ERR_SESSION_EXPIRED' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -143,7 +144,7 @@ Deno.serve(async (req) => {
       const { phone_number } = body;
 
       if (!phone_number) {
-        return new Response(JSON.stringify({ error: { message: '手机号是必填项', code: 'ERR_PHONE_PASSWORD_REQUIRED' } }), {
+        return new Response(JSON.stringify({ success: false, error: '手机号是必填项', error_code: 'ERR_PHONE_PASSWORD_REQUIRED' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -187,7 +188,7 @@ Deno.serve(async (req) => {
         const cooldown = 2 * 60 * 1000; // 2分钟冷却期
         if (Date.now() - createdAt.getTime() < cooldown) {
           return new Response(JSON.stringify({
-            error: { message: '请求过于频繁，请2分钟后再试', code: 'ERR_RATE_LIMIT' }
+            success: false, error: '请求过于频繁，请2分钟后再试', error_code: 'ERR_RATE_LIMIT'
           }), {
             status: 429,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -256,7 +257,7 @@ Deno.serve(async (req) => {
 
   } catch (error: any) {
     console.error('Reset password error:', error);
-    return new Response(JSON.stringify({ error: { message: error.message, code: 'ERR_SERVER_ERROR' } }), {
+    return new Response(JSON.stringify({ success: false, error: error.message, error_code: 'ERR_SERVER_ERROR' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

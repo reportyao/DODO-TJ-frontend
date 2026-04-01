@@ -1,3 +1,4 @@
+import { mapErrorCode } from '../_shared/errorResponse.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
@@ -76,14 +77,14 @@ Deno.serve(async (req) => {
     // 参数校验
     // ============================================================
     if (!phone_number || !password) {
-      return new Response(JSON.stringify({ error: { message: '手机号和密码是必填项', code: 'ERR_PHONE_PASSWORD_REQUIRED' } }), {
+      return new Response(JSON.stringify({ success: false, error: '手机号和密码是必填项', error_code: 'ERR_PHONE_PASSWORD_REQUIRED' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     if (password.length < 6) {
-      return new Response(JSON.stringify({ error: { message: '密码长度至少6位', code: 'ERR_PASSWORD_TOO_SHORT' } }), {
+      return new Response(JSON.stringify({ success: false, error: '密码长度至少6位', error_code: 'ERR_PASSWORD_TOO_SHORT' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -93,7 +94,7 @@ Deno.serve(async (req) => {
     const normalizedPhone = normalizePhone(phone_number);
 
     if (!/^\+?\d{9,15}$/.test(normalizedPhone)) {
-      return new Response(JSON.stringify({ error: { message: '手机号格式不正确', code: 'ERR_PHONE_FORMAT_INVALID' } }), {
+      return new Response(JSON.stringify({ success: false, error: '手机号格式不正确', error_code: 'ERR_PHONE_FORMAT_INVALID' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -111,7 +112,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existingUser) {
-      return new Response(JSON.stringify({ error: { message: '该手机号已被注册', code: 'ERR_PHONE_ALREADY_USED' } }), {
+      return new Response(JSON.stringify({ success: false, error: '该手机号已被注册', error_code: 'ERR_PHONE_ALREADY_USED' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -163,7 +164,7 @@ Deno.serve(async (req) => {
     if (createError || !user) {
       // 检查是否是UNIQUE约束冲突（并发注册同一手机号）
       if (createError?.code === '23505') {
-        return new Response(JSON.stringify({ error: { message: '该手机号已被注册', code: 'ERR_PHONE_ALREADY_USED' } }), {
+        return new Response(JSON.stringify({ success: false, error: '该手机号已被注册', error_code: 'ERR_PHONE_ALREADY_USED' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -364,7 +365,7 @@ Deno.serve(async (req) => {
       // 会话创建失败是严重错误，用户无法登录
       console.error('创建会话失败:', sessionError);
       return new Response(JSON.stringify({
-        error: { message: '注册成功但会话创建失败，请尝试登录', code: 'ERR_SESSION_CREATE_FAILED' }
+        success: false, error: '注册成功但会话创建失败，请尝试登录', error_code: 'ERR_SESSION_CREATE_FAILED'
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -405,7 +406,7 @@ Deno.serve(async (req) => {
 
   } catch (error: any) {
     console.error('Registration error:', error);
-    return new Response(JSON.stringify({ error: { message: error.message, code: 'ERR_SERVER_ERROR' } }), {
+    return new Response(JSON.stringify({ success: false, error: error.message, error_code: 'ERR_SERVER_ERROR' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
