@@ -409,44 +409,82 @@ async function pollWanxResult(
   maxPolls: number = 40,
   interval: number = 3000
 ): Promise<string> {
+  let consecutiveErrors = 0;
+  const maxConsecutiveErrors = 3;
+
   for (let i = 0; i < maxPolls; i++) {
     await new Promise((resolve) => setTimeout(resolve, interval));
 
-    const response = await fetch(
-      `https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(
-        `万相任务查询失败 (HTTP ${response.status}): ${errText}`
+    try {
+      const response = await fetch(
+        `https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+        }
       );
-    }
 
-    const result = await response.json();
-    const status = result.output?.task_status;
-
-    if (status === "SUCCEEDED") {
-      const imageUrl = result.output?.results?.[0]?.url;
-      if (!imageUrl) {
-        throw new Error("万相任务成功但未返回图片 URL");
+      if (!response.ok) {
+        const errText = await response.text();
+        consecutiveErrors++;
+        console.warn(
+          `[轮询] 任务 ${taskId} 查询失败 (${consecutiveErrors}/${maxConsecutiveErrors}): HTTP ${response.status}`
+        );
+        if (consecutiveErrors >= maxConsecutiveErrors) {
+          throw new Error(
+            `万相任务查询连续失败 ${maxConsecutiveErrors} 次 (HTTP ${response.status}): ${errText}`
+          );
+        }
+        continue;
       }
-      return imageUrl;
-    }
 
-    if (status === "FAILED") {
-      const errMsg =
-        result.output?.message || result.output?.code || "未知错误";
-      throw new Error(`万相任务失败: ${errMsg}`);
-    }
+      // 查询成功，重置连续错误计数
+      consecutiveErrors = 0;
 
-    // PENDING / RUNNING → 继续轮询
+      const result = await response.json();
+      const status = result.output?.task_status;
+
+      if (status === "SUCCEEDED") {
+        const imageUrl = result.output?.results?.[0]?.url;
+        if (!imageUrl) {
+          throw new Error("万相任务成功但未返回图片 URL");
+        }
+        return imageUrl;
+      }
+
+      if (status === "FAILED") {
+        const errMsg =
+          result.output?.message || result.output?.code || "未知错误";
+        throw new Error(`万相任务失败: ${errMsg}`);
+      }
+
+      // PENDING / RUNNING → 继续轮询
+    } catch (error) {
+      // 区分业务错误（应立即抛出）和网络错误（可容忍）
+      if (
+        error instanceof Error &&
+        (error.message.includes("万相任务失败") ||
+         error.message.includes("未返回图片 URL") ||
+         error.message.includes("连续失败"))
+      ) {
+        throw error;
+      }
+      // 网络层错误（fetch 异常），计入连续错误
+      consecutiveErrors++;
+      console.warn(
+        `[轮询] 任务 ${taskId} 网络错误 (${consecutiveErrors}/${maxConsecutiveErrors}):`,
+        error instanceof Error ? error.message : error
+      );
+      if (consecutiveErrors >= maxConsecutiveErrors) {
+        throw new Error(
+          `万相任务轮询网络连续失败 ${maxConsecutiveErrors} 次: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    }
   }
 
   throw new Error(`万相任务超时 (轮询 ${maxPolls} 次未完成)`);
@@ -559,6 +597,19 @@ serve(async (req) => {
     }
 
     // 4. 解析请求体
+    let reqBody: any;
+    try {
+      reqBody = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "请求体必须为有效的 JSON 格式" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const {
       image_urls,
       category,
@@ -566,12 +617,26 @@ serve(async (req) => {
       specs,
       price,
       notes,
-    } = await req.json();
+    } = reqBody;
 
     // 参数校验
     if (!image_urls || !Array.isArray(image_urls) || image_urls.length === 0) {
       return new Response(
         JSON.stringify({ error: "至少需要提供一张商品图片 URL" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // 校验每个元素是否为有效的 URL 字符串
+    const invalidUrls = image_urls.filter(
+      (u: any) => typeof u !== 'string' || !u.startsWith('http')
+    );
+    if (invalidUrls.length > 0) {
+      return new Response(
+        JSON.stringify({ error: `图片 URL 格式无效，必须为 http/https 开头的字符串` }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -589,9 +654,9 @@ serve(async (req) => {
       );
     }
 
-    if (!price || price <= 0) {
+    if (typeof price !== 'number' || !isFinite(price) || price <= 0) {
       return new Response(
-        JSON.stringify({ error: "售价必须大于 0" }),
+        JSON.stringify({ error: "售价必须为大于 0 的数字" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -652,7 +717,13 @@ serve(async (req) => {
           )
         );
 
-        console.log("[Step A] 图片理解完成:", JSON.stringify(analysis));
+        const analysisPreview = JSON.stringify(analysis);
+        console.log(
+          "[Step A] 图片理解完成:",
+          analysisPreview.length > 500
+            ? analysisPreview.slice(0, 500) + "...(truncated)"
+            : analysisPreview
+        );
 
         // ---- Step B: 三语文案生成 ----
         await sendSSE({
