@@ -17,6 +17,16 @@ interface PaymentConfig {
   require_payer_name?: boolean
   require_payer_account?: boolean
   require_payer_phone?: boolean
+  name_i18n?: {
+    zh?: string
+    ru?: string
+    tg?: string
+  }
+  description_i18n?: {
+    zh?: string
+    ru?: string
+    tg?: string
+  }
   config_data: {
     method: string
     enabled: boolean
@@ -307,10 +317,12 @@ export default function DepositPage() {
                     : 'border-gray-200 hover:border-primary'
                 }`}
               >
-                <div className="font-bold text-gray-800">{config.config_data.method}</div>
-                {config.config_data.bank_name && (
+                <div className="font-bold text-gray-800">{config.name_i18n?.[currentLang] || config.name_i18n?.tg || config.config_data.method}</div>
+                {config.description_i18n?.[currentLang] || config.description_i18n?.tg ? (
+                  <div className="text-sm text-gray-600">{config.description_i18n?.[currentLang] || config.description_i18n?.tg}</div>
+                ) : config.config_data.bank_name ? (
                   <div className="text-sm text-gray-600">{config.config_data.bank_name}</div>
-                )}
+                ) : null}
                 <div className="text-xs text-gray-500 mt-1">
                   {t('wallet.processingTime')}: {config.config_data.processing_time}{t('wallet.minutes')}
                 </div>

@@ -886,19 +886,19 @@ const NotificationPage: React.FC = () => {
   );
 };
 
-// 物流状态文本转换辅助函数
+// 物流状态文本转换辅助函数 - 使用 i18n 国际化
 function getLogisticsStatusText(status: string, t: (key: string) => string): string {
-  const statusMap: Record<string, string> = {
-    'PENDING_SHIPMENT': '待发货',
-    'IN_TRANSIT_CHINA': '国内运输中',
-    'IN_TRANSIT_TJ': '塔吉克斯坦运输中',
-    'ARRIVED_TJ': '已到达塔吉克斯坦',
-    'READY_FOR_PICKUP': '可以提货',
-    'PICKED_UP': '已提货',
-    'SHIPPED': '已发货',
-    'DELIVERED': '已送达',
+  const statusI18nMap: Record<string, string> = {
+    'PENDING_SHIPMENT': t('logistics.pendingShipment'),
+    'IN_TRANSIT_CHINA': t('logistics.inTransitChina'),
+    'IN_TRANSIT_TJ': t('logistics.inTransitTajikistan'),
+    'ARRIVED_TJ': t('logistics.readyForPickup'),
+    'READY_FOR_PICKUP': t('logistics.readyForPickup'),
+    'PICKED_UP': t('logistics.pickedUp'),
+    'SHIPPED': t('logistics.inTransitChina'),
+    'DELIVERED': t('logistics.pickedUp'),
   };
-  return statusMap[status] || status;
+  return statusI18nMap[status] || status;
 }
 
 export default NotificationPage;
