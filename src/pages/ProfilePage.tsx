@@ -234,10 +234,10 @@ const ProfilePage: React.FC = () => {
     // 核销员入口 - 仅对核销员显示（放在推广者之前，更突出）
     ...(isPickupStaff ? [{
       icon: CheckCircleIcon,
-      title: t('pickupVerify.menuTitle') || '提货核销',
+      title: t('pickupVerify.menuTitle'),
       subtitle: staffPointName
-        ? (t('pickupVerify.menuSubtitleWithPoint', { point: staffPointName }) || `${staffPointName} 核销通道`)
-        : (t('pickupVerify.menuSubtitle') || '自提点专属核销通道'),
+        ? t('pickupVerify.menuSubtitleWithPoint', { point: staffPointName })
+        : t('pickupVerify.menuSubtitle'),
       action: () => navigate('/pickup-verify'),
       highlight: true,
     }] : []),
@@ -300,7 +300,7 @@ const ProfilePage: React.FC = () => {
                 </h2>
                 <ChevronRightIcon className="w-4 h-4 text-white/60" />
               </div>
-              <p className="text-xs text-white/70 mt-0.5">{t('profile.tapToEditProfile') || '点击编辑个人资料'}</p>
+              <p className="text-xs text-white/70 mt-0.5">{t('profile.tapToEditProfile')}</p>
               <div className="flex items-center space-x-2 mt-1">
                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-white/20 font-mono">
                   ID: {shortUserId}

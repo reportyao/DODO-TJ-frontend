@@ -82,7 +82,7 @@ const ProfileEditPage: React.FC = () => {
   const handleSaveBasic = useCallback(async () => {
     if (!hasBasicChanges) return
     if (isUploadingAvatar) {
-      toast.error(t('profile.waitForAvatarUpload') || '请等待头像上传完成')
+      toast.error(t('profile.waitForAvatarUpload'))
       return
     }
 
@@ -105,7 +105,7 @@ const ProfileEditPage: React.FC = () => {
 
       if (data?.success && data?.data?.user) {
         updateLocalUser(data.data.user)
-        toast.success(t('success.updateSuccess') || '保存成功')
+        toast.success(t('success.updateSuccess'))
         // 刷新页面以更新 UserContext
         window.location.reload()
       } else {
@@ -113,7 +113,7 @@ const ProfileEditPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('[ProfileEditPage] Save basic info failed:', error)
-      toast.error(error.message || t('error.validationError') || '保存失败')
+      toast.error(error.message || t('error.validationError'))
     } finally {
       setIsSavingBasic(false)
     }
@@ -122,11 +122,11 @@ const ProfileEditPage: React.FC = () => {
   // ========== 保存手机号 ==========
   const handleSavePhone = useCallback(async () => {
     if (!newPhone.trim()) {
-      toast.error(t('profile.enterNewPhone') || '请输入新手机号')
+      toast.error(t('profile.enterNewPhone'))
       return
     }
     if (!confirmPhone.trim()) {
-      toast.error(t('profile.confirmNewPhone') || '请再次输入新手机号')
+      toast.error(t('profile.confirmNewPhone'))
       return
     }
 
@@ -149,7 +149,7 @@ const ProfileEditPage: React.FC = () => {
 
       if (data?.success && data?.data?.user) {
         updateLocalUser(data.data.user)
-        toast.success(t('profile.phoneUpdated') || '手机号修改成功')
+        toast.success(t('profile.phoneUpdated'))
         setNewPhone('')
         setConfirmPhone('')
         setActiveSection('none')
@@ -160,7 +160,7 @@ const ProfileEditPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('[ProfileEditPage] Save phone failed:', error)
-      toast.error(error.message || t('error.validationError') || '修改失败')
+      toast.error(error.message || t('error.validationError'))
     } finally {
       setIsSavingPhone(false)
     }
@@ -169,19 +169,19 @@ const ProfileEditPage: React.FC = () => {
   // ========== 保存密码 ==========
   const handleSavePassword = useCallback(async () => {
     if (!oldPassword) {
-      toast.error(t('profile.enterOldPassword') || '请输入当前密码')
+      toast.error(t('profile.enterOldPassword'))
       return
     }
     if (!newPassword) {
-      toast.error(t('profile.enterNewPassword') || '请输入新密码')
+      toast.error(t('profile.enterNewPassword'))
       return
     }
     if (newPassword.length < 6) {
-      toast.error(t('auth.passwordTooShort') || '密码长度至少6位')
+      toast.error(t('auth.passwordTooShort'))
       return
     }
     if (newPassword !== confirmPassword) {
-      toast.error(t('auth.passwordMismatch') || '两次输入的密码不一致')
+      toast.error(t('auth.passwordMismatch'))
       return
     }
 
@@ -204,7 +204,7 @@ const ProfileEditPage: React.FC = () => {
       }
 
       if (data?.success) {
-        toast.success(t('profile.passwordUpdated') || '密码修改成功')
+        toast.success(t('profile.passwordUpdated'))
         setOldPassword('')
         setNewPassword('')
         setConfirmPassword('')
@@ -214,7 +214,7 @@ const ProfileEditPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('[ProfileEditPage] Save password failed:', error)
-      toast.error(error.message || t('error.validationError') || '修改失败')
+      toast.error(error.message || t('error.validationError'))
     } finally {
       setIsSavingPassword(false)
     }
@@ -269,13 +269,13 @@ const ProfileEditPage: React.FC = () => {
         <div className="mt-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             <UserIcon className="w-4 h-4 inline-block mr-1 -mt-0.5" />
-            {t('profile.name') || '姓名'}
+            {t('profile.name')}
           </label>
           <input
             type="text"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
-            placeholder={t('profile.namePlaceholder') || '请输入您的姓名'}
+            placeholder={t('profile.namePlaceholder')}
             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
           />
         </div>
@@ -293,12 +293,12 @@ const ProfileEditPage: React.FC = () => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                {t('common.submitting') || '提交中...'}
+                {t('common.submitting')}
               </>
             ) : (
               <>
                 <CheckIcon className="w-5 h-5" />
-                {t('common.save') || '保存'}
+                {t('common.save')}
               </>
             )}
           </button>
@@ -321,10 +321,10 @@ const ProfileEditPage: React.FC = () => {
               </div>
               <div className="text-left">
                 <p className="text-sm font-medium text-gray-900">
-                  {t('profile.changePhone') || '修改手机号'}
+                  {t('profile.changePhone')}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {(user as any)?.phone_number || t('profile.notSet') || '未设置'}
+                  {(user as any)?.phone_number || t('profile.notSet')}
                 </p>
               </div>
             </div>
@@ -335,11 +335,11 @@ const ProfileEditPage: React.FC = () => {
           {activeSection === 'phone' && (
             <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
               <p className="text-xs text-gray-500">
-                {t('profile.phoneChangeHint') || '请输入两次新手机号以确认修改'}
+                {t('profile.phoneChangeHint')}
               </p>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {t('profile.newPhone') || '新手机号'}
+                  {t('profile.newPhone')}
                 </label>
                 <PhoneInput
                   value={newPhone}
@@ -349,7 +349,7 @@ const ProfileEditPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {t('profile.confirmNewPhone') || '再次输入新手机号'}
+                  {t('profile.confirmNewPhone')}
                 </label>
                 <PhoneInput
                   value={confirmPhone}
@@ -364,13 +364,13 @@ const ProfileEditPage: React.FC = () => {
                 />
                 {confirmPhone && newPhone && confirmPhone !== newPhone && (
                   <p className="text-xs text-red-500 mt-1">
-                    {t('profile.phoneMismatch') || '两次输入的手机号不一致'}
+                    {t('profile.phoneMismatch')}
                   </p>
                 )}
                 {confirmPhone && newPhone && confirmPhone === newPhone && (
                   <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
                     <CheckIcon className="w-3 h-3" />
-                    {t('profile.phoneMatch') || '手机号一致'}
+                    {t('profile.phoneMatch')}
                   </p>
                 )}
               </div>
@@ -385,10 +385,10 @@ const ProfileEditPage: React.FC = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    {t('common.submitting') || '提交中...'}
+                    {t('common.submitting')}
                   </>
                 ) : (
-                  t('profile.savePhone') || '确认修改手机号'
+                  t('profile.savePhone')
                 )}
               </button>
             </div>
@@ -412,10 +412,10 @@ const ProfileEditPage: React.FC = () => {
               </div>
               <div className="text-left">
                 <p className="text-sm font-medium text-gray-900">
-                  {t('profile.changePassword') || '修改密码'}
+                  {t('profile.changePassword')}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {t('profile.passwordHint') || '需要验证当前密码'}
+                  {t('profile.passwordHint')}
                 </p>
               </div>
             </div>
@@ -428,14 +428,14 @@ const ProfileEditPage: React.FC = () => {
               {/* 旧密码 */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {t('profile.currentPassword') || '当前密码'}
+                  {t('profile.currentPassword')}
                 </label>
                 <div className="relative">
                   <input
                     type={showOldPassword ? 'text' : 'password'}
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
-                    placeholder={t('profile.enterCurrentPassword') || '请输入当前密码'}
+                    placeholder={t('profile.enterCurrentPassword')}
                     className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 placeholder-gray-400"
                     autoComplete="current-password"
                   />
@@ -452,14 +452,14 @@ const ProfileEditPage: React.FC = () => {
               {/* 新密码 */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {t('profile.newPassword') || '新密码'}
+                  {t('profile.newPassword')}
                 </label>
                 <div className="relative">
                   <input
                     type={showNewPassword ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder={t('auth.passwordPlaceholder') || '至少6位'}
+                    placeholder={t('auth.passwordPlaceholder')}
                     className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 placeholder-gray-400"
                     autoComplete="new-password"
                   />
@@ -476,14 +476,14 @@ const ProfileEditPage: React.FC = () => {
               {/* 确认新密码 */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {t('profile.confirmNewPassword') || '确认新密码'}
+                  {t('profile.confirmNewPassword')}
                 </label>
                 <div className="relative">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder={t('auth.confirmPasswordPlaceholder') || '再次输入密码'}
+                    placeholder={t('auth.confirmPasswordPlaceholder')}
                     className={`w-full px-4 py-3 pr-12 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 placeholder-gray-400 ${
                       confirmPassword && newPassword && confirmPassword !== newPassword
                         ? 'border-red-300 bg-red-50'
@@ -503,7 +503,7 @@ const ProfileEditPage: React.FC = () => {
                 </div>
                 {confirmPassword && newPassword && confirmPassword !== newPassword && (
                   <p className="text-xs text-red-500 mt-1">
-                    {t('auth.passwordMismatch') || '两次输入的密码不一致'}
+                    {t('auth.passwordMismatch')}
                   </p>
                 )}
               </div>
@@ -519,10 +519,10 @@ const ProfileEditPage: React.FC = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    {t('common.submitting') || '提交中...'}
+                    {t('common.submitting')}
                   </>
                 ) : (
-                  t('profile.savePassword') || '确认修改密码'
+                  t('profile.savePassword')
                 )}
               </button>
             </div>
@@ -537,7 +537,7 @@ const ProfileEditPage: React.FC = () => {
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <div className="p-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('invite.myInviteCode') || '我的邀请码'}
+              {t('invite.myInviteCode')}
             </label>
             <input
               type="text"
@@ -546,7 +546,7 @@ const ProfileEditPage: React.FC = () => {
               className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed font-mono text-center text-lg"
             />
             <p className="text-xs text-gray-400 mt-1 text-center">
-              {t('profile.inviteCodeReadonly') || '邀请码不可修改'}
+              {t('profile.inviteCodeReadonly')}
             </p>
           </div>
         </div>
@@ -556,8 +556,8 @@ const ProfileEditPage: React.FC = () => {
       <div className="mx-4 mt-4 mb-6">
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
           <p className="text-sm text-primary-dark">
-            <strong>{t('common.note') || '提示'}:</strong>{' '}
-            {t('profile.editNote') || '个人信息修改后需重新审核'}
+            <strong>{t('common.note')}:</strong>{' '}
+            {t('profile.editNote')}
           </p>
         </div>
       </div>

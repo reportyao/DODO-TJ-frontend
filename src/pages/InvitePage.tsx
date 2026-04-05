@@ -25,7 +25,7 @@ const InvitePage: React.FC = () => {
   const [invitedUsers, setInvitedUsers] = useState<InvitedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [commissionRates, setCommissionRates] = useState<Record<number, number>>({ 1: 0.03, 2: 0.01, 3: 0.005 });
+  const [commissionRates, setCommissionRates] = useState<Record<number, number>>({ 1: 0.10, 2: 0.04, 3: 0.01 });
 
   const inviteCode = user?.referral_code || user?.invite_code || 'LOADING...'; // 优先使用 referral_code，兼容旧的 invite_code
   // 使用 PWA 域名生成分享链接

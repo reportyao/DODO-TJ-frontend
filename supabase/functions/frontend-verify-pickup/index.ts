@@ -16,6 +16,11 @@
  *   3. service_role_key: 绕过订单表 RLS 限制
  *   4. 原子性条件更新: 防止并发重复核销
  * 
+ * 多语言支持：
+ *   所有面向用户的错误消息使用 error_code 标识，
+ *   前端通过 i18n 翻译系统将 error_code 映射为当前语言的提示。
+ *   同时返回中文 fallback 消息以兼容旧版前端。
+ * 
  * 参考模式：
  *   - promoter-deposit (action 路由分发)
  *   - extend-pickup (validateSession)
@@ -32,6 +37,35 @@ const corsHeaders = {
 }
 
 // ============================================================
+// 标准化错误码定义
+// ============================================================
+const ERROR_CODES = {
+  UNAUTHORIZED_MISSING_TOKEN: 'ERR_UNAUTHORIZED_MISSING_TOKEN',
+  SERVER_CONFIG_ERROR: 'ERR_SERVER_CONFIG_ERROR',
+  SESSION_VALIDATE_FAILED: 'ERR_SESSION_VALIDATE_FAILED',
+  SESSION_NOT_FOUND: 'ERR_SESSION_NOT_FOUND',
+  SESSION_EXPIRED: 'ERR_SESSION_EXPIRED',
+  NOT_VALID_STAFF: 'ERR_NOT_VALID_STAFF',
+  INVALID_PICKUP_CODE: 'ERR_INVALID_PICKUP_CODE',
+  ORDER_NOT_FOUND: 'ERR_ORDER_NOT_FOUND',
+  ORDER_STATUS_INVALID: 'ERR_ORDER_STATUS_INVALID',
+  PICKUP_CODE_EXPIRED: 'ERR_PICKUP_CODE_EXPIRED',
+  VERIFY_FAILED: 'ERR_VERIFY_FAILED',
+  ALREADY_VERIFIED: 'ERR_ALREADY_VERIFIED',
+  GET_LOGS_FAILED: 'ERR_GET_LOGS_FAILED',
+  UNSUPPORTED_ACTION: 'ERR_UNSUPPORTED_ACTION',
+}
+
+/**
+ * 创建带有 error_code 的错误，前端可据此进行 i18n 翻译
+ */
+function createCodedError(errorCode: string, fallbackMessage: string): Error {
+  const err = new Error(fallbackMessage)
+  ;(err as any).error_code = errorCode
+  return err
+}
+
+// ============================================================
 // 通用工具函数
 // ============================================================
 
@@ -41,14 +75,14 @@ const corsHeaders = {
  */
 async function validateSession(sessionToken: string) {
   if (!sessionToken) {
-    throw new Error('未授权：缺少认证令牌')
+    throw createCodedError(ERROR_CODES.UNAUTHORIZED_MISSING_TOKEN, '未授权：缺少认证令牌')
   }
   
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   
   if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('服务器配置错误')
+    throw createCodedError(ERROR_CODES.SERVER_CONFIG_ERROR, '服务器配置错误')
   }
 
   const sessionResponse = await fetch(
@@ -63,20 +97,20 @@ async function validateSession(sessionToken: string) {
   )
 
   if (!sessionResponse.ok) {
-    throw new Error('验证会话失败')
+    throw createCodedError(ERROR_CODES.SESSION_VALIDATE_FAILED, '验证会话失败')
   }
 
   const sessions = await sessionResponse.json()
   
   if (sessions.length === 0) {
-    throw new Error('未授权：会话不存在或已失效')
+    throw createCodedError(ERROR_CODES.SESSION_NOT_FOUND, '未授权：会话不存在或已失效')
   }
 
   const session = sessions[0]
   const expiresAt = new Date(session.expires_at)
   
   if (expiresAt < new Date()) {
-    throw new Error('未授权：会话已过期')
+    throw createCodedError(ERROR_CODES.SESSION_EXPIRED, '未授权：会话已过期')
   }
 
   return {
@@ -98,7 +132,7 @@ async function validatePickupStaff(supabaseClient: any, userId: string) {
     .maybeSingle()
     
   if (error || !data) {
-    throw new Error('您不是有效的核销员，请联系管理员')
+    throw createCodedError(ERROR_CODES.NOT_VALID_STAFF, '您不是有效的核销员，请联系管理员')
   }
   
   return data
@@ -310,9 +344,10 @@ async function handleSearch(supabaseClient: any, pickupCode: string, staffInfo: 
     }
   }
 
-  // 未找到
+  // 未找到 —— 返回 error_code 供前端 i18n 翻译
   return {
     success: false,
+    error_code: ERROR_CODES.ORDER_NOT_FOUND,
     error: '未找到该提货码对应的订单'
   }
 }
@@ -333,7 +368,10 @@ async function handleVerify(
   const searchResult = await handleSearch(supabaseClient, pickupCode, staffInfo)
   
   if (!searchResult.success || !searchResult.data) {
-    throw new Error(searchResult.error || '未找到该提货码对应的订单')
+    throw createCodedError(
+      (searchResult as any).error_code || ERROR_CODES.ORDER_NOT_FOUND,
+      searchResult.error || '未找到该提货码对应的订单'
+    )
   }
 
   const orderData = searchResult.data
@@ -341,14 +379,14 @@ async function handleVerify(
   // 检查状态是否允许核销
   const allowedStatuses = ['PENDING_PICKUP', 'PENDING', 'READY_FOR_PICKUP', 'PENDING_CLAIM']
   if (orderData.pickup_status && !allowedStatuses.includes(orderData.pickup_status)) {
-    throw new Error(`该订单当前状态无法核销: ${orderData.pickup_status}`)
+    throw createCodedError(ERROR_CODES.ORDER_STATUS_INVALID, `该订单当前状态无法核销: ${orderData.pickup_status}`)
   }
 
   // 检查是否过期
   if (orderData.expires_at) {
     const expiresAt = new Date(orderData.expires_at)
     if (expiresAt < new Date()) {
-      throw new Error('该提货码已过期，请联系管理员延期')
+      throw createCodedError(ERROR_CODES.PICKUP_CODE_EXPIRED, '该提货码已过期，请联系管理员延期')
     }
   }
 
@@ -384,12 +422,12 @@ async function handleVerify(
 
   if (updateError) {
     console.error('[FrontendVerifyPickup] Update error:', updateError)
-    throw new Error('核销失败: ' + updateError.message)
+    throw createCodedError(ERROR_CODES.VERIFY_FAILED, '核销失败: ' + updateError.message)
   }
 
   // 检查是否真的更新了记录
   if (!updatedRows || updatedRows.length === 0) {
-    throw new Error('核销失败：该提货码已被核销或状态已变更')
+    throw createCodedError(ERROR_CODES.ALREADY_VERIFIED, '核销失败：该提货码已被核销或状态已变更')
   }
 
   // 写入 pickup_logs
@@ -479,7 +517,7 @@ async function handleGetTodayLogs(supabaseClient: any, userId: string) {
     .order('created_at', { ascending: false })
   if (error) {
     console.error('[FrontendVerifyPickup] Get today logs error:', error)
-    throw new Error('获取今日记录失败')
+    throw createCodedError(ERROR_CODES.GET_LOGS_FAILED, '获取今日记录失败')
   }
 
   // 第二步：根据 order_type 分组查询不同表的商品信息
@@ -628,7 +666,7 @@ serve(async (req) => {
 
     // 1. 验证 session
     if (!session_token) {
-      throw new Error('未授权：缺少 session_token')
+      throw createCodedError(ERROR_CODES.UNAUTHORIZED_MISSING_TOKEN, '未授权：缺少 session_token')
     }
     const { userId } = await validateSession(session_token)
 
@@ -652,7 +690,7 @@ serve(async (req) => {
     switch (action) {
       case 'search': {
         if (!pickup_code || pickup_code.length !== 6) {
-          throw new Error('请输入有效的6位提货码')
+          throw createCodedError(ERROR_CODES.INVALID_PICKUP_CODE, '请输入有效的6位提货码')
         }
         result = await handleSearch(supabaseClient, pickup_code, staffInfo)
         break
@@ -660,7 +698,7 @@ serve(async (req) => {
 
       case 'verify': {
         if (!pickup_code || pickup_code.length !== 6) {
-          throw new Error('请输入有效的6位提货码')
+          throw createCodedError(ERROR_CODES.INVALID_PICKUP_CODE, '请输入有效的6位提货码')
         }
         result = await handleVerify(supabaseClient, pickup_code, userId, staffInfo, proof_image_url)
         break
@@ -672,7 +710,7 @@ serve(async (req) => {
       }
 
       default:
-        throw new Error(`不支持的操作: ${action}`)
+        throw createCodedError(ERROR_CODES.UNSUPPORTED_ACTION, `不支持的操作: ${action}`)
     }
 
     return new Response(
@@ -685,11 +723,13 @@ serve(async (req) => {
 
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error)
+    const errorCode = (error as any)?.error_code || ''
     console.error('[FrontendVerifyPickup] Error:', error)
     
     return new Response(
       JSON.stringify({
         success: false,
+        error_code: errorCode,
         error: errMsg
       }),
       {

@@ -1989,6 +1989,16 @@
     "ERR_NICKNAME_EMPTY": "Имя не может быть пустым",
     "ERR_NICKNAME_TOO_LONG": "Имя слишком длинное",
     "ERR_AVATAR_URL_INVALID": "Неверный формат URL аватара",
-    "ERR_PROFILE_UPDATE_FAILED": "Не удалось обновить профиль"
+    "ERR_PROFILE_UPDATE_FAILED": "Не удалось обновить профиль",
+    "ERR_UNAUTHORIZED_MISSING_TOKEN": "Не авторизован: отсутствует токен",
+    "ERR_SERVER_CONFIG_ERROR": "Ошибка конфигурации сервера",
+    "ERR_NOT_VALID_STAFF": "Вы не являетесь оператором верификации, обратитесь к администратору",
+    "ERR_INVALID_PICKUP_CODE": "Введите действительный 6-значный код получения",
+    "ERR_ORDER_NOT_FOUND": "Заказ по данному коду не найден",
+    "ERR_ORDER_STATUS_INVALID": "Текущий статус заказа не позволяет верификацию",
+    "ERR_PICKUP_CODE_EXPIRED": "Код получения истёк, обратитесь к администратору для продления",
+    "ERR_VERIFY_FAILED": "Ошибка верификации, попробуйте ещё раз",
+    "ERR_ALREADY_VERIFIED": "Ошибка верификации: код уже использован или статус изменён",
+    "ERR_GET_LOGS_FAILED": "Ошибка загрузки записей за сегодня"
   }
 }

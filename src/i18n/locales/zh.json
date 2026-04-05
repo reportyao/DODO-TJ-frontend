@@ -1989,6 +1989,16 @@
     "ERR_NICKNAME_EMPTY": "昵称不能为空",
     "ERR_NICKNAME_TOO_LONG": "昵称长度超过限制",
     "ERR_AVATAR_URL_INVALID": "头像URL格式不正确",
-    "ERR_PROFILE_UPDATE_FAILED": "更新个人资料失败"
+    "ERR_PROFILE_UPDATE_FAILED": "更新个人资料失败",
+    "ERR_UNAUTHORIZED_MISSING_TOKEN": "未授权：缺少认证令牌",
+    "ERR_SERVER_CONFIG_ERROR": "服务器配置错误",
+    "ERR_NOT_VALID_STAFF": "您不是有效的核销员，请联系管理员",
+    "ERR_INVALID_PICKUP_CODE": "请输入有效的6位提货码",
+    "ERR_ORDER_NOT_FOUND": "未找到该提货码对应的订单",
+    "ERR_ORDER_STATUS_INVALID": "该订单当前状态无法核销",
+    "ERR_PICKUP_CODE_EXPIRED": "该提货码已过期，请联系管理员延期",
+    "ERR_VERIFY_FAILED": "核销失败，请重试",
+    "ERR_ALREADY_VERIFIED": "核销失败：该提货码已被核销或状态已变更",
+    "ERR_GET_LOGS_FAILED": "获取今日记录失败"
   }
 }

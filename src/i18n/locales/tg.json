@@ -1989,6 +1989,16 @@
     "ERR_NICKNAME_EMPTY": "Ном холӣ буда наметавонад",
     "ERR_NICKNAME_TOO_LONG": "Ном хеле дароз аст",
     "ERR_AVATAR_URL_INVALID": "Формати URL-и аватар нодуруст аст",
-    "ERR_PROFILE_UPDATE_FAILED": "Навсозии профил ноком шуд"
+    "ERR_PROFILE_UPDATE_FAILED": "Навсозии профил ноком шуд",
+    "ERR_UNAUTHORIZED_MISSING_TOKEN": "Иҷозат нест: токен мавҷуд нест",
+    "ERR_SERVER_CONFIG_ERROR": "Хатои танзимоти сервер",
+    "ERR_NOT_VALID_STAFF": "Шумо оператори тасдиқ нестед, ба маъмур муроҷиат кунед",
+    "ERR_INVALID_PICKUP_CODE": "Рамзи 6-рақамии дурустро ворид кунед",
+    "ERR_ORDER_NOT_FOUND": "Фармоиш бо ин рамз ёфт нашуд",
+    "ERR_ORDER_STATUS_INVALID": "Ҳолати ҷории фармоиш иҷозати тасдиқро намедиҳад",
+    "ERR_PICKUP_CODE_EXPIRED": "Мӯҳлати рамз гузашт, барои тамдид ба маъмур муроҷиат кунед",
+    "ERR_VERIFY_FAILED": "Хатои тасдиқ, дубора кӯшиш кунед",
+    "ERR_ALREADY_VERIFIED": "Хатои тасдиқ: рамз аллакай истифода шудааст ё ҳолат тағйир ёфтааст",
+    "ERR_GET_LOGS_FAILED": "Хатои боркунии сабтҳои имрӯза"
   }
 }

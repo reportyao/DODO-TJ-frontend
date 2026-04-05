@@ -371,12 +371,12 @@ const FullPurchaseConfirmPage: React.FC = () => {
             {userLocation && (
               <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                {t('orders.locationEnabled') || '已定位'}
+                {t('orders.locationEnabled')}
               </span>
             )}
             {!userLocation && !locationLoading && (
               <span className="text-xs text-gray-400">
-                {t('orders.locationDisabled') || '未获取位置'}
+                {t('orders.locationDisabled')}
               </span>
             )}
           </div>
@@ -419,7 +419,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
                                 </p>
                                 {index === 0 && userLocation && distance && (
                                   <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap">
-                                    {t('orders.nearest') || '最近'}
+                                    {t('orders.nearest')}
                                   </span>
                                 )}
                               </div>
@@ -509,7 +509,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
                 >
                   {showAllPoints ? (
                     <>
-                      {t('common.collapse') || '收起'}
+                      {t('common.collapse')}
                       <ChevronUpIcon className="w-4 h-4" />
                     </>
                   ) : (

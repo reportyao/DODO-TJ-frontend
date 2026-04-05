@@ -161,7 +161,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({
                 <span className="text-sm">💎</span>
               </div>
               <div>
-                <p className="text-xs text-white/60">{t('wallet.todayCommission') || '今日佣金'}</p>
+                <p className="text-xs text-white/60">{t('wallet.todayCommission')}</p>
                 <p className="text-lg font-bold text-yellow-300 mt-0.5">
                   {isLoadingCommission ? (
                     <span className="inline-block w-16 h-5 bg-white/10 rounded animate-pulse" />
@@ -177,7 +177,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({
                 animate={{ scale: 1, opacity: 1 }}
                 className="bg-yellow-400/20 text-yellow-300 text-[10px] font-medium px-2 py-1 rounded-full"
               >
-                {t('wallet.commissionUnit') || '积分'}
+                {t('wallet.commissionUnit')}
               </motion.div>
             )}
           </div>

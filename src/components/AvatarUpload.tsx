@@ -63,13 +63,13 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
     // 验证文件类型
     if (!file.type.startsWith('image/')) {
-      toast.error(t('deposit.invalidFileType') || '请选择图片文件')
+      toast.error(t('deposit.invalidFileType'))
       return
     }
 
     // 验证文件大小（原始文件不超过 20MB）
     if (file.size > 20 * 1024 * 1024) {
-      toast.error(t('profile.avatarTooLarge') || '图片文件过大，请选择小于20MB的图片')
+      toast.error(t('profile.avatarTooLarge'))
       return
     }
 
@@ -89,13 +89,13 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
       const publicUrl = await uploadImage(file, true, 'payment-proofs', 'avatars')
 
       onUploadSuccess(publicUrl)
-      toast.success(t('deposit.uploadSuccess') || '上传成功')
+      toast.success(t('deposit.uploadSuccess'))
     } catch (error) {
       console.error('[AvatarUpload] Upload failed:', error)
       // 上传失败，恢复原头像
       setPreviewUrl(null)
       const errorMessage = error instanceof Error ? error.message : String(error)
-      toast.error(`${t('deposit.uploadFailed') || '上传失败'}：${errorMessage}`)
+      toast.error(`${t('deposit.uploadFailed')}：${errorMessage}`)
     } finally {
       setIsUploading(false)
       onUploadingChange?.(false)
@@ -111,7 +111,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
         onClick={handleClick}
         role="button"
         tabIndex={0}
-        aria-label={t('profile.changeAvatar') || '更换头像'}
+        aria-label={t('profile.changeAvatar')}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick() }}
       >
         {/* 头像图片或占位符 */}
@@ -165,8 +165,8 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
       {/* 提示文字 */}
       <p className="text-sm text-gray-500 mt-3">
         {isUploading
-          ? (t('deposit.compressing') || '压缩中...')
-          : (t('profile.tapToChangeAvatar') || '点击更换头像')
+          ? (t('deposit.compressing'))
+          : (t('profile.tapToChangeAvatar'))
         }
       </p>
 

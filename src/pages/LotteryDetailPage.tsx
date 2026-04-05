@@ -187,6 +187,35 @@ const LotteryDetailPage: React.FC = () => {
     }
   }, [id, supabase, t, user, fetchMyTickets]);
 
+  // 轻量级刷新：仅更新 sold_tickets 和库存，不触发 loading 状态和跳转逻辑
+  // 用于购买成功后立即刷新进度条，避免 fetchLottery 的 setIsLoading(true) 导致页面闪烁
+  const refreshLotteryProgress = useCallback(async () => {
+    if (!id) return;
+    try {
+      // 添加时间戳参数绕过任何可能的缓存
+      const { data, error } = await supabase
+        .from('lotteries')
+        .select('sold_tickets, total_tickets, status')
+        .eq('id', id)
+        .single();
+
+      if (error || !data) return;
+
+      // 更新 lottery 状态中的 sold_tickets，保留其他字段不变
+      setLottery(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          sold_tickets: data.sold_tickets,
+          total_tickets: data.total_tickets,
+          status: data.status,
+        };
+      });
+    } catch (err) {
+      console.warn('[LotteryDetail] Failed to refresh progress:', err);
+    }
+  }, [id, supabase]);
+
   const fetchRandomShowoffs = useCallback(async () => {
     try {
       // 获取最近的 3 个已审核晒单（包含 display_username 和 display_avatar_url 字段）
@@ -385,9 +414,10 @@ const LotteryDetailPage: React.FC = () => {
       // 等待短暂延迟确保数据库事务完成后再刷新
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // 刷新抽奖数据、钱包和我的参与码（防止重复购买超出限购）
+      // 【BUG修复】使用轻量级刷新函数更新进度，避免 fetchLottery 的 setIsLoading(true) 和跳转逻辑
+      // 同时刷新钱包和参与码（防止重复购买超出限购）
       await Promise.all([
-        fetchLottery(),
+        refreshLotteryProgress(),
         refreshWallets(),
         fetchMyTickets()
       ]);

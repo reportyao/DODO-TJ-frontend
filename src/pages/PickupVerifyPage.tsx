@@ -43,6 +43,7 @@ import { supabase } from '../lib/supabase'
 import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper'
 import { uploadImage } from '../lib/uploadImage'
 import toast from 'react-hot-toast'
+import i18nInstance from '../i18n/config'
 
 // ============================================================
 // 类型定义
@@ -122,7 +123,7 @@ const PickupVerifyPage: React.FC = () => {
   const callVerifyPickup = useCallback(async (body: Record<string, any>) => {
     const sessionToken = getSessionToken()
     if (!sessionToken) {
-      throw new Error(t('pickupVerify.notLoggedIn') || '请先登录')
+      throw new Error(t('pickupVerify.notLoggedIn'))
     }
 
     const { data, error } = await supabase.functions.invoke('frontend-verify-pickup', {
@@ -164,7 +165,7 @@ const PickupVerifyPage: React.FC = () => {
   const handleSearch = async () => {
     const code = pickupCode.trim()
     if (code.length !== 6) {
-      toast.error(t('pickupVerify.inputPlaceholder') || '请输入6位提货码')
+      toast.error(t('pickupVerify.inputPlaceholder'))
       return
     }
 
@@ -190,11 +191,19 @@ const PickupVerifyPage: React.FC = () => {
           setStaffPointName(localizedName)
         }
       } else {
-        setSearchError(result?.error || t('pickupVerify.notFoundMsg') || '未找到该提货码')
+        // 优先使用 error_code 进行 i18n 翻译，避免显示后端硬编码的中文
+        let errorMsg = t('pickupVerify.notFoundMsg')
+        if (result?.error_code) {
+          const translated = i18nInstance.t(`edgeErrors.${result.error_code}`)
+          if (translated && translated !== `edgeErrors.${result.error_code}`) {
+            errorMsg = translated
+          }
+        }
+        setSearchError(errorMsg)
       }
     } catch (err: any) {
       console.error('[PickupVerifyPage] Search error:', err)
-      setSearchError(err.message || t('pickupVerify.notFoundMsg') || '查询失败')
+      setSearchError(err.message || t('pickupVerify.notFoundMsg'))
     } finally {
       setIsSearching(false)
     }
@@ -214,10 +223,10 @@ const PickupVerifyPage: React.FC = () => {
     try {
       const url = await uploadImage(file, true, 'payment-proofs', 'pickup-proofs')
       setProofImageUrl(url)
-      toast.success(t('pickupVerify.photoUploaded') || '照片已上传')
+      toast.success(t('pickupVerify.photoUploaded'))
     } catch (err: any) {
       console.error('[PickupVerifyPage] Photo upload error:', err)
-      toast.error(t('pickupVerify.photoUploadFailed') || '照片上传失败，可跳过拍照直接核销')
+      toast.error(t('pickupVerify.photoUploadFailed'))
       // 上传失败不阻止核销
     } finally {
       setIsUploading(false)
@@ -249,7 +258,7 @@ const PickupVerifyPage: React.FC = () => {
 
       if (result?.success) {
         setVerifySuccess(true)
-        toast.success(t('pickupVerify.successMsg') || '核销成功！')
+        toast.success(t('pickupVerify.successMsg'))
 
         // 震动反馈（如果设备支持）
         if (navigator.vibrate) {
@@ -270,11 +279,19 @@ const PickupVerifyPage: React.FC = () => {
           inputRef.current?.focus()
         }, 2000)
       } else {
-        toast.error(result?.error || t('pickupVerify.statusErrorMsg') || '核销失败')
+        // 优先使用 error_code 进行 i18n 翻译
+        let errorMsg = t('pickupVerify.statusErrorMsg')
+        if (result?.error_code) {
+          const translated = i18nInstance.t(`edgeErrors.${result.error_code}`)
+          if (translated && translated !== `edgeErrors.${result.error_code}`) {
+            errorMsg = translated
+          }
+        }
+        toast.error(errorMsg)
       }
     } catch (err: any) {
       console.error('[PickupVerifyPage] Verify error:', err)
-      toast.error(err.message || t('pickupVerify.statusErrorMsg') || '核销失败')
+      toast.error(err.message || t('pickupVerify.statusErrorMsg'))
     } finally {
       setIsVerifying(false)
     }
@@ -283,9 +300,9 @@ const PickupVerifyPage: React.FC = () => {
   // ========== 获取来源类型文案 ==========
   const getSourceTypeText = (type: string) => {
     const map: Record<string, string> = {
-      lottery: t('pickupVerify.sourceType.lottery') || '积分商城',
-      group_buy: t('pickupVerify.sourceType.group_buy') || '拼团',
-      full_purchase: t('pickupVerify.sourceType.full_purchase') || '全款购买',
+      lottery: t('pickupVerify.sourceType.lottery'),
+      group_buy: t('pickupVerify.sourceType.group_buy'),
+      full_purchase: t('pickupVerify.sourceType.full_purchase'),
     }
     return map[type] || type
   }
@@ -320,27 +337,27 @@ const PickupVerifyPage: React.FC = () => {
   const getStatusStyle = (status: string) => {
     const map: Record<string, { text: string; bg: string; textColor: string }> = {
       PENDING_CLAIM: {
-        text: t('pickupVerify.status.pendingClaim') || '待领取',
+        text: t('pickupVerify.status.pendingClaim'),
         bg: 'bg-yellow-50',
         textColor: 'text-yellow-700',
       },
       PENDING_PICKUP: {
-        text: t('pickupVerify.status.pendingPickup') || '待提货',
+        text: t('pickupVerify.status.pendingPickup'),
         bg: 'bg-blue-50',
         textColor: 'text-blue-700',
       },
       READY_FOR_PICKUP: {
-        text: t('pickupVerify.status.readyForPickup') || '可提货',
+        text: t('pickupVerify.status.readyForPickup'),
         bg: 'bg-green-50',
         textColor: 'text-green-700',
       },
       PICKED_UP: {
-        text: t('pickupVerify.status.pickedUp') || '已提货',
+        text: t('pickupVerify.status.pickedUp'),
         bg: 'bg-gray-50',
         textColor: 'text-gray-500',
       },
       EXPIRED: {
-        text: t('pickupVerify.status.expired') || '已过期',
+        text: t('pickupVerify.status.expired'),
         bg: 'bg-red-50',
         textColor: 'text-red-700',
       },
@@ -382,7 +399,7 @@ const PickupVerifyPage: React.FC = () => {
             <ArrowLeftIcon className="w-5 h-5 text-white" />
           </button>
           <h1 className="text-lg font-bold text-white">
-            {t('pickupVerify.pageTitle') || '核销提货码'}
+            {t('pickupVerify.pageTitle') }
           </h1>
           <div className="w-10" /> {/* 占位 */}
         </div>
@@ -399,7 +416,7 @@ const PickupVerifyPage: React.FC = () => {
           <div className="flex items-center space-x-1 bg-white/15 rounded-full px-3 py-1">
             <CheckBadgeIcon className="w-3.5 h-3.5 text-white/90" />
             <span className="text-xs text-white/90 font-medium">
-              {t('pickupVerify.todayCount') || '今日已核销'}: {todayCount}
+              {t('pickupVerify.todayCount') }: {todayCount}
             </span>
           </div>
         </div>
@@ -413,7 +430,7 @@ const PickupVerifyPage: React.FC = () => {
       >
         <div className="bg-white rounded-2xl shadow-sm p-5">
           <label className="block text-sm font-medium text-gray-600 mb-3">
-            {t('pickupVerify.inputLabel') || '提货码'}
+            {t('pickupVerify.inputLabel') }
           </label>
           
           {/* 大字号输入框 */}
@@ -427,7 +444,7 @@ const PickupVerifyPage: React.FC = () => {
               value={pickupCode}
               onChange={handleCodeInput}
               onKeyDown={handleKeyDown}
-              placeholder={t('pickupVerify.inputPlaceholder') || '请输入6位提货码'}
+              placeholder={t('pickupVerify.inputPlaceholder') }
               className="w-full text-center text-3xl font-bold tracking-[0.5em] py-4 px-4 border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-gray-50 placeholder:text-base placeholder:tracking-normal placeholder:text-gray-400"
               autoComplete="off"
             />
@@ -461,12 +478,12 @@ const PickupVerifyPage: React.FC = () => {
             {isSearching ? (
               <>
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>{t('pickupVerify.searching') || '查询中...'}</span>
+                <span>{t('pickupVerify.searching') }</span>
               </>
             ) : (
               <>
                 <MagnifyingGlassIcon className="w-5 h-5" />
-                <span>{t('pickupVerify.searchBtn') || '查询'}</span>
+                <span>{t('pickupVerify.searchBtn') }</span>
               </>
             )}
           </motion.button>
@@ -508,10 +525,10 @@ const PickupVerifyPage: React.FC = () => {
                 <CheckCircleIcon className="w-16 h-16 text-success" />
               </motion.div>
               <p className="text-lg font-bold text-success">
-                {t('pickupVerify.successMsg') || '核销成功！'}
+                {t('pickupVerify.successMsg') }
               </p>
               <p className="text-xs text-gray-500">
-                {t('pickupVerify.autoResetHint') || '即将自动清空，准备下一次核销'}
+                {t('pickupVerify.autoResetHint') }
               </p>
             </div>
           </motion.div>
@@ -571,7 +588,7 @@ const PickupVerifyPage: React.FC = () => {
                 {orderData.user && (
                   <div className="flex items-center space-x-2 text-sm">
                     <UserIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-500">{t('pickupVerify.userName') || '用户'}:</span>
+                    <span className="text-gray-500">{t('pickupVerify.userName') }:</span>
                     <span className="text-gray-900 font-medium">
                       {orderData.user.first_name || ''} {orderData.user.last_name || ''}
                       {orderData.user.phone_number && (
@@ -585,7 +602,7 @@ const PickupVerifyPage: React.FC = () => {
                 {orderData.pickup_point && (
                   <div className="flex items-center space-x-2 text-sm">
                     <MapPinIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-500">{t('pickupVerify.pickupPoint') || '自提点'}:</span>
+                    <span className="text-gray-500">{t('pickupVerify.pickupPoint') }:</span>
                     <span className="text-gray-900 font-medium">
                       {orderData.pickup_point.name_i18n?.[i18n.language as keyof typeof orderData.pickup_point.name_i18n] || orderData.pickup_point.name}
                     </span>
@@ -596,7 +613,7 @@ const PickupVerifyPage: React.FC = () => {
                 {orderData.expires_at && (
                   <div className="flex items-center space-x-2 text-sm">
                     <CalendarDaysIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-500">{t('pickupVerify.expiresAt') || '有效期至'}:</span>
+                    <span className="text-gray-500">{t('pickupVerify.expiresAt') }:</span>
                     <span className={`font-medium ${
                       getRemainingDays(orderData.expires_at) !== null && getRemainingDays(orderData.expires_at)! <= 3
                         ? 'text-destructive'
@@ -615,7 +632,7 @@ const PickupVerifyPage: React.FC = () => {
                 {/* 提货码 */}
                 <div className="flex items-center space-x-2 text-sm">
                   <CheckBadgeIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  <span className="text-gray-500">{t('pickupVerify.pickupCode') || '提货码'}:</span>
+                  <span className="text-gray-500">{t('pickupVerify.pickupCode') }:</span>
                   <span className="text-gray-900 font-bold font-mono tracking-wider">
                     {orderData.pickup_code}
                   </span>
@@ -627,7 +644,7 @@ const PickupVerifyPage: React.FC = () => {
             <div className="bg-white rounded-2xl shadow-sm p-4">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-medium text-gray-600">
-                  {t('pickupVerify.takePhoto') || '拍照留证 (可选)'}
+                  {t('pickupVerify.takePhoto') }
                 </span>
                 {proofPreview && (
                   <button
@@ -635,7 +652,7 @@ const PickupVerifyPage: React.FC = () => {
                     className="text-xs text-destructive flex items-center space-x-1"
                   >
                     <XCircleIcon className="w-3.5 h-3.5" />
-                    <span>{t('common.delete') || '删除'}</span>
+                    <span>{t('common.delete') }</span>
                   </button>
                 )}
               </div>
@@ -665,7 +682,7 @@ const PickupVerifyPage: React.FC = () => {
                 >
                   <CameraIcon className="w-8 h-8 text-gray-400" />
                   <span className="text-xs text-gray-400">
-                    {t('pickupVerify.tapToPhoto') || '点击拍照'}
+                    {t('pickupVerify.tapToPhoto') }
                   </span>
                 </button>
               )}
@@ -694,12 +711,12 @@ const PickupVerifyPage: React.FC = () => {
               {isVerifying ? (
                 <>
                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>{t('pickupVerify.verifying') || '核销中...'}</span>
+                  <span>{t('pickupVerify.verifying') }</span>
                 </>
               ) : (
                 <>
                   <CheckBadgeIcon className="w-6 h-6" />
-                  <span>{t('pickupVerify.verifyBtn') || '确认核销'}</span>
+                  <span>{t('pickupVerify.verifyBtn') }</span>
                 </>
               )}
             </motion.button>
@@ -716,14 +733,14 @@ const PickupVerifyPage: React.FC = () => {
       >
         <h3 className="text-sm font-semibold text-gray-500 mb-3 flex items-center space-x-1.5">
           <ClockIcon className="w-4 h-4" />
-          <span>{t('pickupVerify.todayRecords') || '今日核销记录'}</span>
+          <span>{t('pickupVerify.todayRecords') }</span>
         </h3>
 
         {todayLogs.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
             <CheckBadgeIcon className="w-12 h-12 text-gray-200 mx-auto mb-2" />
             <p className="text-sm text-gray-400">
-              {t('pickupVerify.noRecords') || '暂无记录'}
+              {t('pickupVerify.noRecords') }
             </p>
           </div>
         ) : (
@@ -800,23 +817,23 @@ const PickupVerifyPage: React.FC = () => {
               <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-5" />
               
               <h3 className="text-lg font-bold text-gray-900 text-center mb-4">
-                {t('pickupVerify.confirmTitle') || '确认核销'}
+                {t('pickupVerify.confirmTitle') }
               </h3>
 
               <div className="bg-gray-50 rounded-xl p-4 mb-5 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">{t('pickupVerify.productName') || '商品名称'}</span>
+                  <span className="text-gray-500">{t('pickupVerify.productName') }</span>
                   <span className="text-gray-900 font-medium truncate ml-4 max-w-[60%] text-right">
                     {orderData.prize_name}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">{t('pickupVerify.pickupCode') || '提货码'}</span>
+                  <span className="text-gray-500">{t('pickupVerify.pickupCode') }</span>
                   <span className="text-gray-900 font-bold font-mono">{orderData.pickup_code}</span>
                 </div>
                 {orderData.user && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">{t('pickupVerify.userName') || '用户'}</span>
+                    <span className="text-gray-500">{t('pickupVerify.userName') }</span>
                     <span className="text-gray-900 font-medium">
                       {orderData.user.first_name || ''} {orderData.user.phone_number || ''}
                     </span>
@@ -825,7 +842,7 @@ const PickupVerifyPage: React.FC = () => {
               </div>
 
               <p className="text-sm text-gray-500 text-center mb-5">
-                {t('pickupVerify.confirmMsg') || '确定要核销此商品吗？核销后不可撤销。'}
+                {t('pickupVerify.confirmMsg') }
               </p>
 
               <div className="flex space-x-3">
@@ -833,14 +850,14 @@ const PickupVerifyPage: React.FC = () => {
                   onClick={() => setShowConfirmModal(false)}
                   className="flex-1 py-3.5 rounded-xl border border-gray-200 text-gray-600 font-medium active:bg-gray-50 transition-colors"
                 >
-                  {t('pickupVerify.cancel') || '取消'}
+                  {t('pickupVerify.cancel') }
                 </button>
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={handleVerify}
                   className="flex-1 py-3.5 rounded-xl bg-success text-white font-bold active:bg-success/90 transition-colors shadow-sm"
                 >
-                  {t('pickupVerify.verifyBtn') || '确认核销'}
+                  {t('pickupVerify.verifyBtn') }
                 </motion.button>
               </div>
             </motion.div>

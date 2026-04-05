@@ -59,7 +59,7 @@ const RegisterPage: React.FC = () => {
       return
     }
     if (isUploadingAvatar) {
-      toast.error(t('profile.waitForAvatarUpload') || '请等待头像上传完成')
+      toast.error(t('profile.waitForAvatarUpload'))
       return
     }
 
