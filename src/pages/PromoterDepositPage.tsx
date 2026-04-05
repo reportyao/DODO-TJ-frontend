@@ -207,32 +207,10 @@ const PromoterDepositPage: React.FC = () => {
         toast.error(t('promoterDeposit.userNotFound'))
       }
     } catch (err: any) {
-      toast.error(mapErrorMessage(err.message) || t('promoterDeposit.searchFailed'))
+      toast.error(err.message || t('promoterDeposit.searchFailed'))
     } finally {
       setIsSearching(false)
     }
-  }
-
-  // ========== 错误消息映射（将后端中文错误消息映射为翻译key） ==========
-  const mapErrorMessage = (msg: string): string => {
-    const errorMap: Record<string, string> = {
-      'NOT_PROMOTER': t('promoterDeposit.errors.notPromoter', '您不是地推人员'),
-      'PROMOTER_INACTIVE': t('promoterDeposit.errors.promoterInactive', '地推账号未激活'),
-      'SELF_DEPOSIT_FORBIDDEN': t('promoterDeposit.cannotDepositSelf'),
-      'INVALID_AMOUNT': t('promoterDeposit.errors.invalidAmount', '充值金额不合法'),
-      'AMOUNT_MUST_BE_INTEGER': t('promoterDeposit.errors.amountMustBeInteger', '金额必须为整数'),
-      'DAILY_COUNT_EXCEEDED': t('promoterDeposit.errors.dailyCountExceeded', '今日充值次数已达上限'),
-      'DAILY_LIMIT_EXCEEDED': t('promoterDeposit.errors.dailyLimitExceeded', '今日充值额度不足'),
-    }
-    // 检查是否是已知的错误码
-    if (errorMap[msg]) return errorMap[msg]
-    // 检查是否包含已知的中文错误消息
-    if (msg.includes('不是地推人员')) return errorMap['NOT_PROMOTER']
-    if (msg.includes('未激活') || msg.includes('已被停用')) return errorMap['PROMOTER_INACTIVE']
-    if (msg.includes('不能小于')) return errorMap['INVALID_AMOUNT']
-    if (msg.includes('次数已达上限')) return errorMap['DAILY_COUNT_EXCEEDED']
-    if (msg.includes('额度不足')) return errorMap['DAILY_LIMIT_EXCEEDED']
-    return msg
   }
 
   // ========== 扫码功能（PWA 模式不支持，提示用户使用手动搜索） ==========
@@ -289,10 +267,10 @@ const PromoterDepositPage: React.FC = () => {
         loadStats()
         toast.success(t('promoterDeposit.depositSuccess'))
       } else {
-        toast.error(mapErrorMessage(result?.error) || t('promoterDeposit.depositFailed'))
+        toast.error(t('promoterDeposit.depositFailed'))
       }
     } catch (err: any) {
-      toast.error(mapErrorMessage(err.message) || t('promoterDeposit.depositFailed'))
+      toast.error(err.message || t('promoterDeposit.depositFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -504,7 +482,7 @@ const PromoterDepositPage: React.FC = () => {
               {showSearchResults && searchResults.length > 0 && (
                 <div className="mt-3 border border-gray-100 rounded-xl overflow-hidden">
                   <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-                    <span className="text-xs text-gray-500">{t('promoterDeposit.multipleResults', '找到多个用户，请选择')}</span>
+                    <span className="text-xs text-gray-500">{t('promoterDeposit.multipleResults')}</span>
                     <button onClick={() => setShowSearchResults(false)} className="text-gray-400 hover:text-gray-600">
                       <XMarkIcon className="w-4 h-4" />
                     </button>
@@ -532,11 +510,11 @@ const PromoterDepositPage: React.FC = () => {
                       </div>
                       <div className="flex-1 text-left">
                         <p className="text-sm font-medium text-gray-900">
-                          {u.first_name || u.last_name ? `${u.first_name || ''} ${u.last_name || ''}`.trim() : t('promoterDeposit.anonymousUser', '匿名用户')}
+                          {u.first_name || u.last_name ? `${u.first_name || ''} ${u.last_name || ''}`.trim() : t('promoterDeposit.anonymousUser')}
                         </p>
                         <p className="text-xs text-gray-500">{u.phone_number || u.id.slice(0, 8)}</p>
                       </div>
-                      <span className="text-xs text-primary font-medium">{t('promoterDeposit.select', '选择')}</span>
+                      <span className="text-xs text-primary font-medium">{t('promoterDeposit.select')}</span>
                     </button>
                   ))}
                 </div>
@@ -687,7 +665,7 @@ const PromoterDepositPage: React.FC = () => {
                 {targetUser.phone_number && (
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-500">
-                      {t('promoterDeposit.phoneNumber', '电话')}
+                      {t('promoterDeposit.phoneNumber')}
                     </span>
                     <span className="text-sm font-mono text-gray-900">
                       {targetUser.phone_number}

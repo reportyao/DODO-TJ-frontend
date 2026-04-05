@@ -1797,7 +1797,10 @@
       "amountMustBeInteger": "Сумма должна быть целым числом",
       "dailyCountExceeded": "Достигнут дневной лимит по количеству",
       "dailyLimitExceeded": "Недостаточно дневного лимита"
-    }
+    },
+    "anonymousUser": "Анонимный пользователь",
+    "multipleResults": "Найдено несколько пользователей, выберите",
+    "select": "Выбрать"
   },
   "coupon": {
     "expired": "Истёк",
@@ -1999,6 +2002,10 @@
     "ERR_PICKUP_CODE_EXPIRED": "Код получения истёк, обратитесь к администратору для продления",
     "ERR_VERIFY_FAILED": "Ошибка верификации, попробуйте ещё раз",
     "ERR_ALREADY_VERIFIED": "Ошибка верификации: код уже использован или статус изменён",
-    "ERR_GET_LOGS_FAILED": "Ошибка загрузки записей за сегодня"
+    "ERR_GET_LOGS_FAILED": "Ошибка загрузки записей за сегодня",
+    "ERR_SELF_DEPOSIT_FORBIDDEN": "Нельзя пополнить свой счёт",
+    "ERR_AMOUNT_MUST_BE_INTEGER": "Сумма должна быть целым числом",
+    "ERR_DAILY_COUNT_EXCEEDED": "Дневной лимит операций исчерпан",
+    "ERR_DAILY_LIMIT_EXCEEDED": "Дневной лимит суммы исчерпан"
   }
 }

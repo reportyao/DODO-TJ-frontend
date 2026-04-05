@@ -1797,7 +1797,10 @@
       "amountMustBeInteger": "Маблағ бояд адади бутун бошад",
       "dailyCountExceeded": "Лимити рӯзонаи шумора ба охир расид",
       "dailyLimitExceeded": "Лимити рӯзонаи маблағ кифоя нест"
-    }
+    },
+    "anonymousUser": "Корбари номаълум",
+    "multipleResults": "Якчанд корбар ёфт шуд, интихоб кунед",
+    "select": "Интихоб"
   },
   "coupon": {
     "expired": "Мӯҳлаташ гузашт",
@@ -1999,6 +2002,10 @@
     "ERR_PICKUP_CODE_EXPIRED": "Мӯҳлати рамз гузашт, барои тамдид ба маъмур муроҷиат кунед",
     "ERR_VERIFY_FAILED": "Хатои тасдиқ, дубора кӯшиш кунед",
     "ERR_ALREADY_VERIFIED": "Хатои тасдиқ: рамз аллакай истифода шудааст ё ҳолат тағйир ёфтааст",
-    "ERR_GET_LOGS_FAILED": "Хатои боркунии сабтҳои имрӯза"
+    "ERR_GET_LOGS_FAILED": "Хатои боркунии сабтҳои имрӯза",
+    "ERR_SELF_DEPOSIT_FORBIDDEN": "Ба худ пуркунӣ мумкин нест",
+    "ERR_AMOUNT_MUST_BE_INTEGER": "Маблағ бояд адади бутун бошад",
+    "ERR_DAILY_COUNT_EXCEEDED": "Ҳадди рӯзонаи амалиёт пур шуд",
+    "ERR_DAILY_LIMIT_EXCEEDED": "Ҳадди рӯзонаи маблағ пур шуд"
   }
 }

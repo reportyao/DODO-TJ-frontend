@@ -1,33 +1,35 @@
 /**
  * promoter-deposit Edge Function
  * 
- * 地推人员代客充值接口
+ * Promoter deposit interface
  * 
- * 功能：
- *   1. 验证地推人员身份（通过 session_token）
- *   2. 搜索目标用户（兼容 UUID / 手机号 / 用户名）
- *   3. 执行充值操作（调用 perform_promoter_deposit RPC 事务函数）
- *   4. 获取充值统计数据
+ * Features:
+ *   1. Validate promoter identity (via session_token)
+ *   2. Search target user (compatible with UUID / phone / username)
+ *   3. Execute deposit (call perform_promoter_deposit RPC transaction)
+ *   4. Get deposit statistics
  * 
- * 请求格式：
+ * Request format:
  *   POST /promoter-deposit
  *   body: {
- *     action: 'deposit' | 'search_user' | 'get_stats',
+ *     action: 'deposit' | 'search_user' | 'get_stats' | 'get_history',
  *     session_token: string,
- *     // action=deposit 时需要：
+ *     // Required for action=deposit:
  *     target_user_id?: string,
  *     amount?: number,
  *     note?: string,
- *     // action=search_user 时需要：
+ *     idempotency_key?: string,
+ *     // Required for action=search_user:
  *     query?: string,
  *   }
  * 
- * 认证方式：
- *   通过 body 中的 session_token 查询 user_sessions 表验证身份
- *   （与 exchange-balance 等 Edge Function 保持一致）
+ * Authentication:
+ *   Validate identity by querying user_sessions table with session_token
+ * 
+ * Error handling:
+ *   All errors identified by error_code, frontend uses i18n for display
  */
 
-import { mapErrorCode } from '../_shared/errorResponse.ts'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -36,330 +38,210 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
 }
 
+// ============================================================
+// Error class with error_code
+// ============================================================
+class CodedError extends Error {
+  error_code: string
+  constructor(error_code: string, message: string) {
+    super(message)
+    this.error_code = error_code
+  }
+}
 
+function throwCoded(code: string, message: string): never {
+  throw new CodedError(code, message)
+}
 
 // ============================================================
-// 通用的 session 验证函数（与 exchange-balance 保持一致）
+// Session validation
 // ============================================================
-async function validateSession(sessionToken: string) {
+async function validateSession(supabase: any, sessionToken: string) {
   if (!sessionToken) {
-    throw new Error('未授权：缺少认证令牌')
+    throwCoded('ERR_MISSING_TOKEN', 'Unauthorized: Missing session token')
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  const { data: sessions, error: sessionError } = await supabase
+    .from('user_sessions')
+    .select('*')
+    .eq('session_token', sessionToken)
+    .eq('is_active', true)
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('服务器配置错误')
+  if (sessionError) {
+    throwCoded('ERR_SERVER_ERROR', 'Session validation failed')
   }
 
-  // 查询 user_sessions 表验证 session
-  const sessionResponse = await fetch(
-    `${supabaseUrl}/rest/v1/user_sessions?session_token=eq.${sessionToken}&is_active=eq.true&select=*`,
-    {
-      headers: {
-        'Authorization': `Bearer ${serviceRoleKey}`,
-        'apikey': serviceRoleKey,
-        'Content-Type': 'application/json',
-      },
-    }
-  )
-
-  if (!sessionResponse.ok) {
-    throw new Error('验证会话失败')
-  }
-
-  const sessions = await sessionResponse.json()
-
-  if (sessions.length === 0) {
-    throw new Error('未授权：会话不存在或已失效')
+  if (!sessions || sessions.length === 0) {
+    throwCoded('ERR_INVALID_SESSION', 'Unauthorized: Invalid session')
   }
 
   const session = sessions[0]
-
-  // 检查 session 是否过期
   const expiresAt = new Date(session.expires_at)
   const now = new Date()
 
   if (expiresAt < now) {
-    throw new Error('未授权：会话已过期')
+    throwCoded('ERR_SESSION_EXPIRED', 'Unauthorized: Session expired')
   }
 
-  // 查询用户数据
-  const userResponse = await fetch(
-    `${supabaseUrl}/rest/v1/users?id=eq.${session.user_id}&select=*`,
-    {
-      headers: {
-        'Authorization': `Bearer ${serviceRoleKey}`,
-        'apikey': serviceRoleKey,
-        'Content-Type': 'application/json',
-      },
-    }
-  )
-
-  if (!userResponse.ok) {
-    throw new Error('查询用户信息失败')
-  }
-
-  const users = await userResponse.json()
-
-  if (users.length === 0) {
-    throw new Error('未授权：用户不存在')
-  }
-
-  return {
-    userId: session.user_id,
-    user: users[0],
-    session: session,
-  }
+  return { userId: session.user_id, session }
 }
 
 // ============================================================
-// 验证地推人员身份
+// Main handler
 // ============================================================
-async function validatePromoter(supabaseClient: any, userId: string) {
-  const { data, error } = await supabaseClient
-    .from('promoter_profiles')
-    .select('user_id, promoter_status, daily_deposit_limit')
-    .eq('user_id', userId)
-    .single()
-
-  if (error || !data) {
-    throw new Error('您不是地推人员，无法执行充值操作')
-  }
-
-  if (data.promoter_status !== 'active') {
-    throw new Error('您的地推人员账号未激活或已被停用')
-  }
-
-  return data
-}
-
 serve(async (req) => {
-  // 处理 CORS 预检请求
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, serviceRoleKey)
+
     const body = await req.json()
     const { action, session_token } = body
 
-    console.log('[promoter-deposit] 收到请求:', {
-      action,
-      session_token: session_token ? 'present' : 'missing',
-    })
-
-    // ============================================================
-    // 验证 session_token
-    // ============================================================
     if (!session_token) {
-      throw new Error('未授权：缺少 session_token')
+      throwCoded('ERR_MISSING_TOKEN', 'Unauthorized: Missing session_token')
     }
 
-    const { userId } = await validateSession(session_token)
-    console.log('[promoter-deposit] 用户验证通过:', userId)
+    const { userId } = await validateSession(supabase, session_token)
 
-    // 创建 Supabase 客户端（使用 service_role_key 绕过 RLS）
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    // 1. Verify if user is a promoter
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('id, role, is_active')
+      .eq('id', userId)
+      .single()
 
-    const supabaseClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
+    if (profileError || !userProfile) {
+      throwCoded('ERR_USER_NOT_FOUND', 'User not found')
+    }
+
+    if (userProfile.role !== 'promoter' && userProfile.role !== 'admin') {
+      throwCoded('ERR_NOT_PROMOTER', 'User is not a promoter')
+    }
+
+    if (userProfile.is_active === false) {
+      throwCoded('ERR_PROMOTER_INACTIVE', 'Promoter account is inactive')
+    }
 
     // ============================================================
-    // 路由分发
+    // Route actions
     // ============================================================
     switch (action) {
-      // ============================================================
-      // action: search_user - 搜索目标用户
-      // ============================================================
+      // ------------------------------------------------------------
+      // Search user
+      // ------------------------------------------------------------
       case 'search_user': {
         const { query } = body
-
-        if (!query || query.trim().length === 0) {
-          throw new Error('搜索关键词不能为空')
+        if (!query || !query.trim()) {
+          throwCoded('ERR_SEARCH_KEYWORD_EMPTY', 'Search query cannot be empty')
         }
 
-        // 先验证是地推人员
-        await validatePromoter(supabaseClient, userId)
-
-        // 调用 RPC 函数搜索用户
-        const { data: result, error: rpcError } = await supabaseClient.rpc(
-          'search_user_for_deposit',
-          { p_query: query.trim() }
-        )
-
-        if (rpcError) {
-          console.error('[promoter-deposit] search_user RPC error:', rpcError)
-          throw new Error('搜索用户失败: ' + rpcError.message)
-        }
-
-        console.log('[promoter-deposit] search_user result:', JSON.stringify(result))
-
-        return new Response(JSON.stringify(result), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
-      }
-
-      // ============================================================
-      // action: deposit - 执行充值
-      // ============================================================
-      case 'deposit': {
-        const { target_user_id, amount, note, idempotency_key } = body
-
-        if (!target_user_id) {
-          throw new Error('目标用户ID不能为空')
-        }
-
-        // 幂等性保护：如果有提供 idempotency_key，检查是否已经处理过
-        if (idempotency_key) {
-          const { data: existingLog } = await supabaseClient
-            .from('audit_logs')
-            .select('id, details')
-            .eq('action', 'PROMOTER_DEPOSIT')
-            .eq('user_id', userId)
-            .eq('status', 'success')
-            .contains('details', { idempotency_key })
-            .maybeSingle()
-
-          if (existingLog) {
-            console.log(`[promoter-deposit] Idempotency hit for key: ${idempotency_key}`)
-            // 返回与正常充值一致的字段，确保前端成功页面能正常显示
-            return new Response(
-              JSON.stringify({
-                success: true,
-                message: '充值已成功处理（重复请求）',
-                deposit_id: existingLog.details?.deposit_id,
-                amount: existingLog.details?.amount || amount,
-                bonus_amount: 0,
-                today_count: null,
-                today_total: null,
-                daily_limit: null,
-              }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-          }
-        }
-
-        if (!amount || amount < 10) {
-          throw new Error('充值金额不能小于 10 TJS')
-        }
-
-        // 验证是地推人员
-        await validatePromoter(supabaseClient, userId)
-
-        console.log('[promoter-deposit] 执行充值:', {
-          promoter_id: userId,
-          target_user_id,
-          amount,
-          note,
+        const searchQuery = query.trim()
+        
+        // Call RPC for flexible search
+        const { data: users, error: rpcError } = await supabase.rpc('search_users_for_deposit', {
+          p_query: searchQuery
         })
 
-        // 调用核心 RPC 事务函数（幾等性由 DB 层保证）
-        const { data: result, error: rpcError } = await supabaseClient.rpc(
-          'perform_promoter_deposit',
-          {
-            p_promoter_id: userId,
-            p_target_user_id: target_user_id,
-            p_amount: amount,
-            p_note: note || null,
-            p_idempotency_key: idempotency_key || null,
-          }
-        )
-
         if (rpcError) {
-          console.error('[promoter-deposit] deposit RPC error:', rpcError)
-          throw new Error('充值失败: ' + rpcError.message)
+          console.error('[promoter-deposit] search_users_for_deposit failed:', rpcError)
+          throwCoded('ERR_SERVER_ERROR', 'Search failed: ' + rpcError.message)
         }
 
-        console.log('[promoter-deposit] deposit result:', JSON.stringify(result))
-
-        // 处理 RPC 返回的业务错误
-        if (!result.success) {
-          const errorMessages: Record<string, string> = {
-            NOT_PROMOTER: '您不是地推人员',
-            PROMOTER_INACTIVE: '您的地推账号未激活',
-            SELF_DEPOSIT_FORBIDDEN: '不能给自己充值',
-            INVALID_AMOUNT: '充值金额不合法',
-            DAILY_COUNT_EXCEEDED: '今日充值次数已达上限',
-            DAILY_LIMIT_EXCEEDED: `今日充值额度不足，剩余额度: ${result.remaining || 0} TJS`,
-          }
-
-          throw new Error(
-            errorMessages[result.error] || '充值失败: ' + result.error
+        if (!users || users.length === 0) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'User not found', error_code: 'ERR_USER_NOT_FOUND' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
 
-        // 记录操作日志（同步等待，确保幂等性检查可用）
-        const { error: logErr } = await supabaseClient.rpc('log_edge_function_action', {
-          p_function_name: 'promoter-deposit',
-          p_action: 'PROMOTER_DEPOSIT',
-          p_user_id: userId,
-          p_target_type: 'user',
-          p_target_id: target_user_id,
-          p_details: {
-            promoter_id: userId,
-            target_user_id,
-            amount,
-            note: note || null,
-            deposit_id: result.deposit_id || null,
-            idempotency_key: idempotency_key || null,
-          },
-          p_status: 'success',
-          p_error_message: null,
-        })
-        if (logErr) console.error('Failed to write audit log:', logErr)
-        return new Response(JSON.stringify(result), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
-      }
-
-      // ============================================================
-      // action: get_stats - 获取充値统计
-      // ============================================================
-      case 'get_stats': {
-        const { date } = body
-
-        // 验证是地推人员
-        await validatePromoter(supabaseClient, userId)
-
-        // 调用 RPC 函数获取统计
-        const { data: result, error: rpcError } = await supabaseClient.rpc(
-          'get_promoter_deposit_stats',
-          {
-            p_promoter_id: userId,
-            p_date: date || new Date().toISOString().split('T')[0],
-          }
-        )
-
-        if (rpcError) {
-          console.error('[promoter-deposit] get_stats RPC error:', rpcError)
-          throw new Error('获取统计失败: ' + rpcError.message)
+        if (users.length === 1) {
+          return new Response(
+            JSON.stringify({ success: true, multiple: false, user: users[0] }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
         }
 
-        return new Response(JSON.stringify(result), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+        return new Response(
+          JSON.stringify({ success: true, multiple: true, users: users }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
       }
 
-      // ============================================================
-      // action: get_history - 获取充值历史记录
-      // ============================================================
+      // ------------------------------------------------------------
+      // Execute deposit
+      // ------------------------------------------------------------
+      case 'deposit': {
+        const { target_user_id, amount, note, idempotency_key } = body
+        if (!target_user_id) {
+          throwCoded('ERR_PARAMS_MISSING', 'Target user ID is required')
+        }
+
+        if (!amount || isNaN(amount) || amount < 10) {
+          throwCoded('ERR_DEPOSIT_AMOUNT_INVALID', 'Deposit amount must be at least 10 TJS')
+        }
+
+        // Call transaction RPC
+        const { data: result, error: rpcError } = await supabase.rpc('perform_promoter_deposit', {
+          p_promoter_id: userId,
+          p_target_user_id: target_user_id,
+          p_amount: amount,
+          p_note: note || null,
+          p_idempotency_key: idempotency_key || null
+        })
+
+        if (rpcError) {
+          console.error('[promoter-deposit] perform_promoter_deposit failed:', rpcError)
+          
+          // Map common RPC errors to standard error codes
+          const rpcErrorCode = rpcError.code
+          let standardCode = 'ERR_SERVER_ERROR'
+          
+          if (rpcError.message.includes('SELF_DEPOSIT_FORBIDDEN')) standardCode = 'ERR_SELF_DEPOSIT_FORBIDDEN'
+          else if (rpcError.message.includes('DAILY_COUNT_EXCEEDED')) standardCode = 'ERR_DAILY_COUNT_EXCEEDED'
+          else if (rpcError.message.includes('DAILY_LIMIT_EXCEEDED')) standardCode = 'ERR_DAILY_LIMIT_EXCEEDED'
+          else if (rpcError.message.includes('AMOUNT_MUST_BE_INTEGER')) standardCode = 'ERR_AMOUNT_MUST_BE_INTEGER'
+          
+          throwCoded(standardCode, `Deposit failed: ${rpcError.message}`)
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, ...result }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // ------------------------------------------------------------
+      // Get stats
+      // ------------------------------------------------------------
+      case 'get_stats': {
+        const { data: stats, error: rpcError } = await supabase.rpc('get_promoter_deposit_stats', {
+          p_promoter_id: userId
+        })
+
+        if (rpcError) {
+          console.error('[promoter-deposit] get_promoter_deposit_stats failed:', rpcError)
+          throwCoded('ERR_SERVER_ERROR', 'Failed to get stats: ' + rpcError.message)
+        }
+
+        return new Response(
+          JSON.stringify(stats),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // ------------------------------------------------------------
+      // Get history
+      // ------------------------------------------------------------
       case 'get_history': {
         const { page = 1, page_size = 20 } = body
-
-        // 验证是地推人员
-        await validatePromoter(supabaseClient, userId)
-
         const offset = (page - 1) * page_size
 
-        // 查询充值记录（关联目标用户信息）
-        const { data: deposits, error: queryError } = await supabaseClient
+        const { data: deposits, error: queryError } = await supabase
           .from('promoter_deposits')
           .select(`
             id, amount, currency, status, note, bonus_amount, created_at,
@@ -373,7 +255,7 @@ serve(async (req) => {
 
         if (queryError) {
           console.error('[promoter-deposit] get_history error:', queryError)
-          throw new Error('获取充值记录失败: ' + queryError.message)
+          throwCoded('ERR_SERVER_ERROR', 'Failed to get history: ' + queryError.message)
         }
 
         return new Response(
@@ -385,16 +267,18 @@ serve(async (req) => {
       }
 
       default:
-        throw new Error('未知操作: ' + action)
+        throwCoded('ERR_INVALID_ACTION', 'Unknown action: ' + action)
     }
   } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error("[promoter-deposit] Error:", errMsg)
+    const errMsg = error instanceof Error ? error.message : String(error)
+    const errorCode = (error instanceof CodedError) ? error.error_code : 'ERR_SERVER_ERROR'
+    console.error("[promoter-deposit] Error:", errMsg, "code:", errorCode)
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: errMsg || '服务器内部错误', error_code: mapErrorCode(errMsg || ''),
+        error: errMsg || 'Internal server error',
+        error_code: errorCode,
       }),
       {
         status: 400,

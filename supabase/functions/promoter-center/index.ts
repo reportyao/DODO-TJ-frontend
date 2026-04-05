@@ -24,14 +24,14 @@ const corsHeaders = {
 
 async function validateSession(sessionToken: string) {
   if (!sessionToken) {
-    throw new Error('未授权：缺少认证令牌')
+    throw new Error('ERR_MISSING_TOKEN')
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
   if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('服务器配置错误')
+    throw new Error('ERR_SERVER_ERROR')
   }
 
   const sessionResponse = await fetch(
@@ -46,13 +46,13 @@ async function validateSession(sessionToken: string) {
   )
 
   if (!sessionResponse.ok) {
-    throw new Error('验证会话失败')
+    throw new Error('ERR_SESSION_VALIDATE_FAILED')
   }
 
   const sessions = await sessionResponse.json()
 
   if (!sessions || sessions.length === 0) {
-    throw new Error('未授权：会话不存在或已失效')
+    throw new Error('ERR_INVALID_SESSION')
   }
 
   const session = sessions[0]
@@ -60,7 +60,7 @@ async function validateSession(sessionToken: string) {
   const now = new Date()
 
   if (expiresAt < now) {
-    throw new Error('未授权：会话已过期')
+    throw new Error('ERR_SESSION_EXPIRED')
   }
 
   return { userId: session.user_id, session }
@@ -77,7 +77,7 @@ serve(async (req) => {
 
     if (!session_token) {
       return new Response(
-        JSON.stringify({ success: false, error: '未授权：缺少 session_token', error_code: 'ERR_MISSING_SESSION' }),
+        JSON.stringify({ success: false, error: 'Missing session_token', error_code: 'ERR_MISSING_TOKEN' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -107,7 +107,7 @@ serve(async (req) => {
       if (!response.ok) {
         const errorText = await response.text()
         console.error('[PromoterCenter] get_promoter_center_data failed:', errorText)
-        throw new Error(`获取数据失败: ${errorText}`)
+        throw new Error('ERR_SERVER_ERROR')
       }
 
       const result = await response.json()
@@ -139,7 +139,7 @@ serve(async (req) => {
       if (!response.ok) {
         const errorText = await response.text()
         console.error('[PromoterCenter] increment_contact_count failed:', errorText)
-        throw new Error(`打卡失败: ${errorText}`)
+        throw new Error('ERR_SERVER_ERROR')
       }
 
       const result = await response.json()
@@ -150,14 +150,14 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: false, error: `未知操作: ${action}` }),
+      JSON.stringify({ success: false, error: `Unknown action: ${action}`, error_code: 'ERR_INVALID_ACTION' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error)
     console.error('[PromoterCenter] Error:', errMsg)
     return new Response(
-      JSON.stringify({ success: false, error: errMsg, error_code: 'ERR_SERVER_ERROR' }),
+      JSON.stringify({ success: false, error: errMsg, error_code: errMsg.startsWith('ERR_') ? errMsg : 'ERR_SERVER_ERROR' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
