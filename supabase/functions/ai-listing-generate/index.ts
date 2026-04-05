@@ -233,18 +233,22 @@ async function callQwenPlus(
 
 /**
  * 阿里云 VIAPI HMAC-SHA1 签名
- * 构造签名 URL 用于调用 SegmentCommodity API
+ * 构造签名 URL 用于调用视觉智能平台 API
+ * @param endpoint API 域名，默认 imageseg.cn-shanghai.aliyuncs.com
+ * @param version API 版本，默认 2019-12-30
  */
 async function signViapiRequest(
   accessKeyId: string,
   accessKeySecret: string,
-  params: Record<string, string>
+  params: Record<string, string>,
+  endpoint: string = "imageseg.cn-shanghai.aliyuncs.com",
+  version: string = "2019-12-30"
 ): Promise<string> {
   // 1. 添加公共参数
   const allParams: Record<string, string> = {
     ...params,
     Format: "JSON",
-    Version: "2019-12-30",
+    Version: version,
     AccessKeyId: accessKeyId,
     SignatureMethod: "HMAC-SHA1",
     Timestamp: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
@@ -284,14 +288,143 @@ async function signViapiRequest(
   );
 
   // 5. 构造最终请求 URL
-  return `https://imageseg.cn-shanghai.aliyuncs.com/?${canonicalized}&Signature=${encodeURIComponent(
+  return `https://${endpoint}/?${canonicalized}&Signature=${encodeURIComponent(
     signatureBase64
   )}`;
 }
 
 /**
+ * 调用 GetOssStsToken 获取阿里云视觉智能平台临时 OSS 凭证
+ * 注意：GetOssStsToken 在 viapiutils 域名下，Version 为 2020-04-01
+ */
+async function getViapiOssStsToken(
+  accessKeyId: string,
+  accessKeySecret: string
+): Promise<{ ak: string; sk: string; token: string }> {
+  const url = await signViapiRequest(
+    accessKeyId,
+    accessKeySecret,
+    { Action: "GetOssStsToken" },
+    "viapiutils.cn-shanghai.aliyuncs.com",
+    "2020-04-01"
+  );
+
+  const controller1 = new AbortController();
+  const timeout1 = setTimeout(() => controller1.abort(), 30000);
+  try {
+    const response = await fetch(url, { method: "POST", signal: controller1.signal });
+    clearTimeout(timeout1);
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`GetOssStsToken 失败 (HTTP ${response.status}): ${errText}`);
+    }
+
+  const result = await response.json();
+  if (result.Code && result.Code !== "0") {
+    throw new Error(`GetOssStsToken 业务错误: ${result.Code} - ${result.Message}`);
+  }
+
+  const data = result.Data;
+  if (!data) {
+    throw new Error("GetOssStsToken 返回数据为空");
+  }
+
+  console.log("[GetOssStsToken] 响应 Data:", JSON.stringify(data));
+
+  return {
+    ak: data.AccessKeyId,
+    sk: data.AccessKeySecret,
+    token: data.SecurityToken,
+  };
+  } catch (e) {
+    clearTimeout(timeout1);
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error('GetOssStsToken 请求超时 (30s)');
+    }
+    throw e;
+  }
+}
+
+/**
+ * 使用 OSS STS 凭证通过 HTTP PUT 上传文件到阿里云临时 OSS (viapi-customer-temp)
+ * 参考 @alicloud/viapi-utils 官方实现
+ * @returns 上传后的 OSS URL
+ */
+async function uploadToViapiOss(
+  imageBuffer: ArrayBuffer,
+  contentType: string,
+  stsInfo: { ak: string; sk: string; token: string },
+  accessKeyId: string
+): Promise<string> {
+  // 固定使用 viapi-customer-temp bucket（与官方 SDK 一致）
+  const bucketName = "viapi-customer-temp";
+  const ossEndpoint = "oss-cn-shanghai.aliyuncs.com";
+
+  // 生成唯一的文件路径，格式: accessKeyId/nonce+filename
+  const ext = contentType.includes("png") ? "png" : "jpg";
+  const nonce = crypto.randomUUID().replace(/-/g, "");
+  const objectKey = `${accessKeyId}/${nonce}segment_input.${ext}`;
+
+  // 构造 OSS PUT 请求的签名
+  const date = new Date().toUTCString();
+  const canonicalResource = `/${bucketName}/${objectKey}`;
+  const stringToSign = `PUT\n\n${contentType}\n${date}\nx-oss-security-token:${stsInfo.token}\n${canonicalResource}`;
+
+  // HMAC-SHA1 签名
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(stsInfo.sk),
+    { name: "HMAC", hash: "SHA-1" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(stringToSign)
+  );
+  const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+
+  // 标准 OSS URL 格式
+  const uploadUrl = `https://${bucketName}.${ossEndpoint}/${objectKey}`;
+  console.log(`[uploadToViapiOss] 上传到: ${uploadUrl}`);
+
+  const putController = new AbortController();
+  const putTimeout = setTimeout(() => putController.abort(), 60000);
+  try {
+    const putResponse = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": contentType,
+        "Date": date,
+        "Authorization": `OSS ${stsInfo.ak}:${signatureBase64}`,
+        "x-oss-security-token": stsInfo.token,
+      },
+      body: imageBuffer,
+      signal: putController.signal,
+    });
+    clearTimeout(putTimeout);
+
+    if (!putResponse.ok) {
+      const errText = await putResponse.text();
+      throw new Error(`OSS 上传失败 (HTTP ${putResponse.status}): ${errText}`);
+    }
+  } catch (e) {
+    clearTimeout(putTimeout);
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error('OSS 上传超时 (60s)');
+    }
+    throw e;
+  }
+
+  // 返回 HTTP URL（与官方 SDK 一致，使用 http 而非 https）
+  return `http://${bucketName}.${ossEndpoint}/${objectKey}`;
+}
+
+/**
  * 调用阿里云 SegmentCommodity API 进行商品分割
- * @param imageUrl 公网可访问的商品图片 URL
+ * 对于非上海 OSS 的图片，先下载并上传到阿里云临时 OSS，再调用 API
+ * @param imageUrl 商品图片 URL
  * @returns RGBA 透明背景 PNG 的临时 URL
  */
 async function callSegmentCommodity(
@@ -299,23 +432,71 @@ async function callSegmentCommodity(
   accessKeySecret: string,
   imageUrl: string
 ): Promise<string> {
-  const url = await signViapiRequest(accessKeyId, accessKeySecret, {
-    Action: "SegmentCommodity",
-    ImageURL: imageUrl,
-  });
+  // 判断图片是否已在上海 OSS
+  const isOssShanghai = imageUrl.includes(".oss-cn-shanghai.aliyuncs.com");
+  let finalImageUrl = imageUrl;
 
-  const response = await fetch(url, {
-    method: "POST",
-  });
+  if (!isOssShanghai) {
+    // 非上海 OSS 图片，需要中转上传
+    console.log("[Step C] 图片非上海 OSS，启用中转上传...");
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(
-      `SegmentCommodity 调用失败 (HTTP ${response.status}): ${errText}`
-    );
+    // 1. 下载图片到内存
+    console.log("[Step C] 下载图片到内存...");
+    const dlController = new AbortController();
+    const dlTimeout = setTimeout(() => dlController.abort(), 30000);
+    const imgResponse = await fetch(imageUrl, { signal: dlController.signal });
+    clearTimeout(dlTimeout);
+    if (!imgResponse.ok) {
+      throw new Error(`下载图片失败 (HTTP ${imgResponse.status}): ${imageUrl}`);
+    }
+    const imageBuffer = await imgResponse.arrayBuffer();
+    const contentType = imgResponse.headers.get("content-type") || "image/jpeg";
+    console.log(`[Step C] 图片下载完成: ${imageBuffer.byteLength} bytes, type: ${contentType}`);
+
+    // 2. 获取临时 OSS STS Token
+    console.log("[Step C] 获取 VIAPI 临时 OSS 凭证...");
+    const stsInfo = await getViapiOssStsToken(accessKeyId, accessKeySecret);
+    console.log("[Step C] STS Token 获取成功");
+
+    // 3. 上传到临时 OSS
+    console.log("[Step C] 上传图片到临时 OSS...");
+    finalImageUrl = await uploadToViapiOss(imageBuffer, contentType, stsInfo, accessKeyId);
+    console.log(`[Step C] 临时 OSS URL: ${finalImageUrl}`);
   }
 
-  const result = await response.json();
+  // 调用 SegmentCommodity
+  console.log(`[Step C] 调用 SegmentCommodity, URL: ${finalImageUrl.slice(0, 80)}...`);
+  const url = await signViapiRequest(accessKeyId, accessKeySecret, {
+    Action: "SegmentCommodity",
+    ImageURL: finalImageUrl,
+  });
+
+  const segController = new AbortController();
+  const segTimeout = setTimeout(() => segController.abort(), 60000);
+  let result;
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      signal: segController.signal,
+    });
+    clearTimeout(segTimeout);
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(
+        `SegmentCommodity 调用失败 (HTTP ${response.status}): ${errText}`
+      );
+    }
+
+    result = await response.json();
+    console.log("[Step C] SegmentCommodity 响应:", JSON.stringify(result).slice(0, 300));
+  } catch (e) {
+    clearTimeout(segTimeout);
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error('SegmentCommodity 调用超时 (60s)');
+    }
+    throw e;
+  }
 
   // 检查业务错误
   if (result.Code && result.Code !== "0") {
@@ -739,11 +920,14 @@ serve(async (req) => {
 
         console.log("[Step B] 文案生成完成");
 
-        // ---- Step C: 商品分割 ----
+        // ---- Step C: 商品分割（通过抠图代理服务） ----
         let segmentedUrl: string | null = null;
         let segmentFailed = false;
 
-        if (aliAccessKeyId && aliAccessKeySecret) {
+        const segmentProxyUrl = Deno.env.get("SEGMENT_PROXY_URL") || "https://tezbarakat.com/api/segment";
+        const segmentProxyKey = Deno.env.get("SEGMENT_PROXY_KEY") || "dodo-segment-2024";
+
+        {
           await sendSSE({
             status: "processing",
             progress: 45,
@@ -751,34 +935,43 @@ serve(async (req) => {
           });
 
           try {
-            segmentedUrl = await withRetry(() =>
-              callSegmentCommodity(
-                aliAccessKeyId,
-                aliAccessKeySecret,
-                image_urls[0]
-              )
-            );
-            console.log("[Step C] 商品分割完成:", segmentedUrl);
+            // 调用生产服务器上的抠图代理服务（内置图片压缩 + OSS 中转 + SegmentCommodity）
+            const segController = new AbortController();
+            const segTimeout = setTimeout(() => segController.abort(), 90000); // 90秒超时
+
+            const segResp = await fetch(segmentProxyUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                image_url: image_urls[0],
+                api_key: segmentProxyKey,
+              }),
+              signal: segController.signal,
+            });
+            clearTimeout(segTimeout);
+
+            const segResult = await segResp.json();
+
+            if (!segResp.ok || segResult.error) {
+              throw new Error(segResult.error || `抠图代理返回错误 (HTTP ${segResp.status})`);
+            }
+
+            segmentedUrl = segResult.segmented_url;
+            console.log(`[Step C] 商品分割完成 (耗时 ${segResult.duration_ms}ms):`, segmentedUrl);
           } catch (error) {
             // 降级处理：分割失败不终止流程
             segmentFailed = true;
-            const errMsg = error instanceof Error ? error.message : String(error);
+            const errMsg = error instanceof Error
+              ? (error.name === 'AbortError' ? '抠图超时 (90s)' : error.message)
+              : String(error);
             console.error("[Step C] 商品分割失败（降级处理）:", errMsg);
             await sendSSE({
               status: "processing",
               progress: 50,
               stage: "抠图失败，将使用原始图片继续...",
+              error: errMsg,
             });
           }
-        } else {
-          // 未配置 VIAPI 密钥，跳过分割步骤
-          segmentFailed = true;
-          console.log("[Step C] 未配置 VIAPI 密钥，跳过商品分割");
-          await sendSSE({
-            status: "processing",
-            progress: 50,
-            stage: "跳过抠图步骤（未配置密钥），继续生成...",
-          });
         }
 
         // ---- Step D: 背景生成 ----
