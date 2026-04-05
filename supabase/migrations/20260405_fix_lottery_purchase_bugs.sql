@@ -11,12 +11,15 @@
 -- ============================================================
 
 -- ============================================================
--- 修复1: 重建 allocate_lottery_tickets 函数
+-- 修复1: 删除旧版3参数函数 + 重建4参数函数
 -- 修复点:
 --   a. INSERT 时同时设置 status='ACTIVE' 和 numbers 字段（兼容旧版查询）
 --   b. RETURNING 加上 id 字段（供 rollback 使用）
---   c. numbers 字段设置为与 participation_code 相同的值
+--   c. numbers 字段设置为与 participation_code 相同的值（varchar类型）
+--   d. 表无 updated_at 列，不写入该字段
 -- ============================================================
+DROP FUNCTION IF EXISTS allocate_lottery_tickets(TEXT, TEXT, INTEGER);
+
 CREATE OR REPLACE FUNCTION allocate_lottery_tickets(
   p_lottery_id TEXT,
   p_user_id    TEXT,
@@ -58,7 +61,7 @@ BEGIN
     user_id, lottery_id, order_id,
     ticket_number, participation_code,
     numbers, status,
-    is_winning, created_at, updated_at
+    is_winning, created_at
   )
   SELECT
     p_user_id,
@@ -66,10 +69,9 @@ BEGIN
     p_order_id,
     v_start_ticket + i - 1,
     (v_base_number + v_start_ticket + i - 2)::TEXT,
-    to_jsonb((v_base_number + v_start_ticket + i - 2)::TEXT),
+    (v_base_number + v_start_ticket + i - 2)::TEXT,
     'ACTIVE',
     false,
-    NOW(),
     NOW()
   FROM generate_series(1, p_quantity) AS i
   RETURNING lottery_entries.id, lottery_entries.ticket_number, lottery_entries.participation_code;
@@ -109,33 +111,23 @@ COMMENT ON FUNCTION rollback_lottery_sold_tickets IS
 '回滚夺宝已售数量 - 用于支付失败时将 sold_tickets 减回，确保与 lottery_entries 数量一致';
 
 -- ============================================================
--- 修复3: 修复历史数据 - 为缺少 participation_code 的旧 entry 补充该字段
--- 旧版 purchase_lottery_with_concurrency_control 只写入 numbers 字段
--- 新版 allocate_lottery_tickets 只写入 participation_code 字段
--- 这里将 numbers 字段的值同步到 participation_code
+-- 修复3: 修复历史数据
+-- lottery_entries 表 numbers 列为 varchar 类型，无 updated_at 列
 -- ============================================================
-UPDATE lottery_entries
-SET participation_code = 
-  CASE 
-    WHEN numbers IS NOT NULL AND numbers::text != 'null' THEN
-      -- numbers 可能是 JSON 字符串如 '"1000000"' 或纯数字
-      TRIM(BOTH '"' FROM numbers::text)
-    ELSE NULL
-  END,
-  updated_at = NOW()
-WHERE participation_code IS NULL
-  AND numbers IS NOT NULL
-  AND numbers::text != 'null';
 
--- 同时为缺少 numbers 的新 entry 补充该字段
+-- 为缺少 numbers 的 entry 从 participation_code 同步
 UPDATE lottery_entries
-SET numbers = to_jsonb(participation_code),
-    updated_at = NOW()
+SET numbers = participation_code
 WHERE numbers IS NULL
   AND participation_code IS NOT NULL;
 
+-- 为缺少 participation_code 的 entry 从 numbers 同步
+UPDATE lottery_entries
+SET participation_code = numbers
+WHERE participation_code IS NULL
+  AND numbers IS NOT NULL;
+
 -- 为缺少 status 的 entry 设置默认值
 UPDATE lottery_entries
-SET status = 'ACTIVE',
-    updated_at = NOW()
+SET status = 'ACTIVE'
 WHERE status IS NULL;
