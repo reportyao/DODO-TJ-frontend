@@ -676,8 +676,9 @@ serve(async (req) => {
       );
     }
 
-    const aliAccessKeyId = Deno.env.get("ALIBABA_CLOUD_ACCESS_KEY_ID");
-    const aliAccessKeySecret = Deno.env.get("ALIBABA_CLOUD_ACCESS_KEY_SECRET");
+    // 兼容两种环境变量命名：优先 ALIBABA_CLOUD_*，回退 ALIYUN_*
+    const aliAccessKeyId = Deno.env.get("ALIBABA_CLOUD_ACCESS_KEY_ID") || Deno.env.get("ALIYUN_ACCESS_KEY_ID");
+    const aliAccessKeySecret = Deno.env.get("ALIBABA_CLOUD_ACCESS_KEY_SECRET") || Deno.env.get("ALIYUN_ACCESS_KEY_SECRET");
 
     // 6. 创建 SSE 流
     const { readable, writable } = new TransformStream();
