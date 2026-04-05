@@ -2,6 +2,12 @@ import { mapErrorCode } from '../_shared/errorResponse.ts'
 
 /**
  * 回滚已分配的彩票
+ * 【BUG修复】同时回滚 lottery_entries 和 lotteries.sold_tickets
+ * 修复了两个问题：
+ * 1. 旧版使用 tickets.map(t => t.id) 但 allocate_lottery_tickets RPC 不返回 id 字段
+ *    改为使用 order_id 删除，更可靠
+ * 2. 旧版只删除 lottery_entries 但不回滚 sold_tickets
+ *    现在同时减少 lotteries.sold_tickets
  */
 async function rollbackAllocatedTickets(
   supabaseUrl: string,
@@ -17,36 +23,129 @@ async function rollbackAllocatedTickets(
     return;
   }
 
-  const ticketIds = tickets.map((t) => t.id);
-  console.log(`Rolling back ${ticketIds.length} tickets:`, ticketIds);
+  const ticketCount = tickets.length;
+  const lotteryId = context?.lotteryId;
+  const orderId = context?.orderId;
+  console.log(`Rolling back ${ticketCount} tickets for lottery=${lotteryId}, order=${orderId}`);
 
   try {
-    // 删除已分配的彩票
-    const deleteResponse = await fetch(
-      `${supabaseUrl}/rest/v1/lottery_entries?id=in.(${ticketIds.join(',')})`,
-      {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${serviceRoleKey}`,
-          'apikey': serviceRoleKey,
-          'Content-Type': 'application/json',
-        },
+    // 【修复】优先使用 order_id 删除（因为 allocate_lottery_tickets RPC 不返回 id 字段）
+    let deleteUrl: string;
+    if (orderId) {
+      deleteUrl = `${supabaseUrl}/rest/v1/lottery_entries?order_id=eq.${orderId}`;
+    } else {
+      // 回退方案：尝试使用 ticket id（如果有的话）
+      const ticketIds = tickets.map((t) => t.id).filter(Boolean);
+      if (ticketIds.length === 0) {
+        console.error('Cannot rollback: no order_id and no ticket ids available');
+        logOrphanedTickets([], 'No identifiers available for rollback', context);
+        return;
       }
-    );
+      deleteUrl = `${supabaseUrl}/rest/v1/lottery_entries?id=in.(${ticketIds.join(',')})`;
+    }
+
+    const deleteResponse = await fetch(deleteUrl, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!deleteResponse.ok) {
       const errorText = await deleteResponse.text();
       console.error('Failed to delete tickets during rollback:', errorText);
-      // 记录到错误日志，需要人工处理
-      logOrphanedTickets(ticketIds, `Rollback failed: ${errorText}`, context);
+      logOrphanedTickets([], `Rollback delete failed: ${errorText}`, context);
     } else {
-      console.log(`Successfully rolled back ${ticketIds.length} tickets`);
+      console.log(`Successfully deleted ${ticketCount} lottery entries`);
+    }
+
+    // 【修复】回滚 lotteries.sold_tickets，保持与 lottery_entries 数量一致
+    if (lotteryId && ticketCount > 0) {
+      const updateResponse = await fetch(
+        `${supabaseUrl}/rest/v1/rpc/rollback_lottery_sold_tickets`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${serviceRoleKey}`,
+            'apikey': serviceRoleKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            p_lottery_id: lotteryId,
+            p_quantity: ticketCount,
+          }),
+        }
+      );
+
+      if (!updateResponse.ok) {
+        // 如果 RPC 不存在，回退到直接 PATCH 更新
+        console.warn('rollback_lottery_sold_tickets RPC failed, falling back to direct PATCH');
+        const patchResponse = await fetch(
+          `${supabaseUrl}/rest/v1/lotteries?id=eq.${lotteryId}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${serviceRoleKey}`,
+              'apikey': serviceRoleKey,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal',
+            },
+            body: JSON.stringify({
+              sold_tickets: `sold_tickets - ${ticketCount}`,
+              updated_at: new Date().toISOString(),
+            }),
+          }
+        );
+        
+        // PATCH 不支持表达式，改用 SQL RPC 或直接读写
+        if (!patchResponse.ok) {
+          // 最终回退：读取当前值再更新
+          try {
+            const getResp = await fetch(
+              `${supabaseUrl}/rest/v1/lotteries?id=eq.${lotteryId}&select=sold_tickets`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${serviceRoleKey}`,
+                  'apikey': serviceRoleKey,
+                },
+              }
+            );
+            if (getResp.ok) {
+              const lotteries = await getResp.json();
+              if (lotteries[0]) {
+                const newSoldTickets = Math.max(0, lotteries[0].sold_tickets - ticketCount);
+                await fetch(
+                  `${supabaseUrl}/rest/v1/lotteries?id=eq.${lotteryId}`,
+                  {
+                    method: 'PATCH',
+                    headers: {
+                      'Authorization': `Bearer ${serviceRoleKey}`,
+                      'apikey': serviceRoleKey,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      sold_tickets: newSoldTickets,
+                      updated_at: new Date().toISOString(),
+                    }),
+                  }
+                );
+                console.log(`Rolled back sold_tickets: ${lotteries[0].sold_tickets} -> ${newSoldTickets}`);
+              }
+            }
+          } catch (patchErr) {
+            console.error('Failed to rollback sold_tickets via fallback:', patchErr);
+          }
+        }
+      } else {
+        console.log(`Successfully rolled back sold_tickets by ${ticketCount}`);
+      }
     }
   } catch (error) {
     console.error('Error during ticket rollback:', error);
-    // 记录到错误日志
     logOrphanedTickets(
-      ticketIds,
+      [],
       `Rollback exception: ${error instanceof Error ? error.message : String(error)}`,
       context
     );

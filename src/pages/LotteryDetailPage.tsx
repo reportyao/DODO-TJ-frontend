@@ -98,15 +98,32 @@ const LotteryDetailPage: React.FC = () => {
   const fetchMyTickets = useCallback(async () => {
     if (!id || !user) return;
     try {
+      // 【BUG修复】同时查询 participation_code 和 numbers 字段，兼容新旧两种数据格式
+      // 旧版 purchase_lottery_with_concurrency_control 只写入 numbers 字段
+      // 新版 allocate_lottery_tickets 只写入 participation_code 字段
       const { data, error } = await supabase
         .from('lottery_entries')
-        .select('participation_code')
+        .select('participation_code, numbers')
         .eq('lottery_id', id)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
       if (data) {
-        setMyTickets(data.map((entry: any) => entry.participation_code).filter(Boolean));
+        const codes = data.map((entry: any) => {
+          // 优先使用 participation_code（新版字段）
+          if (entry.participation_code) {
+            return String(entry.participation_code);
+          }
+          // 兼容旧版 numbers 字段
+          if (entry.numbers != null) {
+            // numbers 可能是字符串或 JSON
+            const numVal = typeof entry.numbers === 'string' ? entry.numbers : String(entry.numbers);
+            return numVal;
+          }
+          return null;
+        }).filter(Boolean) as string[];
+        setMyTickets(codes);
       }
     } catch (error) {
       console.error('Failed to fetch my tickets:', error);
@@ -411,30 +428,54 @@ const LotteryDetailPage: React.FC = () => {
       
       toast.success(t('lottery.purchaseSuccess'));
       
-      // 等待短暂延迟确保数据库事务完成后再刷新
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 【BUG修复】直接使用 Edge Function 返回的数据更新本地状态
+      // 避免异步查询的时序问题导致 sold_tickets 和 myTickets 不同步
+      const purchaseResult = order?.data || order;
+      const newParticipationCodes: string[] = purchaseResult?.participation_codes || [];
       
-      // 【BUG修复】使用轻量级刷新函数更新进度，避免 fetchLottery 的 setIsLoading(true) 和跳转逻辑
-      // 同时刷新钱包和参与码（防止重复购买超出限购）
-      await Promise.all([
-        refreshLotteryProgress(),
-        refreshWallets(),
-        fetchMyTickets()
-      ]);
+      if (newParticipationCodes.length > 0) {
+        // 立即更新参与码列表（追加新购买的参与码）
+        setMyTickets(prev => [...prev, ...newParticipationCodes.map(String)]);
+        // 立即更新 sold_tickets（原子性更新，与参与码同步）
+        setLottery(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            sold_tickets: prev.sold_tickets + quantity,
+          };
+        });
+      }
+      
+      // 后台刷新钱包余额（不影响参与码显示）
+      refreshWallets();
       
       // 重置数量为 1
       setQuantity(1);
       
-      // 如果售罄，跳转到开奖页面
-      const { data: updatedLottery } = await supabase
-        .from('lotteries')
-        .select('status')
-        .eq('id', id)
-        .single();
+      // 延迟后再从数据库刷新，确保数据最终一致性
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await Promise.all([
+        refreshLotteryProgress(),
+        fetchMyTickets()
+      ]);
       
-      if (updatedLottery?.status === 'SOLD_OUT') {
+      // 检查是否售罄，优先使用 Edge Function 返回的结果
+      const isSoldOut = purchaseResult?.is_sold_out;
+      if (isSoldOut) {
         toast.success(t('lottery.soldOutRedirect'));
         navigate(`/lottery/${id}/result`);
+      } else {
+        // 如果 Edge Function 没有返回售罄状态，再查询数据库确认
+        const { data: updatedLottery } = await supabase
+          .from('lotteries')
+          .select('status')
+          .eq('id', id)
+          .single();
+        
+        if (updatedLottery?.status === 'SOLD_OUT') {
+          toast.success(t('lottery.soldOutRedirect'));
+          navigate(`/lottery/${id}/result`);
+        }
       }
       
     } catch (error: any) {
