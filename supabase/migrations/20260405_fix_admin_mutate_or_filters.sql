@@ -2,6 +2,7 @@
 -- 修复 admin_mutate: 
 --   [P2] 新增 p_or_filters 参数支持 OR 条件（与 admin_query 对齐）
 --   [P4] 补充 users、promoter_daily_logs 到写入白名单
+--   [P6] DROP 旧的 6 参数签名，避免 PostgreSQL 函数重载冲突
 --
 -- 根因分析:
 --   admin_query 和 admin_count 都支持 p_or_filters 参数，
@@ -10,7 +11,14 @@
 --   
 --   核销页面使用 .update().or('pickup_status.in.(...)') 来防止
 --   并发重复核销，但 OR 条件丢失后，该防护完全失效。
+--
+--   [P6] PostgreSQL CREATE OR REPLACE 只替换参数类型列表完全匹配的函数。
+--   旧签名 (TEXT,TEXT,TEXT,JSONB,JSONB,TEXT) 与新签名 (TEXT,TEXT,TEXT,JSONB,JSONB,TEXT,TEXT)
+--   类型数量不同，会创建重载函数而非替换，导致调用时 "function is not unique" 错误。
 -- ============================================================
+
+-- [修复 P6] 先删除旧的 6 参数签名函数，避免重载冲突
+DROP FUNCTION IF EXISTS public.admin_mutate(TEXT, TEXT, TEXT, JSONB, JSONB, TEXT);
 
 CREATE OR REPLACE FUNCTION public.admin_mutate(
   p_session_token TEXT,
