@@ -1,4 +1,4 @@
-import { mapErrorCode } from '../_shared/errorResponse.ts'
+import { mapErrorCode, getHttpStatusForErrorCode } from '../_shared/errorResponse.ts'
 
 /**
  * 回滚已分配的彩票
@@ -337,6 +337,14 @@ Deno.serve(async (req) => {
     // 验证彩票状态
     if (lottery.status !== 'ACTIVE') {
       throw new Error(`商品未在售中，当前状态: ${lottery.status}`);
+    }
+
+    // ✅ 检查活动是否已过期（end_time 已过但 status 仍为 ACTIVE 的情况）
+    if (lottery.end_time) {
+      const endTime = new Date(lottery.end_time);
+      if (endTime < new Date()) {
+        throw new Error('该活动已结束');
+      }
     }
 
     // ✅ 检查是否有足够的票（预检查，实际检查在RPC函数中）
@@ -719,15 +727,17 @@ Deno.serve(async (req) => {
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error('Lottery purchase error:', errMsg);
+    const errorCode = mapErrorCode(errMsg);
+    const httpStatus = getHttpStatusForErrorCode(errorCode);
 
     return new Response(
       JSON.stringify({
         success: false,
         error: errMsg,
-        error_code: mapErrorCode(errMsg),
+        error_code: errorCode,
       }),
       {
-        status: 500,
+        status: httpStatus,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );

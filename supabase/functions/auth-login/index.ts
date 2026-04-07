@@ -10,6 +10,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { mapErrorCode, getHttpStatusForErrorCode } from '../_shared/errorResponse.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -165,6 +166,8 @@ Deno.serve(async (req) => {
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error('[auth-login] Error:', errMsg);
-    return errorResponse('ERR_SERVER_ERROR', errMsg, 500);
+    const errorCode = mapErrorCode(errMsg);
+    const httpStatus = getHttpStatusForErrorCode(errorCode);
+    return errorResponse(errorCode, errMsg, httpStatus);
   }
 });

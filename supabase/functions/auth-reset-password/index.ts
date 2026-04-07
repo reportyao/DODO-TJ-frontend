@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { mapErrorCode, getHttpStatusForErrorCode } from '../_shared/errorResponse.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -256,8 +257,11 @@ Deno.serve(async (req) => {
 
   } catch (error: any) {
     console.error('Reset password error:', error);
-    return new Response(JSON.stringify({ success: false, error: error.message, error_code: 'ERR_SERVER_ERROR' }), {
-      status: 500,
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errorCode = mapErrorCode(errMsg);
+    const httpStatus = getHttpStatusForErrorCode(errorCode);
+    return new Response(JSON.stringify({ success: false, error: errMsg, error_code: errorCode }), {
+      status: httpStatus,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

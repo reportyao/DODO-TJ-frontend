@@ -101,6 +101,9 @@ export function mapErrorCode(msg: string): string {
   if (msg.includes('价格配置无效')) return 'ERR_PRICE_CONFIG_INVALID';
   if (msg.includes('抽奖活动不存在')) return 'ERR_PRODUCT_NOT_FOUND';
   if (msg.includes('抽奖活动已结束')) return 'ERR_PRODUCT_NOT_FOUND';
+  if (msg.includes('该活动已结束')) return 'ERR_LOTTERY_ENDED';
+  if (msg.includes('商品未在售中')) return 'ERR_LOTTERY_ENDED';
+  if (msg.includes('超出最大购买限制')) return 'ERR_MAX_PURCHASE_REACHED';
 
   // 钱包/余额相关
   if (msg.includes('余额不足')) return 'ERR_INSUFFICIENT_BALANCE';
@@ -165,4 +168,55 @@ export function mapErrorCode(msg: string): string {
   if (msg.includes('更新个人资料失败')) return 'ERR_PROFILE_UPDATE_FAILED';
 
   return 'ERR_SERVER_ERROR';
+}
+
+/**
+ * 根据错误码返回合适的 HTTP 状态码
+ * 
+ * 业务错误（参数错误、余额不足、权限不足等）返回 4xx，
+ * 仅真正的服务器内部错误返回 500。
+ * 避免前端错误监控将业务错误误报为「服务器内部错误」。
+ * 
+ * @param errorCode - 标准化错误码
+ * @returns HTTP 状态码
+ */
+export function getHttpStatusForErrorCode(errorCode: string): number {
+  // 认证/授权类 → 401
+  if (['ERR_MISSING_TOKEN', 'ERR_MISSING_SESSION', 'ERR_INVALID_TOKEN',
+       'ERR_INVALID_SESSION', 'ERR_SESSION_EXPIRED', 'ERR_SESSION_VALIDATE_FAILED',
+       'ERR_SESSION_CREATE_FAILED', 'ERR_WRONG_CREDENTIALS'].includes(errorCode)) {
+    return 401;
+  }
+  // 资源不存在 → 404
+  if (['ERR_PRODUCT_NOT_FOUND', 'ERR_USER_NOT_FOUND', 'ERR_WALLET_NOT_FOUND',
+       'ERR_TICKET_NOT_FOUND', 'ERR_RESALE_ITEM_NOT_FOUND', 'ERR_PRIZE_NOT_FOUND',
+       'ERR_RECORD_NOT_FOUND', 'ERR_SOURCE_WALLET_NOT_FOUND', 'ERR_TARGET_WALLET_NOT_FOUND',
+       'ERR_PICKUP_POINT_NOT_FOUND'].includes(errorCode)) {
+    return 404;
+  }
+  // 并发冲突 → 409
+  if (['ERR_CONCURRENT_OPERATION', 'ERR_TICKET_ALREADY_RESALE',
+       'ERR_PHONE_ALREADY_USED'].includes(errorCode)) {
+    return 409;
+  }
+  // 余额不足/业务限制 → 422
+  if (['ERR_INSUFFICIENT_BALANCE', 'ERR_INSUFFICIENT_POINTS',
+       'ERR_OUT_OF_STOCK', 'ERR_FREEZE_BALANCE_FAILED',
+       'ERR_NOT_WINNER', 'ERR_CANNOT_BUY_OWN', 'ERR_NOT_PROMOTER',
+       'ERR_PROMOTER_INACTIVE', 'ERR_RESALE_ITEM_UNAVAILABLE',
+       'ERR_LOTTERY_ENDED', 'ERR_MAX_PURCHASE_REACHED'].includes(errorCode)) {
+    return 422;
+  }
+  // 参数错误 → 400
+  if (['ERR_PARAMS_MISSING', 'ERR_QUANTITY_INVALID', 'ERR_PRICE_CONFIG_INVALID',
+       'ERR_DEPOSIT_AMOUNT_INVALID', 'ERR_WITHDRAW_AMOUNT_INVALID', 'ERR_AMOUNT_INVALID',
+       'ERR_EXCHANGE_AMOUNT_INVALID', 'ERR_EXCHANGE_TYPE_INVALID', 'ERR_SAME_WALLET_TYPE',
+       'ERR_EXCHANGE_WALLET_MISSING', 'ERR_RESALE_ID_MISSING', 'ERR_SEARCH_KEYWORD_EMPTY',
+       'ERR_PHONE_PASSWORD_REQUIRED', 'ERR_PASSWORD_TOO_SHORT', 'ERR_PHONE_FORMAT_INVALID',
+       'ERR_NICKNAME_EMPTY', 'ERR_NICKNAME_TOO_LONG', 'ERR_AVATAR_URL_INVALID',
+       'ERR_INVALID_ACTION'].includes(errorCode)) {
+    return 400;
+  }
+  // 其余（ERR_SERVER_ERROR, ERR_SERVER_CONFIG 等）→ 500
+  return 500;
 }

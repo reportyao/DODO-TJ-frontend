@@ -1,4 +1,4 @@
-import { mapErrorCode } from '../_shared/errorResponse.ts'
+import { mapErrorCode, getHttpStatusForErrorCode } from '../_shared/errorResponse.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 /**
@@ -304,9 +304,12 @@ Deno.serve(async (req) => {
 
   } catch (error: any) {
     console.error('[update-profile] Error:', error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errorCode = mapErrorCode(errMsg || '服务器内部错误');
+    const httpStatus = getHttpStatusForErrorCode(errorCode);
     return new Response(
-      JSON.stringify({ success: false, error: error.message || '服务器内部错误', error_code: mapErrorCode(error.message || '服务器内部错误') }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: false, error: errMsg || '服务器内部错误', error_code: errorCode }),
+      { status: httpStatus, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
