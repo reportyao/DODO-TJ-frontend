@@ -108,23 +108,24 @@ serve(async (req) => {
 
     const { userId } = await validateSession(supabase, session_token)
 
-    // 1. Verify if user is a promoter
-    const { data: userProfile, error: profileError } = await supabase
-      .from('users')
-      .select('id, role, is_active')
-      .eq('id', userId)
-      .single()
+    // 1. Verify if user is a promoter (check promoter_profiles table)
+    const { data: promoterProfile, error: profileError } = await supabase
+      .from('promoter_profiles')
+      .select('user_id, promoter_status, daily_deposit_limit, daily_count_limit')
+      .eq('user_id', userId)
+      .maybeSingle()
 
-    if (profileError || !userProfile) {
-      throwCoded('ERR_USER_NOT_FOUND', 'User not found')
+    if (profileError) {
+      console.error('[promoter-deposit] promoter_profiles query error:', profileError)
+      throwCoded('ERR_SERVER_ERROR', 'Failed to verify promoter status')
     }
 
-    if (userProfile.role !== 'promoter' && userProfile.role !== 'admin') {
-      throwCoded('ERR_NOT_PROMOTER', 'User is not a promoter')
+    if (!promoterProfile) {
+      throwCoded('ERR_NOT_PROMOTER', 'User is not a promoter. Please contact admin to add you as a promoter.')
     }
 
-    if (userProfile.is_active === false) {
-      throwCoded('ERR_PROMOTER_INACTIVE', 'Promoter account is inactive')
+    if (promoterProfile.promoter_status !== 'active') {
+      throwCoded('ERR_PROMOTER_INACTIVE', 'Promoter account is inactive or paused')
     }
 
     // ============================================================
@@ -143,31 +144,64 @@ serve(async (req) => {
         const searchQuery = query.trim()
         
         // Call RPC for flexible search
-        const { data: users, error: rpcError } = await supabase.rpc('search_users_for_deposit', {
+        const { data: users, error: rpcError } = await supabase.rpc('search_user_for_deposit', {
           p_query: searchQuery
         })
 
         if (rpcError) {
-          console.error('[promoter-deposit] search_users_for_deposit failed:', rpcError)
+          console.error('[promoter-deposit] search_user_for_deposit failed:', rpcError)
           throwCoded('ERR_SERVER_ERROR', 'Search failed: ' + rpcError.message)
         }
 
-        if (!users || users.length === 0) {
+        // search_user_for_deposit RPC returns { success, user } or { success, error }
+        // It may also return an array of users for fuzzy matches
+        if (users && typeof users === 'object' && !Array.isArray(users)) {
+          // RPC returns a single JSON object
+          if (users.success === false) {
+            return new Response(
+              JSON.stringify({ success: false, error: 'User not found', error_code: 'ERR_USER_NOT_FOUND' }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+          // Single user result from RPC
+          if (users.user) {
+            return new Response(
+              JSON.stringify({ success: true, multiple: false, user: users.user }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+          // Multiple users from RPC
+          if (users.users && Array.isArray(users.users)) {
+            return new Response(
+              JSON.stringify({ success: true, multiple: true, users: users.users }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+        }
+
+        // Fallback: RPC returned array directly
+        if (Array.isArray(users)) {
+          if (users.length === 0) {
+            return new Response(
+              JSON.stringify({ success: false, error: 'User not found', error_code: 'ERR_USER_NOT_FOUND' }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+          if (users.length === 1) {
+            return new Response(
+              JSON.stringify({ success: true, multiple: false, user: users[0] }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
           return new Response(
-            JSON.stringify({ success: false, error: 'User not found', error_code: 'ERR_USER_NOT_FOUND' }),
+            JSON.stringify({ success: true, multiple: true, users: users }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
 
-        if (users.length === 1) {
-          return new Response(
-            JSON.stringify({ success: true, multiple: false, user: users[0] }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-        }
-
+        // Unknown format
         return new Response(
-          JSON.stringify({ success: true, multiple: true, users: users }),
+          JSON.stringify({ success: false, error: 'User not found', error_code: 'ERR_USER_NOT_FOUND' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
