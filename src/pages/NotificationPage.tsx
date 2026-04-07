@@ -136,7 +136,8 @@ const NotificationPage: React.FC = () => {
         const { data: userWallets } = await supabase
           .from('wallets')
           .select('id')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id)
+          .limit(10);
         
         const walletIds = userWallets?.map(w => w.id) || [];
         
@@ -229,7 +230,8 @@ const NotificationPage: React.FC = () => {
         const { data: prizesData } = await supabase
           .from('prizes')
           .select('id, status, lottery_id')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id)
+          .limit(50);
 
         if (!ordersError && ordersData) {
           // 创建中奖记录映射 (通过lottery_id)
@@ -295,7 +297,8 @@ const NotificationPage: React.FC = () => {
           const { data: userWallets } = await supabase
             .from('wallets')
             .select('id')
-            .eq('user_id', user.id);
+            .eq('user_id', user.id)
+            .limit(10);
           
           const walletIds = userWallets?.map(w => w.id) || [];
           
@@ -347,7 +350,8 @@ const NotificationPage: React.FC = () => {
         const { data: userWallets } = await supabase
           .from('wallets')
           .select('id')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id)
+          .limit(10);
         const walletIds = userWallets?.map(w => w.id) || [];
         if (walletIds.length > 0) {
           const { data: bonusData, error: bonusError } = await supabase

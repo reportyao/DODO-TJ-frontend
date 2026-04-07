@@ -108,7 +108,8 @@ const PendingPickupPage: React.FC = () => {
           .eq('user_id', user.id)
           .eq('status', 'COMPLETED')
           .or('logistics_status.is.null,logistics_status.neq.PICKED_UP')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(50);
 
         if (fullPurchaseError) {
           console.error('Failed to fetch full purchase orders:', fullPurchaseError);
@@ -159,7 +160,8 @@ const PendingPickupPage: React.FC = () => {
           .eq('user_id', user.id)
           .or('pickup_status.in.(PENDING_CLAIM,PENDING_PICKUP),pickup_status.is.null')
           .neq('pickup_status', 'PICKED_UP')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(50);
 
         if (prizesError) {
           console.error('Failed to fetch prizes:', prizesError);
@@ -212,7 +214,8 @@ const PendingPickupPage: React.FC = () => {
           .eq('winner_id', user.id)
           .not('winner_id', 'is', null)
           .neq('pickup_status', 'PICKED_UP')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(50);
 
         if (groupBuyResultsError) {
           console.error('Failed to fetch group buy results:', groupBuyResultsError);

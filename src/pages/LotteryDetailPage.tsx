@@ -83,7 +83,8 @@ const LotteryDetailPage: React.FC = () => {
         .eq('user_id', user.id)
         .eq('status', 'VALID')
         .gt('expires_at', new Date().toISOString())
-        .order('expires_at', { ascending: true });
+        .order('expires_at', { ascending: true })
+        .limit(20);
       if (!error && data) {
         setValidCouponCount(data.length);
         // 只取最早到期的一张券面额（与后端 process_mixed_payment LIMIT 1 逻辑一致）
@@ -106,7 +107,8 @@ const LotteryDetailPage: React.FC = () => {
         .select('participation_code, numbers')
         .eq('lottery_id', id)
         .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(200);
 
       if (error) throw error;
       if (data) {
@@ -254,7 +256,8 @@ const LotteryDetailPage: React.FC = () => {
           const { data: usersData, error: usersError } = await supabase
             .from('users')
             .select('id, phone_number, first_name, avatar_url')
-            .in('id', userIds);
+            .in('id', userIds)
+            .limit(50);
 
           if (!usersError && usersData) {
             usersData.forEach((u: any) => {

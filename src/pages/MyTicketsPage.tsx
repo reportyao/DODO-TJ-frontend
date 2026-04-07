@@ -71,7 +71,8 @@ const MyTicketsPage: React.FC = () => {
         .eq('lottery_id', lotteryId)
         .eq('user_id', user.id)
         .eq('status', 'ACTIVE')
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(200);
 
       if (entriesError) throw entriesError;
 

@@ -39,7 +39,8 @@ const BannerCarousel: React.FC = () => {
         .from('banners')
         .select('id, title, image_url, image_url_zh, image_url_ru, image_url_tg, link_url, link_type')
         .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+        .order('sort_order', { ascending: true })
+        .limit(20);
 
       if (error) throw error;
       return data || [];

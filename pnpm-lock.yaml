@@ -189,6 +189,9 @@ importers:
       vite:
         specifier: ^7.2.2
         version: 7.3.1(@types/node@22.19.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(yaml@2.8.1)
+      vite-plugin-compression2:
+        specifier: ^2.5.3
+        version: 2.5.3(rollup@4.52.5)
       vite-plugin-source-identifier:
         specifier: 1.1.2
         version: 1.1.2(vite@7.3.1(@types/node@22.19.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(yaml@2.8.1))
@@ -1073,6 +1076,15 @@ packages:
 
   '@rolldown/pluginutils@1.0.0-beta.27':
     resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
+
+  '@rollup/pluginutils@5.3.0':
+    resolution: {integrity: sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
+    peerDependenciesMeta:
+      rollup:
+        optional: true
 
   '@rollup/rollup-android-arm-eabi@4.52.5':
     resolution: {integrity: sha512-8c1vW4ocv3UOMp9K+gToY5zL2XiiVw3k7f1ksf4yO1FlDFQ1C2u72iACFnSOceJFsWskc2WZNqeRhFRPzv+wtQ==}
@@ -4117,6 +4129,9 @@ packages:
     resolution: {integrity: sha512-g9ljZiwki/LfxmQADO3dEY1CbpmXT5Hm2fJ+QaGKwSXUylMybePR7/67YW7jOrrvjEgL1Fmz5kzyAjWVWLlucg==}
     engines: {node: '>=6'}
 
+  tar-mini@0.2.0:
+    resolution: {integrity: sha512-+qfUHz700DWnRutdUsxRRVZ38G1Qr27OetwaMYTdg8hcPxf46U0S1Zf76dQMWRBmusOt2ZCK5kbIaiLkoGO7WQ==}
+
   tar@7.5.2:
     resolution: {integrity: sha512-7NyxrTE4Anh8km8iEy7o0QYPs+0JKBTj5ZaqHg6B39erLg0qYXN3BijtShwbsNSvQ+LN75+KV+C4QR/f6Gwnpg==}
     engines: {node: '>=18'}
@@ -4325,6 +4340,9 @@ packages:
   vinyl@3.0.1:
     resolution: {integrity: sha512-0QwqXteBNXgnLCdWdvPQBX6FXRHtIH3VhJPTd5Lwn28tJXc34YqSCWUmkOvtJHBmB3gGoPtrOKk3Ts8/kEZ9aA==}
     engines: {node: '>=10.13.0'}
+
+  vite-plugin-compression2@2.5.3:
+    resolution: {integrity: sha512-ItPgqQWkcnBbVw7is9OKwiZ8v6+ju9rYROl5Lp6QfQDEx/d55AwJQb/KLpsQqsU9HoigYBsZ8tK6I02UwJNvEw==}
 
   vite-plugin-source-identifier@1.1.2:
     resolution: {integrity: sha512-Q6zN9G2yJUHcA2c1tlysKyDwBJPlKFbgwLQV7HHva9Yg64V4j6s8NSbfFJB5TiTisu+Xd/VyPUIy0A5zWEmBaA==}
@@ -5425,6 +5443,14 @@ snapshots:
   '@remix-run/router@1.23.0': {}
 
   '@rolldown/pluginutils@1.0.0-beta.27': {}
+
+  '@rollup/pluginutils@5.3.0(rollup@4.52.5)':
+    dependencies:
+      '@types/estree': 1.0.8
+      estree-walker: 2.0.2
+      picomatch: 4.0.3
+    optionalDependencies:
+      rollup: 4.52.5
 
   '@rollup/rollup-android-arm-eabi@4.52.5':
     optional: true
@@ -8904,6 +8930,8 @@ snapshots:
 
   tapable@2.3.0: {}
 
+  tar-mini@0.2.0: {}
+
   tar@7.5.2:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
@@ -9182,6 +9210,13 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
+
+  vite-plugin-compression2@2.5.3(rollup@4.52.5):
+    dependencies:
+      '@rollup/pluginutils': 5.3.0(rollup@4.52.5)
+      tar-mini: 0.2.0
+    transitivePeerDependencies:
+      - rollup
 
   vite-plugin-source-identifier@1.1.2(vite@7.3.1(@types/node@22.19.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(yaml@2.8.1)):
     dependencies:

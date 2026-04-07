@@ -78,7 +78,8 @@ const OrderPage: React.FC = () => {
         `)
         .eq('user_id', user.id)
         .eq('type', 'LOTTERY_PURCHASE')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (!lotteryError && lotteryOrders) {
         lotteryOrders.forEach((order: any) => {
@@ -119,7 +120,8 @@ const OrderPage: React.FC = () => {
           )
         `)
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (!fullPurchaseError && fullPurchaseOrders) {
         fullPurchaseOrders.forEach((order: any) => {

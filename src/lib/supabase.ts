@@ -748,7 +748,8 @@ export const referralService = {
     const { data: users } = await supabase
       .from('users')
       .select('id, phone_number, first_name, avatar_url')
-      .in('id', userIds);
+      .in('id', userIds)
+      .limit(100);
     const userMap = new Map(users?.map(u => [u.id, u]) || []);
 
     // 3. 处理 prize_id，查询对应的 lottery_id
@@ -758,7 +759,8 @@ export const referralService = {
       const { data: prizes } = await supabase
         .from('prizes')
         .select('id, lottery_id')
-        .in('id', prizeIds);
+        .in('id', prizeIds)
+        .limit(100);
       prizes?.forEach(p => {
         if (p.lottery_id) {
           prizeToLotteryMap.set(p.id, p.lottery_id);
@@ -774,7 +776,8 @@ export const referralService = {
     const { data: lotteries } = await supabase
       .from('lotteries')
       .select('id, title, title_i18n')
-      .in('id', allLotteryIds);
+      .in('id', allLotteryIds)
+      .limit(100);
     const lotteryMap = new Map(lotteries?.map(l => [l.id, l]) || []);
 
     // 5. 如果有 userId，查询用户的点赞状态
@@ -785,7 +788,8 @@ export const referralService = {
         .from('likes')
         .select('post_id')
         .eq('user_id', userId)
-        .in('post_id', showoffIds);
+        .in('post_id', showoffIds)
+        .limit(100);
       likedIds = new Set(likes?.map(l => l.post_id) || []);
     }
 

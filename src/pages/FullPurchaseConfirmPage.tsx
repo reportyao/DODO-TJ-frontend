@@ -143,7 +143,8 @@ const FullPurchaseConfirmPage: React.FC = () => {
         .eq('user_id', user.id)
         .eq('status', 'VALID')
         .gt('expires_at', new Date().toISOString())
-        .order('expires_at', { ascending: true });
+        .order('expires_at', { ascending: true })
+        .limit(20);
       if (!error && data) {
         setValidCouponCount(data.length);
         setCouponTotalAmount(data.length > 0 ? (Number(data[0].amount) || 0) : 0);

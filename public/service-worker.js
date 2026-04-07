@@ -222,7 +222,7 @@ self.addEventListener('message', (event) => {
 self.addEventListener('push', (event) => {
   const options = {
     body: event.data ? event.data.text() : 'You have a new notification',
-    icon: '/dodo-logo.png',
+    icon: '/dodo-logo.webp',
     badge: '/dodo-logo.webp',
     tag: 'dodo-notification',
   };

@@ -172,7 +172,8 @@ export default function GroupBuyResultPage() {
         .from('pickup_points')
         .select('*')
         .eq('status', 'ACTIVE')
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(50);
 
       if (!error && data) {
         setPickupPoints(data);
