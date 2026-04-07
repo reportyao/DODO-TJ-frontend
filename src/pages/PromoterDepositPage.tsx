@@ -71,6 +71,10 @@ const PromoterDepositPage: React.FC = () => {
   const { user } = useUser()
   const navigate = useNavigate()
 
+  // ========== 推广者身份校验 ==========
+  const [isVerifyingPromoter, setIsVerifyingPromoter] = useState(true)
+  const [isPromoterVerified, setIsPromoterVerified] = useState(false)
+
   // ========== 状态 ==========
   const [step, setStep] = useState<'search' | 'amount' | 'confirm' | 'success'>('search')
   const [searchQuery, setSearchQuery] = useState('')
@@ -172,11 +176,37 @@ const PromoterDepositPage: React.FC = () => {
     }
   }, [callPromoterDeposit])
 
+  // ========== 推广者身份预校验 ==========
+  useEffect(() => {
+    const verifyPromoterStatus = async () => {
+      if (!user?.id) {
+        setIsVerifyingPromoter(false)
+        return
+      }
+      try {
+        // 通过 Edge Function 的 get_stats 操作验证推广者身份
+        // 如果用户不是推广者，服务端会返回权限错误
+        const result = await callPromoterDeposit({ action: 'get_stats' })
+        if (result?.success !== false) {
+          setIsPromoterVerified(true)
+          setStats(result)
+        }
+      } catch (err: any) {
+        console.error('[PromoterDepositPage] Promoter verification failed:', err)
+        setIsPromoterVerified(false)
+      } finally {
+        setIsVerifyingPromoter(false)
+      }
+    }
+    verifyPromoterStatus()
+  }, [user?.id, callPromoterDeposit])
+
   // ========== 初始化 ==========
   useEffect(() => {
-    loadStats()
-    loadQuickAmounts()
-  }, [loadStats, loadQuickAmounts])
+    if (isPromoterVerified) {
+      loadQuickAmounts()
+    }
+  }, [isPromoterVerified, loadQuickAmounts])
 
   // ========== 搜索用户 ==========
   const handleSearch = async () => {
@@ -293,6 +323,35 @@ const PromoterDepositPage: React.FC = () => {
     if (u.first_name) return u.first_name + (u.last_name ? ' ' + u.last_name : '')
     if (u.phone_number) return u.phone_number.slice(0, 3) + '****'
     return u.id.substring(0, 8)
+  }
+
+  // ========== 推广者身份校验中 ==========
+  if (isVerifyingPromoter) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">{t('common.loading')}...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ========== 非推广者，拒绝访问 ==========
+  if (!isPromoterVerified) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <ExclamationTriangleIcon className="w-16 h-16 text-red-400 mb-4" />
+        <h2 className="text-lg font-bold text-gray-800 mb-2">{t('promoterDeposit.noPermission', '无权访问')}</h2>
+        <p className="text-gray-500 text-sm text-center mb-6">{t('promoterDeposit.notPromoterHint', '您不是市场合伙人，无法使用代充功能')}</p>
+        <button
+          onClick={() => navigate('/')}
+          className="px-6 py-2 bg-primary text-white rounded-lg font-medium"
+        >
+          {t('common.backToHome', '返回首页')}
+        </button>
+      </div>
+    )
   }
 
   // ========== 渲染 ==========

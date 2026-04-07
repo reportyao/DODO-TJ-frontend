@@ -45,7 +45,8 @@ const CouponListPage: React.FC = () => {
         .from('coupons')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
       
       if (error) throw error;
       return (data || []) as Coupon[];

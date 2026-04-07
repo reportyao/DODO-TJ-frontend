@@ -891,7 +891,9 @@ function getLogisticsStatusText(status: string, t: (key: string) => string): str
   const statusI18nMap: Record<string, string> = {
     'PENDING_SHIPMENT': t('logistics.pendingShipment'),
     'IN_TRANSIT_CHINA': t('logistics.inTransitChina'),
+    'IN_TRANSIT_TAJIKISTAN': t('logistics.inTransitTajikistan'),
     'IN_TRANSIT_TJ': t('logistics.inTransitTajikistan'),
+    'ARRIVED': t('logistics.readyForPickup'),
     'ARRIVED_TJ': t('logistics.readyForPickup'),
     'READY_FOR_PICKUP': t('logistics.readyForPickup'),
     'PICKED_UP': t('logistics.pickedUp'),

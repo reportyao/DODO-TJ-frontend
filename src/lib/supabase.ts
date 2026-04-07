@@ -388,7 +388,8 @@ export const lotteryService: any = {
     const { data, error } = await supabase
       .from('lotteries')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
     
     if (error) {
       console.error('Failed to fetch all lotteries:', error);
@@ -406,7 +407,8 @@ export const lotteryService: any = {
       .from('lotteries')
       .select('*')
       .eq('status', status as LotteryStatus)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
     
     if (error) {
       console.error(`Failed to fetch lotteries with status ${status}:`, error);
@@ -423,7 +425,8 @@ export const lotteryService: any = {
       .from('lotteries')
       .select('*')
       .in('status', ['ACTIVE' as LotteryStatus]) // 仅获取 ACTIVE 状态的
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
     
     if (error) {
       console.error('Failed to fetch lotteries:', error);
@@ -544,7 +547,8 @@ export const lotteryService: any = {
       .from('orders')
       .select('*, lotteries(title, image_url)')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (error) {
       console.error('Failed to fetch user orders:', error);
@@ -567,7 +571,8 @@ export const walletService = {
     const { data, error } = await supabase
       .from('wallets')
       .select('*')
-       .eq('user_id', userId);
+      .eq('user_id', userId)
+      .limit(10);
     
     if (error) {
       console.error('Failed to fetch wallets:', error);
@@ -648,7 +653,8 @@ export const commissionService = {
       .from('commissions')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (error) {
       console.error('Failed to fetch commissions:', error);
@@ -725,7 +731,8 @@ export const referralService = {
       .from('showoffs')
       .select('*')
       .eq('status', 'APPROVED')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (error) {
       console.error('Failed to fetch showoffs:', error);

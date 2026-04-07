@@ -123,7 +123,8 @@ const LotteryResultPage: React.FC = () => {
         .select('*')
         .eq('lottery_id', id)
         .eq('status', 'ACTIVE')
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(500);
 
       if (entriesError) throw entriesError;
 
@@ -158,7 +159,8 @@ const LotteryResultPage: React.FC = () => {
         const { data: usersData, error: usersError } = await supabase
           .from('users')
           .select('*')
-          .in('id', userIds);
+          .in('id', userIds)
+          .limit(500);
 
         if (usersError) throw usersError;
 
@@ -245,7 +247,8 @@ const LotteryResultPage: React.FC = () => {
         .from('pickup_points')
         .select('*')
         .eq('status', 'ACTIVE')
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(50);
 
       if (!error && data) {
         setPickupPoints(data);

@@ -362,6 +362,7 @@ serve(async (req) => {
         status: 'PENDING',
         pickup_point_id: pickup_point_id || null,
         pickup_code: pickupCode,
+        delivery_method: pickup_point_id ? 'PICKUP' : 'DELIVERY',
         metadata: {
           product_title: lottery.title,
           product_title_i18n: lottery.title_i18n,

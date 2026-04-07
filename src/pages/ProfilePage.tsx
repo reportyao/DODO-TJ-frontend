@@ -33,6 +33,9 @@ const ProfilePage: React.FC = () => {
   const { user, logout } = useUser()
   const navigate = useNavigate()
 
+  // ========== 加载状态 ==========
+  const [isPageLoading, setIsPageLoading] = useState(true)
+
   // ========== 用户二维码（供地推人员扫码充值） ==========
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
   const [showQrModal, setShowQrModal] = useState(false)
@@ -102,7 +105,10 @@ const ProfilePage: React.FC = () => {
     // 通过RPC函数检查当前用户是否为活跃推广者（市场合伙人）
     // 使用 SECURITY DEFINER 的RPC函数绕过RLS限制
     const checkPromoterStatus = async () => {
-      if (!user?.id) return
+      if (!user?.id) {
+        setIsPageLoading(false)
+        return
+      }
       try {
         const response = await fetch(
           `${SUPABASE_URL}/rest/v1/rpc/get_promoter_center_data`,
@@ -121,6 +127,8 @@ const ProfilePage: React.FC = () => {
           setIsPromoter(data?.success === true)
         }
       } catch (e) {
+      } finally {
+        setIsPageLoading(false)
       }
     }
     checkPromoterStatus()
@@ -250,6 +258,17 @@ const ProfilePage: React.FC = () => {
       highlight: true,
     }] : []),
   ]
+
+  if (isPageLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">{t('common.loading')}...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="pb-20 bg-gray-50 min-h-screen">

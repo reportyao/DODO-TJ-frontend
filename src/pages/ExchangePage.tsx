@@ -14,6 +14,7 @@ export default function ExchangePage() {
   const [amount, setAmount] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   // 从 UserContext 获取钱包数据
   const balanceWallet = wallets.find(w => w.type === "TJS" && w.currency === "TJS")
@@ -22,7 +23,8 @@ export default function ExchangePage() {
   const balance = balanceWallet?.balance || 0
   const luckyCoin = coinWallet?.balance || 0
 
-  const handleExchange = async () => {
+  // 点击兑换按钮时，先弹出确认弹窗
+  const handleExchangeClick = () => {
     const amountNum = parseFloat(amount)
     
     if (!amountNum || amountNum <= 0) {
@@ -35,10 +37,17 @@ export default function ExchangePage() {
       return
     }
 
+    setShowConfirm(true)
+  }
+
+  const handleExchange = async () => {
+    const amountNum = parseFloat(amount)
+    setShowConfirm(false)
+
     try {
       setSubmitting(true)
 
-      // 调用 Edge Function 进行兑换（余额 → 积分）
+      // 调用 Edge Function 进行兑换（余额 → 积分，单向不可逆）
       const result = await walletService.exchangeRealToBonus(amountNum)
       
       if (result.success) {
@@ -150,13 +159,51 @@ export default function ExchangePage() {
 
         {/* 兑换按钮 */}
         <button
-          onClick={handleExchange}
+          onClick={handleExchangeClick}
           disabled={submitting}
           className="w-full bg-gradient-to-r from-primary to-primary-dark text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50"
         >
           {submitting ? t("common.exchanging") : t("wallet.confirmExchange")}
         </button>
       </div>
+
+      {/* 兑换确认弹窗 */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-gray-800 mb-3">{t("wallet.confirmExchangeTitle", "确认兑换")}</h3>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+              <p className="text-sm text-red-600 font-medium">{t("wallet.oneWayExchangeWarning", "注意：兑换为单向操作，不可撤回！")}</p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3 mb-4">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">{t("wallet.balance")}</span>
+                <span className="font-bold text-primary">-{amount} TJS</span>
+              </div>
+              <div className="border-t border-gray-200 my-2" />
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">{t("wallet.luckyCoin")}</span>
+                <span className="font-bold text-green-600">+{amount}</span>
+              </div>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 py-3 border border-gray-300 rounded-xl font-medium text-gray-700"
+              >
+                {t("common.cancel", "取消")}
+              </button>
+              <button
+                onClick={handleExchange}
+                disabled={submitting}
+                className="flex-1 py-3 bg-primary text-white rounded-xl font-bold disabled:opacity-50"
+              >
+                {submitting ? t("common.exchanging") : t("wallet.confirmExchange")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
