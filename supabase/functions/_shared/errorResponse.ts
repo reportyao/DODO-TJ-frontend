@@ -104,6 +104,7 @@ export function mapErrorCode(msg: string): string {
   if (msg.includes('该活动已结束')) return 'ERR_LOTTERY_ENDED';
   if (msg.includes('商品未在售中')) return 'ERR_LOTTERY_ENDED';
   if (msg.includes('超出最大购买限制')) return 'ERR_MAX_PURCHASE_REACHED';
+  if (msg.includes('超出每人最大购买限制')) return 'ERR_MAX_PURCHASE_REACHED';
 
   // 钱包/余额相关
   if (msg.includes('余额不足')) return 'ERR_INSUFFICIENT_BALANCE';
@@ -159,6 +160,13 @@ export function mapErrorCode(msg: string): string {
   if (msg.includes('搜索关键词不能为空')) return 'ERR_SEARCH_KEYWORD_EMPTY';
   if (msg.includes('目标用户ID不能为空')) return 'ERR_PARAMS_MISSING';
   if (msg.includes('无效的操作')) return 'ERR_INVALID_ACTION';
+  if (msg.includes('创建订单失败')) return 'ERR_ORDER_CREATE_FAILED';
+  if (msg.includes('分配票失败')) return 'ERR_TICKET_ALLOCATE_FAILED';
+  if (msg.includes('支付失败')) return 'ERR_PAYMENT_FAILED';
+  if (msg.includes('创建重置Token失败')) return 'ERR_SERVER_ERROR';
+  if (msg.includes('密码更新失败')) return 'ERR_SERVER_ERROR';
+  if (msg.includes('手机号更新失败')) return 'ERR_SERVER_ERROR';
+  if (msg.includes('更新失败')) return 'ERR_SERVER_ERROR';
   if (msg.includes('操作失败')) return 'ERR_CONCURRENT_OPERATION';
 
   // 个人资料相关
@@ -217,6 +225,14 @@ export function getHttpStatusForErrorCode(errorCode: string): number {
        'ERR_INVALID_ACTION'].includes(errorCode)) {
     return 400;
   }
-  // 其余（ERR_SERVER_ERROR, ERR_SERVER_CONFIG 等）→ 500
+  // 服务器内部操作失败（非用户可控）→ 500
+  if (['ERR_SERVER_ERROR', 'ERR_SERVER_CONFIG', 'ERR_ORDER_CREATE_FAILED',
+       'ERR_TICKET_ALLOCATE_FAILED', 'ERR_PAYMENT_FAILED', 'ERR_EXCHANGE_FAILED',
+       'ERR_PICKUP_CODE_FAILED', 'ERR_PRIZE_CREATE_FAILED',
+       'ERR_PROFILE_UPDATE_FAILED', 'ERR_WALLET_INFO_FAILED',
+       'ERR_WITHDRAW_CREATE_FAILED'].includes(errorCode)) {
+    return 500;
+  }
+  // 兜底：未知错误码也返回 500
   return 500;
 }
