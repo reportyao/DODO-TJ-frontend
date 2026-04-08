@@ -255,6 +255,25 @@ inspector_port = 8083
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 # entrypoint = "./functions/MY_FUNCTION_NAME/index.ts"
 
+# ============================================================
+# 首页场景化改造 Edge Functions
+# ============================================================
+[functions.get-home-feed]
+enabled = true
+verify_jwt = false
+
+[functions.get-topic-detail]
+enabled = true
+verify_jwt = false
+
+[functions.track-behavior-event]
+enabled = true
+verify_jwt = false
+
+[functions.ai-topic-generate]
+enabled = true
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

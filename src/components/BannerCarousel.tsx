@@ -141,7 +141,7 @@ const BannerCarousel: React.FC = () => {
       page_name: 'home',
       entity_type: 'banner' as any,
       entity_id: banner.id,
-      position,
+      position: String(position),
       metadata: {
         banner_title: banner.title,
         link_url: banner.link_url || '',

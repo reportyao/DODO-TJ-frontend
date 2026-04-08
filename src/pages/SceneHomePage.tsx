@@ -16,9 +16,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../contexts/UserContext';
-import { useSupabase } from '../contexts/SupabaseContext';
-import { Lottery } from '../lib/supabase';
-import { PurchaseModal } from '../components/lottery/PurchaseModal';
+// PurchaseModal 已移除（购买在 LotteryDetailPage 完成）
 import BannerCarousel from '../components/BannerCarousel';
 import { SubsidyPoolBanner } from '../components/home/SubsidyPoolBanner';
 import { CategoryGrid } from '../components/home/CategoryGrid';
@@ -26,13 +24,12 @@ import { TopicCard } from '../components/home/TopicCard';
 import { SceneProductCard } from '../components/home/SceneProductCard';
 import { useHomeFeed } from '../hooks/useHomeFeed';
 import { useTrackEvent } from '../hooks/useTrackEvent';
-import toast from 'react-hot-toast';
+
 import type { HomeFeedItem, HomeFeedTopicData, HomeFeedProductData } from '../types/homepage';
 
 const SceneHomePage: React.FC = () => {
   const { t } = useTranslation();
-  const { user, wallets, isLoading: userLoading, refreshWallets } = useUser();
-  const { lotteryService } = useSupabase();
+  const { user, wallets, isLoading: userLoading } = useUser();
   const { track } = useTrackEvent();
   const nav = useNavigate();
 
@@ -144,25 +141,7 @@ const SceneHomePage: React.FC = () => {
     return result;
   }, [feedData]);
 
-  // ============================================================
-  // 购买模态框（与原 HomePage 保持一致）
-  // ============================================================
-  const [selectedLottery, setSelectedLottery] = useState<Lottery | null>(null);
-  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
 
-  const handlePurchaseConfirm = async (lotteryId: string, quantity: number) => {
-    try {
-      await lotteryService.purchaseTickets(lotteryId, quantity);
-      toast.success(t('lottery.purchaseSuccess'));
-      await refetch();
-      await refreshWallets();
-    } catch (error: any) {
-      toast.error(error.message || t('error.networkError'));
-    } finally {
-      setIsPurchaseModalOpen(false);
-      setSelectedLottery(null);
-    }
-  };
 
   // ============================================================
   // 渲染
@@ -254,13 +233,7 @@ const SceneHomePage: React.FC = () => {
         )}
       </div>
 
-      {/* 购买模态框 */}
-      <PurchaseModal
-        lottery={selectedLottery}
-        isOpen={isPurchaseModalOpen}
-        onClose={() => setIsPurchaseModalOpen(false)}
-        onConfirm={handlePurchaseConfirm}
-      />
+
     </div>
   );
 };

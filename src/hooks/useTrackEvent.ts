@@ -79,10 +79,15 @@ function getDeviceInfo(): Record<string, unknown> {
 // 事件队列 & 批量上报
 // ============================================================
 
-const EVENT_QUEUE: TrackEventPayload[] = [];
-const RETRY_QUEUE: TrackEventPayload[] = [];
+interface QueuedEvent extends TrackEventPayload {
+  _retryCount?: number;
+}
+
+const EVENT_QUEUE: QueuedEvent[] = [];
+const RETRY_QUEUE: QueuedEvent[] = [];
 const FLUSH_INTERVAL = 3000; // 3 秒
 const MAX_BATCH_SIZE = 20;
+const MAX_RETRY_COUNT = 1; // 最多重试 1 次
 
 let flushTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -129,14 +134,20 @@ async function flushQueue() {
     });
 
     if (error) {
-      // 上报失败，将事件放入重试队列（仅重试一次）
+      // 上报失败，仅将未超过重试次数的事件放入重试队列
       console.warn('[TrackEvent] Batch flush failed, queuing for retry:', error.message);
-      RETRY_QUEUE.push(...batch);
+      const retryable = batch.filter(e => (e._retryCount || 0) < MAX_RETRY_COUNT);
+      retryable.forEach(e => { e._retryCount = (e._retryCount || 0) + 1; });
+      RETRY_QUEUE.push(...retryable);
+      if (batch.length > retryable.length) {
+        console.warn(`[TrackEvent] Dropped ${batch.length - retryable.length} events after max retries`);
+      }
     }
   } catch {
     // 网络错误等，静默处理，不阻塞业务
-    // 将事件放入重试队列
-    RETRY_QUEUE.push(...batch);
+    const retryable = batch.filter(e => (e._retryCount || 0) < MAX_RETRY_COUNT);
+    retryable.forEach(e => { e._retryCount = (e._retryCount || 0) + 1; });
+    RETRY_QUEUE.push(...retryable);
   }
 }
 
@@ -201,7 +212,7 @@ export function trackEvent(
  */
 export function useTrackEvent() {
   const { user } = useUser();
-  const userIdRef = useRef<string | undefined>();
+  const userIdRef = useRef<string | undefined>(undefined);
   userIdRef.current = user?.id;
 
   const track = useCallback(
@@ -242,7 +253,7 @@ export function useExposureTracker(
   const hasFiredRef = useRef(false);
   const dwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user } = useUser();
-  const userIdRef = useRef<string | undefined>();
+  const userIdRef = useRef<string | undefined>(undefined);
   userIdRef.current = user?.id;
 
   const enabled = options?.enabled !== false;

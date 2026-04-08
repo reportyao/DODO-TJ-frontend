@@ -28,11 +28,12 @@ interface TopicCardProps {
  * Hero 样式卡片 - 大图 + 标题叠加
  * 用于 feed_position 靠前的重点专题
  */
-const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; subtitle: string }> = ({
+const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }> = ({
   topic,
   coverUrl,
   title,
   subtitle,
+  t,
 }) => {
   return (
     <div className="relative rounded-2xl overflow-hidden shadow-lg">
@@ -76,7 +77,7 @@ const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; sub
           className="absolute top-3 left-3 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
           style={{ backgroundColor: topic.theme_color }}
         >
-          专题
+          {t('home.topic')}
         </div>
       )}
     </div>
@@ -87,11 +88,12 @@ const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; sub
  * Banner 样式卡片 - 横条式
  * 用于中间位置的专题推荐
  */
-const BannerCard: React.FC<TopicCardProps & { coverUrl: string; title: string; subtitle: string }> = ({
+const BannerCard: React.FC<TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }> = ({
   topic,
   coverUrl,
   title,
   subtitle,
+  t,
 }) => {
   return (
     <div className="flex items-center bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-24">
@@ -110,7 +112,7 @@ const BannerCard: React.FC<TopicCardProps & { coverUrl: string; title: string; s
             className="w-full h-full flex items-center justify-center"
             style={{ backgroundColor: topic.theme_color || '#f97316' }}
           >
-            <span className="text-white text-sm font-bold">专题</span>
+            <span className="text-white text-sm font-bold">{t('home.topic')}</span>
           </div>
         )}
       </div>
@@ -124,7 +126,7 @@ const BannerCard: React.FC<TopicCardProps & { coverUrl: string; title: string; s
           <p className="text-[11px] text-gray-500 mt-1 line-clamp-1">{subtitle}</p>
         )}
         <span className="inline-block mt-1.5 text-[10px] text-orange-500 font-medium">
-          查看详情 →
+          {t('home.viewDetails')} →
         </span>
       </div>
     </div>
@@ -135,9 +137,10 @@ const BannerCard: React.FC<TopicCardProps & { coverUrl: string; title: string; s
  * Mini 样式卡片 - 紧凑型
  * 用于 feed 流中穿插的小型推荐
  */
-const MiniCard: React.FC<TopicCardProps & { title: string }> = ({
+const MiniCard: React.FC<TopicCardProps & { title: string; t: (key: string) => string }> = ({
   topic,
   title,
+  t,
 }) => {
   return (
     <div
@@ -159,7 +162,7 @@ const MiniCard: React.FC<TopicCardProps & { title: string }> = ({
           </span>
         </div>
         <span className="text-[11px] text-orange-500 font-medium flex-shrink-0">
-          去看看 →
+          {t('home.goSee')} →
         </span>
       </div>
     </div>
@@ -172,7 +175,7 @@ const MiniCard: React.FC<TopicCardProps & { title: string }> = ({
  * 根据 card_style 自动选择卡片样式，包裹 Link 和曝光追踪。
  */
 export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const { track } = useTrackEvent();
   const lang = i18n.language as SupportedLang;
 
@@ -230,12 +233,12 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
   const renderCard = () => {
     switch (cardStyle) {
       case 'hero':
-        return <HeroCard topic={topic} position={position} coverUrl={coverUrl} title={title} subtitle={subtitle} />;
+        return <HeroCard topic={topic} position={position} coverUrl={coverUrl} title={title} subtitle={subtitle} t={t} />;
       case 'mini':
-        return <MiniCard topic={topic} position={position} title={title} />;
+        return <MiniCard topic={topic} position={position} title={title} t={t} />;
       case 'banner':
       default:
-        return <BannerCard topic={topic} position={position} coverUrl={coverUrl} title={title} subtitle={subtitle} />;
+        return <BannerCard topic={topic} position={position} coverUrl={coverUrl} title={title} subtitle={subtitle} t={t} />;
     }
   };
 
