@@ -11,7 +11,7 @@
  * 塔语优先回退俄语，因为从用户理解成本看，俄语在当地语境更接近现实使用环境。
  */
 
-import type { I18nText, SupportedLang } from '@/types/homepage';
+import type { I18nText, SupportedLang } from '../types/homepage';
 
 /** 各语言的回退顺序 */
 const FALLBACK_ORDER: Record<SupportedLang, SupportedLang[]> = {

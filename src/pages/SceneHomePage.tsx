@@ -1,0 +1,267 @@
+/**
+ * 首页场景化改造 · 主页面
+ *
+ * 布局结构（从上到下）：
+ * 1. BannerCarousel - 轮播图（复用现有组件）
+ * 2. SubsidyPoolBanner - 补贴池横条（复用现有组件）
+ * 3. CategoryGrid - 金刚区分类入口
+ * 4. Feed 混合流 - 商品卡片 + 专题卡片穿插
+ *
+ * 数据来源：get-home-feed Edge Function
+ * 埋点：home_view / category_click / product_card_click / topic_card_click
+ *
+ * 与现有 HomePage.tsx 保持相同的页面壳结构（pb-20 bg-gray-50）。
+ */
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useUser } from '../contexts/UserContext';
+import { useSupabase } from '../contexts/SupabaseContext';
+import { Lottery } from '../lib/supabase';
+import { PurchaseModal } from '../components/lottery/PurchaseModal';
+import BannerCarousel from '../components/BannerCarousel';
+import { SubsidyPoolBanner } from '../components/home/SubsidyPoolBanner';
+import { CategoryGrid } from '../components/home/CategoryGrid';
+import { TopicCard } from '../components/home/TopicCard';
+import { SceneProductCard } from '../components/home/SceneProductCard';
+import { useHomeFeed } from '../hooks/useHomeFeed';
+import { useTrackEvent } from '../hooks/useTrackEvent';
+import toast from 'react-hot-toast';
+import type { HomeFeedItem, HomeFeedTopicData, HomeFeedProductData } from '../types/homepage';
+
+const SceneHomePage: React.FC = () => {
+  const { t } = useTranslation();
+  const { user, wallets, isLoading: userLoading, refreshWallets } = useUser();
+  const { lotteryService } = useSupabase();
+  const { track } = useTrackEvent();
+  const nav = useNavigate();
+
+  // ============================================================
+  // 分类筛选状态
+  // ============================================================
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>();
+
+  // ============================================================
+  // 数据获取
+  // ============================================================
+  const {
+    data: feedData,
+    isLoading,
+    refetch,
+  } = useHomeFeed(selectedCategoryId);
+
+  // ============================================================
+  // 首页浏览埋点
+  // ============================================================
+  useEffect(() => {
+    track({
+      event_name: 'home_view',
+      page_name: 'home',
+      entity_type: 'home',
+    });
+  }, []);
+
+  // ============================================================
+  // PWA 深度链接处理（与原 HomePage 保持一致）
+  // ============================================================
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const gotoParam = urlParams.get('goto');
+    const refParam = urlParams.get('ref');
+
+    if (gotoParam) {
+      if (gotoParam.startsWith('lt_')) {
+        const lotteryId = gotoParam.replace('lt_', '');
+        nav(`/lottery/${lotteryId}`, { replace: true });
+      } else if (gotoParam.startsWith('so_')) {
+        nav(`/showoff`, { replace: true });
+      }
+    } else if (refParam && !user && !userLoading) {
+      nav(`/register?ref=${encodeURIComponent(refParam)}`, { replace: true });
+    }
+  }, [nav, user, userLoading]);
+
+  // ============================================================
+  // 分类选择
+  // ============================================================
+  const handleCategorySelect = useCallback(
+    (categoryId: string | undefined) => {
+      setSelectedCategoryId(categoryId);
+      if (categoryId) {
+        track({
+          event_name: 'category_click',
+          page_name: 'home',
+          entity_type: 'category',
+          entity_id: categoryId,
+          source_category_id: categoryId,
+        });
+      }
+    },
+    [track]
+  );
+
+  // ============================================================
+  // Feed 混合流构建
+  // 将专题卡片按 feed_position 插入商品列表
+  // ============================================================
+  const mixedFeed = useMemo(() => {
+    if (!feedData) return [];
+
+    const products = feedData.products || [];
+    const placements = feedData.placements || [];
+
+    // 按 feed_position 排序专题投放
+    const sortedPlacements = [...placements].sort(
+      (a, b) => (a.data as HomeFeedTopicData).feed_position - (b.data as HomeFeedTopicData).feed_position
+    );
+
+    // 构建混合流
+    const result: HomeFeedItem[] = [];
+    let productIndex = 0;
+
+    // 遍历专题投放，在对应位置插入
+    for (const placement of sortedPlacements) {
+      const topicData = placement.data as HomeFeedTopicData;
+      const insertAt = topicData.feed_position;
+
+      // 先填充商品到插入位置
+      while (productIndex < products.length && result.length < insertAt) {
+        result.push(products[productIndex]);
+        productIndex++;
+      }
+
+      // 插入专题卡片
+      result.push(placement);
+    }
+
+    // 填充剩余商品
+    while (productIndex < products.length) {
+      result.push(products[productIndex]);
+      productIndex++;
+    }
+
+    return result;
+  }, [feedData]);
+
+  // ============================================================
+  // 购买模态框（与原 HomePage 保持一致）
+  // ============================================================
+  const [selectedLottery, setSelectedLottery] = useState<Lottery | null>(null);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+
+  const handlePurchaseConfirm = async (lotteryId: string, quantity: number) => {
+    try {
+      await lotteryService.purchaseTickets(lotteryId, quantity);
+      toast.success(t('lottery.purchaseSuccess'));
+      await refetch();
+      await refreshWallets();
+    } catch (error: any) {
+      toast.error(error.message || t('error.networkError'));
+    } finally {
+      setIsPurchaseModalOpen(false);
+      setSelectedLottery(null);
+    }
+  };
+
+  // ============================================================
+  // 渲染
+  // ============================================================
+
+  // 分离商品和专题用于渲染
+  const renderFeedItem = (item: HomeFeedItem, index: number) => {
+    if (item.type === 'topic') {
+      const topicData = item.data as HomeFeedTopicData;
+      return (
+        <div key={`topic-${item.item_id}`} className="col-span-2 px-0">
+          <TopicCard topic={topicData} position={index} />
+        </div>
+      );
+    }
+
+    // 商品卡片
+    const productData = item.data as HomeFeedProductData;
+    return (
+      <SceneProductCard
+        key={`product-${item.item_id}`}
+        product={productData}
+        position={index}
+        sourceCategoryId={selectedCategoryId}
+      />
+    );
+  };
+
+  return (
+    <div className="pb-20 bg-gray-50">
+      {/* Banner 广告位 */}
+      <div className="px-4 pt-4">
+        <BannerCarousel />
+      </div>
+
+      {/* 补贴池横条 */}
+      <SubsidyPoolBanner />
+
+      {/* 金刚区 - 分类入口 */}
+      <CategoryGrid
+        categories={feedData?.categories || []}
+        selectedId={selectedCategoryId}
+        onSelect={handleCategorySelect}
+        isLoading={isLoading}
+      />
+
+      {/* Feed 混合流 */}
+      <div className="px-4 mt-4">
+        <h2 className="text-lg font-bold text-gray-800 mb-3">
+          {t('home.lotteryProducts')}
+        </h2>
+
+        {isLoading ? (
+          /* 骨架屏 - 双列网格 */
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-pulse"
+              >
+                <div style={{ paddingBottom: '100%', position: 'relative' }}>
+                  <div style={{ position: 'absolute', inset: 0, backgroundColor: '#e5e7eb' }} />
+                </div>
+                <div className="p-3 space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+                  <div className="h-5 bg-gray-200 rounded w-1/2" />
+                  <div className="h-3 bg-gray-200 rounded w-2/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : mixedFeed.length > 0 ? (
+          <div className="grid grid-cols-2 gap-3">
+            {mixedFeed.map((item, index) => renderFeedItem(item, index))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <picture>
+              <source srcSet="/brand/empty_cart.webp" type="image/webp" />
+              <img
+                src="/brand/empty_cart.png"
+                alt="No items"
+                className="w-32 h-32 mx-auto mb-3 opacity-80"
+                style={{ objectFit: 'contain' }}
+              />
+            </picture>
+            <p className="text-gray-400 text-sm">{t('common.noData')}</p>
+          </div>
+        )}
+      </div>
+
+      {/* 购买模态框 */}
+      <PurchaseModal
+        lottery={selectedLottery}
+        isOpen={isPurchaseModalOpen}
+        onClose={() => setIsPurchaseModalOpen(false)}
+        onConfirm={handlePurchaseConfirm}
+      />
+    </div>
+  );
+};
+
+export default SceneHomePage;

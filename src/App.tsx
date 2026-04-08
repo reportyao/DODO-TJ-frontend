@@ -50,6 +50,10 @@ const MarketCreatePage = lazyWithRetry(() => import("./pages/MarketCreatePage"))
 const MyTicketsPage = lazyWithRetry(() => import("./pages/MyTicketsPage"))
 const MyPrizesPage = lazyWithRetry(() => import("./pages/MyPrizesPage"))
 
+// 首页场景化改造页面
+const SceneHomePage = lazyWithRetry(() => import("./pages/SceneHomePage"))
+const TopicDetailPage = lazyWithRetry(() => import("./pages/TopicDetailPage"))
+
 const OrderPage = lazyWithRetry(() => import("./pages/OrderPage"))
 const PendingPickupPage = lazyWithRetry(() => import("./pages/PendingPickupPage"))
 const SubsidyPlanPage = lazyWithRetry(() => import("./pages/SubsidyPlanPage"))
@@ -153,11 +157,14 @@ function App() {
               {/* 公开路由（无需登录即可访问）                                  */}
               {/* 首页和商城列表允许未登录用户浏览，提升转化率                  */}
               {/* ============================================================ */}
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<SceneHomePage />} />
+              {/* 保留旧首页路由，方便回退 */}
+              <Route path="/home-legacy" element={<HomePage />} />
               <Route path="/lottery" element={<LotteryPage />} />
               <Route path="/lottery/:id" element={<LotteryDetailPage />} />
               <Route path="/lottery/:id/result" element={<LotteryResultPage />} />
               <Route path="/showoff" element={<ShowoffPage />} />
+              <Route path="/topic/:slug" element={<TopicDetailPage />} />
 
               {/* 拼团路由 - 重定向到首页，避免死链 */}
               <Route path="/group-buy" element={<Navigate to="/" replace />} />
