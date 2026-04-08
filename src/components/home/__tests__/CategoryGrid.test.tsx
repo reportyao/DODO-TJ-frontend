@@ -49,7 +49,6 @@ const mockCategories: HomeFeedCategory[] = [
     icon_key: 'icon_daily_goods',
     color_token: '#FF6B35',
     sort_order: 0,
-    is_active: true,
   },
   {
     id: 'cat-2',
@@ -58,7 +57,6 @@ const mockCategories: HomeFeedCategory[] = [
     icon_key: 'icon_home_appliance',
     color_token: '#3B82F6',
     sort_order: 1,
-    is_active: true,
   },
   {
     id: 'cat-3',
@@ -67,7 +65,6 @@ const mockCategories: HomeFeedCategory[] = [
     icon_key: 'icon_unknown',
     color_token: '#666666',
     sort_order: 2,
-    is_active: true,
   },
 ];
 

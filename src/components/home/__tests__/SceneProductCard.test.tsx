@@ -87,6 +87,9 @@ const baseProduct: HomeFeedProductData = {
   full_purchase_enabled: false,
   full_purchase_price: null,
   status: 'active',
+  period: null,
+  draw_time: null,
+  end_time: null,
 };
 
 const productWithComparison: HomeFeedProductData = {

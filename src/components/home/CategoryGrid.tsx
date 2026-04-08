@@ -19,23 +19,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getLocalizedText } from '../../lib/utils';
+import { getCategoryIcon } from '../../utils/categoryIcons';
 import type { HomeFeedCategory } from '../../types/homepage';
-
-// ============================================================
-// 图标映射：code → emoji/图标
-// [修复] key 与种子数据 homepage_categories.code 对齐
-// 后续可替换为自定义 SVG 图标
-// ============================================================
-const CATEGORY_ICON_MAP: Record<string, string> = {
-  daily_goods: '🏠',       // 日用百货
-  home_appliance: '📺',    // 家用电器
-  food_kitchen: '🍽️',     // 食品厨房
-  personal_care: '💄',     // 个护美妆
-  clothing_bags: '👗',     // 服饰箱包
-  digital_tech: '📱',      // 数码科技
-  mother_baby: '👶',       // 母婴亲子
-  sports_outdoor: '⚽',    // 运动户外
-};
 
 interface CategoryGridProps {
   categories: HomeFeedCategory[];
@@ -108,7 +93,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
           const isSelected = selectedId === cat.id;
           // [审查修复] icon_key 在种子数据中是 icon_daily_goods 等字符串，不是 emoji，
           // 因此 fallback 不应直接显示 icon_key，而应回退到默认 emoji
-          const icon = CATEGORY_ICON_MAP[cat.code] || '📦';
+          const icon = getCategoryIcon(cat.code);
           const name = getLocalizedText(cat.name_i18n as Record<string, string>, i18n.language);
 
           return (

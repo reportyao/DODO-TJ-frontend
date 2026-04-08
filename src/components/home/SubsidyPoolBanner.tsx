@@ -110,7 +110,7 @@ export const SubsidyPoolBanner: React.FC = () => {
         <div className="flex items-center space-x-1.5 flex-shrink-0">
           <FireIcon className="w-4 h-4 text-yellow-200" />
           <span className="text-white font-bold text-xs whitespace-nowrap">
-            {data ? formatFullNumber(data.remaining) : '10,000,000'}
+            {data ? formatFullNumber(data.remaining) : '---'}
           </span>
           <span className="text-white/70 text-[10px]">TJS</span>
         </div>

@@ -86,7 +86,6 @@ export function getCoverImage(
 ): string | null {
   if (!images) return null;
 
-  const langKey = `cover_image_${lang}` as keyof typeof images;
   const order = FALLBACK_ORDER[lang] || FALLBACK_ORDER.zh;
 
   // 优先使用当前语言的封面

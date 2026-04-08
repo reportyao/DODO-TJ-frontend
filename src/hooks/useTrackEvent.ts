@@ -90,6 +90,7 @@ const MAX_BATCH_SIZE = 20;
 const MAX_RETRY_COUNT = 1; // 最多重试 1 次
 
 let flushTimer: ReturnType<typeof setInterval> | null = null;
+let isFlushing = false; // [修复] 防止并发 flush 导致事件重复处理
 
 /**
  * [修复] 通过 Edge Function 批量上报事件
@@ -99,55 +100,61 @@ let flushTimer: ReturnType<typeof setInterval> | null = null;
  * 3. Edge Function 已支持批量模式 { events: [...] }
  */
 async function flushQueue() {
-  // 先处理重试队列
-  if (RETRY_QUEUE.length > 0) {
-    EVENT_QUEUE.unshift(...RETRY_QUEUE.splice(0));
-  }
-
-  if (EVENT_QUEUE.length === 0) return;
-
-  const batch = EVENT_QUEUE.splice(0, MAX_BATCH_SIZE);
+  // [修复] 防止并发执行（定时器 + beforeunload + visibilitychange 可能同时触发）
+  if (isFlushing) return;
+  isFlushing = true;
 
   try {
-    const { data, error } = await supabase.functions.invoke('track-behavior-event', {
-      body: {
-        events: batch.map((evt) => ({
-          session_id: evt.session_id,
-          user_id: evt.user_id || null,
-          event_name: evt.event_name,
-          page_name: evt.page_name,
-          entity_type: evt.entity_type || null,
-          entity_id: evt.entity_id || null,
-          position: evt.position || null,
-          source_page: evt.source_page || null,
-          source_topic_id: evt.source_topic_id || null,
-          source_placement_id: evt.source_placement_id || null,
-          source_category_id: evt.source_category_id || null,
-          lottery_id: evt.lottery_id || null,
-          inventory_product_id: evt.inventory_product_id || null,
-          order_id: evt.order_id || null,
-          trace_id: evt.trace_id || null,
-          metadata: evt.metadata || {},
-          device_info: evt.device_info || null,
-        })),
-      },
-    });
+    // 先处理重试队列
+    if (RETRY_QUEUE.length > 0) {
+      EVENT_QUEUE.unshift(...RETRY_QUEUE.splice(0));
+    }
 
-    if (error) {
-      // 上报失败，仅将未超过重试次数的事件放入重试队列
-      console.warn('[TrackEvent] Batch flush failed, queuing for retry:', error.message);
+    if (EVENT_QUEUE.length === 0) return;
+
+    const batch = EVENT_QUEUE.splice(0, MAX_BATCH_SIZE);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('track-behavior-event', {
+        body: {
+          events: batch.map((evt) => ({
+            session_id: evt.session_id,
+            user_id: evt.user_id || null,
+            event_name: evt.event_name,
+            page_name: evt.page_name,
+            entity_type: evt.entity_type || null,
+            entity_id: evt.entity_id || null,
+            position: evt.position || null,
+            source_page: evt.source_page || null,
+            source_topic_id: evt.source_topic_id || null,
+            source_placement_id: evt.source_placement_id || null,
+            source_category_id: evt.source_category_id || null,
+            lottery_id: evt.lottery_id || null,
+            inventory_product_id: evt.inventory_product_id || null,
+            order_id: evt.order_id || null,
+            trace_id: evt.trace_id || null,
+            metadata: evt.metadata || {},
+            device_info: evt.device_info || null,
+          })),
+        },
+      });
+
+      if (error) {
+        console.warn('[TrackEvent] Batch flush failed, queuing for retry:', error.message);
+        const retryable = batch.filter(e => (e._retryCount || 0) < MAX_RETRY_COUNT);
+        retryable.forEach(e => { e._retryCount = (e._retryCount || 0) + 1; });
+        RETRY_QUEUE.push(...retryable);
+        if (batch.length > retryable.length) {
+          console.warn(`[TrackEvent] Dropped ${batch.length - retryable.length} events after max retries`);
+        }
+      }
+    } catch {
       const retryable = batch.filter(e => (e._retryCount || 0) < MAX_RETRY_COUNT);
       retryable.forEach(e => { e._retryCount = (e._retryCount || 0) + 1; });
       RETRY_QUEUE.push(...retryable);
-      if (batch.length > retryable.length) {
-        console.warn(`[TrackEvent] Dropped ${batch.length - retryable.length} events after max retries`);
-      }
     }
-  } catch {
-    // 网络错误等，静默处理，不阻塞业务
-    const retryable = batch.filter(e => (e._retryCount || 0) < MAX_RETRY_COUNT);
-    retryable.forEach(e => { e._retryCount = (e._retryCount || 0) + 1; });
-    RETRY_QUEUE.push(...retryable);
+  } finally {
+    isFlushing = false;
   }
 }
 

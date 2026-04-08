@@ -137,9 +137,9 @@ const BannerCarousel: React.FC = () => {
   // ============================================================
   const handleBannerClick = useCallback((banner: Banner, position: number) => {
     trackEvent({
-      event_name: 'banner_click' as any,
+      event_name: 'banner_click',
       page_name: 'home',
-      entity_type: 'banner' as any,
+      entity_type: 'banner',
       entity_id: banner.id,
       position: String(position),
       metadata: {

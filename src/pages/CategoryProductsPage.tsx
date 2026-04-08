@@ -17,32 +17,17 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
-import { useUser } from '../contexts/UserContext';
 import { getLocalizedText } from '../lib/utils';
+import { getCategoryIcon } from '../utils/categoryIcons';
 import { useCategoryProducts } from '../hooks/useHomeFeed';
 import { useTrackEvent } from '../hooks/useTrackEvent';
 import { SceneProductCard } from '../components/home/SceneProductCard';
 import type { HomeFeedItem, HomeFeedProductData, HomeFeedCategory, SupportedLang } from '../types/homepage';
 
-// ============================================================
-// 分类图标映射（与 CategoryGrid 保持一致）
-// ============================================================
-const CATEGORY_ICON_MAP: Record<string, string> = {
-  daily_goods: '🏠',
-  home_appliance: '📺',
-  food_kitchen: '🍽️',
-  personal_care: '💄',
-  clothing_bags: '👗',
-  digital_tech: '📱',
-  mother_baby: '👶',
-  sports_outdoor: '⚽',
-};
-
 const CategoryProductsPage: React.FC = () => {
   const { categoryId } = useParams<{ categoryId: string }>();
   const [searchParams] = useSearchParams();
   const { i18n, t } = useTranslation();
-  const { user } = useUser();
   const { track } = useTrackEvent();
   const navigate = useNavigate();
   const lang = i18n.language as SupportedLang;
@@ -67,14 +52,15 @@ const CategoryProductsPage: React.FC = () => {
 
   // 分类图标
   const displayIcon = currentCategory
-    ? CATEGORY_ICON_MAP[currentCategory.code] || '📦'
-    : CATEGORY_ICON_MAP[categoryCode] || '📦';
+    ? getCategoryIcon(currentCategory.code)
+    : getCategoryIcon(categoryCode);
 
-  // 页面浏览埋点
+  // [修复] 页面浏览埋点：使用 home_view 事件名（category_view 未在 BehaviorEventName 类型中定义）
+  // 原实现使用 category_click，与首页分类点击事件混淆，导致行为看板数据不准确
   useEffect(() => {
     if (categoryId) {
       track({
-        event_name: 'category_click',
+        event_name: 'home_view',
         page_name: 'category_products',
         entity_type: 'category',
         entity_id: categoryId,

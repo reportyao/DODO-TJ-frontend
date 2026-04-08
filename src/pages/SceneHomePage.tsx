@@ -108,38 +108,39 @@ const SceneHomePage: React.FC = () => {
     const products = feedData.products || [];
     const placements = feedData.placements || [];
 
-    // 按 feed_position 排序专题投放
+    // [修复] 分类筛选时隐藏专题卡片，避免用户选择“数码科技”后仍看到“母婴好物”等不相关专题
+    if (selectedCategoryId) {
+      // 分类筛选模式：只显示商品，不插入专题卡片
+      return products;
+    }
+
+    // 全部模式：按 feed_position 插入专题卡片
     const sortedPlacements = [...placements].sort(
       (a, b) => (a.data as HomeFeedTopicData).feed_position - (b.data as HomeFeedTopicData).feed_position
     );
 
-    // 构建混合流
     const result: HomeFeedItem[] = [];
     let productIndex = 0;
 
-    // 遍历专题投放，在对应位置插入
     for (const placement of sortedPlacements) {
       const topicData = placement.data as HomeFeedTopicData;
       const insertAt = topicData.feed_position;
 
-      // 先填充商品到插入位置
       while (productIndex < products.length && result.length < insertAt) {
         result.push(products[productIndex]);
         productIndex++;
       }
 
-      // 插入专题卡片
       result.push(placement);
     }
 
-    // 填充剩余商品
     while (productIndex < products.length) {
       result.push(products[productIndex]);
       productIndex++;
     }
 
     return result;
-  }, [feedData]);
+  }, [feedData, selectedCategoryId]);
 
 
 

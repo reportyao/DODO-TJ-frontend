@@ -204,7 +204,9 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
     source_placement_id: topic.placement_id,
   });
 
-  const cardStyle = topic.card_style || 'banner';
+  // [修复] 优先使用投放级 card_variant_name（管理员在投放管理中设置），
+  // fallback 到专题级 card_style，最终 fallback 到 'banner'
+  const cardStyle = topic.card_variant_name || topic.card_style || 'banner';
 
   /**
    * [修复] 补充 topic_card_click 点击埋点
@@ -227,6 +229,10 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
   const renderCard = () => {
     switch (cardStyle) {
       case 'hero':
+        return <HeroCard topic={topic} position={position} coverUrl={coverUrl} title={title} subtitle={subtitle} t={t} />;
+      case 'standard':
+        // [修复] Admin 后台默认使用 'standard'，前端原实现缺少此分支
+        // standard 样式使用与 hero 相同的大图布局
         return <HeroCard topic={topic} position={position} coverUrl={coverUrl} title={title} subtitle={subtitle} t={t} />;
       case 'mini':
         return <MiniCard topic={topic} position={position} title={title} t={t} />;
