@@ -107,14 +107,15 @@ const TopicProductCard: React.FC<{
     if (requireAuth) {
       e.preventDefault();
       const target = lottery
-        ? `/lottery/${lottery.lottery_id}`
-        : `/lottery/${item.product_id}`;
+        ? `/lottery/${lottery.lottery_id}?src_topic=${topicId}&src_page=topic_detail`
+        : `/lottery/${item.product_id}?src_topic=${topicId}&src_page=topic_detail`;
       navigate(`/login?redirect=${encodeURIComponent(target)}`);
     }
   };
 
+  // 构建带归因参数的链接
   const linkTo = lottery
-    ? `/lottery/${lottery.lottery_id}`
+    ? `/lottery/${lottery.lottery_id}?src_topic=${topicId}&src_page=topic_detail`
     : '#';
 
   return (

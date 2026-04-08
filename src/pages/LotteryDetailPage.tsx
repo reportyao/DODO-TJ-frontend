@@ -21,7 +21,8 @@ import toast from 'react-hot-toast';
 import { lotteryService } from '../lib/supabase';
 import { motion } from 'framer-motion';
 import { CountdownTimer } from '../components/CountdownTimer';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTrackEvent } from '../hooks/useTrackEvent';
 
 type Lottery = Tables<'lotteries'>;
 type Showoff = Tables<'showoffs'> & {
@@ -41,6 +42,18 @@ const LotteryDetailPage: React.FC = () => {
   const { user, wallets, refreshWallets } = useUser();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { track } = useTrackEvent();
+
+  // ============================================================
+  // 来源归因：从 URL 参数中提取来源信息
+  // 支持 ?src_topic=xxx&src_placement=xxx&src_category=xxx&src_page=xxx
+  // ============================================================
+  const sourceAttribution = useRef({
+    source_topic_id: new URLSearchParams(window.location.search).get('src_topic') || undefined,
+    source_placement_id: new URLSearchParams(window.location.search).get('src_placement') || undefined,
+    source_category_id: new URLSearchParams(window.location.search).get('src_category') || undefined,
+    source_page: new URLSearchParams(window.location.search).get('src_page') || undefined,
+  });
 
   const [lottery, setLottery] = useState<Lottery | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -290,6 +303,25 @@ const LotteryDetailPage: React.FC = () => {
     fetchCouponCount();
   }, [fetchLottery, fetchRandomShowoffs, fetchCouponCount]);
 
+  // ============================================================
+  // 商品详情页浏览埋点（文档 10.1 事件清单要求）
+  // ============================================================
+  useEffect(() => {
+    if (id && !isLoading && lottery) {
+      const inventoryProductId = (lottery as any)?.inventory_product_id;
+      track({
+        event_name: 'product_detail_view' as any,
+        page_name: 'lottery_detail',
+        entity_type: 'product' as any,
+        entity_id: id,
+        lottery_id: id,
+        inventory_product_id: inventoryProductId || undefined,
+        ...sourceAttribution.current,
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isLoading]);
+
   // 页面重新可见时自动刷新数据（解决购买后刷新页面进度不更新的问题）
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -434,6 +466,29 @@ const LotteryDetailPage: React.FC = () => {
       // 【BUG修复】直接使用 Edge Function 返回的数据更新本地状态
       // 避免异步查询的时序问题导致 sold_tickets 和 myTickets 不同步
       const purchaseResult = order?.data || order;
+
+      // ============================================================
+      // 订单链路埋点（文档 10.1 事件清单要求）
+      // 一元夺宝购买成功 = order_create + order_pay_success
+      // ============================================================
+      const orderId = purchaseResult?.order_id || purchaseResult?.id;
+      const inventoryProductId = (lottery as any)?.inventory_product_id;
+      const orderTrackBase = {
+        page_name: 'lottery_detail',
+        entity_type: 'order' as any,
+        entity_id: orderId || id,
+        lottery_id: id,
+        inventory_product_id: inventoryProductId || undefined,
+        order_id: orderId || undefined,
+        ...sourceAttribution.current,
+        metadata: {
+          purchase_type: 'lottery',
+          quantity,
+          total_cost: lottery.ticket_price * quantity,
+        },
+      };
+      track({ ...orderTrackBase, event_name: 'order_create' as any });
+      track({ ...orderTrackBase, event_name: 'order_pay_success' as any });
       const newParticipationCodes: string[] = purchaseResult?.participation_codes || [];
       
       if (newParticipationCodes.length > 0) {

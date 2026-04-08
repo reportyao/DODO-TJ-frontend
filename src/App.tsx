@@ -53,6 +53,7 @@ const MyPrizesPage = lazyWithRetry(() => import("./pages/MyPrizesPage"))
 // 首页场景化改造页面
 const SceneHomePage = lazyWithRetry(() => import("./pages/SceneHomePage"))
 const TopicDetailPage = lazyWithRetry(() => import("./pages/TopicDetailPage"))
+const CategoryProductsPage = lazyWithRetry(() => import("./pages/CategoryProductsPage"))
 
 const OrderPage = lazyWithRetry(() => import("./pages/OrderPage"))
 const PendingPickupPage = lazyWithRetry(() => import("./pages/PendingPickupPage"))
@@ -165,6 +166,7 @@ function App() {
               <Route path="/lottery/:id/result" element={<LotteryResultPage />} />
               <Route path="/showoff" element={<ShowoffPage />} />
               <Route path="/topic/:slug" element={<TopicDetailPage />} />
+              <Route path="/category/:categoryId" element={<CategoryProductsPage />} />
 
               {/* 拼团路由 - 重定向到首页，避免死链 */}
               <Route path="/group-buy" element={<Navigate to="/" replace />} />

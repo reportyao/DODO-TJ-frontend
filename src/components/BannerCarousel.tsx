@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { queryKeys, staleTimes } from '../lib/react-query';
+import { trackEvent } from '../hooks/useTrackEvent';
 
 interface Banner {
   id: string;
@@ -24,6 +25,10 @@ interface Banner {
  * - 只预加载当前和下一张图片（而非全部），减少首屏网络请求
  * - 非当前图片使用 loading="lazy" 延迟加载
  * - 语言切换时重置预加载状态
+ *
+ * 【埋点补全】
+ * - 新增 banner_click 事件上报（文档 10.1 事件清单要求）
+ * - 记录 banner_id、position、link_url 等归因信息
  */
 const BannerCarousel: React.FC = () => {
   const { i18n } = useTranslation();
@@ -127,6 +132,24 @@ const BannerCarousel: React.FC = () => {
     return () => clearInterval(interval);
   }, [banners.length, imagesLoaded]);
 
+  // ============================================================
+  // Banner 点击埋点
+  // ============================================================
+  const handleBannerClick = useCallback((banner: Banner, position: number) => {
+    trackEvent({
+      event_name: 'banner_click' as any,
+      page_name: 'home',
+      entity_type: 'banner' as any,
+      entity_id: banner.id,
+      position,
+      metadata: {
+        banner_title: banner.title,
+        link_url: banner.link_url || '',
+        link_type: banner.link_type,
+      },
+    });
+  }, []);
+
   if (isLoading && banners.length === 0) {
     return (
       <div className="relative h-40 bg-gray-200 rounded-2xl animate-pulse"></div>
@@ -209,13 +232,23 @@ const BannerCarousel: React.FC = () => {
   if (currentBanner.link_url) {
     if (currentBanner.link_type === 'internal') {
       return (
-        <Link to={currentBanner.link_url} className="block">
+        <Link
+          to={currentBanner.link_url}
+          className="block"
+          onClick={() => handleBannerClick(currentBanner, currentIndex)}
+        >
           <BannerContent />
         </Link>
       );
     } else {
       return (
-        <a href={currentBanner.link_url} target="_blank" rel="noopener noreferrer" className="block">
+        <a
+          href={currentBanner.link_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block"
+          onClick={() => handleBannerClick(currentBanner, currentIndex)}
+        >
           <BannerContent />
         </a>
       );

@@ -236,16 +236,18 @@ export function useTrackEvent() {
  */
 export function useExposureTracker(
   payload: Omit<TrackEventPayload, 'session_id' | 'device_info' | 'user_id'>,
-  options?: { threshold?: number; enabled?: boolean }
+  options?: { threshold?: number; enabled?: boolean; dwellMs?: number }
 ) {
   const elementRef = useRef<HTMLDivElement>(null);
   const hasFiredRef = useRef(false);
+  const dwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user } = useUser();
   const userIdRef = useRef<string | undefined>();
   userIdRef.current = user?.id;
 
   const enabled = options?.enabled !== false;
-  const threshold = options?.threshold ?? 0.3;
+  const threshold = options?.threshold ?? 0.5; // 文档规定: 50% 可见
+  const dwellMs = options?.dwellMs ?? 300;      // 文档规定: 停留 300ms
 
   useEffect(() => {
     if (!enabled || !elementRef.current) return;
@@ -254,13 +256,22 @@ export function useExposureTracker(
       (entries) => {
         const entry = entries[0];
         if (entry?.isIntersecting && !hasFiredRef.current) {
-          hasFiredRef.current = true;
-          trackEvent({
-            ...payload,
-            user_id: userIdRef.current,
-          });
-          // 曝光只上报一次，之后断开观察
-          observer.disconnect();
+          // 元素进入视口，启动停留计时器
+          dwellTimerRef.current = setTimeout(() => {
+            if (!hasFiredRef.current) {
+              hasFiredRef.current = true;
+              trackEvent({
+                ...payload,
+                user_id: userIdRef.current,
+              });
+              // 曝光只上报一次，之后断开观察
+              observer.disconnect();
+            }
+          }, dwellMs);
+        } else if (!entry?.isIntersecting && dwellTimerRef.current) {
+          // 元素离开视口，取消计时器（停留时间不足）
+          clearTimeout(dwellTimerRef.current);
+          dwellTimerRef.current = null;
         }
       },
       { threshold }
@@ -270,8 +281,12 @@ export function useExposureTracker(
 
     return () => {
       observer.disconnect();
+      if (dwellTimerRef.current) {
+        clearTimeout(dwellTimerRef.current);
+        dwellTimerRef.current = null;
+      }
     };
-  }, [enabled, threshold, payload.entity_id]); // entity_id 变化时重新绑定
+  }, [enabled, threshold, dwellMs, payload.entity_id]); // entity_id 变化时重新绑定
 
   return elementRef;
 }

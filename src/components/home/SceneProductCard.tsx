@@ -69,6 +69,15 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = ({
    * 原实现仅有曝光埋点（product_card_expose），没有点击事件，
    * 导致行为仪表盘中 product_card_click 数据为空。
    */
+  // 构建带归因参数的链接
+  const buildLotteryLink = () => {
+    const params = new URLSearchParams();
+    params.set('src_page', 'home');
+    if (sourceCategoryId) params.set('src_category', sourceCategoryId);
+    return `/lottery/${product.lottery_id}?${params.toString()}`;
+  };
+  const lotteryLink = buildLotteryLink();
+
   const handleClick = (e: React.MouseEvent) => {
     // 上报点击事件
     track({
@@ -84,7 +93,7 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = ({
 
     if (!user) {
       e.preventDefault();
-      navigate(`/login?redirect=${encodeURIComponent(`/lottery/${product.lottery_id}`)}`);
+      navigate(`/login?redirect=${encodeURIComponent(lotteryLink)}`);
     }
   };
 
@@ -95,7 +104,7 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = ({
   return (
     <div ref={exposureRef}>
       <Link
-        to={`/lottery/${product.lottery_id}`}
+        to={lotteryLink}
         onClick={handleClick}
         className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow relative block"
       >

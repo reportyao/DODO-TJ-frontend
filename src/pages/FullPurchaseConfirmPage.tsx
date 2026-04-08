@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper';
+import { useTrackEvent } from '../hooks/useTrackEvent';
 
 type Lottery = Tables<'lotteries'>;
 type PickupPoint = Tables<'pickup_points'> & { photos?: string[]; working_hours?: any };
@@ -42,6 +43,15 @@ const FullPurchaseConfirmPage: React.FC = () => {
   const { user, wallets, refreshWallets } = useUser();
   const { lotteryId } = useParams<{ lotteryId: string }>();
   const navigate = useNavigate();
+  const { track } = useTrackEvent();
+
+  // 来源归因：从 URL 参数中提取（从LotteryDetailPage传递过来）
+  const sourceAttribution = useRef({
+    source_topic_id: new URLSearchParams(window.location.search).get('src_topic') || undefined,
+    source_placement_id: new URLSearchParams(window.location.search).get('src_placement') || undefined,
+    source_category_id: new URLSearchParams(window.location.search).get('src_category') || undefined,
+    source_page: new URLSearchParams(window.location.search).get('src_page') || undefined,
+  });
 
   const [lottery, setLottery] = useState<Lottery | null>(null);
   const [pickupPoints, setPickupPoints] = useState<PickupPoint[]>([]);
@@ -240,6 +250,30 @@ const FullPurchaseConfirmPage: React.FC = () => {
         toast.success(t('lottery.fullPurchaseSuccess'));
         await refreshWallets();
         const orderId = data.data?.order_id;
+
+        // ============================================================
+        // 订单链路埋点（文档 10.1 事件清单要求）
+        // 全款购买成功 = order_create + order_pay_success
+        // ============================================================
+        const inventoryProductId = (lottery as any)?.inventory_product_id;
+        const orderTrackBase = {
+          page_name: 'full_purchase_confirm',
+          entity_type: 'order' as any,
+          entity_id: orderId || lotteryId,
+          lottery_id: lotteryId,
+          inventory_product_id: inventoryProductId || undefined,
+          order_id: orderId || undefined,
+          ...sourceAttribution.current,
+          metadata: {
+            purchase_type: 'full_purchase',
+            total_cost: fullPurchasePrice,
+            pickup_point_id: selectedPointId,
+            used_coupon: useCoupon && validCouponCount > 0,
+          },
+        };
+        track({ ...orderTrackBase, event_name: 'order_create' as any });
+        track({ ...orderTrackBase, event_name: 'order_pay_success' as any });
+
         if (orderId) {
           navigate(`/order-detail/${orderId}`);
         } else {

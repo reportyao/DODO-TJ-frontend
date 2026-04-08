@@ -4,17 +4,19 @@
  * 横向滚动的分类入口，支持选中高亮。
  * 设计参考：圆形图标 + 分类名称，单行横滑，选中态带底部指示条。
  *
+ * 交互逻辑：
+ * - 点击分类：在首页内筛选该分类的商品
+ * - 选中状态下显示"查看全部 >"链接，点击进入独立的分类商品列表页
+ *
  * 与现有 ProductList 保持一致的 px-4 外边距和 Tailwind 样式规范。
  *
  * [审查修复]
  * - CATEGORY_ICON_MAP 的 key 与种子数据 homepage_categories.code 不匹配
- *   种子数据: daily_goods, home_appliance, food_kitchen, personal_care,
- *             clothing_bags, digital_tech, mother_baby, sports_outdoor
- *   原映射:   electronics, home_living, beauty_care, food_drink,
- *             fashion, mother_baby, sports_outdoor, gifts_festival
- *   导致除 mother_baby 和 sports_outdoor 外的 6 个分类图标全部回退为默认 📦
+ * [遗漏修复]
+ * - 新增分类落地页入口（"查看全部 >"），链接到 /category/:categoryId
  */
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getLocalizedText } from '../../lib/utils';
 import type { HomeFeedCategory } from '../../types/homepage';
@@ -48,7 +50,12 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
   onSelect,
   isLoading = false,
 }) => {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
+
+  // 获取当前选中分类的信息（用于"查看全部"链接）
+  const selectedCategory = selectedId
+    ? categories.find((c) => c.id === selectedId)
+    : undefined;
 
   if (isLoading) {
     return (
@@ -89,7 +96,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
               !selectedId ? 'text-orange-600' : 'text-gray-500'
             }`}
           >
-            全部
+            {t('common.all') || '全部'}
           </span>
           {!selectedId && (
             <div className="w-4 h-0.5 rounded-full bg-orange-500" />
@@ -133,6 +140,20 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
           );
         })}
       </div>
+
+      {/* 选中分类时显示"查看全部"入口，链接到独立的分类商品列表页 */}
+      {selectedCategory && (
+        <div className="flex justify-end mt-1 mb-1">
+          <Link
+            to={`/category/${selectedCategory.id}?code=${selectedCategory.code}&name=${encodeURIComponent(
+              getLocalizedText(selectedCategory.name_i18n as Record<string, string>, i18n.language)
+            )}`}
+            className="text-xs text-orange-500 font-medium hover:text-orange-600 transition-colors"
+          >
+            {t('common.viewAll') || '查看全部'} →
+          </Link>
+        </div>
+      )}
     </div>
   );
 };

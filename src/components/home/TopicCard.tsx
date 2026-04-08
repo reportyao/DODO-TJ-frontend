@@ -247,7 +247,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
       transition={{ delay: position * 0.05, duration: 0.3 }}
     >
       <Link
-        to={`/topic/${topic.slug}`}
+        to={`/topic/${topic.slug}?src_topic=${topic.topic_id}&src_placement=${topic.placement_id || ''}&src_page=home`}
         className="block"
         onClick={handleClick}
       >
