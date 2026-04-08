@@ -59,6 +59,7 @@ const SceneHomePage: React.FC = () => {
       page_name: 'home',
       entity_type: 'home',
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ============================================================

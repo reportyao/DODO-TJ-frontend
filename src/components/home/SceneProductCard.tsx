@@ -6,13 +6,17 @@
  * 但增加了曝光埋点和来源追踪能力。
  *
  * 与 ProductList 中的卡片保持完全一致的视觉风格。
+ *
+ * [审查修复]
+ * - 补充 product_card_click 点击埋点（原实现仅有曝光埋点，
+ *   缺少点击事件，导致行为仪表盘商品 CTR 始终为 0）
  */
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../../contexts/UserContext';
 import { formatCurrency, getLocalizedText, getOptimizedImageUrl } from '../../lib/utils';
-import { useExposureTracker } from '../../hooks/useTrackEvent';
+import { useExposureTracker, useTrackEvent } from '../../hooks/useTrackEvent';
 import type { HomeFeedProductData } from '../../types/homepage';
 
 interface SceneProductCardProps {
@@ -29,6 +33,7 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = ({
   const { i18n, t } = useTranslation();
   const { user } = useUser();
   const navigate = useNavigate();
+  const { track } = useTrackEvent();
 
   const title = getLocalizedText(
     product.title_i18n as Record<string, string>,
@@ -59,7 +64,24 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = ({
       ? Math.round((1 - product.original_price / competitorPrice) * 100)
       : 0;
 
+  /**
+   * [修复] 补充 product_card_click 点击埋点
+   * 原实现仅有曝光埋点（product_card_expose），没有点击事件，
+   * 导致行为仪表盘中 product_card_click 数据为空。
+   */
   const handleClick = (e: React.MouseEvent) => {
+    // 上报点击事件
+    track({
+      event_name: 'product_card_click',
+      page_name: 'home',
+      entity_type: 'product',
+      entity_id: product.inventory_product_id,
+      position: String(position),
+      lottery_id: product.lottery_id,
+      inventory_product_id: product.inventory_product_id,
+      source_category_id: sourceCategoryId,
+    });
+
     if (!user) {
       e.preventDefault();
       navigate(`/login?redirect=${encodeURIComponent(`/lottery/${product.lottery_id}`)}`);

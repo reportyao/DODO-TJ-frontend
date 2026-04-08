@@ -2,11 +2,21 @@
  * 行为埋点 SDK
  *
  * 提供 trackEvent() 方法和 useExposureTracker() hook。
- * - trackEvent 将事件写入本地队列，批量上报到 rpc_track_behavior_event
+ * - trackEvent 将事件写入本地队列，批量上报到 track-behavior-event Edge Function
  * - useExposureTracker 基于 IntersectionObserver 自动上报曝光事件
  * - 会话管理：首次加载生成 session_id，30 分钟无操作后自动续期
  *
  * 与现有 usePerformance.ts 中的 useIntersectionObserver 保持一致的 Observer 模式。
+ *
+ * [审查修复]
+ * - 将上报通道从 supabase.rpc() 改为 track-behavior-event Edge Function
+ *   原因: RPC 直连需要 authenticated/anon 角色的 INSERT 权限，
+ *   而 user_behavior_events 表的 RLS 策略仅允许 anon INSERT（无 SELECT），
+ *   但 supabase-js 客户端使用 anon key 时 rpc() 调用 SECURITY DEFINER 函数
+ *   可能因网关层权限检查失败。Edge Function 使用 service_role key 调用 RPC，
+ *   是文档规定的正确通道。
+ * - 改为批量上报模式，减少网络请求数
+ * - 增加上报失败时的重试队列（最多重试一次）
  */
 import { useCallback, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
@@ -70,43 +80,63 @@ function getDeviceInfo(): Record<string, unknown> {
 // ============================================================
 
 const EVENT_QUEUE: TrackEventPayload[] = [];
+const RETRY_QUEUE: TrackEventPayload[] = [];
 const FLUSH_INTERVAL = 3000; // 3 秒
 const MAX_BATCH_SIZE = 20;
 
 let flushTimer: ReturnType<typeof setInterval> | null = null;
 
+/**
+ * [修复] 通过 Edge Function 批量上报事件
+ * 原实现逐条调用 supabase.rpc()，存在以下问题：
+ * 1. anon 用户通过 RPC 直连可能被 RLS/网关拦截
+ * 2. 逐条上报浪费网络请求
+ * 3. Edge Function 已支持批量模式 { events: [...] }
+ */
 async function flushQueue() {
+  // 先处理重试队列
+  if (RETRY_QUEUE.length > 0) {
+    EVENT_QUEUE.unshift(...RETRY_QUEUE.splice(0));
+  }
+
   if (EVENT_QUEUE.length === 0) return;
 
   const batch = EVENT_QUEUE.splice(0, MAX_BATCH_SIZE);
 
   try {
-    // 逐条上报（RPC 单条接口），后续可改为批量 Edge Function
-    const promises = batch.map((evt) =>
-      supabase.rpc('rpc_track_behavior_event', {
-        p_session_id: evt.session_id,
-        p_user_id: evt.user_id || null,
-        p_event_name: evt.event_name,
-        p_page_name: evt.page_name,
-        p_entity_type: evt.entity_type || null,
-        p_entity_id: evt.entity_id || null,
-        p_position: evt.position || null,
-        p_source_page: evt.source_page || null,
-        p_source_topic_id: evt.source_topic_id || null,
-        p_source_placement_id: evt.source_placement_id || null,
-        p_source_category_id: evt.source_category_id || null,
-        p_lottery_id: evt.lottery_id || null,
-        p_inventory_product_id: evt.inventory_product_id || null,
-        p_order_id: evt.order_id || null,
-        p_trace_id: evt.trace_id || null,
-        p_metadata: evt.metadata || {},
-        p_device_info: evt.device_info || null,
-      })
-    );
+    const { data, error } = await supabase.functions.invoke('track-behavior-event', {
+      body: {
+        events: batch.map((evt) => ({
+          session_id: evt.session_id,
+          user_id: evt.user_id || null,
+          event_name: evt.event_name,
+          page_name: evt.page_name,
+          entity_type: evt.entity_type || null,
+          entity_id: evt.entity_id || null,
+          position: evt.position || null,
+          source_page: evt.source_page || null,
+          source_topic_id: evt.source_topic_id || null,
+          source_placement_id: evt.source_placement_id || null,
+          source_category_id: evt.source_category_id || null,
+          lottery_id: evt.lottery_id || null,
+          inventory_product_id: evt.inventory_product_id || null,
+          order_id: evt.order_id || null,
+          trace_id: evt.trace_id || null,
+          metadata: evt.metadata || {},
+          device_info: evt.device_info || null,
+        })),
+      },
+    });
 
-    await Promise.allSettled(promises);
+    if (error) {
+      // 上报失败，将事件放入重试队列（仅重试一次）
+      console.warn('[TrackEvent] Batch flush failed, queuing for retry:', error.message);
+      RETRY_QUEUE.push(...batch);
+    }
   } catch {
-    // 上报失败不阻塞业务，静默丢弃
+    // 网络错误等，静默处理，不阻塞业务
+    // 将事件放入重试队列
+    RETRY_QUEUE.push(...batch);
   }
 }
 

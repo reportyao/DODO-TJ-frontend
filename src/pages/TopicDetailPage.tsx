@@ -261,7 +261,7 @@ const TopicDetailPage: React.FC = () => {
         source_topic_id: topic.id,
       });
     }
-  }, [topic?.id]);
+  }, [topic?.id, track]);
 
   // 商品点击埋点
   const handleProductTrack = (productId: string, lotteryId?: string) => {

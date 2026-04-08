@@ -5,13 +5,17 @@
  * 支持多种卡片样式（hero / banner / mini），自动曝光埋点。
  *
  * 与现有 ProductList 卡片保持一致的圆角、阴影、间距风格。
+ *
+ * [审查修复]
+ * - 补充 topic_card_click 点击埋点（原实现 onClick 为空函数，
+ *   导致行为仪表盘 topic CTR 始终为 0）
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { getLocalizedText, getOptimizedImageUrl } from '../../lib/utils';
-import { useExposureTracker } from '../../hooks/useTrackEvent';
+import { useExposureTracker, useTrackEvent } from '../../hooks/useTrackEvent';
 import { getCoverImage } from '../../utils/i18nFallback';
 import type { HomeFeedTopicData, SupportedLang } from '../../types/homepage';
 
@@ -169,6 +173,7 @@ const MiniCard: React.FC<TopicCardProps & { title: string }> = ({
  */
 export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
   const { i18n } = useTranslation();
+  const { track } = useTrackEvent();
   const lang = i18n.language as SupportedLang;
 
   const title = getLocalizedText(
@@ -204,6 +209,24 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
 
   const cardStyle = topic.card_style || 'banner';
 
+  /**
+   * [修复] 补充 topic_card_click 点击埋点
+   * 原实现 onClick 为空函数体，注释说"在 useTrackEvent 中手动触发"，
+   * 但实际上没有任何地方触发该事件，导致行为仪表盘中
+   * topic_card_click 数据始终为 0，CTR 计算失效。
+   */
+  const handleClick = () => {
+    track({
+      event_name: 'topic_card_click',
+      page_name: 'home',
+      entity_type: 'topic',
+      entity_id: topic.topic_id,
+      position: String(position),
+      source_topic_id: topic.topic_id,
+      source_placement_id: topic.placement_id,
+    });
+  };
+
   const renderCard = () => {
     switch (cardStyle) {
       case 'hero':
@@ -226,9 +249,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
       <Link
         to={`/topic/${topic.slug}`}
         className="block"
-        onClick={() => {
-          // 点击埋点在 useTrackEvent 中手动触发
-        }}
+        onClick={handleClick}
       >
         {renderCard()}
       </Link>
