@@ -87,7 +87,10 @@
     "groupBuyProducts": "Молҳои хариди гурӯҳӣ",
     "lotteryProducts": "Молҳои мағоза",
     "freeShippingLine1": "Мустақим аз Чин!",
-    "freeShippingLine2": "0 сомонӣ!"
+    "freeShippingLine2": "0 сомонӣ!",
+    "topic": "Мавзӯъ",
+    "viewDetails": "Муфассалтар",
+    "goSee": "Дидан"
   },
   "lottery": {
     "hall": "Толори лоторея",

@@ -2,13 +2,14 @@
  * 专题卡片组件
  *
  * 在首页 Feed 流中展示专题投放卡片。
- * 支持多种卡片样式（hero / banner / mini），自动曝光埋点。
+ * 支持多种卡片样式（hero / standard / banner / mini），自动曝光埋点。
  *
  * 与现有 ProductList 卡片保持一致的圆角、阴影、间距风格。
  *
  * [审查修复]
  * - 补充 topic_card_click 点击埋点（原实现 onClick 为空函数，
  *   导致行为仪表盘 topic CTR 始终为 0）
+ * - 新增独立的 StandardCard 样式，与 HeroCard 区分
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
@@ -26,8 +27,9 @@ interface TopicCardProps {
 }
 
 /**
- * Hero 样式卡片 - 大图 + 标题叠加
- * 用于 feed_position 靠前的重点专题
+ * Hero 样式卡片 - 全宽大图 + 底部渐变文字叠加
+ * 用于 feed_position 靠前的重点专题，视觉冲击力最强
+ * 宽高比 2:1，全出血大图
  */
 const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }> = ({
   topic,
@@ -38,7 +40,7 @@ const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; sub
 }) => {
   return (
     <div className="relative rounded-2xl overflow-hidden shadow-lg">
-      {/* 封面图 */}
+      {/* 封面图 - 2:1 宽高比 */}
       <div className="aspect-[2/1] bg-gray-100" style={{ position: 'relative', overflow: 'hidden' }}>
         {coverUrl ? (
           <LazyImage
@@ -81,8 +83,67 @@ const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; sub
 };
 
 /**
+ * Standard 样式卡片 - 左图右文横排布局
+ * 与 Hero 的全出血大图不同，Standard 是更紧凑的图文并排卡片
+ * 左侧方形封面 + 右侧标题/副标题/标签，适合中等优先级的专题展示
+ */
+const StandardCard: React.FC<TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }> = ({
+  topic,
+  coverUrl,
+  title,
+  subtitle,
+  t,
+}) => {
+  return (
+    <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* 左侧封面 - 正方形 */}
+      <div className="w-32 h-32 flex-shrink-0 bg-gray-100 relative overflow-hidden">
+        {coverUrl ? (
+          <LazyImage
+            src={coverUrl}
+            alt={title}
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{ backgroundColor: topic.theme_color || '#f97316' }}
+          >
+            <span className="text-white text-sm font-bold">{t('home.topic')}</span>
+          </div>
+        )}
+      </div>
+
+      {/* 右侧文字区域 */}
+      <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
+        <div>
+          {/* 主题标签 */}
+          {topic.theme_color && (
+            <span
+              className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold text-white mb-1.5"
+              style={{ backgroundColor: topic.theme_color }}
+            >
+              {t('home.topic')}
+            </span>
+          )}
+          <h3 className="text-sm font-bold text-gray-800 line-clamp-2 leading-tight">
+            {title}
+          </h3>
+          {subtitle && (
+            <p className="text-[11px] text-gray-500 mt-1 line-clamp-2">{subtitle}</p>
+          )}
+        </div>
+        <span className="inline-block text-[11px] text-orange-500 font-medium mt-1">
+          {t('home.viewDetails')} →
+        </span>
+      </div>
+    </div>
+  );
+};
+
+/**
  * Banner 样式卡片 - 横条式
- * 用于中间位置的专题推荐
+ * 用于中间位置的专题推荐，更紧凑
  */
 const BannerCard: React.FC<TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }> = ({
   topic,
@@ -210,9 +271,6 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
 
   /**
    * [修复] 补充 topic_card_click 点击埋点
-   * 原实现 onClick 为空函数体，注释说"在 useTrackEvent 中手动触发"，
-   * 但实际上没有任何地方触发该事件，导致行为仪表盘中
-   * topic_card_click 数据始终为 0，CTR 计算失效。
    */
   const handleClick = () => {
     track({
@@ -231,9 +289,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
       case 'hero':
         return <HeroCard topic={topic} position={position} coverUrl={coverUrl} title={title} subtitle={subtitle} t={t} />;
       case 'standard':
-        // [修复] Admin 后台默认使用 'standard'，前端原实现缺少此分支
-        // standard 样式使用与 hero 相同的大图布局
-        return <HeroCard topic={topic} position={position} coverUrl={coverUrl} title={title} subtitle={subtitle} t={t} />;
+        return <StandardCard topic={topic} position={position} coverUrl={coverUrl} title={title} subtitle={subtitle} t={t} />;
       case 'mini':
         return <MiniCard topic={topic} position={position} title={title} t={t} />;
       case 'banner':

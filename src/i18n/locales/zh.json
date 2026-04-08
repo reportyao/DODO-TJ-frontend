@@ -87,7 +87,10 @@
     "groupBuyProducts": "拼团商品",
     "lotteryProducts": "商城商品",
     "freeShippingLine1": "中国直邮",
-    "freeShippingLine2": "全场0运费"
+    "freeShippingLine2": "全场0运费",
+    "topic": "专题",
+    "viewDetails": "查看详情",
+    "goSee": "去看看"
   },
   "lottery": {
     "hall": "商城大厅",

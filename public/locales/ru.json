@@ -87,7 +87,10 @@
     "groupBuyProducts": "Товары групповой покупки",
     "lotteryProducts": "Товары магазина",
     "freeShippingLine1": "Из Китая",
-    "freeShippingLine2": "0 сомони за доставку!"
+    "freeShippingLine2": "0 сомони за доставку!",
+    "topic": "Тема",
+    "viewDetails": "Подробнее",
+    "goSee": "Посмотреть"
   },
   "lottery": {
     "hall": "Зал магазина",
