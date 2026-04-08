@@ -14,7 +14,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { getLocalizedText, getOptimizedImageUrl } from '../../lib/utils';
+import { getLocalizedText } from '../../lib/utils';
+import { LazyImage } from '../LazyImage';
 import { useExposureTracker, useTrackEvent } from '../../hooks/useTrackEvent';
 import { getCoverImage } from '../../utils/i18nFallback';
 import type { HomeFeedTopicData, SupportedLang } from '../../types/homepage';
@@ -38,17 +39,12 @@ const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; sub
   return (
     <div className="relative rounded-2xl overflow-hidden shadow-lg">
       {/* 封面图 */}
-      <div className="aspect-[2/1] bg-gray-100">
+      <div className="aspect-[2/1] bg-gray-100" style={{ position: 'relative', overflow: 'hidden' }}>
         {coverUrl ? (
-          <img
-            src={getOptimizedImageUrl(coverUrl, { width: 800, quality: 80 })}
+          <LazyImage
+            src={coverUrl}
             alt={title}
-            loading="lazy"
-            decoding="async"
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (
           <div
@@ -98,14 +94,12 @@ const BannerCard: React.FC<TopicCardProps & { coverUrl: string; title: string; s
   return (
     <div className="flex items-center bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-24">
       {/* 左侧封面 */}
-      <div className="w-24 h-full flex-shrink-0 bg-gray-100">
+      <div className="w-24 h-full flex-shrink-0 bg-gray-100" style={{ position: 'relative', overflow: 'hidden' }}>
         {coverUrl ? (
-          <img
-            src={getOptimizedImageUrl(coverUrl, { width: 200, quality: 75 })}
+          <LazyImage
+            src={coverUrl}
             alt={title}
-            loading="lazy"
-            decoding="async"
-            className="w-full h-full object-cover"
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (
           <div

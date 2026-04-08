@@ -15,7 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { useUser } from '../contexts/UserContext';
-import { getLocalizedText, formatCurrency, getOptimizedImageUrl } from '../lib/utils';
+import { getLocalizedText, formatCurrency } from '../lib/utils';
+import { LazyImage } from '../components/LazyImage';
 import { getCoverImage } from '../utils/i18nFallback';
 import { useTopicDetail } from '../hooks/useHomeFeed';
 import { useTrackEvent } from '../hooks/useTrackEvent';
@@ -48,11 +49,10 @@ const StoryBlockRenderer: React.FC<{ block: StoryBlock; lang: SupportedLang }> =
     case 'image':
       return block.image_url ? (
         <div className="my-4 rounded-xl overflow-hidden">
-          <img
-            src={getOptimizedImageUrl(block.image_url, { width: 800, quality: 80 })}
+          <LazyImage
+            src={block.image_url}
             alt=""
-            loading="lazy"
-            className="w-full"
+            style={{ width: '100%' }}
           />
         </div>
       ) : null;
@@ -98,9 +98,7 @@ const TopicProductCard: React.FC<{
     : '';
 
   const lottery = item.active_lottery;
-  const imageUrl = item.image_url
-    ? getOptimizedImageUrl(item.image_url, { width: 400, quality: 75 })
-    : '';
+  const imageUrl = item.image_url || '';
 
   const handleClick = (e: React.MouseEvent) => {
     onTrack(item.product_id, lottery?.lottery_id);
@@ -140,41 +138,18 @@ const TopicProductCard: React.FC<{
           overflow: 'hidden',
         }}
       >
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={title}
-            loading="lazy"
-            decoding="async"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center',
-            }}
-            onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23f0f0f0" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-size="14"%3ENo Image%3C/text%3E%3C/svg%3E';
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#9ca3af',
-              backgroundColor: '#f3f4f6',
-            }}
-          >
-            <span style={{ fontSize: '0.75rem' }}>No Image</span>
-          </div>
-        )}
+        <LazyImage
+          src={imageUrl}
+          alt={title}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+          }}
+        />
       </div>
 
       {/* 商品信息 */}
@@ -338,10 +313,11 @@ const TopicDetailPage: React.FC = () => {
       {/* 封面图 */}
       {coverUrl && (
         <div className="relative">
-          <img
-            src={getOptimizedImageUrl(coverUrl, { width: 800, quality: 85 })}
+          <LazyImage
+            src={coverUrl}
             alt={title}
-            className="w-full aspect-[2/1] object-cover"
+            priority="high"
+            style={{ width: '100%', aspectRatio: '2/1', objectFit: 'cover' }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
