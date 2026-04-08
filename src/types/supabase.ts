@@ -3116,11 +3116,550 @@ export type Database = {
         }
         Relationships: []
       }
+      // ▼ 首页场景化改造新增表 ▼
+      homepage_categories: {
+        Row: {
+          id: string
+          code: string
+          name_i18n: Json
+          icon_key: string
+          color_token: string
+          sort_order: number
+          is_active: boolean
+          is_fixed: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          code: string
+          name_i18n: Json
+          icon_key?: string
+          color_token?: string
+          sort_order?: number
+          is_active?: boolean
+          is_fixed?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          code?: string
+          name_i18n?: Json
+          icon_key?: string
+          color_token?: string
+          sort_order?: number
+          is_active?: boolean
+          is_fixed?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      homepage_tags: {
+        Row: {
+          id: string
+          tag_group: string
+          code: string
+          name_i18n: Json
+          description_i18n: Json | null
+          is_active: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tag_group: string
+          code: string
+          name_i18n: Json
+          description_i18n?: Json | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tag_group?: string
+          code?: string
+          name_i18n?: Json
+          description_i18n?: Json | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      product_categories: {
+        Row: {
+          id: string
+          product_id: string
+          category_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          category_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          category_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_categories_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "homepage_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_tags: {
+        Row: {
+          id: string
+          product_id: string
+          tag_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          tag_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          tag_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_tags_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "homepage_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homepage_topics: {
+        Row: {
+          id: string
+          topic_type: string
+          status: string
+          slug: string
+          title_i18n: Json
+          subtitle_i18n: Json | null
+          intro_i18n: Json | null
+          story_blocks_i18n: Json
+          cover_image_default: string | null
+          cover_image_zh: string | null
+          cover_image_ru: string | null
+          cover_image_tg: string | null
+          theme_color: string | null
+          card_style: string | null
+          local_context_notes: string | null
+          source_type: string
+          translation_status: Json | null
+          start_time: string | null
+          end_time: string | null
+          is_active: boolean
+          created_by: string | null
+          updated_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          topic_type?: string
+          status?: string
+          slug: string
+          title_i18n: Json
+          subtitle_i18n?: Json | null
+          intro_i18n?: Json | null
+          story_blocks_i18n?: Json
+          cover_image_default?: string | null
+          cover_image_zh?: string | null
+          cover_image_ru?: string | null
+          cover_image_tg?: string | null
+          theme_color?: string | null
+          card_style?: string | null
+          local_context_notes?: string | null
+          source_type?: string
+          translation_status?: Json | null
+          start_time?: string | null
+          end_time?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          topic_type?: string
+          status?: string
+          slug?: string
+          title_i18n?: Json
+          subtitle_i18n?: Json | null
+          intro_i18n?: Json | null
+          story_blocks_i18n?: Json
+          cover_image_default?: string | null
+          cover_image_zh?: string | null
+          cover_image_ru?: string | null
+          cover_image_tg?: string | null
+          theme_color?: string | null
+          card_style?: string | null
+          local_context_notes?: string | null
+          source_type?: string
+          translation_status?: Json | null
+          start_time?: string | null
+          end_time?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      topic_products: {
+        Row: {
+          id: string
+          topic_id: string
+          product_id: string
+          sort_order: number
+          note_i18n: Json | null
+          badge_text_i18n: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          topic_id: string
+          product_id: string
+          sort_order?: number
+          note_i18n?: Json | null
+          badge_text_i18n?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          topic_id?: string
+          product_id?: string
+          sort_order?: number
+          note_i18n?: Json | null
+          badge_text_i18n?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_products_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "homepage_topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topic_placements: {
+        Row: {
+          id: string
+          topic_id: string
+          placement_name: string
+          card_variant_name: string | null
+          title_i18n: Json | null
+          subtitle_i18n: Json | null
+          cover_image_default: string | null
+          cover_image_zh: string | null
+          cover_image_ru: string | null
+          cover_image_tg: string | null
+          feed_position: number
+          sort_order: number
+          is_active: boolean
+          start_time: string | null
+          end_time: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          topic_id: string
+          placement_name?: string
+          card_variant_name?: string | null
+          title_i18n?: Json | null
+          subtitle_i18n?: Json | null
+          cover_image_default?: string | null
+          cover_image_zh?: string | null
+          cover_image_ru?: string | null
+          cover_image_tg?: string | null
+          feed_position?: number
+          sort_order?: number
+          is_active?: boolean
+          start_time?: string | null
+          end_time?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          topic_id?: string
+          placement_name?: string
+          card_variant_name?: string | null
+          title_i18n?: Json | null
+          subtitle_i18n?: Json | null
+          cover_image_default?: string | null
+          cover_image_zh?: string | null
+          cover_image_ru?: string | null
+          cover_image_tg?: string | null
+          feed_position?: number
+          sort_order?: number
+          is_active?: boolean
+          start_time?: string | null
+          end_time?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_placements_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "homepage_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_behavior_events: {
+        Row: {
+          id: string
+          user_id: string | null
+          session_id: string
+          event_name: string
+          page_name: string
+          entity_type: string | null
+          entity_id: string | null
+          position: string | null
+          source_page: string | null
+          source_topic_id: string | null
+          source_placement_id: string | null
+          source_category_id: string | null
+          lottery_id: string | null
+          inventory_product_id: string | null
+          order_id: string | null
+          trace_id: string | null
+          metadata: Json
+          device_info: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          session_id: string
+          event_name: string
+          page_name: string
+          entity_type?: string | null
+          entity_id?: string | null
+          position?: string | null
+          source_page?: string | null
+          source_topic_id?: string | null
+          source_placement_id?: string | null
+          source_category_id?: string | null
+          lottery_id?: string | null
+          inventory_product_id?: string | null
+          order_id?: string | null
+          trace_id?: string | null
+          metadata?: Json
+          device_info?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          session_id?: string
+          event_name?: string
+          page_name?: string
+          entity_type?: string | null
+          entity_id?: string | null
+          position?: string | null
+          source_page?: string | null
+          source_topic_id?: string | null
+          source_placement_id?: string | null
+          source_category_id?: string | null
+          lottery_id?: string | null
+          inventory_product_id?: string | null
+          order_id?: string | null
+          trace_id?: string | null
+          metadata?: Json
+          device_info?: Json | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      ai_topic_generation_tasks: {
+        Row: {
+          id: string
+          status: string
+          topic_id: string | null
+          request_payload: Json
+          result_payload: Json | null
+          error_message: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          status?: string
+          topic_id?: string | null
+          request_payload: Json
+          result_payload?: Json | null
+          error_message?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          status?: string
+          topic_id?: string | null
+          request_payload?: Json
+          result_payload?: Json | null
+          error_message?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_topic_generation_tasks_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "homepage_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      localization_lexicon: {
+        Row: {
+          id: string
+          lexicon_group: string
+          code: string
+          title_i18n: Json
+          content_i18n: Json
+          example_i18n: Json | null
+          example_good: string | null
+          example_bad: string | null
+          local_anchors: string[] | null
+          tone_notes: string | null
+          is_active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          lexicon_group: string
+          code: string
+          title_i18n: Json
+          content_i18n: Json
+          example_i18n?: Json | null
+          example_good?: string | null
+          example_bad?: string | null
+          local_anchors?: string[] | null
+          tone_notes?: string | null
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          lexicon_group?: string
+          code?: string
+          title_i18n?: Json
+          content_i18n?: Json
+          example_i18n?: Json | null
+          example_good?: string | null
+          example_bad?: string | null
+          local_anchors?: string[] | null
+          tone_notes?: string | null
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      rpc_get_home_feed: {
+        Args: { p_lang?: string; p_limit?: number }
+        Returns: Json
+      }
+      rpc_get_topic_detail: {
+        Args: { p_slug: string; p_lang?: string }
+        Returns: Json
+      }
+      rpc_track_behavior_event: {
+        Args: {
+          p_session_id: string
+          p_user_id?: string
+          p_event_name: string
+          p_page_name: string
+          p_entity_type?: string
+          p_entity_id?: string
+          p_position?: string
+          p_source_page?: string
+          p_source_topic_id?: string
+          p_source_placement_id?: string
+          p_source_category_id?: string
+          p_lottery_id?: string
+          p_inventory_product_id?: string
+          p_order_id?: string
+          p_trace_id?: string
+          p_metadata?: Json
+          p_device_info?: Json
+        }
+        Returns: Json
+      }
       decrement_user_balance: {
         Args: { p_amount: number; p_user_id: string }
         Returns: undefined
