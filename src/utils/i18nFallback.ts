@@ -81,6 +81,7 @@ export function getCoverImage(
     cover_image_zh?: string | null;
     cover_image_ru?: string | null;
     cover_image_tg?: string | null;
+    cover_image_url?: string | null; // v2: AI 生成的封面图
   } | null | undefined,
   lang: SupportedLang
 ): string | null {
@@ -98,5 +99,10 @@ export function getCoverImage(
   }
 
   // 回退到默认封面
-  return images.cover_image_default || null;
+  if (images.cover_image_default) return images.cover_image_default;
+
+  // [BUG-M6 修复] 最终回退到 AI 生成的封面图
+  if ((images as any).cover_image_url) return (images as any).cover_image_url;
+
+  return null;
 }

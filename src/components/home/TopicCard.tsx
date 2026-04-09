@@ -244,12 +244,14 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
   );
 
   // 获取当前语言的封面图
+  // [BUG-M6 修复] 传递 cover_image_url 支持 AI 生成的封面图
   const coverUrl = getCoverImage(
     {
       cover_image_default: topic.cover_image_default,
       cover_image_zh: topic.cover_image_zh,
       cover_image_ru: topic.cover_image_ru,
       cover_image_tg: topic.cover_image_tg,
+      cover_image_url: (topic as any).cover_image_url,
     },
     lang
   );
