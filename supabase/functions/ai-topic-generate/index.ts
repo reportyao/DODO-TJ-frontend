@@ -913,19 +913,67 @@ serve(async (req: Request) => {
         await sendSSE({ status: "processing", progress: 70, stage: "正在生成专题封面图...", task_id: taskId });
 
         try {
-          // 找一张有代表性的商品图片作为基础图
-          const baseProduct = selected_products.find((p: any) => p.image_url) || selected_products[0];
-          const baseImageUrl = baseProduct?.image_url;
+          // 收集有图片的商品
+          const productsWithImages = selected_products.filter((p: any) => p.image_url);
 
-          if (baseImageUrl) {
+          if (productsWithImages.length === 0) {
+            qualityWarnings.push("没有可用的商品图片，跳过封面图生成");
+          } else if (cover_mode === "product_collage") {
+            // ─── product_collage 模式：从商品图片中拼接封面 ───
+            // 选取前3张商品图片，分别用不同背景风格生成
+            const collageProducts = productsWithImages.slice(0, 3);
+            const collagePrompts = [
+              "Clean modern product showcase on white marble surface, soft natural lighting, minimalist composition, professional e-commerce banner, 4k",
+              "Warm cozy lifestyle flat lay arrangement, wooden table background, soft warm lighting, magazine style product photography, high quality",
+            ];
+
+            const coverTasks: string[] = [];
+            for (let ci = 0; ci < collageProducts.length && ci < 2; ci++) {
+              try {
+                const tid = await submitWanxCoverTask(
+                  dashscopeApiKey,
+                  collageProducts[ci].image_url,
+                  collagePrompts[ci % collagePrompts.length]
+                );
+                coverTasks.push(tid);
+                console.log(`[Step C collage] 封面图任务已提交: ${tid}`);
+              } catch (e) {
+                console.error("[Step C collage] 封面图任务提交失败:", e);
+              }
+            }
+
+            for (let i = 0; i < coverTasks.length; i++) {
+              try {
+                await sendSSE({
+                  status: "processing",
+                  progress: 75 + i * 5,
+                  stage: `正在等待商品封面图 ${i + 1}/${coverTasks.length} 生成完成...`,
+                  task_id: taskId,
+                });
+                const tempUrl = await pollWanxResult(dashscopeApiKey, coverTasks[i], 30, 3000);
+                const permanentUrl = await downloadAndUploadToStorage(tempUrl, supabase, "topic-covers");
+                coverImageUrls.push(permanentUrl);
+                console.log(`[Step C collage] 封面图 ${i + 1} 已保存: ${permanentUrl}`);
+              } catch (e) {
+                console.error(`[Step C collage] 封面图 ${i + 1} 失败:`, e);
+                qualityWarnings.push(`商品封面图 ${i + 1} 生成失败: ${e instanceof Error ? e.message : String(e)}`);
+              }
+            }
+
+            if (coverImageUrls.length > 0) {
+              coverImageUrl = coverImageUrls[0];
+            }
+          } else {
+            // ─── ai_generate 模式（默认）：AI 场景图 ───
+            const baseProduct = productsWithImages[0];
+            const baseImageUrl = baseProduct.image_url;
+
             const coverPrompt = understanding.cover_image_prompt ||
               "Professional lifestyle product showcase, warm cozy home environment, soft natural lighting, modern minimalist style, high quality commercial photography";
 
             // 生成两种风格的封面
             const coverPrompts = [
-              // 生活场景风格
               coverPrompt,
-              // 简洁展示风格
               "Clean modern product display, soft gradient background, warm tones, professional e-commerce banner style, high quality, 4k resolution",
             ];
 
@@ -934,13 +982,12 @@ serve(async (req: Request) => {
               try {
                 const tid = await submitWanxCoverTask(dashscopeApiKey, baseImageUrl, prompt);
                 coverTasks.push(tid);
-                console.log(`[Step C] 封面图任务已提交: ${tid}`);
+                console.log(`[Step C ai] 封面图任务已提交: ${tid}`);
               } catch (e) {
-                console.error("[Step C] 封面图任务提交失败:", e);
+                console.error("[Step C ai] 封面图任务提交失败:", e);
               }
             }
 
-            // 轮询所有封面图任务
             for (let i = 0; i < coverTasks.length; i++) {
               try {
                 await sendSSE({
@@ -949,13 +996,12 @@ serve(async (req: Request) => {
                   stage: `正在等待封面图 ${i + 1}/${coverTasks.length} 生成完成...`,
                   task_id: taskId,
                 });
-
                 const tempUrl = await pollWanxResult(dashscopeApiKey, coverTasks[i], 30, 3000);
                 const permanentUrl = await downloadAndUploadToStorage(tempUrl, supabase, "topic-covers");
                 coverImageUrls.push(permanentUrl);
-                console.log(`[Step C] 封面图 ${i + 1} 已保存: ${permanentUrl}`);
+                console.log(`[Step C ai] 封面图 ${i + 1} 已保存: ${permanentUrl}`);
               } catch (e) {
-                console.error(`[Step C] 封面图 ${i + 1} 失败:`, e);
+                console.error(`[Step C ai] 封面图 ${i + 1} 失败:`, e);
                 qualityWarnings.push(`封面图 ${i + 1} 生成失败: ${e instanceof Error ? e.message : String(e)}`);
               }
             }
@@ -963,8 +1009,6 @@ serve(async (req: Request) => {
             if (coverImageUrls.length > 0) {
               coverImageUrl = coverImageUrls[0];
             }
-          } else {
-            qualityWarnings.push("没有可用的商品图片，跳过封面图生成");
           }
         } catch (e) {
           console.error("[Step C] 封面图生成整体失败:", e);

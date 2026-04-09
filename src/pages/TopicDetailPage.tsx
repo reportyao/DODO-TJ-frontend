@@ -52,10 +52,13 @@ const HorizontalProductCard: React.FC<{
   const priceComparisons: PriceComparison[] = (lottery?.price_comparisons as PriceComparison[]) || [];
 
   const handleClick = (e: React.MouseEvent) => {
-    onTrack(item.product_id, lottery?.lottery_id);
-    const target = lottery
-      ? `/lottery/${lottery.lottery_id}?src_topic=${topicId}&src_page=topic_detail`
-      : `/lottery/${item.product_id}?src_topic=${topicId}&src_page=topic_detail`;
+    // 没有活跃 lottery 时不跳转
+    if (!lottery) {
+      e.preventDefault();
+      return;
+    }
+    onTrack(item.product_id, lottery.lottery_id);
+    const target = `/lottery/${lottery.lottery_id}?src_topic=${topicId}&src_page=topic_detail`;
 
     if (requireAuth) {
       e.preventDefault();
@@ -63,9 +66,11 @@ const HorizontalProductCard: React.FC<{
     }
   };
 
+  // 有 lottery 跳抽奖详情，没有则不可点击
   const linkTo = lottery
     ? `/lottery/${lottery.lottery_id}?src_topic=${topicId}&src_page=topic_detail`
     : '#';
+  const hasLottery = !!lottery;
 
   return (
     <Link
@@ -103,10 +108,10 @@ const HorizontalProductCard: React.FC<{
         <div className="mt-auto">
           {lottery ? (
             <div className="space-y-1">
-              {/* DODO 价格 */}
+              {/* DODO 补贴价 */}
               <div className="flex items-center gap-1.5">
                 <span className="text-base font-bold text-red-500">
-                  {formatCurrency(lottery.currency || 'TJS', item.original_price)}
+                  {formatCurrency(lottery.currency || 'TJS', lottery.ticket_price)}
                 </span>
                 <span className="text-[9px] font-medium bg-red-50 text-red-500 border border-red-100 px-1 py-0.5 rounded">
                   DODO
@@ -131,13 +136,21 @@ const HorizontalProductCard: React.FC<{
           )}
         </div>
 
-        {/* 购买按钮 */}
-        <div className="mt-2">
-          <span className="inline-flex items-center gap-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-medium px-3 py-1.5 rounded-full group-hover:shadow-md transition-shadow">
-            <ShoppingCartIcon className="w-3 h-3" />
-            {t('product.buyNow', '立即购买')}
-          </span>
-        </div>
+        {/* 购买按钮 - 仅在有活跃 lottery 时展示 */}
+        {hasLottery ? (
+          <div className="mt-2">
+            <span className="inline-flex items-center gap-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-medium px-3 py-1.5 rounded-full group-hover:shadow-md transition-shadow">
+              <ShoppingCartIcon className="w-3 h-3" />
+              {t('product.buyNow', '立即购买')}
+            </span>
+          </div>
+        ) : (
+          <div className="mt-2">
+            <span className="inline-flex items-center gap-1 bg-gray-200 text-gray-500 text-xs font-medium px-3 py-1.5 rounded-full">
+              {t('product.comingSoon', '即将上架')}
+            </span>
+          </div>
+        )}
       </div>
     </Link>
   );

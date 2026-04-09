@@ -81,10 +81,17 @@ export function getCoverImage(
     cover_image_zh?: string | null;
     cover_image_ru?: string | null;
     cover_image_tg?: string | null;
+    /** v2: AI 生成的封面图 URL，优先级最高 */
+    cover_image_url?: string | null;
   } | null | undefined,
   lang: SupportedLang
 ): string | null {
   if (!images) return null;
+
+  // v2: AI 生成的封面图优先级最高
+  if (images.cover_image_url && typeof images.cover_image_url === 'string' && images.cover_image_url.trim()) {
+    return images.cover_image_url;
+  }
 
   const order = FALLBACK_ORDER[lang] || FALLBACK_ORDER.zh;
 

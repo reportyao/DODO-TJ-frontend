@@ -26,6 +26,13 @@ BEGIN
     ) THEN
         ALTER TABLE topic_products ADD COLUMN story_text_i18n jsonb DEFAULT NULL;
     END IF;
+    -- [BUG-1 修复] 确保 homepage_topics 表有 cover_image_url 列（AI生成封面图）
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'homepage_topics' AND column_name = 'cover_image_url'
+    ) THEN
+        ALTER TABLE homepage_topics ADD COLUMN cover_image_url text DEFAULT NULL;
+    END IF;
 END $$;
 
 -- 为 story_group 添加索引（加速分组查询）
@@ -82,6 +89,7 @@ BEGIN
             ht.cover_image_zh,
             ht.cover_image_ru,
             ht.cover_image_tg,
+            ht.cover_image_url,
             ht.theme_color,
             ht.translation_status,
             ht.start_time,
@@ -96,12 +104,12 @@ BEGIN
     INTO v_sections
     FROM (
         SELECT
-            tp_group.story_group,
+            COALESCE(tp_group.story_group, 0) AS story_group,
             -- 取该组第一条记录的 story_text_i18n 作为本组场景文案
             (SELECT tp_inner.story_text_i18n 
              FROM topic_products tp_inner 
              WHERE tp_inner.topic_id = v_topic_id 
-               AND tp_inner.story_group = tp_group.story_group 
+               AND COALESCE(tp_inner.story_group, 0) = COALESCE(tp_group.story_group, 0) 
                AND tp_inner.story_text_i18n IS NOT NULL
              LIMIT 1
             ) AS story_text_i18n,
@@ -140,11 +148,11 @@ BEGIN
                 FROM topic_products tp2
                 JOIN inventory_products ip ON ip.id = tp2.product_id
                 WHERE tp2.topic_id = v_topic_id
-                  AND tp2.story_group = tp_group.story_group
+                  AND COALESCE(tp2.story_group, 0) = COALESCE(tp_group.story_group, 0)
              ) p
             ) AS products
         FROM (
-            SELECT DISTINCT story_group
+            SELECT DISTINCT COALESCE(story_group, 0) AS story_group
             FROM topic_products
             WHERE topic_id = v_topic_id
         ) tp_group
