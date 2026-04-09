@@ -27,6 +27,7 @@ const ALLOWED_BUCKETS = [
   "showoff-images",
   "avatars",
   "product-images",
+  "topics",  // v2: 专题封面图上传
 ];
 const ALLOWED_MIME_TYPES = [
   "image/jpeg",

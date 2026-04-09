@@ -274,3 +274,34 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.rpc_admin_save_topic_sections(text, uuid, jsonb)
     TO anon, authenticated, service_role;
+
+-- ============================================================================
+-- 4. 确保 topics Storage bucket 存在（用于专题封面图上传）
+-- ============================================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('topics', 'topics', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 允许公开读取 topics bucket
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Public read topics'
+    ) THEN
+        CREATE POLICY "Public read topics" ON storage.objects
+            FOR SELECT USING (bucket_id = 'topics');
+    END IF;
+END $$;
+
+-- 允许 service_role 写入 topics bucket
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Service role write topics'
+    ) THEN
+        CREATE POLICY "Service role write topics" ON storage.objects
+            FOR INSERT WITH CHECK (bucket_id = 'topics' AND auth.role() = 'service_role');
+    END IF;
+END $$;
