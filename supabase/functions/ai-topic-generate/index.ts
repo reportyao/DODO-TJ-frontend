@@ -471,7 +471,8 @@ serve(async (req: Request) => {
       }
 
       // ─── 4. 加载词库数据 ──────────────────────────────────
-      await sendSSE({ status: "processing", progress: 20, stage: "正在加载本地化词库..." });
+      // [v4 修复] 创建任务记录后，所有 processing 事件都携带 task_id
+      await sendSSE({ status: "processing", progress: 20, stage: "正在加载本地化词库...", task_id: taskId });
 
       let lexiconEntries: any[] = [];
       try {
@@ -488,7 +489,7 @@ serve(async (req: Request) => {
       }
 
       // ─── 5. Step A: 商品理解层 ────────────────────────────
-      await sendSSE({ status: "processing", progress: 25, stage: "AI 正在分析商品与本地生活场景的关系..." });
+      await sendSSE({ status: "processing", progress: 25, stage: "AI 正在分析商品与本地生活场景的关系...", task_id: taskId });
 
       let understanding: any;
       try {
@@ -526,6 +527,7 @@ serve(async (req: Request) => {
         status: "processing",
         progress: 50,
         stage: `商品理解完成：${understanding.story_angle || "已分析"} — 正在生成三语专题草稿...`,
+        task_id: taskId,
       });
 
       // ─── 6. Step B: 内容表达层 ────────────────────────────
@@ -591,7 +593,7 @@ serve(async (req: Request) => {
       }
 
       // ─── 7. 质量校验 ─────────────────────────────────────
-      await sendSSE({ status: "processing", progress: 85, stage: "正在进行质量校验..." });
+      await sendSSE({ status: "processing", progress: 85, stage: "正在进行质量校验...", task_id: taskId });
 
       const qualityWarnings: string[] = [];
       let finalStatus: "done" | "partial" = "done";
@@ -640,7 +642,7 @@ serve(async (req: Request) => {
       }
 
       // ─── 8. 组装最终结果 ──────────────────────────────────
-      await sendSSE({ status: "processing", progress: 90, stage: "正在组装最终结果..." });
+      await sendSSE({ status: "processing", progress: 90, stage: "正在组装最终结果...", task_id: taskId });
 
       const finalResult = {
         // 理解层结果
