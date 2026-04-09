@@ -420,9 +420,25 @@ serve(async (req: Request) => {
         return;
       }
 
-      const adminId = typeof sessionData === "string"
-        ? JSON.parse(sessionData)?.admin_id
-        : sessionData?.admin_id;
+      // [v5 修复] verify_admin_session RPC 返回值可能是：
+      //   - UUID 字符串 (直接返回 admin_id)
+      //   - JSON 字符串 (需要 parse 后取 admin_id)
+      //   - 对象 (直接取 admin_id)
+      let adminId: string | undefined;
+      if (typeof sessionData === "string") {
+        // 尝试 JSON.parse，如果失败则直接当作 admin_id (UUID)
+        try {
+          const parsed = JSON.parse(sessionData);
+          adminId = parsed?.admin_id || sessionData;
+        } catch {
+          // sessionData 本身就是 admin_id (UUID 字符串)
+          adminId = sessionData;
+        }
+      } else if (sessionData && typeof sessionData === "object") {
+        adminId = sessionData.admin_id;
+      } else {
+        adminId = String(sessionData);
+      }
 
       // ─── 2. 解析请求 ─────────────────────────────────────
       await sendSSE({ status: "processing", progress: 10, stage: "正在解析请求参数..." });
