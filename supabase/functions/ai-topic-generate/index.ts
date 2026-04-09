@@ -227,7 +227,8 @@ async function runContentGeneration(
   toneConstraints: string[],
   outputLanguages: string[],
   localContextHints: string[],
-  lexiconEntries: any[]
+  lexiconEntries: any[],
+  selectedProducts: any[] = []
 ): Promise<any> {
   // 构建语气约束
   const toneRef = toneConstraints.length > 0
@@ -304,6 +305,7 @@ ${langInstruction}
     }
   ],
   "product_notes": [
+    // ❗❗ 必须为下方列出的每一个商品都生成一条 product_note，不可省略任何商品
     {
       "product_id": "商品ID",
       "note_i18n": {"zh": "这个商品在本专题中的场景说明（1-2句）", "ru": "俄语", "tg": "塔吉克语"},
@@ -319,8 +321,15 @@ ${langInstruction}
 2. 正文段落要有具体的生活画面，不能只是抽象描述商品功能
 3. 俄语和塔吉克语必须做本地化改写，不是中文的逐句翻译
 4. 卡片变体至少 2 个，从不同角度吸引点击
-5. 每个商品的 note 必须说明"这个商品在这个场景下为什么好用"
-6. 请只输出 JSON，不要添加任何其他文字说明`;
+5. ❗❗ product_notes 必须包含下方列出的每一个商品，不可省略任何一个，每个商品的 note 必须说明"这个商品在这个场景下为什么好用"
+6. 请只输出 JSON，不要添加任何其他文字说明
+
+【必须生成 product_note 的商品列表】
+${selectedProducts.map((p: any, i: number) => {
+  const name = p.name_i18n?.zh || p.name_i18n?.ru || p.name || '未知商品';
+  return `商品${i + 1}: ID=${p.id}, 名称=${name}`;
+}).join('\n')}
+❗❗ 以上 ${selectedProducts.length} 个商品必须全部出现在 product_notes 数组中，不可省略。`;
 
   const response = await fetch(
     "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
@@ -558,7 +567,8 @@ serve(async (req: Request) => {
             tone_constraints,
             output_languages,
             local_context_hints,
-            lexiconEntries
+            lexiconEntries,
+            selected_products
           ),
           2,
           2000
@@ -655,6 +665,30 @@ serve(async (req: Request) => {
       // 检查本地锚点
       if (!understanding.local_anchors_used || understanding.local_anchors_used.length === 0) {
         qualityWarnings.push("未输出本地生活锚点，内容可能缺乏本地化深度");
+      }
+
+      // [v7 修复] 检查 product_notes 是否覆盖所有选中商品
+      const productNotes = contentResult.product_notes || [];
+      const noteProductIds = new Set(productNotes.map((n: any) => n.product_id));
+      const missingProducts = selected_products.filter((p: any) => !noteProductIds.has(p.id));
+      if (missingProducts.length > 0) {
+        qualityWarnings.push(
+          `商品说明缺少 ${missingProducts.length} 个商品: ${missingProducts.map((p: any) => p.name_i18n?.zh || p.name || p.id).join('、')}`
+        );
+        // 为缺少的商品生成占位 product_note，确保前端显示完整
+        for (const mp of missingProducts) {
+          const name = mp.name_i18n?.zh || mp.name || '未知商品';
+          productNotes.push({
+            product_id: mp.id,
+            note_i18n: {
+              zh: `${name}（AI 未生成说明，请手动编辑）`,
+              ru: `${mp.name_i18n?.ru || name}（описание не сгенерировано）`,
+              tg: `${mp.name_i18n?.tg || name}（тавсиф тавлид нашудааст）`,
+            },
+            badge_text_i18n: { zh: '待编辑', ru: 'Ред.', tg: 'Таҳрир' },
+          });
+        }
+        contentResult.product_notes = productNotes;
       }
 
       // ─── 8. 组装最终结果 ──────────────────────────────────
