@@ -510,10 +510,20 @@ export interface HomeFeedTopicData {
   feed_position: number;
 }
 
-/** rpc_get_topic_detail 返回结构 */
+/** rpc_get_topic_detail 返回结构 (v2: sections 模式) */
 export interface TopicDetailResponse {
   success: boolean;
   topic: TopicDetail | null;
+  /** @deprecated v1 平铺商品列表，v2 请使用 sections */
+  products: TopicProductItem[];
+  /** v2: 段落分组结构，每个 section 包含场景文案 + 关联商品 */
+  sections?: TopicSection[];
+}
+
+/** v2: 专题段落分组 */
+export interface TopicSection {
+  story_group: number;
+  story_text_i18n: I18nText | null;
   products: TopicProductItem[];
 }
 
@@ -529,6 +539,8 @@ export interface TopicDetail {
   cover_image_zh: string | null;
   cover_image_ru: string | null;
   cover_image_tg: string | null;
+  /** v2: AI 生成的封面图 URL */
+  cover_image_url: string | null;
   theme_color: string | null;
   translation_status: TranslationStatus | null;
   start_time: string | null;
@@ -553,11 +565,19 @@ export interface TopicProductItem {
     status: string;
     full_purchase_enabled: boolean;
     full_purchase_price: number | null;
-    price_comparisons: unknown[];
+    price_comparisons: PriceComparison[];
     currency: string;
     draw_time: string | null;
     end_time: string | null;
   } | null;
+}
+
+/** 竞品价格对比 */
+export interface PriceComparison {
+  platform: string;
+  price: number;
+  currency?: string;
+  url?: string;
 }
 
 /** rpc_admin_search_topic_products 返回结构 */

@@ -30,7 +30,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { queryKeys, staleTimes } from '../lib/react-query';
 import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper';
-import type { HomeFeedResponse, HomeFeedItem, HomeFeedProductData } from '../types/homepage';
+import type { HomeFeedResponse, HomeFeedItem, HomeFeedProductData, TopicDetailResponse } from '../types/homepage';
 
 // 扩展 queryKeys
 export const homepageQueryKeys = {
@@ -156,16 +156,17 @@ export function useCategoryProducts(categoryId: string) {
 }
 
 /**
- * 获取专题详情
+ * 获取专题详情 (v2: sections 模式)
  *
  * @param slugOrId - 专题 slug 或 ID
  *
  * [修复说明]
  * Edge Function `get-topic-detail` 使用 GET 方法，slug 通过 URL 查询字符串传递。
- * 原实现使用 POST + body，需要改用 GET 方式。
+ * v2 返回结构: { success, topic, products, sections }
+ * sections 是按 story_group 分组的段落结构，每个 section 包含场景文案 + 关联商品
  */
 export function useTopicDetail(slugOrId: string) {
-  return useQuery({
+  return useQuery<TopicDetailResponse>({
     queryKey: homepageQueryKeys.topicDetail(slugOrId),
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke(
@@ -179,9 +180,9 @@ export function useTopicDetail(slugOrId: string) {
         throw new Error(await extractEdgeFunctionError(error));
       }
 
-      // Edge Function 返回格式: { success, data: { topic, products }, meta }
+      // v2 Edge Function 返回格式: { success, topic, products, sections }
       const detailData = data?.data || data;
-      return detailData;
+      return detailData as TopicDetailResponse;
     },
     staleTime: staleTimes.detail,
     enabled: !!slugOrId,
