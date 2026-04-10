@@ -81,6 +81,7 @@ const baseTopic: HomeFeedTopicData = {
   cover_image_zh: 'https://cdn.example.com/zh.jpg',
   cover_image_ru: 'https://cdn.example.com/ru.jpg',
   cover_image_tg: 'https://cdn.example.com/tg.jpg',
+  cover_image_url: null,
   theme_color: '#FF6B35',
   card_style: 'banner',
   card_variant_name: null,
