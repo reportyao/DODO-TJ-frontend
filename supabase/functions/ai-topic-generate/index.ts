@@ -379,7 +379,7 @@ ${productIdRef}
 }
 
 // ============================================================
-// Step C: 封面图生成层 (wan2.6-t2i)
+// Step C: 封面图生成层 (wan2.6-t2i) — 异步调用模式
 // ============================================================
 
 /**
@@ -427,28 +427,25 @@ async function downloadAndUploadToStorage(
 }
 
 /**
- * 使用万相 wan2.6-t2i 同步API生成封面图
+ * 提交万相 wan2.6-t2i 异步文生图任务
  * @param apiKey DashScope API Key
- * @param coverPrompt 封面图描述prompt
- * @param supabase Supabase 客户端
+ * @param coverPrompt 封面图描述 prompt
  * @param n 生成图片数量
- * @returns 永久图片URL数组
+ * @returns 异步任务 task_id
  */
-async function generateCoverImages(
+async function submitWanxT2iTask(
   apiKey: string,
   coverPrompt: string,
-  supabase: any,
   n: number = 2
-): Promise<string[]> {
-  console.log(`[ai-topic-generate] 开始生成封面图，prompt: ${coverPrompt.substring(0, 100)}...`);
-
+): Promise<string> {
   const response = await fetch(
-    "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+    "https://dashscope.aliyuncs.com/api/v1/services/aigc/image-generation/generation",
     {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        "X-DashScope-Async": "enable",
       },
       body: JSON.stringify({
         model: "wan2.6-t2i",
@@ -477,30 +474,155 @@ async function generateCoverImages(
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`万相封面图生成失败 (HTTP ${response.status}): ${errText}`);
+    throw new Error(
+      `万相封面图任务提交失败 (HTTP ${response.status}): ${errText}`
+    );
   }
 
   const result = await response.json();
-  const choices = result.output?.choices || [];
-
-  if (choices.length === 0) {
-    throw new Error("万相封面图生成未返回任何图片");
+  const wanxTaskId = result.output?.task_id;
+  if (!wanxTaskId) {
+    throw new Error(
+      `万相封面图任务提交未返回 task_id: ${JSON.stringify(result)}`
+    );
   }
 
-  // 提取临时URL
-  const tempUrls: string[] = [];
-  for (const choice of choices) {
-    const imageUrl = choice.message?.content?.[0]?.image;
-    if (imageUrl) {
-      tempUrls.push(imageUrl);
+  console.log(`[ai-topic-generate] 万相封面图任务已提交，task_id: ${wanxTaskId}`);
+  return wanxTaskId;
+}
+
+/**
+ * 轮询万相 wan2.6-t2i 异步任务结果
+ * @param apiKey DashScope API Key
+ * @param wanxTaskId 万相任务 ID
+ * @param maxPolls 最大轮询次数（默认 60，约 5 分钟）
+ * @param interval 轮询间隔毫秒（默认 5000）
+ * @returns 生成的图片临时 URL 数组
+ */
+async function pollWanxT2iResult(
+  apiKey: string,
+  wanxTaskId: string,
+  maxPolls: number = 60,
+  interval: number = 5000
+): Promise<string[]> {
+  let consecutiveErrors = 0;
+  const maxConsecutiveErrors = 3;
+
+  for (let i = 0; i < maxPolls; i++) {
+    await new Promise((resolve) => setTimeout(resolve, interval));
+
+    try {
+      const response = await fetch(
+        `https://dashscope.aliyuncs.com/api/v1/tasks/${wanxTaskId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        consecutiveErrors++;
+        console.warn(
+          `[轮询] 封面图任务 ${wanxTaskId} 查询失败 (${consecutiveErrors}/${maxConsecutiveErrors}): HTTP ${response.status}`
+        );
+        if (consecutiveErrors >= maxConsecutiveErrors) {
+          throw new Error(
+            `万相封面图任务查询连续失败 ${maxConsecutiveErrors} 次 (HTTP ${response.status}): ${errText}`
+          );
+        }
+        continue;
+      }
+
+      // 查询成功，重置连续错误计数
+      consecutiveErrors = 0;
+
+      const result = await response.json();
+      const status = result.output?.task_status;
+
+      if (status === "SUCCEEDED") {
+        // wan2.6-t2i 异步成功后，图片在 choices[].message.content[].image 中
+        const choices = result.output?.choices || [];
+        const imageUrls: string[] = [];
+        for (const choice of choices) {
+          const imageUrl = choice.message?.content?.[0]?.image;
+          if (imageUrl) {
+            imageUrls.push(imageUrl);
+          }
+        }
+        if (imageUrls.length === 0) {
+          throw new Error("万相封面图任务成功但未返回图片 URL");
+        }
+        console.log(`[ai-topic-generate] 万相封面图任务完成，获得 ${imageUrls.length} 张图片`);
+        return imageUrls;
+      }
+
+      if (status === "FAILED") {
+        const errMsg =
+          result.output?.message || result.output?.code || "未知错误";
+        throw new Error(`万相封面图任务失败: ${errMsg}`);
+      }
+
+      // PENDING / RUNNING → 继续轮询
+      if (i % 6 === 0) {
+        console.log(
+          `[ai-topic-generate] 封面图任务 ${wanxTaskId} 状态: ${status}，已轮询 ${i + 1} 次`
+        );
+      }
+    } catch (error) {
+      // 区分业务错误（应立即抛出）和网络错误（可容忍）
+      if (
+        error instanceof Error &&
+        (error.message.includes("万相封面图任务失败") ||
+         error.message.includes("未返回图片 URL") ||
+         error.message.includes("连续失败"))
+      ) {
+        throw error;
+      }
+      // 网络层错误（fetch 异常），计入连续错误
+      consecutiveErrors++;
+      console.warn(
+        `[轮询] 封面图任务 ${wanxTaskId} 网络错误 (${consecutiveErrors}/${maxConsecutiveErrors}):`,
+        error instanceof Error ? error.message : error
+      );
+      if (consecutiveErrors >= maxConsecutiveErrors) {
+        throw new Error(
+          `万相封面图任务轮询网络连续失败 ${maxConsecutiveErrors} 次: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
     }
   }
 
-  if (tempUrls.length === 0) {
-    throw new Error("万相封面图生成返回数据中未找到图片URL");
-  }
+  throw new Error(`万相封面图任务超时 (轮询 ${maxPolls} 次未完成)`);
+}
 
-  // 下载并上传到 Supabase Storage 永久化
+/**
+ * 使用万相 wan2.6-t2i 异步API生成封面图（提交任务 + 轮询结果）
+ * @param apiKey DashScope API Key
+ * @param coverPrompt 封面图描述 prompt
+ * @param supabase Supabase 客户端
+ * @param n 生成图片数量
+ * @returns 永久图片 URL 数组
+ */
+async function generateCoverImages(
+  apiKey: string,
+  coverPrompt: string,
+  supabase: any,
+  n: number = 2
+): Promise<string[]> {
+  console.log(`[ai-topic-generate] 开始生成封面图（异步模式），prompt: ${coverPrompt.substring(0, 100)}...`);
+
+  // 步骤1：提交异步任务，获取 task_id
+  const wanxTaskId = await submitWanxT2iTask(apiKey, coverPrompt, n);
+
+  // 步骤2：轮询任务结果，获取临时图片 URL
+  const tempUrls = await pollWanxT2iResult(apiKey, wanxTaskId);
+
+  // 步骤3：下载临时 URL 并上传到 Supabase Storage 永久化
   const permanentUrls: string[] = [];
   for (const tempUrl of tempUrls) {
     try {
@@ -616,6 +738,8 @@ serve(async (req: Request) => {
         manual_notes = "",
         tone_constraints = [],
         output_languages = ["zh", "ru", "tg"],
+        generate_cover = true,
+        cover_mode = "ai_generate",
       } = body;
 
       if (!topic_goal || topic_goal.trim().length === 0) {
@@ -773,35 +897,42 @@ serve(async (req: Request) => {
         return;
       }
 
-       // ─── 6.5 Step C: 封面图生成 ────────────────────────
-      await sendSSE({ status: "processing", progress: 75, stage: "正在生成AI封面图...", task_id: taskId });
-
+       // ─── 6.5 Step C: 封面图生成（异步模式） ────────────────
       let coverImageUrls: string[] = [];
       let coverImageUrl: string | null = null;
-      try {
-        // 使用理解层生成的 cover_image_prompt，如果没有则基于主题自动构建
-        let coverPrompt = understanding.cover_image_prompt;
-        if (!coverPrompt || coverPrompt.trim().length === 0) {
-          // 基于理解层的主题和叙事角度自动构建封面图 prompt
-          const theme = understanding.overall_theme || topic_goal;
-          const angle = understanding.story_angle || '';
-          coverPrompt = `A warm and inviting lifestyle photography scene related to: ${theme}. ${angle ? `The mood is: ${angle}.` : ''} Central Asian home setting, soft natural lighting, cozy atmosphere, no text, no logos, no specific products visible, focus on warmth and daily life ambiance, professional photography, shallow depth of field, warm color palette.`;
-        }
 
-        coverImageUrls = await withRetry(
-          () => generateCoverImages(dashscopeApiKey, coverPrompt, supabase, 2),
-          2,
-          3000
-        );
+      if (generate_cover && cover_mode === "ai_generate") {
+        await sendSSE({ status: "processing", progress: 75, stage: "正在提交AI封面图生成任务...", task_id: taskId });
 
-        if (coverImageUrls.length > 0) {
-          coverImageUrl = coverImageUrls[0]; // 默认选择第一张
-          console.log(`[ai-topic-generate] 封面图生成成功: ${coverImageUrls.length} 张`);
+        try {
+          // 使用理解层生成的 cover_image_prompt，如果没有则基于主题自动构建
+          let coverPrompt = understanding.cover_image_prompt;
+          if (!coverPrompt || coverPrompt.trim().length === 0) {
+            // 基于理解层的主题和叙事角度自动构建封面图 prompt
+            const theme = understanding.overall_theme || topic_goal;
+            const angle = understanding.story_angle || '';
+            coverPrompt = `A warm and inviting lifestyle photography scene related to: ${theme}. ${angle ? `The mood is: ${angle}.` : ''} Central Asian home setting, soft natural lighting, cozy atmosphere, no text, no logos, no specific products visible, focus on warmth and daily life ambiance, professional photography, shallow depth of field, warm color palette.`;
+          }
+
+          coverImageUrls = await withRetry(
+            () => generateCoverImages(dashscopeApiKey, coverPrompt, supabase, 2),
+            2,
+            5000  // 异步任务使用更长的退避基数
+          );
+
+          if (coverImageUrls.length > 0) {
+            coverImageUrl = coverImageUrls[0]; // 默认选择第一张
+            console.log(`[ai-topic-generate] 封面图生成成功: ${coverImageUrls.length} 张`);
+          }
+
+          await sendSSE({ status: "processing", progress: 82, stage: "封面图生成完成", task_id: taskId });
+        } catch (coverError) {
+          const coverErrMsg = coverError instanceof Error ? coverError.message : String(coverError);
+          console.error("[ai-topic-generate] 封面图生成失败 (不阻断主流程):", coverErrMsg);
+          // 封面图生成失败不阻断整个流程，记录警告即可
         }
-      } catch (coverError) {
-        const coverErrMsg = coverError instanceof Error ? coverError.message : String(coverError);
-        console.error("[ai-topic-generate] 封面图生成失败 (不阻断主流程):", coverErrMsg);
-        // 封面图生成失败不阻断整个流程，记录警告即可
+      } else {
+        console.log(`[ai-topic-generate] 跳过封面图生成 (generate_cover=${generate_cover}, cover_mode=${cover_mode})`);
       }
 
       // ─── 7. 质量校验 ─────────────────────────────────
@@ -972,9 +1103,11 @@ serve(async (req: Request) => {
           selected_story_angle: understanding.story_angle || "",
           risk_notes: understanding.risk_notes || [],
         },
-        quality_warnings: coverImageUrls.length === 0
+        quality_warnings: (coverImageUrls.length === 0 && generate_cover && cover_mode === "ai_generate")
           ? [...qualityWarnings, "封面图生成失败，请在专题管理页手动上传封面图"]
-          : qualityWarnings,
+          : (!generate_cover || cover_mode !== "ai_generate") && coverImageUrls.length === 0
+            ? [...qualityWarnings, "未启用AI封面图生成，请在专题管理页手动上传封面图"]
+            : qualityWarnings,
       };
 
       // ─── 9. 更新任务记录 ──────────────────────────────────
