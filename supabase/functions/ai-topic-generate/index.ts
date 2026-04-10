@@ -269,25 +269,43 @@ ${styleExamples ? `【文案风格参考】\n${styleExamples}` : ""}
 【语言要求】
 ${langInstruction}
 
-请基于以上信息，生成完整的专题草稿，输出以下 JSON 结构：
+请基于以上信息，生成完整的专题草稿。你需要把商品按场景分组到不同段落（sections）中，每个段落有自己的场景文案和关联商品。
+
+输出以下 JSON 结构：
 {
   "title_i18n": {"zh": "中文标题（15-25字，像朋友推荐，不像广告标题）", "ru": "俄语标题", "tg": "塔吉克语标题"},
   "subtitle_i18n": {"zh": "中文副标题（一句话点明场景）", "ru": "俄语副标题", "tg": "塔吉克语副标题"},
   "intro_i18n": {"zh": "中文导语（2-3句，描绘一个具体的生活画面，让人代入）", "ru": "俄语导语", "tg": "塔吉克语导语"},
+  "sections": [
+    {
+      "story_text_i18n": {
+        "zh": "中文段落文案（围绕一个生活场景展开，自然引入本段关联的商品）",
+        "ru": "俄语段落文案（本地化改写，不是直译）",
+        "tg": "塔吉克语段落文案"
+      },
+      "products": [
+        {
+          "product_id": "填写下方商品列表中的真实ID（UUID格式）",
+          "note_i18n": {"zh": "这个商品在本段场景中的说明（1-2句）", "ru": "俄语", "tg": "塔吉克语"},
+          "badge_text_i18n": {"zh": "角标文案（2-4字）", "ru": "俄语角标", "tg": "塔吉克语角标"}
+        }
+      ]
+    }
+  ],
   "story_blocks_i18n": [
     {
       "block_key": "block_1",
       "block_type": "paragraph",
-      "zh": "中文正文段落（围绕一个生活场景展开，自然引入商品）",
-      "ru": "俄语正文段落（本地化改写，不是直译）",
-      "tg": "塔吉克语正文段落"
-    },
+      "zh": "与 sections[0].story_text_i18n.zh 相同的内容",
+      "ru": "与 sections[0].story_text_i18n.ru 相同的内容",
+      "tg": "与 sections[0].story_text_i18n.tg 相同的内容"
+    }
+  ],
+  "product_notes": [
     {
-      "block_key": "block_2",
-      "block_type": "paragraph",
-      "zh": "第二段（可以换一个场景或角度）",
-      "ru": "俄语第二段",
-      "tg": "塔吉克语第二段"
+      "product_id": "填写下方商品列表中的真实ID（UUID格式）",
+      "note_i18n": {"zh": "场景说明", "ru": "俄语", "tg": "塔吉克语"},
+      "badge_text_i18n": {"zh": "角标", "ru": "俄语角标", "tg": "塔吉克语角标"}
     }
   ],
   "placement_variants": [
@@ -304,32 +322,27 @@ ${langInstruction}
       "angle": "切入角度"
     }
   ],
-  "product_notes": [
-    // ❗❗ 必须为下方列出的每一个商品都生成一条 product_note，不可省略任何商品
-    {
-      "product_id": "商品ID",
-      "note_i18n": {"zh": "这个商品在本专题中的场景说明（1-2句）", "ru": "俄语", "tg": "塔吉克语"},
-      "badge_text_i18n": {"zh": "角标文案（2-4字）", "ru": "俄语角标", "tg": "塔吉克语角标"}
-    }
-  ],
   "recommended_category_ids": [],
   "recommended_tag_ids": []
 }
 
 要求：
 1. 标题和导语必须像"熟人推荐"，不能像"品牌宣传册"
-2. 正文段落要有具体的生活画面，不能只是抽象描述商品功能
+2. sections 中每个段落要有具体的生活画面，不能只是抽象描述商品功能
 3. 俄语和塔吉克语必须做本地化改写，不是中文的逐句翻译
 4. 卡片变体至少 2 个，从不同角度吸引点击
-5. ❗❗ product_notes 必须包含下方列出的每一个商品，不可省略任何一个，每个商品的 note 必须说明"这个商品在这个场景下为什么好用"
-6. 请只输出 JSON，不要添加任何其他文字说明
+5. ❗❗ sections 中的 products 和 product_notes 都必须包含下方列出的每一个商品，不可省略任何一个
+6. ❗❗ product_id 必须使用下方商品列表中的真实 ID（UUID 格式），不要使用"商品1"等占位符
+7. story_blocks_i18n 的内容应与 sections 中的 story_text_i18n 保持一致（向后兼容）
+8. 请只输出 JSON，不要添加任何其他文字说明
 
-【必须生成 product_note 的商品列表】
+【必须包含的商品列表（使用真实 ID）】
 ${selectedProducts.map((p: any, i: number) => {
   const name = p.name_i18n?.zh || p.name_i18n?.ru || p.name || '未知商品';
-  return `商品${i + 1}: ID=${p.id}, 名称=${name}`;
+  return `商品${i + 1}: 真实ID="${p.id}", 名称=${name}`;
 }).join('\n')}
-❗❗ 以上 ${selectedProducts.length} 个商品必须全部出现在 product_notes 数组中，不可省略。`;
+❗❗ 以上 ${selectedProducts.length} 个商品必须全部出现在 sections.products 和 product_notes 中。
+❗❗ product_id 必须使用上面的真实 ID（UUID 格式），不要使用"商品1"等占位符！`;
 
   const response = await fetch(
     "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
@@ -667,8 +680,18 @@ serve(async (req: Request) => {
         qualityWarnings.push("未输出本地生活锚点，内容可能缺乏本地化深度");
       }
 
-      // [v7 修复] 检查 product_notes 是否覆盖所有选中商品
-      const productNotes = contentResult.product_notes || [];
+      // [v7+v8 修复] 先修复 product_notes 中的占位符 ID，再检查覆盖率
+      const preFixMap: Record<string, string> = {};
+      selected_products.forEach((p: any, i: number) => {
+        preFixMap[`商品${i + 1}`] = p.id;
+        preFixMap[`product_${i + 1}`] = p.id;
+        preFixMap[`Product ${i + 1}`] = p.id;
+      });
+      const productNotes = (contentResult.product_notes || []).map((n: any) => ({
+        ...n,
+        product_id: preFixMap[n.product_id] || n.product_id,
+      }));
+      contentResult.product_notes = productNotes;
       const noteProductIds = new Set(productNotes.map((n: any) => n.product_id));
       const missingProducts = selected_products.filter((p: any) => !noteProductIds.has(p.id));
       if (missingProducts.length > 0) {
@@ -691,9 +714,74 @@ serve(async (req: Request) => {
         contentResult.product_notes = productNotes;
       }
 
-      // ─── 8. 组装最终结果 ──────────────────────────────────
+      // ─── 8. 修复 product_id 占位符 + 构建 sections ────────
       await sendSSE({ status: "processing", progress: 90, stage: "正在组装最终结果...", task_id: taskId });
 
+      // [v8 修复] 构建 "商品N" → 真实 ID 的映射表
+      const productIdMap: Record<string, string> = {};
+      selected_products.forEach((p: any, i: number) => {
+        productIdMap[`商品${i + 1}`] = p.id;
+        productIdMap[`product_${i + 1}`] = p.id;
+        productIdMap[`Product ${i + 1}`] = p.id;
+      });
+
+      // 修复 product_notes 中的占位符 product_id
+      const fixedProductNotes = (contentResult.product_notes || []).map((note: any) => {
+        const fixedId = productIdMap[note.product_id] || note.product_id;
+        return { ...note, product_id: fixedId };
+      });
+      contentResult.product_notes = fixedProductNotes;
+
+      // [v8] 如果 AI 返回了 sections，也修复其中的 product_id
+      if (contentResult.sections && contentResult.sections.length > 0) {
+        contentResult.sections = contentResult.sections.map((section: any) => ({
+          ...section,
+          products: (section.products || []).map((sp: any) => ({
+            ...sp,
+            product_id: productIdMap[sp.product_id] || sp.product_id,
+          })),
+        }));
+      }
+
+      // [v8] 如果 AI 没有返回 sections，从 story_blocks_i18n + product_notes 自动构建
+      let finalSections = contentResult.sections || [];
+      if (!finalSections || finalSections.length === 0) {
+        const blocks = contentResult.story_blocks_i18n || [];
+        const notes = contentResult.product_notes || [];
+        if (blocks.length > 0) {
+          // 将商品平均分配到各个段落中
+          const productsPerBlock = Math.ceil(notes.length / Math.max(blocks.length, 1));
+          finalSections = blocks.map((block: any, blockIdx: number) => {
+            const startIdx = blockIdx * productsPerBlock;
+            const endIdx = Math.min(startIdx + productsPerBlock, notes.length);
+            const blockProducts = notes.slice(startIdx, endIdx).map((note: any) => ({
+              product_id: note.product_id,
+              note_i18n: note.note_i18n || {},
+              badge_text_i18n: note.badge_text_i18n || {},
+            }));
+            return {
+              story_text_i18n: {
+                zh: block.zh || '',
+                ru: block.ru || '',
+                tg: block.tg || '',
+              },
+              products: blockProducts,
+            };
+          });
+          // 如果有剩余未分配的商品，添加到最后一个段落
+          const assignedCount = blocks.length * productsPerBlock;
+          if (assignedCount < notes.length && finalSections.length > 0) {
+            const remaining = notes.slice(assignedCount).map((note: any) => ({
+              product_id: note.product_id,
+              note_i18n: note.note_i18n || {},
+              badge_text_i18n: note.badge_text_i18n || {},
+            }));
+            finalSections[finalSections.length - 1].products.push(...remaining);
+          }
+        }
+      }
+
+      // 组装最终结果
       const finalResult = {
         // 理解层结果
         understanding: {
@@ -709,6 +797,9 @@ serve(async (req: Request) => {
         title_i18n: contentResult.title_i18n || {},
         subtitle_i18n: contentResult.subtitle_i18n || {},
         intro_i18n: contentResult.intro_i18n || {},
+        // v2: sections 模式
+        sections: finalSections,
+        // 向后兼容
         story_blocks_i18n: contentResult.story_blocks_i18n || [],
         placement_variants: contentResult.placement_variants || [],
         product_notes: contentResult.product_notes || [],
