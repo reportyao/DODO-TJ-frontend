@@ -127,17 +127,23 @@ BEGIN
                 topic_id,
                 product_id,
                 sort_order,
+                story_group,
+                story_text_i18n,
                 note_i18n,
                 badge_text_i18n
             ) VALUES (
                 p_topic_id,
                 (v_item->>'product_id')::uuid,
                 COALESCE((v_item->>'sort_order')::int, 0),
+                COALESCE((v_item->>'story_group')::int, 0),
+                CASE WHEN v_item ? 'story_text_i18n' THEN v_item->'story_text_i18n' ELSE NULL END,
                 CASE WHEN v_item ? 'note_i18n' THEN v_item->'note_i18n' ELSE NULL END,
                 CASE WHEN v_item ? 'badge_text_i18n' THEN v_item->'badge_text_i18n' ELSE NULL END
             )
             ON CONFLICT (topic_id, product_id) DO UPDATE SET
                 sort_order = EXCLUDED.sort_order,
+                story_group = EXCLUDED.story_group,
+                story_text_i18n = EXCLUDED.story_text_i18n,
                 note_i18n = EXCLUDED.note_i18n,
                 badge_text_i18n = EXCLUDED.badge_text_i18n;
 
@@ -387,6 +393,7 @@ BEGIN
                 'cover_image_zh', COALESCE(tpl.cover_image_zh, ht.cover_image_zh),
                 'cover_image_ru', COALESCE(tpl.cover_image_ru, ht.cover_image_ru),
                 'cover_image_tg', COALESCE(tpl.cover_image_tg, ht.cover_image_tg),
+                'cover_image_url', ht.cover_image_url,
                 'theme_color', ht.theme_color,
                 'card_style', COALESCE(ht.card_style, 'default'),
                 'card_variant_name', tpl.card_variant_name,
@@ -467,7 +474,9 @@ BEGIN
             ht.cover_image_zh,
             ht.cover_image_ru,
             ht.cover_image_tg,
+            ht.cover_image_url,
             ht.theme_color,
+            ht.card_style,
             ht.translation_status,
             ht.start_time,
             ht.end_time
@@ -481,6 +490,8 @@ BEGIN
     FROM (
         SELECT
             tp.sort_order,
+            tp.story_group,
+            tp.story_text_i18n,
             tp.note_i18n,
             tp.badge_text_i18n,
             ip.id AS product_id,
