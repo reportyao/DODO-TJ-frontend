@@ -503,7 +503,8 @@ async function pollWanxT2iResult(
   apiKey: string,
   wanxTaskId: string,
   maxPolls: number = 60,
-  interval: number = 5000
+  interval: number = 5000,
+  onProgress?: (pollCount: number, maxPolls: number) => Promise<void>
 ): Promise<string[]> {
   let consecutiveErrors = 0;
   const maxConsecutiveErrors = 3;
@@ -571,6 +572,10 @@ async function pollWanxT2iResult(
           `[ai-topic-generate] 封面图任务 ${wanxTaskId} 状态: ${status}，已轮询 ${i + 1} 次`
         );
       }
+      // [修复] 每次轮询后回调进度，让调用方可以发送 SSE 进度更新
+      if (onProgress) {
+        try { await onProgress(i + 1, maxPolls); } catch {}
+      }
     } catch (error) {
       // 区分业务错误（应立即抛出）和网络错误（可容忍）
       if (
@@ -606,21 +611,23 @@ async function pollWanxT2iResult(
  * @param coverPrompt 封面图描述 prompt
  * @param supabase Supabase 客户端
  * @param n 生成图片数量
+ * @param onProgress [修复] 轮询进度回调，用于 SSE 进度更新
  * @returns 永久图片 URL 数组
  */
 async function generateCoverImages(
   apiKey: string,
   coverPrompt: string,
   supabase: any,
-  n: number = 2
+  n: number = 2,
+  onProgress?: (pollCount: number, maxPolls: number) => Promise<void>
 ): Promise<string[]> {
   console.log(`[ai-topic-generate] 开始生成封面图（异步模式），prompt: ${coverPrompt.substring(0, 100)}...`);
 
   // 步骤1：提交异步任务，获取 task_id
   const wanxTaskId = await submitWanxT2iTask(apiKey, coverPrompt, n);
 
-  // 步骤2：轮询任务结果，获取临时图片 URL
-  const tempUrls = await pollWanxT2iResult(apiKey, wanxTaskId);
+  // 步骤2：轮询任务结果，获取临时图片 URL（传递进度回调）
+  const tempUrls = await pollWanxT2iResult(apiKey, wanxTaskId, 60, 5000, onProgress);
 
   // 步骤3：下载临时 URL 并上传到 Supabase Storage 永久化
   const permanentUrls: string[] = [];
@@ -867,6 +874,9 @@ serve(async (req: Request) => {
           product_notes: [],
           recommended_category_ids: [],
           recommended_tag_ids: [],
+          // [修复] 补充封面图字段，确保与 AITopicDraftResult 类型定义一致
+          cover_image_url: null,
+          cover_image_urls: [],
           explanation: {
             local_anchors: understanding.local_anchors_used || [],
             selected_story_angle: understanding.story_angle || "",
@@ -900,6 +910,7 @@ serve(async (req: Request) => {
        // ─── 6.5 Step C: 封面图生成（异步模式） ────────────────
       let coverImageUrls: string[] = [];
       let coverImageUrl: string | null = null;
+      let coverGenerationError: string | null = null;  // [修复] 记录封面图生成错误信息
 
       if (generate_cover && cover_mode === "ai_generate") {
         await sendSSE({ status: "processing", progress: 75, stage: "正在提交AI封面图生成任务...", task_id: taskId });
@@ -914,8 +925,19 @@ serve(async (req: Request) => {
             coverPrompt = `A warm and inviting lifestyle photography scene related to: ${theme}. ${angle ? `The mood is: ${angle}.` : ''} Central Asian home setting, soft natural lighting, cozy atmosphere, no text, no logos, no specific products visible, focus on warmth and daily life ambiance, professional photography, shallow depth of field, warm color palette.`;
           }
 
+          // [修复] 传入 onProgress 回调，在轮询期间定期发送 SSE 进度更新，避免用户以为卡住
+          const coverOnProgress = async (pollCount: number, maxPolls: number) => {
+            // 进度从 75 到 82 之间线性插值
+            const p = Math.min(75 + Math.round((pollCount / maxPolls) * 7), 82);
+            await sendSSE({
+              status: "processing",
+              progress: p,
+              stage: `封面图生成中，请稍候... (轮询 ${pollCount}/${maxPolls})`,
+              task_id: taskId,
+            });
+          };
           coverImageUrls = await withRetry(
-            () => generateCoverImages(dashscopeApiKey, coverPrompt, supabase, 2),
+            () => generateCoverImages(dashscopeApiKey, coverPrompt, supabase, 2, coverOnProgress),
             2,
             5000  // 异步任务使用更长的退避基数
           );
@@ -929,7 +951,8 @@ serve(async (req: Request) => {
         } catch (coverError) {
           const coverErrMsg = coverError instanceof Error ? coverError.message : String(coverError);
           console.error("[ai-topic-generate] 封面图生成失败 (不阻断主流程):", coverErrMsg);
-          // 封面图生成失败不阻断整个流程，记录警告即可
+          // [修复] 封面图生成失败不阻断整个流程，但记录到 quality_warnings 中供用户知晓
+          coverGenerationError = coverErrMsg;
         }
       } else {
         console.log(`[ai-topic-generate] 跳过封面图生成 (generate_cover=${generate_cover}, cover_mode=${cover_mode})`);
@@ -1103,11 +1126,20 @@ serve(async (req: Request) => {
           selected_story_angle: understanding.story_angle || "",
           risk_notes: understanding.risk_notes || [],
         },
-        quality_warnings: (coverImageUrls.length === 0 && generate_cover && cover_mode === "ai_generate")
-          ? [...qualityWarnings, "封面图生成失败，请在专题管理页手动上传封面图"]
-          : (!generate_cover || cover_mode !== "ai_generate") && coverImageUrls.length === 0
-            ? [...qualityWarnings, "未启用AI封面图生成，请在专题管理页手动上传封面图"]
-            : qualityWarnings,
+        // [修复] 使用 coverGenerationError 提供更精确的封面图警告信息
+        quality_warnings: (() => {
+          const warnings = [...qualityWarnings];
+          if (generate_cover && cover_mode === "ai_generate") {
+            if (coverImageUrls.length === 0 && coverGenerationError) {
+              warnings.push(`封面图生成失败 (${coverGenerationError})，请在专题管理页手动上传封面图`);
+            } else if (coverImageUrls.length === 0) {
+              warnings.push("封面图生成失败，请在专题管理页手动上传封面图");
+            }
+          } else if (!generate_cover) {
+            warnings.push("未启用AI封面图生成，请在专题管理页手动上传封面图");
+          }
+          return warnings;
+        })(),
       };
 
       // ─── 9. 更新任务记录 ──────────────────────────────────
