@@ -1,15 +1,18 @@
 /**
- * 专题详情页
+ * 专题详情页 (v2)
  *
- * 展示专题的完整内容：封面图、标题、简介、正文块、挂载商品列表。
+ * 展示专题的完整内容：封面图、标题、简介、按 section 交替渲染正文与商品。
  * 路由：/topic/:slug
+ *
+ * v2 改造：
+ * - 按 story_group 将商品分组，每组先渲染场景文案再渲染商品
+ * - 根据 card_style 区分大卡（story_card/hero）和小卡（standard）模式
+ * - 向后兼容：无 story_group 数据时回退到旧的统一列表模式
  *
  * 数据来源：get-topic-detail Edge Function
  * 埋点：topic_detail_view / topic_product_click
- *
- * 与现有页面保持一致的 Layout 壳结构。
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -25,10 +28,53 @@ import type {
   TopicProductItem,
   StoryBlock,
   SupportedLang,
+  I18nText,
 } from '../types/homepage';
 
 // ============================================================
-// 正文块渲染器
+// 工具：按 story_group 分组商品
+// ============================================================
+
+interface ProductSection {
+  groupIndex: number;
+  storyText: I18nText | null;
+  products: TopicProductItem[];
+}
+
+/**
+ * 将 products 按 story_group 分组，保持组内 sort_order 排序。
+ * 每组取第一个商品的 story_text_i18n 作为该组的场景文案。
+ */
+function groupProductsBySections(products: TopicProductItem[]): ProductSection[] {
+  const groupMap = new Map<number, ProductSection>();
+
+  for (const item of products) {
+    const groupIdx = item.story_group ?? 0;
+    if (!groupMap.has(groupIdx)) {
+      groupMap.set(groupIdx, {
+        groupIndex: groupIdx,
+        storyText: item.story_text_i18n || null,
+        products: [],
+      });
+    }
+    groupMap.get(groupIdx)!.products.push(item);
+  }
+
+  // 按 groupIndex 排序
+  const sections = Array.from(groupMap.values()).sort(
+    (a, b) => a.groupIndex - b.groupIndex
+  );
+
+  // 每组内按 sort_order 排序
+  for (const section of sections) {
+    section.products.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  }
+
+  return sections;
+}
+
+// ============================================================
+// 正文块渲染器（保留向后兼容）
 // ============================================================
 
 const StoryBlockRenderer: React.FC<{ block: StoryBlock; lang: SupportedLang }> = ({
@@ -63,7 +109,7 @@ const StoryBlockRenderer: React.FC<{ block: StoryBlock; lang: SupportedLang }> =
         </div>
       );
     case 'product_grid':
-      // product_grid 在正文块中不渲染，商品列表在底部统一展示
+      // product_grid 在正文块中不渲染，由 sections 处理
       return null;
     default:
       return text ? (
@@ -73,16 +119,22 @@ const StoryBlockRenderer: React.FC<{ block: StoryBlock; lang: SupportedLang }> =
 };
 
 // ============================================================
-// 专题商品卡片
+// 商品卡片共用 props
 // ============================================================
 
-const TopicProductCard: React.FC<{
+interface ProductCardProps {
   item: TopicProductItem;
   lang: SupportedLang;
   topicId: string;
   onTrack: (productId: string, lotteryId?: string) => void;
   requireAuth: boolean;
-}> = ({ item, lang, topicId, onTrack, requireAuth }) => {
+}
+
+/**
+ * 商品卡片 hook：提取公共逻辑（标题、链接、点击处理等）
+ */
+function useProductCardData(props: ProductCardProps) {
+  const { item, lang, topicId, onTrack, requireAuth } = props;
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -111,10 +163,21 @@ const TopicProductCard: React.FC<{
     }
   };
 
-  // 构建带归因参数的链接
   const linkTo = lottery
     ? `/lottery/${lottery.lottery_id}?src_topic=${topicId}&src_page=topic_detail`
     : '#';
+
+  return { title, badgeText, noteText, lottery, imageUrl, handleClick, linkTo, t };
+}
+
+// ============================================================
+// 大卡商品卡片（story_card / hero 模式 — 2列网格，正方形图片）
+// ============================================================
+
+const LargeProductCard: React.FC<ProductCardProps> = (props) => {
+  const { item } = props;
+  const { title, badgeText, noteText, lottery, imageUrl, handleClick, linkTo, t } =
+    useProductCardData(props);
 
   return (
     <Link
@@ -210,6 +273,162 @@ const TopicProductCard: React.FC<{
 };
 
 // ============================================================
+// 小卡商品卡片（standard 模式 — 横向布局，左图右文）
+// ============================================================
+
+const CompactProductCard: React.FC<ProductCardProps> = (props) => {
+  const { item } = props;
+  const { title, badgeText, noteText, lottery, imageUrl, handleClick, linkTo, t } =
+    useProductCardData(props);
+
+  return (
+    <Link
+      to={linkTo}
+      onClick={handleClick}
+      className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow relative block"
+    >
+      <div className="flex h-28">
+        {/* 左侧图片 */}
+        <div className="w-28 h-full flex-shrink-0 relative bg-gray-100 overflow-hidden">
+          {badgeText && (
+            <div className="absolute top-1.5 left-1.5 z-10 bg-gradient-to-r from-red-500 to-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+              {badgeText}
+            </div>
+          )}
+          <LazyImage
+            src={imageUrl}
+            alt={title}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+        </div>
+
+        {/* 右侧信息 */}
+        <div className="flex-1 px-3 py-2 flex flex-col justify-between min-w-0">
+          <div>
+            <h3 className="text-sm font-medium text-gray-800 line-clamp-2 leading-tight">
+              {title}
+            </h3>
+            {noteText && (
+              <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">{noteText}</p>
+            )}
+          </div>
+
+          {/* 价格区 */}
+          <div>
+            {lottery ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-base font-bold text-red-500">
+                  {formatCurrency(lottery.currency || 'TJS', item.original_price)}
+                </span>
+                {lottery.ticket_price > 0 && (
+                  <span className="text-[10px] text-orange-500 font-medium">
+                    {t('product.startFrom')} {formatCurrency(lottery.currency || 'TJS', lottery.ticket_price)}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className="text-sm text-gray-400">{formatCurrency('TJS', item.original_price)}</span>
+            )}
+            {/* 进度条 */}
+            {lottery && lottery.total_tickets > 0 && (
+              <div className="mt-1">
+                <div className="w-full bg-gray-100 rounded-full h-1">
+                  <div
+                    className="bg-gradient-to-r from-orange-400 to-red-500 h-1 rounded-full transition-all"
+                    style={{
+                      width: `${Math.min(
+                        (lottery.sold_tickets / lottery.total_tickets) * 100,
+                        100
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+};
+
+// ============================================================
+// Section 渲染器：场景文案 + 商品列表
+// ============================================================
+
+const SectionRenderer: React.FC<{
+  section: ProductSection;
+  lang: SupportedLang;
+  topicId: string;
+  cardStyle: string;
+  onTrack: (productId: string, lotteryId?: string) => void;
+  requireAuth: boolean;
+  sectionIndex: number;
+}> = ({ section, lang, topicId, cardStyle, onTrack, requireAuth, sectionIndex }) => {
+  const storyText = section.storyText
+    ? getLocalizedText(section.storyText as Record<string, string>, lang)
+    : '';
+
+  const isCompact = cardStyle === 'standard' || cardStyle === 'mini';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: sectionIndex * 0.08, duration: 0.3 }}
+      className="px-4 mt-5"
+    >
+      {/* 场景文案 */}
+      {storyText && (
+        <div className="mb-3">
+          <p className="text-sm text-gray-700 leading-relaxed">{storyText}</p>
+        </div>
+      )}
+
+      {/* 商品列表 */}
+      {section.products.length > 0 && (
+        isCompact ? (
+          /* 小卡模式：单列纵向排列 */
+          <div className="space-y-3">
+            {section.products.map((item) => (
+              <CompactProductCard
+                key={item.product_id}
+                item={item}
+                lang={lang}
+                topicId={topicId}
+                onTrack={onTrack}
+                requireAuth={requireAuth}
+              />
+            ))}
+          </div>
+        ) : (
+          /* 大卡模式：2列网格 */
+          <div className="grid grid-cols-2 gap-3">
+            {section.products.map((item) => (
+              <LargeProductCard
+                key={item.product_id}
+                item={item}
+                lang={lang}
+                topicId={topicId}
+                onTrack={onTrack}
+                requireAuth={requireAuth}
+              />
+            ))}
+          </div>
+        )
+      )}
+    </motion.div>
+  );
+};
+
+// ============================================================
 // 主页面
 // ============================================================
 
@@ -225,6 +444,15 @@ const TopicDetailPage: React.FC = () => {
 
   const topic: TopicDetail | null = data?.topic || null;
   const products: TopicProductItem[] = data?.products || [];
+
+  // v2: 按 story_group 分组
+  const sections = useMemo(() => groupProductsBySections(products), [products]);
+
+  // 判断是否有有效的 sections 数据（至少有一组有 story_text）
+  const hasSections = useMemo(
+    () => sections.some((s) => s.storyText && Object.values(s.storyText).some((v) => v)),
+    [sections]
+  );
 
   // 页面浏览埋点
   useEffect(() => {
@@ -309,6 +537,7 @@ const TopicDetailPage: React.FC = () => {
   );
 
   const storyBlocks: StoryBlock[] = topic.story_blocks_i18n || [];
+  const cardStyle = topic.card_style || 'standard';
 
   return (
     <div className="pb-20 bg-gray-50">
@@ -363,34 +592,79 @@ const TopicDetailPage: React.FC = () => {
         )}
       </motion.div>
 
-      {/* 正文块 */}
-      {storyBlocks.length > 0 && (
-        <div className="px-4 mt-2">
-          {storyBlocks.map((block, idx) => (
-            <StoryBlockRenderer key={block.block_key || idx} block={block} lang={lang} />
+      {/* ============================================================
+       * v2: Sections 模式 — 场景文案 + 对应商品交替渲染
+       * 当 products 有 story_group 分组且有 story_text 时使用此模式
+       * ============================================================ */}
+      {hasSections && sections.length > 0 ? (
+        <>
+          {sections.map((section, sIdx) => (
+            <SectionRenderer
+              key={section.groupIndex}
+              section={section}
+              lang={lang}
+              topicId={topic.id}
+              cardStyle={cardStyle}
+              onTrack={handleProductTrack}
+              requireAuth={!user}
+              sectionIndex={sIdx}
+            />
           ))}
-        </div>
-      )}
+        </>
+      ) : (
+        <>
+          {/* ============================================================
+           * 向后兼容：旧模式 — 正文块 + 底部统一商品列表
+           * 当没有 sections 数据时回退到此模式
+           * ============================================================ */}
 
-      {/* 挂载商品列表 */}
-      {products.length > 0 && (
-        <div className="px-4 mt-6">
-          <h2 className="text-lg font-bold text-gray-800 mb-3">
-            {t('home.lotteryProducts')}
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            {products.map((item) => (
-              <TopicProductCard
-                key={item.product_id}
-                item={item}
-                lang={lang}
-                topicId={topic.id}
-                onTrack={handleProductTrack}
-                requireAuth={!user}
-              />
-            ))}
-          </div>
-        </div>
+          {/* 正文块（旧 story_blocks_i18n 格式） */}
+          {storyBlocks.length > 0 && (
+            <div className="px-4 mt-2">
+              {storyBlocks.map((block, idx) => (
+                <StoryBlockRenderer key={block.block_key || idx} block={block} lang={lang} />
+              ))}
+            </div>
+          )}
+
+          {/* 挂载商品列表 */}
+          {products.length > 0 && (
+            <div className="px-4 mt-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-3">
+                {t('home.lotteryProducts')}
+              </h2>
+              {(cardStyle === 'standard' || cardStyle === 'mini') ? (
+                /* 小卡模式 */
+                <div className="space-y-3">
+                  {products.map((item) => (
+                    <CompactProductCard
+                      key={item.product_id}
+                      item={item}
+                      lang={lang}
+                      topicId={topic.id}
+                      onTrack={handleProductTrack}
+                      requireAuth={!user}
+                    />
+                  ))}
+                </div>
+              ) : (
+                /* 大卡模式 */
+                <div className="grid grid-cols-2 gap-3">
+                  {products.map((item) => (
+                    <LargeProductCard
+                      key={item.product_id}
+                      item={item}
+                      lang={lang}
+                      topicId={topic.id}
+                      onTrack={handleProductTrack}
+                      requireAuth={!user}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
