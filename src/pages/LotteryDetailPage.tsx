@@ -381,7 +381,7 @@ const LotteryDetailPage: React.FC = () => {
     try {
       const data = lottery.price_comparisons;
       if (Array.isArray(data)) {
-        return data as PriceComparisonItem[];
+        return data as unknown as PriceComparisonItem[];
       }
       return [];
     } catch {
