@@ -20,7 +20,11 @@ import { useUser } from '../contexts/UserContext';
 import BannerCarousel from '../components/BannerCarousel';
 import { SubsidyPoolBanner } from '../components/home/SubsidyPoolBanner';
 import { CategoryGrid } from '../components/home/CategoryGrid';
-import { TopicCard, getTopicCardGridSpan, normalizeTopicCardStyle } from '../components/home/TopicCard';
+import {
+  TopicCard,
+  getTopicCardGridSpan,
+  normalizeTopicCardStyle,
+} from '../components/home/TopicCard';
 import { SceneProductCard } from '../components/home/SceneProductCard';
 import { useHomeFeed } from '../hooks/useHomeFeed';
 import { useTrackEvent } from '../hooks/useTrackEvent';
@@ -29,7 +33,7 @@ import type { HomeFeedItem, HomeFeedTopicData, HomeFeedProductData } from '../ty
 
 const SceneHomePage: React.FC = () => {
   const { t } = useTranslation();
-  const { user, wallets, isLoading: userLoading } = useUser();
+  const { user, isLoading: userLoading } = useUser();
   const { track } = useTrackEvent();
   const nav = useNavigate();
 
@@ -41,11 +45,7 @@ const SceneHomePage: React.FC = () => {
   // ============================================================
   // 数据获取
   // ============================================================
-  const {
-    data: feedData,
-    isLoading,
-    refetch,
-  } = useHomeFeed(selectedCategoryId);
+  const { data: feedData, isLoading } = useHomeFeed(selectedCategoryId);
 
   // ============================================================
   // 首页浏览埋点
@@ -56,7 +56,7 @@ const SceneHomePage: React.FC = () => {
       page_name: 'home',
       entity_type: 'home',
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ============================================================
@@ -103,7 +103,9 @@ const SceneHomePage: React.FC = () => {
   // 将专题卡片按 feed_position 插入商品列表
   // ============================================================
   const mixedFeed = useMemo(() => {
-    if (!feedData) return [];
+    if (!feedData) {
+      return [];
+    }
 
     const products = feedData.products || [];
     const placements = feedData.placements || [];
@@ -116,7 +118,8 @@ const SceneHomePage: React.FC = () => {
 
     // 全部模式：按 feed_position 插入专题卡片
     const sortedPlacements = [...placements].sort(
-      (a, b) => (a.data as HomeFeedTopicData).feed_position - (b.data as HomeFeedTopicData).feed_position
+      (a, b) =>
+        (a.data as HomeFeedTopicData).feed_position - (b.data as HomeFeedTopicData).feed_position
     );
 
     const result: HomeFeedItem[] = [];
@@ -142,14 +145,12 @@ const SceneHomePage: React.FC = () => {
     return result;
   }, [feedData, selectedCategoryId]);
 
-
-
   // ============================================================
   // 渲染
   // ============================================================
 
   // 分离商品和专题用于渲染
-  const renderFeedItem = (item: HomeFeedItem, index: number) => {
+  const renderFeedItem = (item: HomeFeedItem, index: number): React.ReactNode => {
     if (item.type === 'topic') {
       const topicData = item.data as HomeFeedTopicData;
       const topicStyle = normalizeTopicCardStyle(topicData.card_variant_name, topicData.card_style);
@@ -193,9 +194,7 @@ const SceneHomePage: React.FC = () => {
 
       {/* Feed 混合流 */}
       <div className="px-4 mt-4">
-        <h2 className="text-lg font-bold text-gray-800 mb-3">
-          {t('home.lotteryProducts')}
-        </h2>
+        <h2 className="text-lg font-bold text-gray-800 mb-3">{t('home.lotteryProducts')}</h2>
 
         {isLoading ? (
           /* 骨架屏 - 双列网格 */
@@ -235,8 +234,6 @@ const SceneHomePage: React.FC = () => {
           </div>
         )}
       </div>
-
-
     </div>
   );
 };

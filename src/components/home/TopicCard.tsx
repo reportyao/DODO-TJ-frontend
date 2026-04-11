@@ -28,10 +28,15 @@ type TopicCardStyle = 'hero' | 'standard' | 'banner' | 'mini';
 
 export function normalizeTopicCardStyle(
   cardVariantName?: string | null,
-  cardStyle?: string | null,
+  cardStyle?: string | null
 ): TopicCardStyle {
   const candidate = (cardVariantName || cardStyle || 'banner').trim().toLowerCase();
-  if (candidate === 'hero' || candidate === 'standard' || candidate === 'banner' || candidate === 'mini') {
+  if (
+    candidate === 'hero' ||
+    candidate === 'standard' ||
+    candidate === 'banner' ||
+    candidate === 'mini'
+  ) {
     return candidate;
   }
   return 'banner';
@@ -44,21 +49,27 @@ export function getTopicCardGridSpan(style: TopicCardStyle): 'col-span-1' | 'col
 /**
  * Hero 样式卡片 - 全宽大图 + 底部渐变文字叠加
  */
-const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }> = ({
-  topic,
-  coverUrl,
-  title,
-  subtitle,
-  t,
-}) => {
+const HeroCard: React.FC<
+  TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }
+> = ({ topic, coverUrl, title, subtitle, t }) => {
   return (
     <div className="relative rounded-2xl overflow-hidden shadow-lg">
-      <div className="aspect-[2/1] bg-gray-100" style={{ position: 'relative', overflow: 'hidden' }}>
+      <div
+        className="aspect-[2/1] bg-gray-100"
+        style={{ position: 'relative', overflow: 'hidden' }}
+      >
         {coverUrl ? (
           <LazyImage
             src={coverUrl}
             alt={title}
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
           />
         ) : (
           <div
@@ -72,12 +83,8 @@ const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; sub
 
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 p-4">
-        <h3 className="text-white font-bold text-base leading-tight line-clamp-2">
-          {title}
-        </h3>
-        {subtitle && (
-          <p className="text-white/80 text-xs mt-1 line-clamp-1">{subtitle}</p>
-        )}
+        <h3 className="text-white font-bold text-base leading-tight line-clamp-2">{title}</h3>
+        {subtitle && <p className="text-white/80 text-xs mt-1 line-clamp-1">{subtitle}</p>}
       </div>
 
       {topic.theme_color && (
@@ -95,13 +102,9 @@ const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; sub
 /**
  * Standard 样式卡片 - 与商品瀑布流卡片一致的上图下文双列布局
  */
-const StandardCard: React.FC<TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }> = ({
-  topic,
-  coverUrl,
-  title,
-  subtitle,
-  t,
-}) => {
+const StandardCard: React.FC<
+  TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }
+> = ({ topic, coverUrl, title, subtitle, t }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow relative block">
       {topic.theme_color && (
@@ -155,18 +158,13 @@ const StandardCard: React.FC<TopicCardProps & { coverUrl: string; title: string;
         </h3>
 
         {subtitle && (
-          <p
-            className="text-[11px] text-gray-500 line-clamp-2 mb-2"
-            style={{ minHeight: '2rem' }}
-          >
+          <p className="text-[11px] text-gray-500 line-clamp-2 mb-2" style={{ minHeight: '2rem' }}>
             {subtitle}
           </p>
         )}
 
         <div className="flex items-center mt-1">
-          <span className="text-[11px] text-orange-500 font-medium">
-            {t('home.viewDetails')} →
-          </span>
+          <span className="text-[11px] text-orange-500 font-medium">{t('home.viewDetails')} →</span>
         </div>
       </div>
     </div>
@@ -176,21 +174,27 @@ const StandardCard: React.FC<TopicCardProps & { coverUrl: string; title: string;
 /**
  * Banner 样式卡片 - 横条式
  */
-const BannerCard: React.FC<TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }> = ({
-  topic,
-  coverUrl,
-  title,
-  subtitle,
-  t,
-}) => {
+const BannerCard: React.FC<
+  TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }
+> = ({ topic, coverUrl, title, subtitle, t }) => {
   return (
     <div className="flex items-center bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-24 hover:shadow-md transition-shadow">
-      <div className="w-24 h-full flex-shrink-0 bg-gray-100" style={{ position: 'relative', overflow: 'hidden' }}>
+      <div
+        className="w-24 h-full flex-shrink-0 bg-gray-100"
+        style={{ position: 'relative', overflow: 'hidden' }}
+      >
         {coverUrl ? (
           <LazyImage
             src={coverUrl}
             alt={title}
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
           />
         ) : (
           <div
@@ -203,12 +207,8 @@ const BannerCard: React.FC<TopicCardProps & { coverUrl: string; title: string; s
       </div>
 
       <div className="flex-1 px-3 py-2 min-w-0">
-        <h3 className="text-sm font-bold text-gray-800 line-clamp-2 leading-tight">
-          {title}
-        </h3>
-        {subtitle && (
-          <p className="text-[11px] text-gray-500 mt-1 line-clamp-1">{subtitle}</p>
-        )}
+        <h3 className="text-sm font-bold text-gray-800 line-clamp-2 leading-tight">{title}</h3>
+        {subtitle && <p className="text-[11px] text-gray-500 mt-1 line-clamp-1">{subtitle}</p>}
         <span className="inline-block mt-1.5 text-[10px] text-orange-500 font-medium">
           {t('home.viewDetails')} →
         </span>
@@ -240,9 +240,7 @@ const MiniCard: React.FC<TopicCardProps & { title: string; t: (key: string) => s
             className="w-2 h-2 rounded-full flex-shrink-0"
             style={{ backgroundColor: topic.theme_color || '#f97316' }}
           />
-          <span className="text-sm font-medium text-gray-800 line-clamp-2">
-            {title}
-          </span>
+          <span className="text-sm font-medium text-gray-800 line-clamp-2">{title}</span>
         </div>
         <span className="text-[11px] text-orange-500 font-medium flex-shrink-0">
           {t('home.goSee')} →
@@ -260,14 +258,8 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
   const { track } = useTrackEvent();
   const lang = i18n.language as SupportedLang;
 
-  const title = getLocalizedText(
-    topic.title_i18n as Record<string, string>,
-    lang,
-  );
-  const subtitle = getLocalizedText(
-    (topic.subtitle_i18n || {}) as Record<string, string>,
-    lang,
-  );
+  const title = getLocalizedText(topic.title_i18n as Record<string, string>, lang);
+  const subtitle = getLocalizedText((topic.subtitle_i18n || {}) as Record<string, string>, lang);
 
   const coverUrl = getCoverImage(
     {
@@ -275,9 +267,9 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
       cover_image_zh: topic.cover_image_zh,
       cover_image_ru: topic.cover_image_ru,
       cover_image_tg: topic.cover_image_tg,
-      cover_image_url: (topic as any).cover_image_url,
+      cover_image_url: topic.cover_image_url,
     },
-    lang,
+    lang
   );
 
   const exposureRef = useExposureTracker({
@@ -292,7 +284,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
 
   const cardStyle = normalizeTopicCardStyle(topic.card_variant_name, topic.card_style);
 
-  const handleClick = () => {
+  const handleClick = (): void => {
     track({
       event_name: 'topic_card_click',
       page_name: 'home',
@@ -304,17 +296,44 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
     });
   };
 
-  const renderCard = () => {
+  const renderCard = (): React.ReactNode => {
     switch (cardStyle) {
       case 'hero':
-        return <HeroCard topic={topic} position={position} coverUrl={coverUrl} title={title} subtitle={subtitle} t={t} />;
+        return (
+          <HeroCard
+            topic={topic}
+            position={position}
+            coverUrl={coverUrl}
+            title={title}
+            subtitle={subtitle}
+            t={t}
+          />
+        );
       case 'standard':
-        return <StandardCard topic={topic} position={position} coverUrl={coverUrl} title={title} subtitle={subtitle} t={t} />;
+        return (
+          <StandardCard
+            topic={topic}
+            position={position}
+            coverUrl={coverUrl}
+            title={title}
+            subtitle={subtitle}
+            t={t}
+          />
+        );
       case 'mini':
         return <MiniCard topic={topic} position={position} title={title} t={t} />;
       case 'banner':
       default:
-        return <BannerCard topic={topic} position={position} coverUrl={coverUrl} title={title} subtitle={subtitle} t={t} />;
+        return (
+          <BannerCard
+            topic={topic}
+            position={position}
+            coverUrl={coverUrl}
+            title={title}
+            subtitle={subtitle}
+            t={t}
+          />
+        );
     }
   };
 
