@@ -163,10 +163,10 @@ const LotteryDetailPage: React.FC = () => {
 
       // 如果有关联的库存商品ID，单独查询库存商品信息
       let inventoryProductData = null;
-      const inventoryProductId = (data as any)?.inventory_product_id;
+      const inventoryProductId = data?.inventory_product_id;
       if (inventoryProductId) {
         const { data: invData } = await supabase
-          .from('inventory_products' as any)
+          .from('inventory_products')
           .select('id, stock, original_price, status')
           .eq('id', inventoryProductId)
           .single();
@@ -310,7 +310,7 @@ const LotteryDetailPage: React.FC = () => {
   // ============================================================
   useEffect(() => {
     if (id && !isLoading && lottery) {
-      const inventoryProductId = (lottery as any)?.inventory_product_id;
+      const inventoryProductId = lottery?.inventory_product_id;
       track({
         event_name: 'product_detail_view' as any,
         page_name: 'lottery_detail',
@@ -359,7 +359,8 @@ const LotteryDetailPage: React.FC = () => {
 
   const specifications = getLocalizedText(lottery.specifications_i18n, i18n.language);
   const material = getLocalizedText(lottery.material_i18n, i18n.language);
-  const details = getLocalizedText((lottery as any).details_i18n, i18n.language);
+  // details_i18n 字段在 lotteries 表中不存在，已移除
+  const details = '';
 
   // 提取 AI 商品理解数据
   const aiUnderstanding = lottery.ai_understanding as {
@@ -378,7 +379,7 @@ const LotteryDetailPage: React.FC = () => {
   // 获取比价清单数据
   const priceComparisons: PriceComparisonItem[] = (() => {
     try {
-      const data = (lottery as any).price_comparisons;
+      const data = lottery.price_comparisons;
       if (Array.isArray(data)) {
         return data;
       }
@@ -395,7 +396,7 @@ const LotteryDetailPage: React.FC = () => {
   const inventoryProduct = (lottery as any).inventory_product;
   
   // 全款购买是否启用
-  const fullPurchaseEnabled = (lottery as any).full_purchase_enabled !== false;
+  const fullPurchaseEnabled = lottery.full_purchase_enabled !== false;
   
   // 全款购买库存：仅使用库存商品库存，如果没有关联库存商品则显示为无限（不影响一元购物份数）
   // 重要：份数（total_tickets/sold_tickets）和库存（inventory_products.stock）是两个独立的概念
@@ -403,9 +404,9 @@ const LotteryDetailPage: React.FC = () => {
   const fullPurchaseStock = inventoryProduct ? inventoryProduct.stock : 999999;
   
   // 全款购买价格：优先使用full_purchase_price，其次使用库存商品原价，最后使用计算价格
-  const fullPurchasePrice = (lottery as any).full_purchase_price 
+  const fullPurchasePrice = lottery.full_purchase_price 
     || (inventoryProduct?.original_price) 
-    || (lottery as any).original_price 
+    || lottery.original_price 
     || (lottery.ticket_price * lottery.total_tickets);
   
   // 全款购买是否可用
@@ -483,7 +484,7 @@ const LotteryDetailPage: React.FC = () => {
       // 一元夺宝购买成功 = order_create + order_pay_success
       // ============================================================
       const orderId = purchaseResult?.order_id || purchaseResult?.id;
-      const inventoryProductId = (lottery as any)?.inventory_product_id;
+      const inventoryProductId = lottery?.inventory_product_id;
       const orderTrackBase = {
         page_name: 'lottery_detail',
         entity_type: 'order' as any,

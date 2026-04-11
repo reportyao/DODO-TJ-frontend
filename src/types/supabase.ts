@@ -858,25 +858,114 @@ export type Database = {
           },
         ]
       }
+      inventory_products: {
+        Row: {
+          ai_understanding: Json | null
+          barcode: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          description_i18n: Json | null
+          details: string | null
+          details_i18n: Json | null
+          id: string
+          image_url: string | null
+          image_urls: string[] | null
+          material: string | null
+          material_i18n: Json | null
+          name: string
+          name_i18n: Json | null
+          original_price: number
+          reserved_stock: number | null
+          sku: string | null
+          specifications: string | null
+          specifications_i18n: Json | null
+          status: string | null
+          stock: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_understanding?: Json | null
+          barcode?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          description_i18n?: Json | null
+          details?: string | null
+          details_i18n?: Json | null
+          id?: string
+          image_url?: string | null
+          image_urls?: string[] | null
+          material?: string | null
+          material_i18n?: Json | null
+          name: string
+          name_i18n?: Json | null
+          original_price?: number
+          reserved_stock?: number | null
+          sku?: string | null
+          specifications?: string | null
+          specifications_i18n?: Json | null
+          status?: string | null
+          stock?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_understanding?: Json | null
+          barcode?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          description_i18n?: Json | null
+          details?: string | null
+          details_i18n?: Json | null
+          id?: string
+          image_url?: string | null
+          image_urls?: string[] | null
+          material?: string | null
+          material_i18n?: Json | null
+          name?: string
+          name_i18n?: Json | null
+          original_price?: number
+          reserved_stock?: number | null
+          sku?: string | null
+          specifications?: string | null
+          specifications_i18n?: Json | null
+          status?: string | null
+          stock?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       lotteries: {
         Row: {
           actual_draw_time: string | null
           ai_understanding: Json | null
+          algorithm_id: string | null
           created_at: string
           currency: Database["public"]["Enums"]["Currency"]
           description: string | null
           description_i18n: Json | null
-          details_i18n: Json | null
+          draw_algorithm_data: Json | null
           draw_time: string
+          drawn_at: string | null
           end_time: string
+          full_purchase_enabled: boolean | null
+          full_purchase_price: number | null
           id: string
           image_url: string | null
           image_urls: string[] | null
+          inventory_product_id: string | null
+          inventory_product_sku: string | null
+          is_featured: boolean | null
           material_i18n: Json | null
           max_per_user: number
           name_i18n: Json | null
+          original_price: number | null
           period: string
+          price_comparisons: Json | null
+          product_id: string | null
           sold_tickets: number
+          sort_order: number | null
           specifications_i18n: Json | null
           start_time: string
           status: Database["public"]["Enums"]["LotteryStatus"]
@@ -887,31 +976,40 @@ export type Database = {
           unlimited_purchase: boolean | null
           updated_at: string
           vrf_proof: string | null
-          vrf_seed: string | null
           vrf_timestamp: number | null
           winning_numbers: Json | null
           winning_ticket_number: number | null
           winning_user_id: string | null
-          draw_algorithm_data: Json | null
         }
         Insert: {
           actual_draw_time?: string | null
           ai_understanding?: Json | null
+          algorithm_id?: string | null
           created_at?: string
           currency?: Database["public"]["Enums"]["Currency"]
           description?: string | null
           description_i18n?: Json | null
-          details_i18n?: Json | null
+          draw_algorithm_data?: Json | null
           draw_time: string
+          drawn_at?: string | null
           end_time: string
+          full_purchase_enabled?: boolean | null
+          full_purchase_price?: number | null
           id?: string
           image_url?: string | null
           image_urls?: string[] | null
+          inventory_product_id?: string | null
+          inventory_product_sku?: string | null
+          is_featured?: boolean | null
           material_i18n?: Json | null
           max_per_user: number
           name_i18n?: Json | null
+          original_price?: number | null
           period: string
+          price_comparisons?: Json | null
+          product_id?: string | null
           sold_tickets?: number
+          sort_order?: number | null
           specifications_i18n?: Json | null
           start_time: string
           status?: Database["public"]["Enums"]["LotteryStatus"]
@@ -922,31 +1020,40 @@ export type Database = {
           unlimited_purchase?: boolean | null
           updated_at: string
           vrf_proof?: string | null
-          vrf_seed?: string | null
           vrf_timestamp?: number | null
           winning_numbers?: Json | null
           winning_ticket_number?: number | null
           winning_user_id?: string | null
-          draw_algorithm_data?: Json | null
         }
         Update: {
           actual_draw_time?: string | null
           ai_understanding?: Json | null
+          algorithm_id?: string | null
           created_at?: string
           currency?: Database["public"]["Enums"]["Currency"]
           description?: string | null
           description_i18n?: Json | null
-          details_i18n?: Json | null
+          draw_algorithm_data?: Json | null
           draw_time?: string
+          drawn_at?: string | null
           end_time?: string
+          full_purchase_enabled?: boolean | null
+          full_purchase_price?: number | null
           id?: string
           image_url?: string | null
           image_urls?: string[] | null
+          inventory_product_id?: string | null
+          inventory_product_sku?: string | null
+          is_featured?: boolean | null
           material_i18n?: Json | null
           max_per_user?: number
           name_i18n?: Json | null
+          original_price?: number | null
           period?: string
+          price_comparisons?: Json | null
+          product_id?: string | null
           sold_tickets?: number
+          sort_order?: number | null
           specifications_i18n?: Json | null
           start_time?: string
           status?: Database["public"]["Enums"]["LotteryStatus"]
@@ -957,12 +1064,10 @@ export type Database = {
           unlimited_purchase?: boolean | null
           updated_at?: string
           vrf_proof?: string | null
-          vrf_seed?: string | null
           vrf_timestamp?: number | null
           winning_numbers?: Json | null
           winning_ticket_number?: number | null
           winning_user_id?: string | null
-          draw_algorithm_data?: Json | null
         }
         Relationships: []
       }

@@ -32,6 +32,15 @@ export const AIUnderstandingCard: React.FC<AIUnderstandingCardProps> = ({
         "bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 rounded-2xl shadow-sm p-5 space-y-4 border border-amber-100/50",
         className
       )}>
+        {/* 推荐标签 */}
+        {aiUnderstanding.recommended_badge && (
+          <div className="flex items-center justify-center">
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-medium shadow-sm">
+              🏷️ {aiUnderstanding.recommended_badge}
+            </span>
+          </div>
+        )}
+
         {/* 适合谁用 */}
         {aiUnderstanding.target_people && (
           <div className="flex items-start gap-3">
@@ -54,6 +63,32 @@ export const AIUnderstandingCard: React.FC<AIUnderstandingCardProps> = ({
             <div className="flex-1">
               <p className="text-xs font-medium text-rose-700 mb-1">{t('lottery.whyGood')}</p>
               <p className="text-sm text-gray-700 leading-relaxed">{aiUnderstanding.selling_angle}</p>
+            </div>
+          </div>
+        )}
+
+        {/* 最佳使用场景 */}
+        {aiUnderstanding.best_scene && (
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-base">🎯</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-blue-700 mb-1">{t('lottery.bestScene')}</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{aiUnderstanding.best_scene}</p>
+            </div>
+          </div>
+        )}
+
+        {/* 本地生活连接 */}
+        {aiUnderstanding.local_life_connection && (
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-base">🏠</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-green-700 mb-1">{t('lottery.localConnection')}</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{aiUnderstanding.local_life_connection}</p>
             </div>
           </div>
         )}

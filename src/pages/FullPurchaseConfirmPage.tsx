@@ -103,10 +103,10 @@ const FullPurchaseConfirmPage: React.FC = () => {
       if (error) throw error;
 
       let inventoryProductData = null;
-      const inventoryProductId = (data as any)?.inventory_product_id;
+      const inventoryProductId = data?.inventory_product_id;
       if (inventoryProductId) {
         const { data: invData } = await supabase
-          .from('inventory_products' as any)
+          .from('inventory_products')
           .select('id, stock, original_price, status')
           .eq('id', inventoryProductId)
           .single();
@@ -255,7 +255,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
         // 订单链路埋点（文档 10.1 事件清单要求）
         // 全款购买成功 = order_create + order_pay_success
         // ============================================================
-        const inventoryProductId = (lottery as any)?.inventory_product_id;
+        const inventoryProductId = lottery?.inventory_product_id;
         const orderTrackBase = {
           page_name: 'full_purchase_confirm',
           entity_type: 'order' as any,
@@ -324,9 +324,9 @@ const FullPurchaseConfirmPage: React.FC = () => {
 
   const title = getLocalizedText(lottery.title_i18n, i18n.language) || lottery.title;
   const inventoryProduct = (lottery as any).inventory_product;
-  const fullPurchasePrice = (lottery as any).full_purchase_price 
+  const fullPurchasePrice = lottery.full_purchase_price 
     || (inventoryProduct?.original_price) 
-    || (lottery as any).original_price 
+    || lottery.original_price 
     || (lottery.ticket_price * lottery.total_tickets);
   const fullPurchaseStock = inventoryProduct ? inventoryProduct.stock : 999999;
 
