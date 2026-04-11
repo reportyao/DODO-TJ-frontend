@@ -20,7 +20,7 @@ import { useUser } from '../contexts/UserContext';
 import BannerCarousel from '../components/BannerCarousel';
 import { SubsidyPoolBanner } from '../components/home/SubsidyPoolBanner';
 import { CategoryGrid } from '../components/home/CategoryGrid';
-import { TopicCard } from '../components/home/TopicCard';
+import { TopicCard, getTopicCardGridSpan, normalizeTopicCardStyle } from '../components/home/TopicCard';
 import { SceneProductCard } from '../components/home/SceneProductCard';
 import { useHomeFeed } from '../hooks/useHomeFeed';
 import { useTrackEvent } from '../hooks/useTrackEvent';
@@ -152,8 +152,10 @@ const SceneHomePage: React.FC = () => {
   const renderFeedItem = (item: HomeFeedItem, index: number) => {
     if (item.type === 'topic') {
       const topicData = item.data as HomeFeedTopicData;
+      const topicStyle = normalizeTopicCardStyle(topicData.card_variant_name, topicData.card_style);
+      const topicSpan = getTopicCardGridSpan(topicStyle);
       return (
-        <div key={`topic-${item.item_id}`} className="col-span-2 px-0">
+        <div key={`topic-${item.item_id}`} className={`${topicSpan} px-0`}>
           <TopicCard topic={topicData} position={index} />
         </div>
       );

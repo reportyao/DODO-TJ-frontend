@@ -4,12 +4,10 @@
  * 在首页 Feed 流中展示专题投放卡片。
  * 支持多种卡片样式（hero / standard / banner / mini），自动曝光埋点。
  *
- * 与现有 ProductList 卡片保持一致的圆角、阴影、间距风格。
- *
  * [审查修复]
- * - 补充 topic_card_click 点击埋点（原实现 onClick 为空函数，
- *   导致行为仪表盘 topic CTR 始终为 0）
- * - 新增独立的 StandardCard 样式，与 HeroCard 区分
+ * - 补充 topic_card_click 点击埋点
+ * - 修复 standard 样式，使其与商品瀑布流卡片保持一致的上图下文双列视觉
+ * - 抽取样式归一化与栅格跨度逻辑，避免首页把四种样式都渲染成同一种宽度
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
@@ -26,10 +24,25 @@ interface TopicCardProps {
   position: number;
 }
 
+type TopicCardStyle = 'hero' | 'standard' | 'banner' | 'mini';
+
+export function normalizeTopicCardStyle(
+  cardVariantName?: string | null,
+  cardStyle?: string | null,
+): TopicCardStyle {
+  const candidate = (cardVariantName || cardStyle || 'banner').trim().toLowerCase();
+  if (candidate === 'hero' || candidate === 'standard' || candidate === 'banner' || candidate === 'mini') {
+    return candidate;
+  }
+  return 'banner';
+}
+
+export function getTopicCardGridSpan(style: TopicCardStyle): 'col-span-1' | 'col-span-2' {
+  return style === 'standard' || style === 'mini' ? 'col-span-1' : 'col-span-2';
+}
+
 /**
  * Hero 样式卡片 - 全宽大图 + 底部渐变文字叠加
- * 用于 feed_position 靠前的重点专题，视觉冲击力最强
- * 宽高比 2:1，全出血大图
  */
 const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }> = ({
   topic,
@@ -40,7 +53,6 @@ const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; sub
 }) => {
   return (
     <div className="relative rounded-2xl overflow-hidden shadow-lg">
-      {/* 封面图 - 2:1 宽高比 */}
       <div className="aspect-[2/1] bg-gray-100" style={{ position: 'relative', overflow: 'hidden' }}>
         {coverUrl ? (
           <LazyImage
@@ -58,7 +70,6 @@ const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; sub
         )}
       </div>
 
-      {/* 渐变遮罩 + 文字 */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 p-4">
         <h3 className="text-white font-bold text-base leading-tight line-clamp-2">
@@ -69,7 +80,6 @@ const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; sub
         )}
       </div>
 
-      {/* 主题色角标 */}
       {topic.theme_color && (
         <div
           className="absolute top-3 left-3 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
@@ -83,9 +93,7 @@ const HeroCard: React.FC<TopicCardProps & { coverUrl: string; title: string; sub
 };
 
 /**
- * Standard 样式卡片 - 左图右文横排布局
- * 与 Hero 的全出血大图不同，Standard 是更紧凑的图文并排卡片
- * 左侧方形封面 + 右侧标题/副标题/标签，适合中等优先级的专题展示
+ * Standard 样式卡片 - 与商品瀑布流卡片一致的上图下文双列布局
  */
 const StandardCard: React.FC<TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }> = ({
   topic,
@@ -95,47 +103,71 @@ const StandardCard: React.FC<TopicCardProps & { coverUrl: string; title: string;
   t,
 }) => {
   return (
-    <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* 左侧封面 - 正方形 */}
-      <div className="w-32 h-32 flex-shrink-0 bg-gray-100 relative overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow relative block">
+      {topic.theme_color && (
+        <div
+          className="absolute top-2 left-2 z-10 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm"
+          style={{ backgroundColor: topic.theme_color }}
+        >
+          {t('home.topic')}
+        </div>
+      )}
+
+      <div
+        style={{
+          paddingBottom: '100%',
+          position: 'relative',
+          backgroundColor: '#f3f4f6',
+          overflow: 'hidden',
+        }}
+      >
         {coverUrl ? (
           <LazyImage
             src={coverUrl}
             alt={title}
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
           />
         ) : (
           <div
-            className="w-full h-full flex items-center justify-center"
+            className="absolute inset-0 flex items-center justify-center"
             style={{ backgroundColor: topic.theme_color || '#f97316' }}
           >
-            <span className="text-white text-sm font-bold">{t('home.topic')}</span>
+            <span className="text-white text-sm font-bold px-3 text-center line-clamp-2">
+              {title}
+            </span>
           </div>
         )}
       </div>
 
-      {/* 右侧文字区域 */}
-      <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
-        <div>
-          {/* 主题标签 */}
-          {topic.theme_color && (
-            <span
-              className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold text-white mb-1.5"
-              style={{ backgroundColor: topic.theme_color }}
-            >
-              {t('home.topic')}
-            </span>
-          )}
-          <h3 className="text-sm font-bold text-gray-800 line-clamp-2 leading-tight">
-            {title}
-          </h3>
-          {subtitle && (
-            <p className="text-[11px] text-gray-500 mt-1 line-clamp-2">{subtitle}</p>
-          )}
+      <div className="p-3">
+        <h3
+          className="text-sm font-medium text-gray-800 line-clamp-2 leading-tight mb-2"
+          style={{ minHeight: '2.5rem' }}
+        >
+          {title}
+        </h3>
+
+        {subtitle && (
+          <p
+            className="text-[11px] text-gray-500 line-clamp-2 mb-2"
+            style={{ minHeight: '2rem' }}
+          >
+            {subtitle}
+          </p>
+        )}
+
+        <div className="flex items-center mt-1">
+          <span className="text-[11px] text-orange-500 font-medium">
+            {t('home.viewDetails')} →
+          </span>
         </div>
-        <span className="inline-block text-[11px] text-orange-500 font-medium mt-1">
-          {t('home.viewDetails')} →
-        </span>
       </div>
     </div>
   );
@@ -143,7 +175,6 @@ const StandardCard: React.FC<TopicCardProps & { coverUrl: string; title: string;
 
 /**
  * Banner 样式卡片 - 横条式
- * 用于中间位置的专题推荐，更紧凑
  */
 const BannerCard: React.FC<TopicCardProps & { coverUrl: string; title: string; subtitle: string; t: (key: string) => string }> = ({
   topic,
@@ -153,8 +184,7 @@ const BannerCard: React.FC<TopicCardProps & { coverUrl: string; title: string; s
   t,
 }) => {
   return (
-    <div className="flex items-center bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-24">
-      {/* 左侧封面 */}
+    <div className="flex items-center bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-24 hover:shadow-md transition-shadow">
       <div className="w-24 h-full flex-shrink-0 bg-gray-100" style={{ position: 'relative', overflow: 'hidden' }}>
         {coverUrl ? (
           <LazyImage
@@ -172,8 +202,7 @@ const BannerCard: React.FC<TopicCardProps & { coverUrl: string; title: string; s
         )}
       </div>
 
-      {/* 右侧文字 */}
-      <div className="flex-1 px-3 py-2">
+      <div className="flex-1 px-3 py-2 min-w-0">
         <h3 className="text-sm font-bold text-gray-800 line-clamp-2 leading-tight">
           {title}
         </h3>
@@ -190,7 +219,6 @@ const BannerCard: React.FC<TopicCardProps & { coverUrl: string; title: string; s
 
 /**
  * Mini 样式卡片 - 紧凑型
- * 用于 feed 流中穿插的小型推荐
  */
 const MiniCard: React.FC<TopicCardProps & { title: string; t: (key: string) => string }> = ({
   topic,
@@ -199,20 +227,20 @@ const MiniCard: React.FC<TopicCardProps & { title: string; t: (key: string) => s
 }) => {
   return (
     <div
-      className="rounded-xl px-4 py-3 shadow-sm border border-gray-100"
+      className="rounded-xl px-4 py-3 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
       style={{
         background: topic.theme_color
           ? `linear-gradient(135deg, ${topic.theme_color}15, ${topic.theme_color}05)`
           : 'linear-gradient(135deg, #fff7ed, #ffffff)',
       }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center space-x-2 min-w-0">
           <div
-            className="w-2 h-2 rounded-full"
+            className="w-2 h-2 rounded-full flex-shrink-0"
             style={{ backgroundColor: topic.theme_color || '#f97316' }}
           />
-          <span className="text-sm font-medium text-gray-800 line-clamp-1">
+          <span className="text-sm font-medium text-gray-800 line-clamp-2">
             {title}
           </span>
         </div>
@@ -226,8 +254,6 @@ const MiniCard: React.FC<TopicCardProps & { title: string; t: (key: string) => s
 
 /**
  * 专题卡片入口组件
- *
- * 根据 card_style 自动选择卡片样式，包裹 Link 和曝光追踪。
  */
 export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
   const { i18n, t } = useTranslation();
@@ -236,15 +262,13 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
 
   const title = getLocalizedText(
     topic.title_i18n as Record<string, string>,
-    lang
+    lang,
   );
   const subtitle = getLocalizedText(
     (topic.subtitle_i18n || {}) as Record<string, string>,
-    lang
+    lang,
   );
 
-  // 获取当前语言的封面图
-  // [BUG-M6 修复] 传递 cover_image_url 支持 AI 生成的封面图
   const coverUrl = getCoverImage(
     {
       cover_image_default: topic.cover_image_default,
@@ -253,10 +277,9 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
       cover_image_tg: topic.cover_image_tg,
       cover_image_url: (topic as any).cover_image_url,
     },
-    lang
+    lang,
   );
 
-  // 曝光追踪
   const exposureRef = useExposureTracker({
     event_name: 'topic_card_expose',
     page_name: 'home',
@@ -267,13 +290,8 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic, position }) => {
     source_placement_id: topic.placement_id,
   });
 
-  // [修复] 优先使用投放级 card_variant_name（管理员在投放管理中设置），
-  // fallback 到专题级 card_style，最终 fallback 到 'banner'
-  const cardStyle = topic.card_variant_name || topic.card_style || 'banner';
+  const cardStyle = normalizeTopicCardStyle(topic.card_variant_name, topic.card_style);
 
-  /**
-   * [修复] 补充 topic_card_click 点击埋点
-   */
   const handleClick = () => {
     track({
       event_name: 'topic_card_click',
