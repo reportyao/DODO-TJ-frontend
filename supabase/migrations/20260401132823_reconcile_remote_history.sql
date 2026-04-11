@@ -1,0 +1,3 @@
+-- 占位迁移：仅用于与线上 migration history 对齐。
+-- 该版本已在线上执行，本地仓库此前缺失对应文件，导致 supabase db push 无法继续。
+-- 不包含任何 SQL 变更。

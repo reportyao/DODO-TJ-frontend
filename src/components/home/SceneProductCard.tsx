@@ -13,6 +13,24 @@
  */
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+
+let lotteryDetailPagePreloadPromise: Promise<unknown> | null = null;
+
+function preloadLotteryDetailPage() {
+  if (!lotteryDetailPagePreloadPromise) {
+    lotteryDetailPagePreloadPromise = import('../../pages/LotteryDetailPage').catch((error) => {
+      console.warn('[SceneProductCard] Failed to preload LotteryDetailPage chunk:', error);
+      lotteryDetailPagePreloadPromise = null;
+      throw error;
+    });
+  }
+
+  return lotteryDetailPagePreloadPromise.catch(() => {
+    // 预加载失败不阻塞用户点击，实际路由跳转时仍会走 lazyWithRetry 的正式重试逻辑
+    return null;
+  });
+}
+
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../../contexts/UserContext';
 import { formatCurrency, getLocalizedText } from '../../lib/utils';
@@ -79,7 +97,13 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = ({
   };
   const lotteryLink = buildLotteryLink();
 
+  const handlePrefetch = React.useCallback(() => {
+    void preloadLotteryDetailPage();
+  }, []);
+
   const handleClick = (e: React.MouseEvent) => {
+    handlePrefetch();
+
     // 上报点击事件
     track({
       event_name: 'product_card_click',
@@ -105,6 +129,9 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = ({
       <Link
         to={lotteryLink}
         onClick={handleClick}
+        onMouseEnter={handlePrefetch}
+        onTouchStart={handlePrefetch}
+        onFocus={handlePrefetch}
         className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow relative block"
       >
         {/* 节省百分比角标 */}

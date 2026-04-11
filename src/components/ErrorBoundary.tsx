@@ -1,4 +1,5 @@
 import React from 'react';
+import { errorMonitor, ErrorType } from '../services/ErrorMonitorService';
 
 const serializeError = (error: any) => {
   if (error instanceof Error) {
@@ -19,11 +20,14 @@ function isChunkLoadError(error: any): boolean {
 
   return (
     message.includes('failed to fetch dynamically imported module') ||
+    message.includes('error loading dynamically imported module') ||
+    message.includes('dynamically imported module') ||
+    message.includes('importing a module script failed') ||
+    message.includes('module script') ||
     message.includes('failed to fetch') ||
     message.includes('network error') ||
     message.includes('load failed') ||
     message.includes('unexpected token') ||
-    message.includes('error loading dynamically imported module') ||
     name.includes('chunkerror') ||
     name.includes('chunkloaderror')
   );
@@ -121,12 +125,27 @@ export class ErrorBoundary extends React.Component<
       return;
     }
 
+    const chunkError = isChunkLoadError(error);
+
     // 捕获错误信息
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    void errorMonitor.captureError({
+      error_type: chunkError ? ErrorType.NETWORK_ERROR : ErrorType.JS_ERROR,
+      error_message: error?.message || 'Unknown React rendering error',
+      error_stack: error?.stack,
+      component_name: 'ErrorBoundary',
+      action_type: chunkError ? 'chunk_render_failure' : 'react_render_failure',
+      action_data: {
+        componentStack: errorInfo?.componentStack,
+        errorName: error?.name,
+        isChunkError: chunkError,
+      },
+    });
+
     this.setState({
       error,
       errorInfo,
-      isChunkError: isChunkLoadError(error)
+      isChunkError: chunkError
     });
   }
 

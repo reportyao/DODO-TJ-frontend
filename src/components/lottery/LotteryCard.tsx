@@ -12,6 +12,8 @@ import {
   getTimeRemaining,
   cn,
   getLocalizedText,
+  getLotteryCountdownTarget,
+  isLotteryPurchasable,
 } from '../../lib/utils'
 
 interface LotteryCardProps {
@@ -39,28 +41,19 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
   className
 }) => {
 	  const { t, i18n } = useTranslation()
-  // 卖罄后显示开奖倒计时，否则显示结束时间倒计时
-  const [timeRemaining, setTimeRemaining] = useState(() => {
-    if (lottery.status === 'SOLD_OUT' && lottery.draw_time) {
-      return getTimeRemaining(lottery.draw_time);
-    }
-    return getTimeRemaining(lottery.end_time);
-  });
+  // 卖罄后显示开奖倒计时，否则仅在 end_time 存在时显示活动倒计时
+  const [timeRemaining, setTimeRemaining] = useState(() => getTimeRemaining(getLotteryCountdownTarget(lottery)));
 
   useEffect(() => {
     const timer = setInterval(() => {
-      if (lottery.status === 'SOLD_OUT' && lottery.draw_time) {
-        setTimeRemaining(getTimeRemaining(lottery.draw_time));
-      } else {
-        setTimeRemaining(getTimeRemaining(lottery.end_time));
-      }
+      setTimeRemaining(getTimeRemaining(getLotteryCountdownTarget(lottery)));
     }, 1000);
 
     return () => clearInterval(timer);
   }, [lottery.end_time, lottery.draw_time, lottery.status]);
 
   const progress = ((lottery.sold_tickets || 0) / (lottery.total_tickets || 1)) * 100
-  const isActive = lottery.status === 'ACTIVE'
+  const isActive = isLotteryPurchasable(lottery)
   const isSoldOut = lottery.status === 'SOLD_OUT'
   const isUpcoming = lottery.status === 'UPCOMING'
 

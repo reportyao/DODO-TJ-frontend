@@ -88,7 +88,9 @@ function App() {
     clearChunkReloadFlag()
 
     // 首屏渲染完成后 2 秒，按优先级静默预加载核心页面
+    // 详情页属于首页高频跳转目标，提前预加载可显著降低首次动态 import 失败概率
     prefetchCorePages([
+      LotteryDetailPage,   // 首页商品卡片的高频目标页
       LotteryPage,         // 商城列表（底部导航第2个）
       WalletPage,          // 钱包（底部导航第3个）
       ProfilePage,         // 个人中心（底部导航第4个）

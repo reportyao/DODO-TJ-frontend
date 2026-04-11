@@ -16,6 +16,7 @@ import {
   getTimeRemaining,
   cn,
   getLocalizedText,
+  isLotteryPurchasable,
 } from '../lib/utils';
 import toast from 'react-hot-toast';
 import { lotteryService } from '../lib/supabase';
@@ -360,7 +361,7 @@ const LotteryDetailPage: React.FC = () => {
   const details = getLocalizedText(lottery.details_i18n, i18n.language);
 
   const progress = (lottery.sold_tickets / lottery.total_tickets) * 100;
-  const isActive = lottery.status === 'ACTIVE';
+  const isActive = isLotteryPurchasable(lottery);
   const isSoldOut = lottery.status === 'SOLD_OUT';
   const isUpcoming = lottery.status === 'UPCOMING' || lottery.status === 'PENDING';
 
@@ -398,7 +399,7 @@ const LotteryDetailPage: React.FC = () => {
     || (lottery.ticket_price * lottery.total_tickets);
   
   // 全款购买是否可用
-  const canFullPurchase = fullPurchaseEnabled && fullPurchaseStock > 0 && lottery.status === 'ACTIVE';
+  const canFullPurchase = fullPurchaseEnabled && fullPurchaseStock > 0 && isActive;
 
   const handlePurchase = async () => {
     // 检查登录状态

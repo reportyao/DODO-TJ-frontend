@@ -101,17 +101,60 @@ export function getLotteryStatusColor(status: string): string {
   return colorMap[status] || 'bg-gray-100 text-gray-700';
 }
 
+export interface LotteryStatusLike {
+  status?: string | null;
+  sold_tickets?: number | null;
+  total_tickets?: number | null;
+  end_time?: string | null;
+  draw_time?: string | null;
+}
+
+// 统一抽奖是否可继续参与的判定逻辑
+export function isLotteryPurchasable(lottery: LotteryStatusLike): boolean {
+  const status = lottery.status ?? '';
+  const soldTickets = lottery.sold_tickets ?? 0;
+  const totalTickets = lottery.total_tickets ?? 0;
+
+  if (status !== 'ACTIVE') {
+    return false;
+  }
+
+  if (totalTickets > 0 && soldTickets >= totalTickets) {
+    return false;
+  }
+
+  return true;
+}
+
+// 统一抽奖倒计时目标：售罄后显示 draw_time，其余场景仅在 end_time 存在时才显示
+export function getLotteryCountdownTarget(lottery: LotteryStatusLike): string | null {
+  if (lottery.status === 'SOLD_OUT' && lottery.draw_time) {
+    return lottery.draw_time;
+  }
+
+  return lottery.end_time || null;
+}
+
 // 获取剩余时间
 // Get time remaining as object with detailed breakdown
-export function getTimeRemaining(endTime: string): {
+export function getTimeRemaining(endTime?: string | null): {
   total: number;
   days: number;
   hours: number;
   minutes: number;
   seconds: number;
 } {
+  if (!endTime) {
+    return { total: 0, days: 0, hours: 0, minutes: 0, seconds: 0 };
+  }
+
   const now = new Date().getTime();
   const end = new Date(endTime).getTime();
+
+  if (Number.isNaN(end)) {
+    return { total: 0, days: 0, hours: 0, minutes: 0, seconds: 0 };
+  }
+
   const diff = end - now;
 
   if (diff <= 0) {

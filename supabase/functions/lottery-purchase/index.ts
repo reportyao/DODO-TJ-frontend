@@ -339,13 +339,8 @@ Deno.serve(async (req) => {
       throw new Error(`商品未在售中，当前状态: ${lottery.status}`);
     }
 
-    // ✅ 检查活动是否已过期（end_time 已过但 status 仍为 ACTIVE 的情况）
-    if (lottery.end_time) {
-      const endTime = new Date(lottery.end_time);
-      if (endTime < new Date()) {
-        throw new Error('该活动已结束');
-      }
-    }
+    // 注意：end_time 已在业务上废弃，不再作为活动结束判定条件。
+    // 活动是否可参与仅以 status 与剩余份数为准，避免旧数据中的历史 end_time 误杀 ACTIVE 场次。
 
     // ✅ 检查是否有足够的票（预检查，实际检查在RPC函数中）
     if (lottery.sold_tickets + quantity > lottery.total_tickets) {

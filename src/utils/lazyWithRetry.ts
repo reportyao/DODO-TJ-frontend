@@ -12,6 +12,7 @@
  */
 
 import { lazy, type ComponentType } from 'react'
+import { errorMonitor } from '../services/ErrorMonitorService'
 
 /** 重试配置 */
 const MAX_RETRIES = 3
@@ -36,18 +37,40 @@ function isChunkLoadError(error: unknown): boolean {
   return (
     // Vite/Webpack 动态 import 失败
     message.includes('failed to fetch dynamically imported module') ||
+    message.includes('error loading dynamically imported module') ||
+    message.includes('dynamically imported module') ||
+    // Safari / iOS 常见模块脚本错误
+    message.includes('importing a module script failed') ||
+    message.includes('module script') ||
     // 通用网络错误
     message.includes('failed to fetch') ||
     message.includes('network error') ||
     message.includes('load failed') ||
     // chunk 文件返回 HTML（404 fallback 场景）
     message.includes('unexpected token') ||
-    // Firefox 特有的错误
-    message.includes('error loading dynamically imported module') ||
     // 通用 chunk 加载错误名称
     name.includes('chunkerror') ||
     name.includes('chunkloaderror')
   )
+}
+
+function reportChunkImportFailure(error: unknown, attempt: number, retries: number) {
+  const errorMessage = error instanceof Error ? error.message : String(error)
+  const errorStack = error instanceof Error ? error.stack : undefined
+
+  void errorMonitor.captureError({
+    error_message: `[lazyWithRetry] Import attempt ${attempt}/${retries + 1} failed: ${errorMessage}`,
+    error_stack: errorStack,
+    component_name: 'lazyWithRetry',
+    action_type: 'route_lazy_import_failed',
+    action_data: {
+      attempt,
+      max_attempts: retries + 1,
+      pathname: typeof window !== 'undefined' ? window.location.pathname : '',
+      href: typeof window !== 'undefined' ? window.location.href : '',
+      is_chunk_error: isChunkLoadError(error),
+    },
+  })
 }
 
 /**
@@ -80,6 +103,7 @@ async function importWithRetry<T>(
         `[lazyWithRetry] Import attempt ${attempt + 1}/${retries + 1} failed:`,
         error instanceof Error ? error.message : error
       )
+      reportChunkImportFailure(error, attempt + 1, retries)
 
       if (isLastAttempt) {
         // 所有重试都失败了
