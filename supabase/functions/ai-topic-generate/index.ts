@@ -118,14 +118,20 @@ async function runProductUnderstanding(
   localContextHints: string[],
   lexiconEntries: any[]
 ): Promise<any> {
-  // 构建商品信息摘要
+  // 构建商品信息摘要（如果已有 ai_understanding 则附带到摘要中）
   const productSummaries = products.map((p, i) => {
     const name = p.name_i18n?.zh || p.name_i18n?.ru || p.name || "未知商品";
     const desc = p.description_i18n?.zh || p.description_i18n?.ru || "";
     const categories = (p.categories || []).map((c: any) => c.name_i18n?.zh || c.code).join("、");
     const tags = (p.tags || []).map((t: any) => t.name_i18n?.zh || t.code).join("、");
     const price = p.original_price || p.active_lottery?.ticket_price || "未知";
-    return `商品${i + 1}(ID: ${p.id}): ${name}\n  描述: ${desc}\n  分类: ${categories || "无"}\n  标签: ${tags || "无"}\n  价格: ${price} сомони`;
+    let summary = `商品${i + 1}(ID: ${p.id}): ${name}\n  描述: ${desc}\n  分类: ${categories || "无"}\n  标签: ${tags || "无"}\n  价格: ${price} сомони`;
+    // 如果已有 AI 理解数据，附带到摘要中供 AI 参考复用
+    if (p.ai_understanding) {
+      const u = p.ai_understanding;
+      summary += `\n  [已有AI理解] 适合谁: ${u.target_people || "未知"} | 好在哪: ${u.selling_angle || "未知"} | 场景: ${u.best_scene || "未知"} | 本地关联: ${u.local_life_connection || "未知"} | 标签: ${u.recommended_badge || "未知"}`;
+    }
+    return summary;
   }).join("\n\n");
 
   // 构建词库参考
@@ -158,6 +164,8 @@ ${productSummaries}
 ${lexiconRef}
 
 ${localContextHints.length > 0 ? `【本地生活提示】\n运营提供的本地化关键词：${localContextHints.join("、")}\n请在分析中优先考虑这些本地生活场景和习惯。\n` : ""}
+重要：部分商品已标注“[已有AI理解]”，请直接复用这些已有的理解数据作为该商品的 products_analysis 输出（可根据本次专题场景微调）。没有标注的商品则需要从头分析。
+
 请对每个商品进行深度理解分析，并输出以下 JSON 结构：
 {
   "overall_theme": "这组商品整体适合什么样的生活主题（一句话）",

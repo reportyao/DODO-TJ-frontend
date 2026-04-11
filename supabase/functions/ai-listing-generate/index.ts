@@ -110,7 +110,14 @@ async function callQwenVL(
     {"zh": "中文卖点2", "detail": "补充细节"},
     {"zh": "中文卖点3", "detail": "补充细节"}
   ],
-  "target_audience": "目标人群描述"
+  "target_audience": "目标人群描述",
+  "ai_understanding": {
+    "target_people": "最适合的人群描述（具体到人群特征和生活状态，如：年轻妈妈，尤其冬天带娃常坐地板、手脚冰凉的女性）",
+    "selling_angle": "不是功能参数，而是'为什么这个人在这个场景下会觉得这个东西好用'（如：插上电十分钟就发热，比烧热水灌热水袋快，孩子睡着后你还能坐着缝点小衣服）",
+    "best_scene": "最自然的使用画面，具体到动作和场景（如：晚上坐在地毯上给孩子讲故事，脚伸进暖脚宝里，脚心一热，整个人都松下来）",
+    "local_life_connection": "与塔吉克斯坦本地生活的真实连接点（如：塔吉克家庭席地而坐吃饭喝茶是常态，冬天集中供暖不稳定）",
+    "recommended_badge": "推荐角标文案，4-6个字（如：冬天必备、做饭省心、待客体面）"
+  }
 }
 
 商品基础信息：
@@ -118,6 +125,12 @@ async function callQwenVL(
 - 名称：${productName}
 - 规格：${specs || "未提供"}
 - 补充备注：${notes || "无"}
+
+要求：
+1. ai_understanding 中所有内容必须用中文输出
+2. "best_scene" 必须是具体的生活画面，不能是抽象描述
+3. "selling_angle" 要说人话，像朋友推荐一样，不要用"高品质""甄选"等空泛词
+4. "local_life_connection" 必须引用真实的塔吉克生活习惯
 
 请只输出JSON，不要添加任何其他文字说明。`,
   });
@@ -1095,6 +1108,7 @@ serve(async (req) => {
               background_images: [],
               original_images: image_urls,
               material_guess: analysis.material_guess || null,
+              analysis: analysis,
             },
             message: "抠图失败，可使用原始图片上架",
             duration_ms: duration,
@@ -1115,6 +1129,7 @@ serve(async (req) => {
               background_images: backgroundImages,
               original_images: image_urls,
               material_guess: analysis.material_guess || null,
+              analysis: analysis,
             },
             duration_ms: duration,
           });
