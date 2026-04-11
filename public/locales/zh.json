@@ -197,6 +197,8 @@
     "fullPurchaseInsufficientBalance": "积分余额不足，需要 {{required}} 积分，当前余额 {{current}} 积分",
     "specifications": "规格",
     "material": "材质",
+    "suitableFor": "适合谁用",
+    "whyGood": "好在哪儿",
     "winningCodeCopied": "参与码已复制",
     "willGetParticipationCodes": "您将获得的参与码",
     "participationCodeHint": "购买后您将获得以上参与码，可用于开奖抽取",

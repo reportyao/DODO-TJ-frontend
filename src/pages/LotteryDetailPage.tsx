@@ -24,6 +24,7 @@ import { motion } from 'framer-motion';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTrackEvent } from '../hooks/useTrackEvent';
+import { AIUnderstandingCard } from '../components/AIUnderstandingCard';
 
 type Lottery = Tables<'lotteries'>;
 type Showoff = Tables<'showoffs'> & {
@@ -358,7 +359,16 @@ const LotteryDetailPage: React.FC = () => {
 
   const specifications = getLocalizedText(lottery.specifications_i18n, i18n.language);
   const material = getLocalizedText(lottery.material_i18n, i18n.language);
-  const details = getLocalizedText(lottery.details_i18n, i18n.language);
+  const details = getLocalizedText((lottery as any).details_i18n, i18n.language);
+
+  // 提取 AI 商品理解数据
+  const aiUnderstanding = (lottery as any).ai_understanding as {
+    target_people?: string;
+    selling_angle?: string;
+    best_scene?: string;
+    local_life_connection?: string;
+    recommended_badge?: string;
+  } | null;
 
   const progress = (lottery.sold_tickets / lottery.total_tickets) * 100;
   const isActive = isLotteryPurchasable(lottery);
@@ -1152,10 +1162,17 @@ const LotteryDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* Product Details - 只在有内容时显示 */}
-        {(specifications || material || details) && (
+        {/* 商品理解模块 — 温馨感性风格 */}
+        <AIUnderstandingCard
+          aiUnderstanding={aiUnderstanding}
+          specifications={specifications}
+          material={material}
+          details={details}
+        />
+
+        {/* 降级兼容：如果没有 AI 理解数据，保留原有的规格/材质/详情展示 */}
+        {!aiUnderstanding && (specifications || material || details) && (
           <div className="bg-white rounded-xl shadow-md p-4 space-y-4">
-            {/* Specifications and Material */}
             {(specifications || material) && (
               <div className="grid grid-cols-2 gap-4 text-sm">
                 {specifications && (
@@ -1172,8 +1189,6 @@ const LotteryDetailPage: React.FC = () => {
                 )}
               </div>
             )}
-
-            {/* Rich Text Details */}
             {details && (
               <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(details) }} />
             )}

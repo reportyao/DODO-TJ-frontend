@@ -185,6 +185,8 @@
     "fullPurchaseInsufficientBalance": "Сикка ҳои хушбахтӣ кофӣ нест, зарур аст {{required}}, мавҷуда {{current}}",
     "specifications": "Тавсифот",
     "material": "Масолеҳ",
+    "suitableFor": "Барои кӣ мувофиқ аст",
+    "whyGood": "Чӣ хубӣ дорад",
     "winningCodeCopied": "Рамзи иштирок нусхабардорӣ шуд",
     "willGetParticipationCodes": "Рамзҳои иштироки шумо",
     "participationCodeHint": "Пас аз харид, шумо рамзҳои иштироки дар боло зикршударо мегиред, ки онҳоро барои иштирок дар бозӣ истифода бурдан мумкин аст.",

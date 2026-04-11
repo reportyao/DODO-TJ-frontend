@@ -185,6 +185,8 @@
     "fullPurchaseInsufficientBalance": "Недостаточно бонусов, требуется {{required}}, текущий баланс {{current}}",
     "specifications": "Характеристики",
     "material": "Материал",
+    "suitableFor": "Для кого подходит",
+    "whyGood": "Чем хорош",
     "winningCodeCopied": "Выигрышный код скопирован",
     "willGetParticipationCodes": "Ваши коды участия",
     "participationCodeHint": "После покупки вы получите вышеуказанные коды участия, которые можно использовать для розыгрыша",

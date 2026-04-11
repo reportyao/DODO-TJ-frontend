@@ -453,14 +453,14 @@ serve(async (req) => {
       // 新一轮的结束时间 = 当前时间 + 7天
       const newEndTime = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      // 构建新一轮数据，严格只包含 DB 中实际存在的 40 列
-      // 已验证的列: actual_draw_time, algorithm_id, created_at, currency, description,
-      //   description_i18n, draw_algorithm_data, draw_time, drawn_at, end_time,
-      //   full_purchase_enabled, full_purchase_price, id, image_url, image_urls,
-      //   inventory_product_id, inventory_product_sku, is_featured, material_i18n,
-      //   max_per_user, original_price, period, price_comparisons, product_id,
-      //   sold_tickets, sort_order, specifications_i18n, start_time, status,
-      //   ticket_price, title, title_i18n, total_tickets, unlimited_purchase,
+      // 构建新一轮数据，严格只包含 DB 中实际存在的列
+      // 已验证的列: actual_draw_time, ai_understanding, algorithm_id, created_at, currency,
+      //   description, description_i18n, draw_algorithm_data, draw_time, drawn_at,
+      //   end_time, full_purchase_enabled, full_purchase_price, id, image_url,
+      //   image_urls, inventory_product_id, inventory_product_sku, is_featured,
+      //   material_i18n, max_per_user, original_price, period, price_comparisons,
+      //   product_id, sold_tickets, sort_order, specifications_i18n, start_time,
+      //   status, ticket_price, title, title_i18n, total_tickets, unlimited_purchase,
       //   updated_at, vrf_proof, vrf_timestamp, winning_numbers, winning_ticket_number,
       //   winning_user_id
       const newRound: Record<string, unknown> = {
@@ -502,6 +502,7 @@ serve(async (req) => {
         winning_ticket_number: null,
         winning_user_id: null,
         algorithm_id: lottery.algorithm_id || null,
+        ai_understanding: lottery.ai_understanding || null,
         created_at: now,
         updated_at: now,
       };
