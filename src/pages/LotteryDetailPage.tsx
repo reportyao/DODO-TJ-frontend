@@ -162,12 +162,13 @@ const LotteryDetailPage: React.FC = () => {
       if (error) throw error;
 
       // 如果有关联的库存商品ID，单独查询库存商品信息
+      // 兼容历史 lotteries 记录：商品“说人话”文案、规格材质等新字段优先从 lotteries 读取，缺失时回退到库存商品
       let inventoryProductData = null;
       const inventoryProductId = data?.inventory_product_id;
       if (inventoryProductId) {
         const { data: invData } = await supabase
           .from('inventory_products')
-          .select('id, stock, original_price, status')
+          .select('id, stock, original_price, status, name, name_i18n, description, description_i18n, specifications, specifications_i18n, material, material_i18n, details, details_i18n, ai_understanding')
           .eq('id', inventoryProductId)
           .single();
         inventoryProductData = invData;
@@ -345,25 +346,44 @@ const LotteryDetailPage: React.FC = () => {
     return <div className="text-center py-10 text-red-500">{t('lottery.notFound')}</div>;
   }
 
-  // 处理 title：优先使用 title_i18n，如果为空则尝试解析 title 是否为 JSON 字符串
+  const inventoryProduct = (lottery as Lottery & { inventory_product?: any }).inventory_product;
+
+  // 处理 title：优先使用 lotteries 新字段，缺失时回退到关联库存商品
   let title = getLocalizedText(lottery.title_i18n, i18n.language);
   if (!title) {
-    title = getLocalizedText(lottery.title as any, i18n.language) || lottery.title;
+    title = getLocalizedText(lottery.title as any, i18n.language)
+      || lottery.title
+      || getLocalizedText(inventoryProduct?.name_i18n, i18n.language)
+      || inventoryProduct?.name
+      || '';
   }
 
-  // 处理 description：优先使用 description_i18n，如果为空则尝试解析 description 是否为 JSON 字符串
+  // 处理 description：优先使用 lotteries 新字段，缺失时回退到关联库存商品
   let description = getLocalizedText(lottery.description_i18n, i18n.language);
   if (!description) {
-    description = getLocalizedText(lottery.description as any, i18n.language) || lottery.description || '';
+    description = getLocalizedText(lottery.description as any, i18n.language)
+      || lottery.description
+      || getLocalizedText(inventoryProduct?.description_i18n, i18n.language)
+      || inventoryProduct?.description
+      || '';
   }
 
-  const specifications = getLocalizedText(lottery.specifications_i18n, i18n.language);
-  const material = getLocalizedText(lottery.material_i18n, i18n.language);
-  // details_i18n 字段在 lotteries 表中不存在，已移除
-  const details = '';
+  const specifications = getLocalizedText(lottery.specifications_i18n, i18n.language)
+    || getLocalizedText(inventoryProduct?.specifications_i18n, i18n.language)
+    || inventoryProduct?.specifications
+    || '';
+  const material = getLocalizedText(lottery.material_i18n, i18n.language)
+    || getLocalizedText(inventoryProduct?.material_i18n, i18n.language)
+    || inventoryProduct?.material
+    || '';
+  const details = getLocalizedText((lottery as any).details_i18n, i18n.language)
+    || (lottery as any).details
+    || getLocalizedText(inventoryProduct?.details_i18n, i18n.language)
+    || inventoryProduct?.details
+    || '';
 
-  // 提取 AI 商品理解数据
-  const aiUnderstanding = lottery.ai_understanding as {
+  // 提取 AI 商品理解数据：优先 lotteries，同步兼容历史商品回退到 inventory_products
+  const aiUnderstanding = (lottery.ai_understanding || inventoryProduct?.ai_understanding || null) as {
     target_people?: string;
     selling_angle?: string;
     best_scene?: string;
@@ -391,9 +411,6 @@ const LotteryDetailPage: React.FC = () => {
 
   // 计算全款购买价格和库存
   const remainingTickets = lottery.total_tickets - lottery.sold_tickets;
-  
-  // 获取关联的库存商品信息
-  const inventoryProduct = (lottery as any).inventory_product;
   
   // 全款购买是否启用
   const fullPurchaseEnabled = lottery.full_purchase_enabled !== false;
