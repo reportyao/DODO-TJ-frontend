@@ -227,7 +227,7 @@ async function saveChatHistory(userId: string, userMessage: string, aiResponse: 
   }
 }
 
-// 调用阿里云通义千问
+// 调用阿里云通义千问（已升级为 OpenAI 兼容格式 + qwen3.5-plus 模型）
 async function callQwenAI(userMessage: string): Promise<string> {
   const apiKey = Deno.env.get('DASHSCOPE_API_KEY');
   
@@ -236,7 +236,7 @@ async function callQwenAI(userMessage: string): Promise<string> {
   }
 
   const response = await fetch(
-    'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
+    'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
     {
       method: 'POST',
       headers: {
@@ -244,19 +244,14 @@ async function callQwenAI(userMessage: string): Promise<string> {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'qwen-plus',
-        input: {
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: userMessage }
-          ]
-        },
-        parameters: {
-          max_tokens: 1600,
-          temperature: 0.7,
-          top_p: 0.8,
-          result_format: 'message'
-        }
+        model: 'qwen3.5-plus',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userMessage }
+        ],
+        max_tokens: 1600,
+        temperature: 0.7,
+        top_p: 0.8,
       })
     }
   );
@@ -269,8 +264,8 @@ async function callQwenAI(userMessage: string): Promise<string> {
 
   const data = await response.json();
   
-  if (data?.output?.choices?.[0]?.message?.content) {
-    let aiResponse = data.output.choices[0].message.content;
+  if (data?.choices?.[0]?.message?.content) {
+    let aiResponse = data.choices[0].message.content;
     // 限制长度
     if (aiResponse.length > 1600) {
       aiResponse = aiResponse.substring(0, 800) + '...';

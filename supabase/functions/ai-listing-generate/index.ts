@@ -5,7 +5,7 @@
  *
  * 执行链路：
  *   Step A: 图片理解 (qwen-vl-max)       → 分析商品图片，提取特征
- *   Step B: 三语文案生成 (qwen-plus)      → 生成俄/中/塔吉克语电商文案
+ *   Step B: 三语文案生成 (qwen3.5-plus)      → 生成俄/中/塔吉克语电商文案
  *   Step C: 商品分割 (SegmentCommodity)   → 去除背景，输出 RGBA PNG
  *   Step D: 背景生成 (wanx-background-generation-v2) × 3 → 生成 3 种风格背景图
  *
@@ -153,7 +153,7 @@ async function callQwenVL(
 }
 
 // ============================================================
-// Step B: 三语文案生成 (qwen-plus)
+// Step B: 三语文案生成 (qwen3.5-plus)
 // ============================================================
 
 async function callQwenPlus(
@@ -206,7 +206,7 @@ async function callQwenPlus(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "qwen-plus",
+        model: "qwen3.5-plus",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.5,
       }),
@@ -215,13 +215,13 @@ async function callQwenPlus(
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`qwen-plus 调用失败 (HTTP ${response.status}): ${errText}`);
+    throw new Error(`qwen3.5-plus 调用失败 (HTTP ${response.status}): ${errText}`);
   }
 
   const result = await response.json();
   const rawContent = result.choices?.[0]?.message?.content;
   if (!rawContent) {
-    throw new Error("qwen-plus 返回内容为空");
+    throw new Error("qwen3.5-plus 返回内容为空");
   }
 
   return parseAIJson(rawContent);

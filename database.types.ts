@@ -1025,6 +1025,7 @@ export type Database = {
       lotteries: {
         Row: {
           actual_draw_time: string | null
+          ai_understanding: Json | null
           created_at: string
           currency: Database["public"]["Enums"]["Currency"]
           description: string | null
@@ -1059,6 +1060,7 @@ export type Database = {
         }
         Insert: {
           actual_draw_time?: string | null
+          ai_understanding?: Json | null
           created_at?: string
           currency?: Database["public"]["Enums"]["Currency"]
           description?: string | null
@@ -1093,6 +1095,7 @@ export type Database = {
         }
         Update: {
           actual_draw_time?: string | null
+          ai_understanding?: Json | null
           created_at?: string
           currency?: Database["public"]["Enums"]["Currency"]
           description?: string | null
