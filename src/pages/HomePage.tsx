@@ -86,7 +86,7 @@ const HomePage: React.FC = () => {
     total_tickets: l.total_tickets,
     status: l.status,
     created_at: l.created_at,
-    price_comparisons: l.price_comparisons || null,
+    price_comparisons: (l.price_comparisons || null) as { price: number; platform: string }[] | null,
   }));
 
   // 加载中：仅在用户状态初始化期间显示（不阻塞商品列表）
