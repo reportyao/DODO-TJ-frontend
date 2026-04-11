@@ -362,7 +362,7 @@ const LotteryDetailPage: React.FC = () => {
   const details = getLocalizedText((lottery as any).details_i18n, i18n.language);
 
   // 提取 AI 商品理解数据
-  const aiUnderstanding = (lottery as any).ai_understanding as {
+  const aiUnderstanding = lottery.ai_understanding as {
     target_people?: string;
     selling_angle?: string;
     best_scene?: string;
