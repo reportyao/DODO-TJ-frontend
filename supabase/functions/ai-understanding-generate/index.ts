@@ -466,27 +466,29 @@ serve(async (req: Request) => {
       price,
     });
 
-    const tgUnderstanding = await generateDirectUnderstandingByLanguage({
-      apiKey: dashscopeApiKey,
-      language: "tg",
-      semanticFacts,
-      name,
-      desc,
-      specs,
-      material,
-      price,
-    });
-
-    const ruUnderstanding = await generateDirectUnderstandingByLanguage({
-      apiKey: dashscopeApiKey,
-      language: "ru",
-      semanticFacts,
-      name,
-      desc,
-      specs,
-      material,
-      price,
-    });
+    // 并行生成塔吉克语和俄语文案以减少总耗时
+    const [tgUnderstanding, ruUnderstanding] = await Promise.all([
+      generateDirectUnderstandingByLanguage({
+        apiKey: dashscopeApiKey,
+        language: "tg",
+        semanticFacts,
+        name,
+        desc,
+        specs,
+        material,
+        price,
+      }),
+      generateDirectUnderstandingByLanguage({
+        apiKey: dashscopeApiKey,
+        language: "ru",
+        semanticFacts,
+        name,
+        desc,
+        specs,
+        material,
+        price,
+      }),
+    ]);
 
     const zhUnderstanding = await generateChineseBackofficeUnderstanding({
       apiKey: dashscopeApiKey,
