@@ -4,16 +4,18 @@
  * 分批处理所有缺少 ai_understanding 的 inventory_products，
  * 逐个调用 AI 生成理解数据并保存。支持限速和断点续传。
  *
+ * 新版链路：
+ *   1. 先生成俄语商品理解
+ *   2. 再以俄语为标准翻译为中文和塔吉克语
+ *   3. 以多语言嵌套结构写回 inventory_products / lotteries
+ *
  * 请求体：
  *   {
- *     batch_size?: number,    // 每批处理数量，默认 10
- *     offset?: number,        // 起始偏移量，默认 0
- *     delay_ms?: number,      // 每个商品之间的延迟（毫秒），默认 2000
- *     force_regenerate?: boolean  // 是否强制重新生成所有商品（忽略已有数据），默认 false
+ *     batch_size?: number,
+ *     offset?: number,
+ *     delay_ms?: number,
+ *     force_regenerate?: boolean
  *   }
- *
- * 认证：x-admin-session-token → verify_admin_session RPC
- * 响应：JSON（返回处理结果摘要）
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -25,16 +27,25 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// ============================================================
-// 工具函数
-// ============================================================
+const AI_UNDERSTANDING_FIELDS = [
+  "target_people",
+  "selling_angle",
+  "best_scene",
+  "local_life_connection",
+  "recommended_badge",
+] as const;
 
-/**
- * 解析 AI 返回的 JSON（可能被 markdown 代码块包裹）
- */
+type AIUnderstandingField = (typeof AI_UNDERSTANDING_FIELDS)[number];
+type LocalizedValue = { ru: string; zh: string; tg: string };
+type LocalizedAIUnderstanding = Record<AIUnderstandingField, LocalizedValue> & {
+  generated_at: string;
+  generated_by: string;
+  model_used: string;
+  source_language: "ru";
+};
+
 function parseAIJson(text: string): any {
   let cleaned = text.trim();
-  // 处理 ```json ... ``` 或 ``` ... ``` 包裹
   if (cleaned.startsWith("```json")) {
     cleaned = cleaned.slice(7);
   } else if (cleaned.startsWith("```")) {
@@ -45,7 +56,6 @@ function parseAIJson(text: string): any {
   }
   cleaned = cleaned.trim();
 
-  // 处理 qwen3.5 可能输出的 <think>...</think> 标签
   const thinkEnd = cleaned.indexOf("</think>");
   if (thinkEnd !== -1) {
     cleaned = cleaned.slice(thinkEnd + 8).trim();
@@ -54,25 +64,83 @@ function parseAIJson(text: string): any {
   return JSON.parse(cleaned);
 }
 
-/**
- * 为单个商品生成 AI 理解数据
- * 支持视觉模型（有图片时）和纯文本模型（无图片时）
- */
-async function generateUnderstanding(
-  apiKey: string,
-  product: any
-): Promise<any> {
-  const name = product.name_i18n?.zh || product.name || "未知商品";
-  const desc = product.description_i18n?.zh || product.description || "";
-  const specs =
-    product.specifications_i18n?.zh || product.specifications || "";
-  const material = product.material_i18n?.zh || product.material || "";
+function cleanText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeLocalizedAIUnderstanding(payload: any, meta: {
+  generated_by: string;
+  model_used: string;
+}): LocalizedAIUnderstanding {
+  const normalized = {} as Record<AIUnderstandingField, LocalizedValue>;
+
+  for (const field of AI_UNDERSTANDING_FIELDS) {
+    const raw = payload?.[field];
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      normalized[field] = {
+        ru: cleanText(raw.ru),
+        zh: cleanText(raw.zh),
+        tg: cleanText(raw.tg),
+      };
+    } else {
+      const fallback = cleanText(raw);
+      normalized[field] = {
+        ru: fallback,
+        zh: fallback,
+        tg: fallback,
+      };
+    }
+  }
+
+  return {
+    ...normalized,
+    generated_at: new Date().toISOString(),
+    generated_by: meta.generated_by,
+    model_used: meta.model_used,
+    source_language: "ru",
+  };
+}
+
+async function callDashscope(apiKey: string, model: string, messages: any[], temperature: number) {
+  const response = await fetch(
+    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`${model} 调用失败 (HTTP ${response.status}): ${errText}`);
+  }
+
+  const result = await response.json();
+  const rawContent = result.choices?.[0]?.message?.content;
+  if (!rawContent) {
+    throw new Error(`${model} 返回内容为空`);
+  }
+
+  return parseAIJson(rawContent);
+}
+
+async function generateRussianUnderstanding(apiKey: string, product: any) {
+  const name = product.name_i18n?.ru || product.name_i18n?.zh || product.name || "Неизвестный товар";
+  const desc = product.description_i18n?.ru || product.description_i18n?.zh || product.description || "";
+  const specs = product.specifications_i18n?.ru || product.specifications_i18n?.zh || product.specifications || "";
+  const material = product.material_i18n?.ru || product.material_i18n?.zh || product.material || "";
   const price = product.original_price || 0;
-  const imageUrls: string[] =
-    product.image_urls || (product.image_url ? [product.image_url] : []);
+  const imageUrls: string[] = product.image_urls || (product.image_url ? [product.image_url] : []);
 
   if (imageUrls.length > 0) {
-    // ── 视觉模型路径 ──
     const images = imageUrls.slice(0, 3);
     const content: any[] = images.map((url: string) => ({
       type: "image_url",
@@ -81,123 +149,83 @@ async function generateUnderstanding(
 
     content.push({
       type: "text",
-      text: `你是一名深入了解塔吉克斯坦本地生活的商品分析师。请分析以下商品图片和信息，输出它在塔吉克本地日常生活中最真实、最自然的使用情境。
+      text: `你是一名服务于塔吉克斯坦电商平台的商品分析师，目标受众主要使用俄语。请结合商品图片和基础信息，只输出高质量俄语商品理解结果。
 
 【商品信息】
 - 名称：${name}
-- 描述：${desc}
+- 描述：${desc || "未提供"}
 - 规格：${specs || "未提供"}
 - 材质：${material || "未提供"}
 - 价格：${price} сомони
 
-请输出以下 JSON 结构：
+请只输出以下 JSON：
 {
-  "target_people": "最适合的人群描述（具体到人群特征和生活状态）",
-  "selling_angle": "为什么这个人在这个场景下会觉得这个东西好用，用大白话说清楚",
-  "best_scene": "最自然的使用画面，具体到动作和场景",
-  "local_life_connection": "与塔吉克斯坦本地生活的真实连接点",
-  "recommended_badge": "推荐角标文案，4-6个字"
+  "target_people": "俄语：最适合的人群描述，具体到人群特征和生活状态",
+  "selling_angle": "俄语：为什么这个人在这个场景下会觉得这个东西好用，要像熟人推荐一样自然",
+  "best_scene": "俄语：最自然的使用画面，具体到动作和场景",
+  "local_life_connection": "俄语：与塔吉克斯坦本地生活的真实连接点",
+  "recommended_badge": "俄语：推荐角标短语，2-5个词"
 }
 
-要求：
-1. 所有内容必须用中文输出
-2. "best_scene" 必须是具体的生活画面，不能是抽象描述
-3. "selling_angle" 要说人话，像朋友推荐一样，不要用"高品质""甄选"等空泛词
-4. "local_life_connection" 必须引用真实的塔吉克生活习惯
-5. 请只输出 JSON，不要添加任何其他文字说明`,
+要求：所有字段必须是自然、准确、适合塔吉克斯坦市场的俄语表达，只输出 JSON。`,
     });
 
-    const response = await fetch(
-      "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "qwen-vl-max",
-          messages: [{ role: "user", content }],
-          temperature: 0.4,
-        }),
-      }
-    );
+    return await callDashscope(apiKey, "qwen-vl-max", [{ role: "user", content }], 0.4);
+  }
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(
-        `AI 视觉模型调用失败 (HTTP ${response.status}): ${errText}`
-      );
-    }
-
-    const result = await response.json();
-    const rawContent = result.choices?.[0]?.message?.content;
-    if (!rawContent) throw new Error("AI 返回内容为空");
-
-    return parseAIJson(rawContent);
-  } else {
-    // ── 纯文本模型路径 ──
-    const prompt = `你是一名深入了解塔吉克斯坦本地生活的商品分析师。请分析以下商品，输出它在塔吉克本地日常生活中最真实、最自然的使用情境。
+  const prompt = `你是一名服务于塔吉克斯坦电商平台的商品分析师，目标受众主要使用俄语。请根据以下商品信息，输出高质量俄语商品理解文案。
 
 【商品信息】
 - 名称：${name}
-- 描述：${desc}
+- 描述：${desc || "未提供"}
 - 规格：${specs || "未提供"}
 - 材质：${material || "未提供"}
 - 价格：${price} сомони
 
-请输出以下 JSON 结构：
+请只输出以下 JSON：
 {
-  "target_people": "最适合的人群描述（具体到人群特征和生活状态）",
-  "selling_angle": "为什么这个人在这个场景下会觉得这个东西好用，用大白话说清楚",
-  "best_scene": "最自然的使用画面，具体到动作和场景",
-  "local_life_connection": "与塔吉克斯坦本地生活的真实连接点",
-  "recommended_badge": "推荐角标文案，4-6个字"
+  "target_people": "俄语：最适合的人群描述，具体到人群特征和生活状态",
+  "selling_angle": "俄语：为什么这个人在这个场景下会觉得这个东西好用，要像熟人推荐一样自然",
+  "best_scene": "俄语：最自然的使用画面，具体到动作和场景",
+  "local_life_connection": "俄语：与塔吉克斯坦本地生活的真实连接点",
+  "recommended_badge": "俄语：推荐角标短语，2-5个词"
 }
 
-要求：用中文输出，说人话，不要空泛营销词。请只输出 JSON。`;
+要求：只输出 JSON，不要添加任何说明。`;
 
-    const response = await fetch(
-      "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "qwen3.5-plus",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.4,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`AI 调用失败 (HTTP ${response.status}): ${errText}`);
-    }
-
-    const result = await response.json();
-    const rawContent = result.choices?.[0]?.message?.content;
-    if (!rawContent) throw new Error("AI 返回内容为空");
-
-    return parseAIJson(rawContent);
-  }
+  return await callDashscope(apiKey, "qwen3.5-plus", [{ role: "user", content: prompt }], 0.4);
 }
 
-// ============================================================
-// 主处理函数
-// ============================================================
+async function translateUnderstandingFromRu(apiKey: string, ruUnderstanding: Record<string, unknown>) {
+  const prompt = `你是一名精通俄语、中文、塔吉克语的电商本地化编辑。下面给你一组“俄语原文”，请以俄语为标准，忠实翻译成中文和塔吉克语，并保留俄语原文。
+
+请只输出以下 JSON 结构：
+{
+  "target_people": { "ru": "", "zh": "", "tg": "" },
+  "selling_angle": { "ru": "", "zh": "", "tg": "" },
+  "best_scene": { "ru": "", "zh": "", "tg": "" },
+  "local_life_connection": { "ru": "", "zh": "", "tg": "" },
+  "recommended_badge": { "ru": "", "zh": "", "tg": "" }
+}
+
+翻译要求：
+1. ru 字段保留原文，不要改写。
+2. zh 与 tg 必须以 ru 原文为唯一标准进行翻译。
+3. 文风自然、简洁、适合商品详情页和导购卡片。
+4. recommended_badge 必须足够简短，适合做标签。
+5. 只输出 JSON。
+
+俄语原文：${JSON.stringify(ruUnderstanding)}`;
+
+  return await callDashscope(apiKey, "qwen3.5-plus", [{ role: "user", content: prompt }], 0.2);
+}
 
 serve(async (req: Request) => {
-  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // 1. 验证管理员身份
     const sessionToken = req.headers.get("x-admin-session-token");
     if (!sessionToken) {
       return new Response(
@@ -219,7 +247,6 @@ serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 验证管理员 session
     const { data: sessionData } = await supabase.rpc(
       "verify_admin_session",
       { p_session_token: sessionToken }
@@ -234,7 +261,6 @@ serve(async (req: Request) => {
       );
     }
 
-    // 2. 解析请求参数
     const {
       batch_size = 10,
       offset = 0,
@@ -242,7 +268,6 @@ serve(async (req: Request) => {
       force_regenerate = false,
     } = await req.json();
 
-    // 3. 查询需要处理的商品
     let query = supabase
       .from("inventory_products")
       .select("*")
@@ -250,7 +275,6 @@ serve(async (req: Request) => {
       .order("created_at", { ascending: true })
       .range(offset, offset + batch_size - 1);
 
-    // 非强制模式只处理缺少 ai_understanding 的商品
     if (!force_regenerate) {
       query = query.is("ai_understanding", null);
     }
@@ -279,7 +303,6 @@ serve(async (req: Request) => {
       );
     }
 
-    // 4. 统计剩余数量（用于前端展示进度）
     let remainingQuery = supabase
       .from("inventory_products")
       .select("id", { count: "exact", head: true })
@@ -291,7 +314,6 @@ serve(async (req: Request) => {
 
     const { count: totalRemaining } = await remainingQuery;
 
-    // 5. 逐个处理商品
     const results: Array<{
       id: string;
       name: string;
@@ -303,31 +325,20 @@ serve(async (req: Request) => {
 
     for (let i = 0; i < products.length; i++) {
       const product = products[i];
-      const productName =
-        product.name_i18n?.zh || product.name || "未知商品";
+      const productName = product.name_i18n?.zh || product.name || "未知商品";
+      const hasImages = (product.image_urls?.length || 0) > 0 || Boolean(product.image_url);
 
       try {
-        console.log(
-          `[ai-understanding-batch] 处理商品 ${i + 1}/${products.length}: ${productName} (${product.id})`
-        );
+        console.log(`[ai-understanding-batch] 处理商品 ${i + 1}/${products.length}: ${productName} (${product.id})`);
 
-        // 调用 AI 生成理解数据
-        const understanding = await generateUnderstanding(
-          dashscopeApiKey,
-          product
-        );
+        const ruUnderstanding = await generateRussianUnderstanding(dashscopeApiKey, product);
+        const translatedUnderstanding = await translateUnderstandingFromRu(dashscopeApiKey, ruUnderstanding);
 
-        const understandingData = {
-          ...understanding,
-          generated_at: new Date().toISOString(),
+        const understandingData = normalizeLocalizedAIUnderstanding(translatedUnderstanding, {
           generated_by: "ai-understanding-batch",
-          model_used:
-            (product.image_urls?.length > 0 || product.image_url)
-              ? "qwen-vl-max"
-              : "qwen3.5-plus",
-        };
+          model_used: hasImages ? "qwen-vl-max -> qwen3.5-plus" : "qwen3.5-plus -> qwen3.5-plus",
+        });
 
-        // 保存到 inventory_products
         const { error: updateError } = await supabase
           .from("inventory_products")
           .update({ ai_understanding: understandingData })
@@ -337,7 +348,6 @@ serve(async (req: Request) => {
           throw new Error(`保存失败: ${updateError.message}`);
         }
 
-        // 同步到关联的 lotteries
         await supabase
           .from("lotteries")
           .update({ ai_understanding: understandingData })
@@ -350,15 +360,10 @@ serve(async (req: Request) => {
         });
         successCount++;
 
-        console.log(
-          `[ai-understanding-batch] 成功: ${productName}`
-        );
+        console.log(`[ai-understanding-batch] 成功: ${productName}`);
       } catch (error) {
-        const errMsg =
-          error instanceof Error ? error.message : String(error);
-        console.error(
-          `[ai-understanding-batch] 失败: ${productName} — ${errMsg}`
-        );
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[ai-understanding-batch] 失败: ${productName} — ${errMsg}`);
         results.push({
           id: product.id,
           name: productName,
@@ -368,23 +373,18 @@ serve(async (req: Request) => {
         errorCount++;
       }
 
-      // 延迟，避免 API 限速（最后一个商品不需要延迟）
       if (delay_ms > 0 && i < products.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, delay_ms));
       }
     }
 
-    // 6. 返回处理结果摘要
     return new Response(
       JSON.stringify({
         success: true,
         processed: products.length,
         success_count: successCount,
         error_count: errorCount,
-        total_remaining: Math.max(
-          0,
-          (totalRemaining || 0) - successCount
-        ),
+        total_remaining: Math.max(0, (totalRemaining || 0) - successCount),
         next_offset: offset + batch_size,
         results,
       }),

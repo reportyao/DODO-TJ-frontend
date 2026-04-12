@@ -2,19 +2,36 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
+type LocalizedAIText = {
+  zh?: string;
+  ru?: string;
+  tg?: string;
+};
+
+type AITextValue = string | LocalizedAIText | undefined;
+
 interface AIUnderstandingCardProps {
   aiUnderstanding: {
-    target_people?: string;
-    selling_angle?: string;
-    best_scene?: string;
-    local_life_connection?: string;
-    recommended_badge?: string;
+    target_people?: AITextValue;
+    selling_angle?: AITextValue;
+    best_scene?: AITextValue;
+    local_life_connection?: AITextValue;
+    recommended_badge?: AITextValue;
+    source_language?: 'ru';
   } | null;
   specifications?: string;
   material?: string;
   details?: string;
   className?: string;
 }
+
+const resolveAIText = (value: AITextValue, lang: string) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+
+  const normalizedLang = lang === 'zh-CN' || lang === 'zh' ? 'zh' : lang === 'ru' ? 'ru' : lang === 'tg' ? 'tg' : 'zh';
+  return value[normalizedLang as keyof LocalizedAIText] || value.ru || value.zh || value.tg || '';
+};
 
 export const AIUnderstandingCard: React.FC<AIUnderstandingCardProps> = ({
   aiUnderstanding,
@@ -23,78 +40,77 @@ export const AIUnderstandingCard: React.FC<AIUnderstandingCardProps> = ({
   details,
   className,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
-  // 有 AI 理解数据时，展示温馨导购模块
-  if (aiUnderstanding && (aiUnderstanding.target_people || aiUnderstanding.selling_angle)) {
+  const targetPeople = resolveAIText(aiUnderstanding?.target_people, i18n.language);
+  const sellingAngle = resolveAIText(aiUnderstanding?.selling_angle, i18n.language);
+  const bestScene = resolveAIText(aiUnderstanding?.best_scene, i18n.language);
+  const localLifeConnection = resolveAIText(aiUnderstanding?.local_life_connection, i18n.language);
+  const recommendedBadge = resolveAIText(aiUnderstanding?.recommended_badge, i18n.language);
+
+  if (aiUnderstanding && (targetPeople || sellingAngle)) {
     return (
       <div className={cn(
-        "bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 rounded-2xl shadow-sm p-5 space-y-4 border border-amber-100/50",
+        'bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 rounded-2xl shadow-sm p-5 space-y-4 border border-amber-100/50',
         className
       )}>
-        {/* 推荐标签 */}
-        {aiUnderstanding.recommended_badge && (
+        {recommendedBadge && (
           <div className="flex items-center justify-center">
             <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-medium shadow-sm">
-              🏷️ {aiUnderstanding.recommended_badge}
+              推荐 · {recommendedBadge}
             </span>
           </div>
         )}
 
-        {/* 适合谁用 */}
-        {aiUnderstanding.target_people && (
+        {targetPeople && (
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-base">👤</span>
             </div>
             <div className="flex-1">
               <p className="text-xs font-medium text-amber-700 mb-1">{t('lottery.suitableFor')}</p>
-              <p className="text-sm text-gray-700 leading-relaxed">{aiUnderstanding.target_people}</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{targetPeople}</p>
             </div>
           </div>
         )}
 
-        {/* 好在哪儿 */}
-        {aiUnderstanding.selling_angle && (
+        {sellingAngle && (
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-base">✨</span>
             </div>
             <div className="flex-1">
               <p className="text-xs font-medium text-rose-700 mb-1">{t('lottery.whyGood')}</p>
-              <p className="text-sm text-gray-700 leading-relaxed">{aiUnderstanding.selling_angle}</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{sellingAngle}</p>
             </div>
           </div>
         )}
 
-        {/* 最佳使用场景 */}
-        {aiUnderstanding.best_scene && (
+        {bestScene && (
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-base">🎯</span>
             </div>
             <div className="flex-1">
               <p className="text-xs font-medium text-blue-700 mb-1">{t('lottery.bestScene')}</p>
-              <p className="text-sm text-gray-700 leading-relaxed">{aiUnderstanding.best_scene}</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{bestScene}</p>
             </div>
           </div>
         )}
 
-        {/* 本地生活连接 */}
-        {aiUnderstanding.local_life_connection && (
+        {localLifeConnection && (
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-base">🏠</span>
             </div>
             <div className="flex-1">
               <p className="text-xs font-medium text-green-700 mb-1">{t('lottery.localConnection')}</p>
-              <p className="text-sm text-gray-700 leading-relaxed">{aiUnderstanding.local_life_connection}</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{localLifeConnection}</p>
             </div>
           </div>
         )}
 
-        {/* 关键参数露出（如果有规格或材质，简洁展示） */}
-        {(specifications || material) && (
+        {(specifications || material || details) && (
           <div className="pt-3 border-t border-amber-100/80">
             <div className="flex flex-wrap gap-2 text-xs text-gray-500">
               {specifications && (
@@ -107,6 +123,11 @@ export const AIUnderstandingCard: React.FC<AIUnderstandingCardProps> = ({
                   🧵 {material}
                 </span>
               )}
+              {details && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-white/70 border border-amber-100">
+                  ℹ️ {details}
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -114,6 +135,5 @@ export const AIUnderstandingCard: React.FC<AIUnderstandingCardProps> = ({
     );
   }
 
-  // 降级兼容：没有 AI 理解数据时，返回 null（由调用方决定是否展示原有内容）
   return null;
 };

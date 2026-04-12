@@ -74,6 +74,92 @@ function parseAIJson(text: string): any {
   return JSON.parse(cleaned);
 }
 
+const AI_UNDERSTANDING_FIELDS = [
+  "target_people",
+  "selling_angle",
+  "best_scene",
+  "local_life_connection",
+  "recommended_badge",
+] as const;
+
+function cleanAIText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeLocalizedAIUnderstanding(payload: any) {
+  const normalized: Record<string, { ru: string; zh: string; tg: string }> = {};
+
+  for (const field of AI_UNDERSTANDING_FIELDS) {
+    const raw = payload?.[field];
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      normalized[field] = {
+        ru: cleanAIText(raw.ru),
+        zh: cleanAIText(raw.zh),
+        tg: cleanAIText(raw.tg),
+      };
+    } else {
+      const fallback = cleanAIText(raw);
+      normalized[field] = { ru: fallback, zh: fallback, tg: fallback };
+    }
+  }
+
+  return normalized;
+}
+
+async function translateAIUnderstandingFromRu(
+  apiKey: string,
+  ruUnderstanding: Record<string, unknown>
+): Promise<any> {
+  const prompt = `你是一名精通俄语、中文和塔吉克语的电商本地化编辑。下面给你一组“俄语原文”，请以俄语为唯一标准，忠实翻译成中文和塔吉克语，并保留俄语原文。
+
+请只输出以下 JSON：
+{
+  "target_people": { "ru": "", "zh": "", "tg": "" },
+  "selling_angle": { "ru": "", "zh": "", "tg": "" },
+  "best_scene": { "ru": "", "zh": "", "tg": "" },
+  "local_life_connection": { "ru": "", "zh": "", "tg": "" },
+  "recommended_badge": { "ru": "", "zh": "", "tg": "" }
+}
+
+要求：
+1. ru 字段必须原样保留，不要改写。
+2. zh 与 tg 必须严格以 ru 原文为标准翻译，不能自行扩写。
+3. 文风自然、口语、适合商品详情页展示。
+4. recommended_badge 必须简短，适合作为角标标签。
+5. 只输出 JSON，不要添加说明。
+
+俄语原文：${JSON.stringify(ruUnderstanding)}`;
+
+  const response = await fetch(
+    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "qwen3.5-plus",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`ai_understanding 翻译失败 (HTTP ${response.status}): ${errText}`);
+  }
+
+  const result = await response.json();
+  const rawContent = result.choices?.[0]?.message?.content;
+  if (!rawContent) {
+    throw new Error("ai_understanding 翻译结果为空");
+  }
+
+  return normalizeLocalizedAIUnderstanding(parseAIJson(rawContent));
+}
+
 // ============================================================
 // Step A: 图片理解 (qwen-vl-max)
 // ============================================================
@@ -111,12 +197,12 @@ async function callQwenVL(
     {"zh": "中文卖点3", "detail": "补充细节"}
   ],
   "target_audience": "目标人群描述",
-  "ai_understanding": {
-    "target_people": "最适合的人群描述（具体到人群特征和生活状态，如：年轻妈妈，尤其冬天带娃常坐地板、手脚冰凉的女性）",
-    "selling_angle": "不是功能参数，而是'为什么这个人在这个场景下会觉得这个东西好用'（如：插上电十分钟就发热，比烧热水灌热水袋快，孩子睡着后你还能坐着缝点小衣服）",
-    "best_scene": "最自然的使用画面，具体到动作和场景（如：晚上坐在地毯上给孩子讲故事，脚伸进暖脚宝里，脚心一热，整个人都松下来）",
-    "local_life_connection": "与塔吉克斯坦本地生活的真实连接点（如：塔吉克家庭席地而坐吃饭喝茶是常态，冬天集中供暖不稳定）",
-    "recommended_badge": "推荐角标文案，4-6个字（如：冬天必备、做饭省心、待客体面）"
+  "ai_understanding_ru": {
+    "target_people": "俄语：最适合的人群描述（具体到人群特征和生活状态）",
+    "selling_angle": "俄语：为什么这个人在这个场景下会觉得这个东西好用，要像熟人推荐一样自然",
+    "best_scene": "俄语：最自然的使用画面，具体到动作和场景",
+    "local_life_connection": "俄语：与塔吉克斯坦本地生活的真实连接点",
+    "recommended_badge": "俄语：推荐角标短语，2-5个词"
   }
 }
 
@@ -127,12 +213,11 @@ async function callQwenVL(
 - 补充备注：${notes || "无"}
 
 要求：
-1. ai_understanding 中所有内容必须用中文输出
-2. "best_scene" 必须是具体的生活画面，不能是抽象描述
-3. "selling_angle" 要说人话，像朋友推荐一样，不要用"高品质""甄选"等空泛词
-4. "local_life_connection" 必须引用真实的塔吉克生活习惯
-
-请只输出JSON，不要添加任何其他文字说明。`,
+1. ai_understanding_ru 中所有内容必须直接输出自然、准确的俄语。
+2. "best_scene" 必须是具体的生活画面，不能是抽象描述。
+3. "selling_angle" 要说人话，像朋友推荐一样，不要用空泛营销词。
+4. "local_life_connection" 必须引用真实的塔吉克生活习惯。
+5. 请只输出JSON，不要添加任何其他文字说明。`,
   });
 
   const response = await fetch(
@@ -911,6 +996,15 @@ serve(async (req) => {
             notes || ""
           )
         );
+
+        if (analysis?.ai_understanding_ru) {
+          analysis.ai_understanding = await withRetry(() =>
+            translateAIUnderstandingFromRu(dashscopeApiKey, analysis.ai_understanding_ru)
+          );
+          delete analysis.ai_understanding_ru;
+        } else if (analysis?.ai_understanding) {
+          analysis.ai_understanding = normalizeLocalizedAIUnderstanding(analysis.ai_understanding);
+        }
 
         const analysisPreview = JSON.stringify(analysis);
         console.log(
