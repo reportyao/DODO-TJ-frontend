@@ -52,8 +52,22 @@ function resetBoundaryStateSafely(boundary: ErrorBoundary) {
   }, 0);
 }
 
+const ignoredDomAnimationErrorCache = new Set<string>();
+
 function reportIgnoredDomAnimationError(error: Error, errorInfo?: React.ErrorInfo) {
-  console.warn('[ErrorBoundary] Ignored transient DOM animation error:', error);
+  const cacheKey = [error?.name, error?.message, errorInfo?.componentStack].filter(Boolean).join('::');
+
+  if (cacheKey && ignoredDomAnimationErrorCache.has(cacheKey)) {
+    return;
+  }
+
+  if (cacheKey) {
+    ignoredDomAnimationErrorCache.add(cacheKey);
+  }
+
+  if (import.meta.env.DEV) {
+    console.warn('[ErrorBoundary] Ignored transient DOM animation error:', error);
+  }
 
   void errorMonitor.captureError({
     error_type: ErrorType.JS_ERROR,
@@ -61,13 +75,15 @@ function reportIgnoredDomAnimationError(error: Error, errorInfo?: React.ErrorInf
     error_stack: error?.stack,
     component_name: 'ErrorBoundary',
     action_type: 'ignored_dom_animation_error',
-    action_data: {
-      componentStack: errorInfo?.componentStack,
-      errorName: error?.name,
-      ignored: true,
-    },
-  });
+      action_data: {
+        componentStack: errorInfo?.componentStack,
+        errorName: error?.name,
+        ignored: true,
+        deduped: Boolean(cacheKey),
+      },
+    });
 }
+
 
 /**
  * ErrorBoundary 是在 React 组件树之外运行的，无法使用 useTranslation() hook。

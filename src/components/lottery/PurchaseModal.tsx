@@ -81,23 +81,33 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <motion.div
+          key="purchase-modal"
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          className="fixed inset-0 z-[60]"
+        >
           {/* 背景遮罩 */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: { opacity: 1 },
+            }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
             onClick={handleClose}
-            className="fixed inset-0 bg-black/50 z-[60]"
+            className="absolute inset-0 bg-black/50"
           />
 
           {/* 对话框 */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            variants={{
+              hidden: { opacity: 0, scale: 0.96, y: 24 },
+              visible: { opacity: 1, scale: 1, y: 0 },
+            }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
             // 调整 modal 位置，使其位于底部导航栏上方
-            className="fixed inset-x-4 bottom-20 top-4 bg-white rounded-2xl shadow-2xl z-50 max-w-md mx-auto max-h-[calc(100vh-10rem)] flex flex-col"
+            className="absolute inset-x-4 bottom-20 top-4 bg-white rounded-2xl shadow-2xl max-w-md mx-auto max-h-[calc(100vh-10rem)] flex flex-col"
           >
             {/* 头部 */}
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -254,7 +264,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
               )}
             </div>
           </motion.div>
-        </>
+        </motion.div>
       )}
     </AnimatePresence>
   )
