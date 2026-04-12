@@ -80,7 +80,7 @@ const LotteryDetailPage: React.FC = () => {
   const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
   const [isFullPurchasing, setIsFullPurchasing] = useState<boolean>(false);
   const [myTickets, setMyTickets] = useState<string[]>([]);
-  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState<boolean>(false);
+  // description展开状态已移除（商品描述区块已删除）
   const [isRulesExpanded, setIsRulesExpanded] = useState<boolean>(true);
   const [useCoupon, setUseCoupon] = useState<boolean>(true);
   const [validCouponCount, setValidCouponCount] = useState<number>(0);
@@ -870,38 +870,6 @@ const LotteryDetailPage: React.FC = () => {
               🚚 {t('subsidyPool.freeShippingTag')}
             </span>
           </div>
-
-          {/* 商品描述 - 默认3行折叠 */}
-          {description && (
-            <div className="space-y-2">
-              <div className={cn(
-                "text-gray-600 text-sm leading-relaxed whitespace-pre-line",
-                !isDescriptionExpanded && "line-clamp-3"
-              )}>
-                {description.split(/(?<=[.。!！?？])\s+/).map((paragraph: string, index: number) => (
-                  <p key={index} className="mb-1 last:mb-0">{paragraph.trim()}</p>
-                ))}
-              </div>
-              {description.length > 80 && (
-                <button
-                  onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                  className="text-primary text-sm font-medium hover:text-primary-dark transition-colors flex items-center gap-1"
-                >
-                  {isDescriptionExpanded ? (
-                    <>
-                      <span>{t('common.collapse')}</span>
-                      <ChevronDownIcon className="w-4 h-4 transform rotate-180 transition-transform" />
-                    </>
-                  ) : (
-                    <>
-                      <span>{t('common.expandMore')}</span>
-                      <ChevronDownIcon className="w-4 h-4 transition-transform" />
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          )}
 
           {/* 价格 + 免邮 */}
           <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-xl p-4">
