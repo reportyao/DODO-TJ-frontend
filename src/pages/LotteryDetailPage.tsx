@@ -20,7 +20,6 @@ import {
 } from '../lib/utils';
 import toast from 'react-hot-toast';
 import { lotteryService } from '../lib/supabase';
-import { motion } from 'framer-motion';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTrackEvent } from '../hooks/useTrackEvent';
@@ -921,13 +920,11 @@ const LotteryDetailPage: React.FC = () => {
 
           {/* 全款购买按钮 */}
           {isActive && (
-            <motion.button
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               onClick={handleFullPurchase}
               disabled={!canFullPurchase || isSoldOut || isFullPurchasing}
               className={cn(
-                "w-full py-3.5 rounded-xl font-bold text-base shadow-md transition-all duration-200",
+                "w-full py-3.5 rounded-xl font-bold text-base shadow-md transition-all duration-200 transform-gpu active:scale-[0.98]",
                 canFullPurchase && !isSoldOut && !isFullPurchasing
                   ? "bg-gradient-to-r from-orange-500 to-red-500 text-white hover:shadow-lg"
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
@@ -941,7 +938,7 @@ const LotteryDetailPage: React.FC = () => {
                     ? t('lottery.fullPurchaseOutOfStock') 
                     : `${formatCurrency(lottery.currency, fullPurchasePrice)} ${t('lottery.buyAllNow')}`
               }
-            </motion.button>
+            </button>
           )}
         </div>
 
@@ -1158,13 +1155,11 @@ const LotteryDetailPage: React.FC = () => {
             </div>
 
             {/* 参与活动按钮 */}
-            <motion.button
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               onClick={handlePurchase}
               disabled={!isActive || isSoldOut || isPurchasing}
               className={cn(
-                "w-full py-3.5 rounded-xl font-bold text-base shadow-md transition-all duration-200",
+                "w-full py-3.5 rounded-xl font-bold text-base shadow-md transition-all duration-200 transform-gpu active:scale-[0.98]",
                 isActive && !isSoldOut && !isPurchasing
                   ? "bg-gradient-to-r from-primary to-primary-dark text-white hover:shadow-lg"
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
@@ -1176,7 +1171,7 @@ const LotteryDetailPage: React.FC = () => {
                   ? t('lottery.soldOut') 
                   : `${formatCurrency(lottery.currency, lottery.ticket_price * quantity)} ${t('lottery.participateNow')}`
               }
-            </motion.button>
+            </button>
           </div>
         )}
 

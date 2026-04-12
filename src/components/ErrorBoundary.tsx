@@ -33,6 +33,42 @@ function isChunkLoadError(error: any): boolean {
   );
 }
 
+function isIgnorableDomAnimationError(error: any): boolean {
+  if (!(error instanceof Error)) return false;
+
+  const message = error.message || '';
+  const name = error.name || '';
+
+  return (
+    name === 'NotFoundError' ||
+    message.includes('removeChild') ||
+    message.includes('insertBefore')
+  );
+}
+
+function resetBoundaryStateSafely(boundary: ErrorBoundary) {
+  window.setTimeout(() => {
+    boundary.setState({ hasError: false, error: null, errorInfo: null, isChunkError: false });
+  }, 0);
+}
+
+function reportIgnoredDomAnimationError(error: Error, errorInfo?: React.ErrorInfo) {
+  console.warn('[ErrorBoundary] Ignored transient DOM animation error:', error);
+
+  void errorMonitor.captureError({
+    error_type: ErrorType.JS_ERROR,
+    error_message: error?.message || 'Ignored DOM animation error',
+    error_stack: error?.stack,
+    component_name: 'ErrorBoundary',
+    action_type: 'ignored_dom_animation_error',
+    action_data: {
+      componentStack: errorInfo?.componentStack,
+      errorName: error?.name,
+      ignored: true,
+    },
+  });
+}
+
 /**
  * ErrorBoundary 是在 React 组件树之外运行的，无法使用 useTranslation() hook。
  * 因此使用静态多语言文本，根据 localStorage 中缓存的语言偏好显示对应语言。
@@ -103,25 +139,24 @@ export class ErrorBoundary extends React.Component<
   }
 
   static getDerivedStateFromError(error: any) {
+    // Framer Motion / DOM 瞬态异常不应打断整页渲染
+    if (isIgnorableDomAnimationError(error)) {
+      return null;
+    }
+
     // 更新 state，使下一次渲染显示降级后的 UI
-    return { 
-      hasError: true, 
+    return {
+      hasError: true,
       error,
       isChunkError: isChunkLoadError(error)
     };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // 忽略 Framer Motion 的 DOM 操作错误（不调用 setState 避免无限重渲染）
-    if (error && (
-      (error.message && (
-        error.message.includes('removeChild') ||
-        error.message.includes('insertBefore')
-      )) ||
-      error.name === 'NotFoundError'
-    )) {
-      console.warn('Suppressed Framer Motion DOM error:', error);
-      // 不调用 setState！调用会触发重渲染 → 再次触发 Framer Motion 错误 → 无限循环
+    // 忽略 Framer Motion / DOM 瞬态异常，避免误显示整页崩溃 UI
+    if (isIgnorableDomAnimationError(error)) {
+      reportIgnoredDomAnimationError(error, errorInfo);
+      resetBoundaryStateSafely(this);
       return;
     }
 

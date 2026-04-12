@@ -1,4 +1,24 @@
 // 全局错误处理器，专门处理 DOM 操作错误
+const isIgnorableDomAnimationError = (error: unknown, fallbackMessage = '') => {
+  if (!(error instanceof Error)) {
+    return (
+      fallbackMessage.includes('removeChild') ||
+      fallbackMessage.includes('insertBefore') ||
+      fallbackMessage.includes('NotFoundError')
+    )
+  }
+
+  return (
+    error.name === 'NotFoundError' ||
+    error.message.includes('removeChild') ||
+    error.message.includes('insertBefore')
+  )
+}
+
+const logIgnoredDomAnimationError = (source: string, error: unknown) => {
+  console.warn(`[DOM animation warning][${source}]`, error)
+}
+
 export const setupGlobalErrorHandlers = () => {
   // 捕获未处理的 Promise 错误
   window.addEventListener('unhandledrejection', (event) => {
@@ -17,12 +37,8 @@ export const setupGlobalErrorHandlers = () => {
     }
 
     // 过滤 Framer Motion DOM 操作错误（React 严格模式兼容性问题）
-    if (
-      reason?.name === 'NotFoundError' ||
-      message.includes('removeChild') ||
-      message.includes('insertBefore')
-    ) {
-      console.warn('DOM manipulation error caught and handled');
+    if (isIgnorableDomAnimationError(reason, message)) {
+      logIgnoredDomAnimationError('unhandledrejection', reason)
       event.preventDefault();
       return;
     }
@@ -33,12 +49,8 @@ export const setupGlobalErrorHandlers = () => {
   // 捕获全局 JavaScript 错误
   window.addEventListener('error', (event: ErrorEvent) => {
     // 过滤 Framer Motion DOM 操作错误
-    if (
-      event.error?.name === 'NotFoundError' ||
-      event.error?.message?.includes('removeChild') ||
-      event.error?.message?.includes('insertBefore')
-    ) {
-      console.warn('DOM manipulation error caught and handled');
+    if (isIgnorableDomAnimationError(event.error, event.message || '')) {
+      logIgnoredDomAnimationError('window.error', event.error || event.message)
       event.preventDefault();
       return;
     }
@@ -50,13 +62,8 @@ export const setupGlobalErrorHandlers = () => {
   const originalConsoleError = console.error
   console.error = (...args) => {
     const message = args.join(' ')
-    if (
-      message.includes('removeChild') ||
-      message.includes('insertBefore') ||
-      message.includes('framer-motion') ||
-      message.includes('NotFoundError')
-    ) {
-      console.warn('Suppressed Framer Motion DOM error:', ...args)
+    if (isIgnorableDomAnimationError(args[0], message) || message.includes('framer-motion')) {
+      originalConsoleError.call(console, '[Ignored DOM animation error]', ...args)
       return
     }
     originalConsoleError.apply(console, args)
