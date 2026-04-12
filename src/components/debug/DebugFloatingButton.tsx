@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUser } from '../../contexts/UserContext'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -385,11 +385,20 @@ export const DebugFloatingButton: React.FC = () => {
     setAuthChecks([])
   }
 
-  if (!isVisible) return null
+  const handleClose = useCallback(() => {
+    setIsOpen(false)
+  }, [])
+
+  const handleExitComplete = useCallback(() => {
+    if (!isOpen) {
+      setIsVisible(false)
+      setIsMinimized(false)
+    }
+  }, [isOpen])
 
   return (
-    <AnimatePresence>
-      {isOpen && (
+    <AnimatePresence initial={false} onExitComplete={handleExitComplete}>
+      {isVisible && isOpen && (
         <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -423,10 +432,7 @@ export const DebugFloatingButton: React.FC = () => {
                 清空
               </button>
               <button
-                onClick={() => {
-                  setIsOpen(false)
-                  setIsVisible(false)
-                }}
+                onClick={handleClose}
                 className="px-3 py-1 bg-red-600 rounded text-sm hover:bg-red-700"
               >
                 关闭

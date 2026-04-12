@@ -1,19 +1,19 @@
 /**
  * AI 商品理解生成 — Edge Function
  *
- * 为指定的库存商品生成 AI 理解数据（target_people、selling_angle、best_scene 等），
- * 并保存到 inventory_products.ai_understanding 字段。
+ * 为指定的库存商品生成 AI 理解数据，并保存到 inventory_products.ai_understanding 字段。
  * 同时同步更新关联的 lotteries 表。
  *
  * 新版链路：
- *   1. 先基于图片/文本生成高质量俄语商品理解
- *   2. 再以俄语为标准翻译为中文和塔吉克语
- *   3. 以多语言嵌套结构保存到数据库
+ *   1. 先基于图片/文本生成语言无关的结构化商品事实 semantic_facts
+ *   2. 再分别基于 semantic_facts 直接生成塔吉克语与俄语用户文案
+ *   3. 最后仅为后台运营补充中文辅助翻译
+ *   4. 以多语言嵌套结构 + 事实层元数据保存到数据库
  *
  * 请求体：
  *   {
  *     product_id: string,           // 库存商品 ID（必填）
- *     force_regenerate?: boolean     // 是否强制重新生成（即使已有数据）
+ *     force_regenerate?: boolean    // 是否强制重新生成（即使已有数据）
  *   }
  *
  * 认证：x-admin-session-token → verify_admin_session RPC
@@ -32,18 +32,39 @@ const corsHeaders = {
 const AI_UNDERSTANDING_FIELDS = [
   "target_people",
   "selling_angle",
+  "how_to_use",
   "best_scene",
   "local_life_connection",
   "recommended_badge",
 ] as const;
 
 type AIUnderstandingField = (typeof AI_UNDERSTANDING_FIELDS)[number];
-type LocalizedValue = { ru: string; zh: string; tg: string };
+type LanguageCode = "tg" | "ru" | "zh";
+type LocalizedValue = Record<LanguageCode, string>;
+
+type SemanticFacts = {
+  product_type: string;
+  core_function: string;
+  target_user_traits: string[];
+  primary_pain_points: string[];
+  usage_steps: string[];
+  usage_tips: string[];
+  usage_scenarios: string[];
+  parameter_highlights: string[];
+  local_context_signals: string[];
+  trust_signals: string[];
+  badge_candidates: string[];
+};
+
 type LocalizedAIUnderstanding = Record<AIUnderstandingField, LocalizedValue> & {
+  semantic_facts: SemanticFacts;
   generated_at: string;
   generated_by: string;
   model_used: string;
-  source_language: "ru";
+  generation_mode: "semantic_facts_to_tg_ru_then_translate_zh";
+  primary_market_language: "tg";
+  display_priority: LanguageCode[];
+  source_language: "multi";
 };
 
 function parseAIJson(text: string): any {
@@ -64,36 +85,74 @@ function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function normalizeLocalizedAIUnderstanding(payload: any, meta: {
-  generated_by: string;
-  model_used: string;
-}): LocalizedAIUnderstanding {
-  const normalized = {} as Record<AIUnderstandingField, LocalizedValue>;
+function cleanStringList(value: unknown, limit: number = 6): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => cleanText(item))
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function normalizeSemanticFacts(payload: any): SemanticFacts {
+  const raw = payload?.semantic_facts && typeof payload.semantic_facts === "object"
+    ? payload.semantic_facts
+    : payload || {};
+
+  return {
+    product_type: cleanText(raw.product_type),
+    core_function: cleanText(raw.core_function),
+    target_user_traits: cleanStringList(raw.target_user_traits),
+    primary_pain_points: cleanStringList(raw.primary_pain_points),
+    usage_steps: cleanStringList(raw.usage_steps),
+    usage_tips: cleanStringList(raw.usage_tips),
+    usage_scenarios: cleanStringList(raw.usage_scenarios),
+    parameter_highlights: cleanStringList(raw.parameter_highlights),
+    local_context_signals: cleanStringList(raw.local_context_signals),
+    trust_signals: cleanStringList(raw.trust_signals),
+    badge_candidates: cleanStringList(raw.badge_candidates, 4),
+  };
+}
+
+function normalizeSingleLanguageUnderstanding(payload: any) {
+  const normalized = {} as Record<AIUnderstandingField, string>;
 
   for (const field of AI_UNDERSTANDING_FIELDS) {
     const raw = payload?.[field];
-    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-      normalized[field] = {
-        ru: cleanText(raw.ru),
-        zh: cleanText(raw.zh),
-        tg: cleanText(raw.tg),
-      };
-    } else {
-      const fallback = cleanText(raw);
-      normalized[field] = {
-        ru: fallback,
-        zh: fallback,
-        tg: fallback,
-      };
-    }
+    normalized[field] = cleanText(raw);
+  }
+
+  return normalized;
+}
+
+function buildLocalizedUnderstanding(params: {
+  tg: Record<AIUnderstandingField, string>;
+  ru: Record<AIUnderstandingField, string>;
+  zh: Record<AIUnderstandingField, string>;
+  semanticFacts: SemanticFacts;
+  generated_by: string;
+  model_used: string;
+}): LocalizedAIUnderstanding {
+  const { tg, ru, zh, semanticFacts, generated_by, model_used } = params;
+  const localized = {} as Record<AIUnderstandingField, LocalizedValue>;
+
+  for (const field of AI_UNDERSTANDING_FIELDS) {
+    localized[field] = {
+      tg: cleanText(tg[field]),
+      ru: cleanText(ru[field]),
+      zh: cleanText(zh[field]),
+    };
   }
 
   return {
-    ...normalized,
+    ...localized,
+    semantic_facts: semanticFacts,
     generated_at: new Date().toISOString(),
-    generated_by: meta.generated_by,
-    model_used: meta.model_used,
-    source_language: "ru",
+    generated_by,
+    model_used,
+    generation_mode: "semantic_facts_to_tg_ru_then_translate_zh",
+    primary_market_language: "tg",
+    display_priority: ["tg", "ru", "zh"],
+    source_language: "multi",
   };
 }
 
@@ -128,7 +187,49 @@ async function callDashscope(apiKey: string, model: string, messages: any[], tem
   return parseAIJson(rawContent);
 }
 
-async function generateRussianUnderstanding(params: {
+function buildSemanticFactsPrompt(params: {
+  name: string;
+  desc: string;
+  specs: string;
+  material: string;
+  price: number;
+}) {
+  const { name, desc, specs, material, price } = params;
+  return `你是一名面向塔吉克斯坦电商业务的商品理解专家。你的任务不是直接写营销文案，而是先抽取一份“语言无关、可复用、可审计”的结构化商品事实，为后续分别生成塔吉克语和俄语用户文案提供统一依据。
+
+【商品信息】
+- 名称：${name}
+- 描述：${desc || "未提供"}
+- 规格：${specs || "未提供"}
+- 材质：${material || "未提供"}
+- 价格：${price} сомони
+
+请只输出以下 JSON：
+{
+  "semantic_facts": {
+    "product_type": "一句话明确商品类型",
+    "core_function": "一句话说明商品最核心的用途",
+    "target_user_traits": ["适合的人群特征1", "适合的人群特征2"],
+    "primary_pain_points": ["它解决的问题1", "它解决的问题2"],
+    "usage_steps": ["使用动作或步骤1", "使用动作或步骤2"],
+    "usage_tips": ["使用提醒或小技巧1", "使用提醒或小技巧2"],
+    "usage_scenarios": ["典型使用场景1", "典型使用场景2"],
+    "parameter_highlights": ["用户需要知道的参数或规格亮点1", "亮点2"],
+    "local_context_signals": ["与塔吉克本地生活相关的连接点1", "连接点2"],
+    "trust_signals": ["能增强购买信心的事实1", "事实2"],
+    "badge_candidates": ["候选角标1", "候选角标2", "候选角标3"]
+  }
+}
+
+要求：
+1. 只输出 JSON，不要附加任何说明。
+2. 这是一份中间事实层，不要写成长营销文案，不要写多语言内容。
+3. usage_steps、usage_tips、parameter_highlights 必须尽量具体，帮助第一次接触这类商品的人理解“怎么用”。
+4. local_context_signals 必须贴近塔吉克斯坦真实生活，而不是泛泛写“适合本地”。
+5. 如果信息不足，请基于图片与已有商品信息做谨慎推断，避免明显夸大。`;
+}
+
+async function generateSemanticFacts(params: {
   apiKey: string;
   imageUrls: string[];
   name: string;
@@ -138,6 +239,7 @@ async function generateRussianUnderstanding(params: {
   price: number;
 }) {
   const { apiKey, imageUrls, name, desc, specs, material, price } = params;
+  const prompt = buildSemanticFactsPrompt({ name, desc, specs, material, price });
 
   if (imageUrls.length > 0) {
     const images = imageUrls.slice(0, 3);
@@ -148,7 +250,39 @@ async function generateRussianUnderstanding(params: {
 
     content.push({
       type: "text",
-      text: `你是一名服务于塔吉克斯坦电商平台的商品分析师，目标受众主要使用俄语。请结合商品图片和基础信息，先做商品理解，再只输出高质量俄语结果。
+      text: prompt,
+    });
+
+    return normalizeSemanticFacts(
+      await callDashscope(apiKey, "qwen-vl-max", [{ role: "user", content }], 0.3)
+    );
+  }
+
+  return normalizeSemanticFacts(
+    await callDashscope(apiKey, "qwen3.5-plus", [{ role: "user", content: prompt }], 0.3)
+  );
+}
+
+function buildDirectUnderstandingPrompt(params: {
+  language: "tg" | "ru";
+  semanticFacts: SemanticFacts;
+  name: string;
+  desc: string;
+  specs: string;
+  material: string;
+  price: number;
+}) {
+  const { language, semanticFacts, name, desc, specs, material, price } = params;
+  const languageName = language === "tg" ? "塔吉克语" : "俄语";
+  const extraRules = language === "tg"
+    ? `
+5. 请直接输出自然、地道、面向塔吉克普通消费者的塔吉克语，不要夹杂中文，也尽量避免俄语硬翻译腔。
+6. 语言要像本地熟人推荐商品一样易懂，不要写成官方说明书。`
+    : `
+5. 请直接输出自然、可信、适合塔吉克斯坦电商用户阅读的俄语，不要写成官样宣传稿。
+6. 语言要有人味，像懂商品的人在认真推荐。`;
+
+  return `你是一名服务于塔吉克斯坦电商平台的本地化商品文案专家。现在请基于同一份结构化商品事实，直接生成面向普通用户的${languageName}商品理解文案。
 
 【商品信息】
 - 名称：${name}
@@ -157,72 +291,79 @@ async function generateRussianUnderstanding(params: {
 - 材质：${material || "未提供"}
 - 价格：${price} сомони
 
+【结构化商品事实】
+${JSON.stringify(semanticFacts, null, 2)}
+
 请只输出以下 JSON：
 {
-  "target_people": "俄语：最适合的人群描述，具体到人群特征和生活状态",
-  "selling_angle": "俄语：为什么这个人在这个场景下会觉得这个东西好用，要像熟人推荐一样自然",
-  "best_scene": "俄语：最自然的使用画面，具体到动作和场景",
-  "local_life_connection": "俄语：与塔吉克斯坦本地生活的真实连接点",
-  "recommended_badge": "俄语：推荐角标短语，2-5个词"
+  "target_people": "最适合的人群描述，要写出生活状态和使用动机",
+  "selling_angle": "像熟人推荐一样解释为什么这个东西对他好用",
+  "how_to_use": "给小白看的使用理解，可自然带出参数、场景或使用方法",
+  "best_scene": "一个最具体、最自然的使用画面",
+  "local_life_connection": "与塔吉克本地生活的真实连接点",
+  "recommended_badge": "2-4个词的短角标"
 }
 
 要求：
-1. 所有字段必须直接输出俄语，不要输出中文解释。
-2. best_scene 必须是具体画面，不能抽象。
-3. selling_angle 必须口语自然，不要空泛营销词。
-4. local_life_connection 必须体现塔吉克斯坦真实生活方式或消费场景。
-5. recommended_badge 要短、顺口、适合电商标签。
-6. 只输出 JSON，不要附加其他说明。`,
-    });
+1. target_people、selling_angle、how_to_use 都必须直接面向普通用户，不要写分析术语。
+2. how_to_use 不能空泛，至少自然包含一种使用步骤、参数亮点或场景细节，重点帮助第一次接触这类商品的人快速理解怎么用。
+3. best_scene 必须是具体画面，不要抽象概括。
+4. recommended_badge 要短、顺口、适合做商品角标。${extraRules}
+7. 只输出 JSON，不要附加任何说明。`;
+}
 
-    return await callDashscope(apiKey, "qwen-vl-max", [{ role: "user", content }], 0.4);
-  }
+async function generateDirectUnderstandingByLanguage(params: {
+  apiKey: string;
+  language: "tg" | "ru";
+  semanticFacts: SemanticFacts;
+  name: string;
+  desc: string;
+  specs: string;
+  material: string;
+  price: number;
+}) {
+  const prompt = buildDirectUnderstandingPrompt(params);
+  return normalizeSingleLanguageUnderstanding(
+    await callDashscope(params.apiKey, "qwen3.5-plus", [{ role: "user", content: prompt }], 0.45)
+  );
+}
 
-  const prompt = `你是一名服务于塔吉克斯坦电商平台的商品分析师，目标受众主要使用俄语。请根据以下商品信息，输出高质量俄语商品理解文案。
+async function generateChineseBackofficeUnderstanding(params: {
+  apiKey: string;
+  semanticFacts: SemanticFacts;
+  tgUnderstanding: Record<AIUnderstandingField, string>;
+  ruUnderstanding: Record<AIUnderstandingField, string>;
+}) {
+  const prompt = `你是一名电商后台运营辅助翻译编辑。下面给你一份结构化商品事实，以及已经定稿的塔吉克语和俄语用户文案。请你输出一份中文版本，目标是帮助后台运营快速理解商品，不追求最强营销感，但必须忠实、清晰、可审核。
 
-【商品信息】
-- 名称：${name}
-- 描述：${desc || "未提供"}
-- 规格：${specs || "未提供"}
-- 材质：${material || "未提供"}
-- 价格：${price} сомони
+【结构化商品事实】
+${JSON.stringify(params.semanticFacts, null, 2)}
+
+【塔吉克语用户文案】
+${JSON.stringify(params.tgUnderstanding, null, 2)}
+
+【俄语用户文案】
+${JSON.stringify(params.ruUnderstanding, null, 2)}
 
 请只输出以下 JSON：
 {
-  "target_people": "俄语：最适合的人群描述，具体到人群特征和生活状态",
-  "selling_angle": "俄语：为什么这个人在这个场景下会觉得这个东西好用，要像熟人推荐一样自然",
-  "best_scene": "俄语：最自然的使用画面，具体到动作和场景",
-  "local_life_connection": "俄语：与塔吉克斯坦本地生活的真实连接点",
-  "recommended_badge": "俄语：推荐角标短语，2-5个词"
+  "target_people": "",
+  "selling_angle": "",
+  "how_to_use": "",
+  "best_scene": "",
+  "local_life_connection": "",
+  "recommended_badge": ""
 }
 
-要求：所有字段必须是自然、准确、面向塔吉克斯坦本地生活场景的俄语表达。只输出 JSON。`;
+要求：
+1. 中文用于后台辅助理解，重在准确、通顺、易审核。
+2. how_to_use 需要保留“给小白看的使用理解”这个定位，可包含参数、场景和简单使用方法。
+3. recommended_badge 保持短小精炼。
+4. 只输出 JSON，不要附加说明。`;
 
-  return await callDashscope(apiKey, "qwen3.5-plus", [{ role: "user", content: prompt }], 0.4);
-}
-
-async function translateUnderstandingFromRu(apiKey: string, ruUnderstanding: Record<string, unknown>) {
-  const prompt = `你是一名精通俄语、中文、塔吉克语的电商本地化编辑。下面给你一组“俄语原文”，请以俄语为标准，忠实翻译成中文和塔吉克语，并保留俄语原文。
-
-请只输出以下 JSON 结构：
-{
-  "target_people": { "ru": "", "zh": "", "tg": "" },
-  "selling_angle": { "ru": "", "zh": "", "tg": "" },
-  "best_scene": { "ru": "", "zh": "", "tg": "" },
-  "local_life_connection": { "ru": "", "zh": "", "tg": "" },
-  "recommended_badge": { "ru": "", "zh": "", "tg": "" }
-}
-
-翻译要求：
-1. ru 字段保留原文，不要改写。
-2. zh 与 tg 必须以 ru 原文为唯一标准进行翻译，不能自行扩写。
-3. selling_angle、best_scene、local_life_connection 要自然、口语、可读。
-4. recommended_badge 必须简短，适合作为电商标签。
-5. 只输出 JSON，不要附加说明。
-
-俄语原文：${JSON.stringify(ruUnderstanding)}`;
-
-  return await callDashscope(apiKey, "qwen3.5-plus", [{ role: "user", content: prompt }], 0.2);
+  return normalizeSingleLanguageUnderstanding(
+    await callDashscope(params.apiKey, "qwen3.5-plus", [{ role: "user", content: prompt }], 0.2)
+  );
 }
 
 serve(async (req: Request) => {
@@ -315,7 +456,7 @@ serve(async (req: Request) => {
     const price = product.original_price || 0;
     const imageUrls: string[] = product.image_urls || (product.image_url ? [product.image_url] : []);
 
-    const ruUnderstanding = await generateRussianUnderstanding({
+    const semanticFacts = await generateSemanticFacts({
       apiKey: dashscopeApiKey,
       imageUrls,
       name,
@@ -325,11 +466,44 @@ serve(async (req: Request) => {
       price,
     });
 
-    const translatedUnderstanding = await translateUnderstandingFromRu(dashscopeApiKey, ruUnderstanding);
+    const tgUnderstanding = await generateDirectUnderstandingByLanguage({
+      apiKey: dashscopeApiKey,
+      language: "tg",
+      semanticFacts,
+      name,
+      desc,
+      specs,
+      material,
+      price,
+    });
 
-    const understandingData = normalizeLocalizedAIUnderstanding(translatedUnderstanding, {
+    const ruUnderstanding = await generateDirectUnderstandingByLanguage({
+      apiKey: dashscopeApiKey,
+      language: "ru",
+      semanticFacts,
+      name,
+      desc,
+      specs,
+      material,
+      price,
+    });
+
+    const zhUnderstanding = await generateChineseBackofficeUnderstanding({
+      apiKey: dashscopeApiKey,
+      semanticFacts,
+      tgUnderstanding,
+      ruUnderstanding,
+    });
+
+    const understandingData = buildLocalizedUnderstanding({
+      tg: tgUnderstanding,
+      ru: ruUnderstanding,
+      zh: zhUnderstanding,
+      semanticFacts,
       generated_by: "ai-understanding-generate",
-      model_used: imageUrls.length > 0 ? "qwen-vl-max -> qwen3.5-plus" : "qwen3.5-plus -> qwen3.5-plus",
+      model_used: imageUrls.length > 0
+        ? "qwen-vl-max -> qwen3.5-plus(tg) -> qwen3.5-plus(ru) -> qwen3.5-plus(zh)"
+        : "qwen3.5-plus -> qwen3.5-plus(tg) -> qwen3.5-plus(ru) -> qwen3.5-plus(zh)",
     });
 
     const { error: updateError } = await supabase

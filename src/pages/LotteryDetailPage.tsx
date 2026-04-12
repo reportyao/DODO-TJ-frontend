@@ -387,10 +387,18 @@ const LotteryDetailPage: React.FC = () => {
     advantages?: string;
     target_people?: string | { ru?: string; zh?: string; tg?: string };
     selling_angle?: string | { ru?: string; zh?: string; tg?: string };
+    how_to_use?: string | { ru?: string; zh?: string; tg?: string };
     best_scene?: string | { ru?: string; zh?: string; tg?: string };
     local_life_connection?: string | { ru?: string; zh?: string; tg?: string };
     recommended_badge?: string | { ru?: string; zh?: string; tg?: string };
-    source_language?: 'ru';
+    semantic_facts?: {
+      parameter_highlights?: string[];
+      usage_steps?: string[];
+      usage_scenarios?: string[];
+    };
+    source_language?: 'multi' | 'tg' | 'ru' | 'zh';
+    primary_market_language?: 'tg' | 'ru' | 'zh';
+    display_priority?: Array<'tg' | 'ru' | 'zh'>;
   } | null;
 
   const hasAiSummary = Boolean(
@@ -398,6 +406,7 @@ const LotteryDetailPage: React.FC = () => {
     || aiUnderstanding?.advantages
     || aiUnderstanding?.target_people
     || aiUnderstanding?.selling_angle
+    || aiUnderstanding?.how_to_use
     || aiUnderstanding?.best_scene
     || aiUnderstanding?.local_life_connection
     || aiUnderstanding?.recommended_badge
