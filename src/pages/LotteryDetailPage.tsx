@@ -23,7 +23,6 @@ import { lotteryService } from '../lib/supabase';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTrackEvent } from '../hooks/useTrackEvent';
-import { AIUnderstandingCard } from '../components/AIUnderstandingCard';
 
 type Lottery = Tables<'lotteries'>;
 type Showoff = Tables<'showoffs'> & {
@@ -383,12 +382,18 @@ const LotteryDetailPage: React.FC = () => {
 
   // 提取 AI 商品理解数据：优先 lotteries，同步兼容历史商品回退到 inventory_products
   const aiUnderstanding = (lottery.ai_understanding || inventoryProduct?.ai_understanding || null) as {
+    suitable_for?: string;
+    advantages?: string;
     target_people?: string;
     selling_angle?: string;
     best_scene?: string;
     local_life_connection?: string;
     recommended_badge?: string;
   } | null;
+
+  const suitableForText = aiUnderstanding?.suitable_for || aiUnderstanding?.target_people || '';
+  const advantagesText = aiUnderstanding?.advantages || aiUnderstanding?.selling_angle || '';
+  const hasAiSummary = Boolean(suitableForText || advantagesText);
 
   const progress = (lottery.sold_tickets / lottery.total_tickets) * 100;
   const isActive = isLotteryPurchasable(lottery);
@@ -896,8 +901,33 @@ const LotteryDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 比价清单 */}
-          {priceComparisons.length > 0 && (
+          {/* AI 内容区：放在标题/价格下方，替换原信息块，只保留“适合谁用”和“好在哪” */}
+          {hasAiSummary ? (
+            <div className="rounded-xl border border-amber-100 bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 space-y-3">
+              {suitableForText && (
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                    <span className="text-base">👤</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1 text-xs font-semibold tracking-wide text-amber-700">{t('lottery.suitableFor')}</p>
+                    <p className="text-sm leading-6 text-gray-700 whitespace-pre-line">{suitableForText}</p>
+                  </div>
+                </div>
+              )}
+              {advantagesText && (
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-700">
+                    <span className="text-base">✨</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1 text-xs font-semibold tracking-wide text-rose-700">{t('lottery.whyGood')}</p>
+                    <p className="text-sm leading-6 text-gray-700 whitespace-pre-line">{advantagesText}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : priceComparisons.length > 0 && (
             <div className="bg-gray-50 rounded-xl p-4 space-y-2.5">
               <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
                 📊 {t('lottery.priceComparison')}
@@ -1175,16 +1205,8 @@ const LotteryDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* 商品理解模块 — 温馨感性风格 */}
-        <AIUnderstandingCard
-          aiUnderstanding={aiUnderstanding}
-          specifications={specifications}
-          material={material}
-          details={details}
-        />
-
-        {/* 降级兼容：如果没有 AI 理解数据，保留原有的规格/材质/详情展示 */}
-        {!aiUnderstanding && (specifications || material || details) && (
+        {/* 降级兼容：如果没有可展示的 AI 摘要，保留原有的规格/材质/详情展示 */}
+        {!hasAiSummary && (specifications || material || details) && (
           <div className="bg-white rounded-xl shadow-md p-4 space-y-4">
             {(specifications || material) && (
               <div className="grid grid-cols-2 gap-4 text-sm">
