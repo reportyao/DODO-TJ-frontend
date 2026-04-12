@@ -1,5 +1,5 @@
 /**
- * DODO PWA Service Worker v11
+ * DODO PWA Service Worker v12
  * 
  * 【缓存策略】
  * - HTML/JS/CSS：不缓存（避免旧版本导致白屏）
@@ -7,12 +7,13 @@
  * - 可缓存API：Stale-While-Revalidate（返回缓存同时后台更新）
  * - 其他请求：直接走网络，不拦截
  * 
- * 【v11 更新内容】
- * - 修复透明底Logo (dodo-logo.webp)
+ * 【v12 更新内容】
+ * - 修复缓存型 API 在网络失败且无缓存时返回 undefined，导致 Failed to convert value to 'Response'
+ * - 为缓存型 API 增加统一离线兜底 Response，避免 service worker 抛出未处理异常
  * - 强制清除旧版本缓存
  */
 
-const CACHE_VERSION = 'v11';
+const CACHE_VERSION = 'v12';
 const CACHE_NAMES = {
   IMAGES: `dodo-images-${CACHE_VERSION}`,
   API: `dodo-api-${CACHE_VERSION}`,
@@ -46,7 +47,7 @@ const NO_CACHE_PATTERNS = [
  * 安装事件：跳过等待，立即激活
  */
 self.addEventListener('install', (event) => {
-  console.log('[SW v11] Installing...');
+  console.log('[SW v12] Installing...');
   self.skipWaiting();
 });
 
@@ -54,14 +55,14 @@ self.addEventListener('install', (event) => {
  * 激活事件：清除所有旧缓存，立即接管
  */
 self.addEventListener('activate', (event) => {
-  console.log('[SW v11] Activating...');
+  console.log('[SW v12] Activating...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           // 删除所有不属于当前版本的缓存
           if (!Object.values(CACHE_NAMES).includes(cacheName)) {
-            console.log('[SW v11] Deleting old cache:', cacheName);
+            console.log('[SW v12] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -183,17 +184,43 @@ async function staleWhileRevalidate(request) {
   const fetchPromise = fetch(request)
     .then((response) => {
       if (response && response.status === 200) {
-        cache.put(request, response.clone());
+        cache.put(request, response.clone()).catch((cacheError) => {
+          console.warn('[SW v12] Failed to update API cache:', cacheError?.message || cacheError);
+        });
       }
       return response;
     })
     .catch((error) => {
-      console.warn('[SW v11] API fetch failed, using cache:', error.message);
-      return cached;
+      console.warn('[SW v12] API fetch failed, using fallback:', error?.message || error);
+      return null;
     });
 
-  // 有缓存则立即返回，否则等待网络
-  return cached || fetchPromise;
+  // 有缓存则立即返回，同时在后台静默更新
+  if (cached) {
+    fetchPromise.catch(() => null);
+    return cached;
+  }
+
+  // 无缓存时等待网络；若网络也失败，则必须返回合法 Response，避免 respondWith 收到 undefined
+  const networkResponse = await fetchPromise;
+  return networkResponse || createOfflineAPIResponse(request);
+}
+
+function createOfflineAPIResponse(request) {
+  return new Response(
+    JSON.stringify({
+      error: 'SERVICE_WORKER_NETWORK_FALLBACK',
+      message: 'Network request failed and no cached response is available.',
+      path: request.url,
+    }),
+    {
+      status: 503,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+      },
+    }
+  );
 }
 
 function createPlaceholderImage() {
@@ -241,4 +268,4 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-console.log('[SW v11] Loaded successfully');
+console.log('[SW v12] Loaded successfully');
