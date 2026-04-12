@@ -11,7 +11,8 @@
  * - 图标映射回退
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/dom';
 import { MemoryRouter } from 'react-router-dom';
 import { CategoryGrid } from '../CategoryGrid';
 import type { HomeFeedCategory } from '../../../types/homepage';

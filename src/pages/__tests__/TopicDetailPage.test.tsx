@@ -13,7 +13,8 @@
  * - 未登录用户点击跳转登录
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/dom';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 // ============================================================

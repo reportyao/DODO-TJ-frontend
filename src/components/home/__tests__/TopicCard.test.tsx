@@ -11,7 +11,8 @@
  * - 默认样式回退
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/dom';
 import { MemoryRouter } from 'react-router-dom';
 import { TopicCard } from '../TopicCard';
 import type { HomeFeedTopicData } from '../../../types/homepage';

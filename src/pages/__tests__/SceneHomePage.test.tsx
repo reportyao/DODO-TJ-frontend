@@ -11,7 +11,8 @@
  * - 分类点击埋点
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/dom';
 import { MemoryRouter } from 'react-router-dom';
 
 // ============================================================
