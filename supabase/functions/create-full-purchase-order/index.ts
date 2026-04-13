@@ -1,4 +1,4 @@
-import { mapErrorCode } from '../_shared/errorResponse.ts'
+import { mapErrorCode, getHttpStatusForErrorCode } from '../_shared/errorResponse.ts'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -351,6 +351,9 @@ serve(async (req) => {
     expiresAt.setDate(expiresAt.getDate() + 30);
 
     // 10. 创建全款购买订单
+    // 【BUG修复】移除 delivery_method 字段 —— 该列在 full_purchase_orders 表中不存在
+    // 将 delivery_method 信息存入 metadata 以保留业务语义
+    const deliveryMethod = pickup_point_id ? 'PICKUP' : 'DELIVERY';
     const { data: order, error: orderError } = await supabase
       .from('full_purchase_orders')
       .insert({
@@ -362,7 +365,6 @@ serve(async (req) => {
         status: 'PENDING',
         pickup_point_id: pickup_point_id || null,
         pickup_code: pickupCode,
-        delivery_method: pickup_point_id ? 'PICKUP' : 'DELIVERY',
         metadata: {
           product_title: lottery.title,
           product_title_i18n: lottery.title_i18n,
@@ -372,6 +374,7 @@ serve(async (req) => {
           total_tickets: lottery.total_tickets,
           inventory_product_id: lottery.inventory_product_id,
           full_purchase_price: fullPrice,
+          delivery_method: deliveryMethod,
         }
       })
       .select()
@@ -595,12 +598,14 @@ serve(async (req) => {
     );
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error('[CreateFullPurchaseOrder] Error:', errMsg);
+    const errorCode = mapErrorCode(errMsg);
+    const httpStatus = getHttpStatusForErrorCode(errorCode);
+    console.error('[CreateFullPurchaseOrder] Error:', errMsg, '| code:', errorCode, '| http:', httpStatus);
     return new Response(
-      JSON.stringify({ success: false, error: errMsg, error_code: mapErrorCode(errMsg) }),
+      JSON.stringify({ success: false, error: errMsg, error_code: errorCode }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+        status: httpStatus,
       }
     );
   }
