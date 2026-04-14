@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { motion } from "framer-motion"
 import { useUser } from "../../contexts/UserContext"
 import { cn } from "../../lib/utils"
@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import SpinFloatingButton from "../SpinFloatingButton"
 import NewUserGiftModal from "../NewUserGiftModal"
 import OfflineBanner from "../OfflineBanner"
-import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "../../lib/supabase"
+import { supabase } from "../../lib/supabase"
 
 interface LayoutProps {
   children: React.ReactNode
@@ -35,7 +35,6 @@ export const Layout: React.FC<LayoutProps> = ({
   // 检查是否需要显示新人礼物弹窗
   useEffect(() => {
     const checkNewUserGift = () => {
-      // 检查 localStorage 中是否有新人礼物标记
       const newUserGiftShown = localStorage.getItem('new_user_gift_shown')
       const newUserGiftData = localStorage.getItem('new_user_gift_data')
       
@@ -64,30 +63,30 @@ export const Layout: React.FC<LayoutProps> = ({
     localStorage.removeItem('new_user_gift_data')
   }
 
-  // 获取用户抽奖次数
-  const fetchSpinCount = useCallback(async () => {
+  /**
+   * [v2 性能优化] 获取用户抽奖次数
+   *
+   * 修复问题：
+   * 1. 原实现使用原始 fetch + SUPABASE_ANON_KEY 绕过 RLS，存在安全隐患
+   *    且无法利用 supabase client 的连接池和 token 管理
+   * 2. 改用 supabase client 的 .from() 查询，正确走 RLS
+   * 3. 延迟 1.5 秒执行，避免与首屏核心请求（get-home-feed）竞争网络带宽
+   * 4. 添加 AbortController 防止组件卸载后的状态更新
+   */
+  const fetchSpinCount = useCallback(async (signal?: AbortSignal) => {
     if (!user?.id) return
     
     try {
-      // 使用直接API调用以避免类型错误（新表未在类型定义中）
-      const supabaseUrl = SUPABASE_URL
-      const supabaseKey = SUPABASE_ANON_KEY
+      const { data, error } = await supabase
+        .from('user_spin_balance')
+        .select('spin_count')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (signal?.aborted) return
       
-      const response = await fetch(
-        `${supabaseUrl}/rest/v1/user_spin_balance?user_id=eq.${user.id}&select=spin_count`,
-        {
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-          }
-        }
-      )
-      
-      if (response.ok) {
-        const data = await response.json()
-        if (data && data.length > 0) {
-          setSpinCount(data[0].spin_count || 0)
-        }
+      if (!error && data) {
+        setSpinCount(data.spin_count || 0)
       }
     } catch (e) {
       // 表可能不存在，忽略错误
@@ -95,31 +94,40 @@ export const Layout: React.FC<LayoutProps> = ({
   }, [user?.id])
 
   useEffect(() => {
-    if (isAuthenticated && user?.id) {
-      fetchSpinCount()
-      
-      // 订阅实时更新
-      const channel = supabase
-        .channel('spin_balance_changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'user_spin_balance',
-            filter: `user_id=eq.${user.id}`
-          },
-          (payload) => {
-            if (payload.new && typeof payload.new === 'object' && 'spin_count' in payload.new) {
-              setSpinCount((payload.new as any).spin_count || 0)
-            }
-          }
-        )
-        .subscribe()
+    if (!isAuthenticated || !user?.id) return
 
-      return () => {
-        supabase.removeChannel(channel)
+    const abortController = new AbortController()
+
+    // [v2] 延迟 1.5 秒加载，让首屏核心请求优先
+    const delayTimer = setTimeout(() => {
+      if (!abortController.signal.aborted) {
+        fetchSpinCount(abortController.signal)
       }
+    }, 1500)
+    
+    // 订阅实时更新
+    const channel = supabase
+      .channel('spin_balance_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_spin_balance',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          if (payload.new && typeof payload.new === 'object' && 'spin_count' in payload.new) {
+            setSpinCount((payload.new as any).spin_count || 0)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      clearTimeout(delayTimer)
+      abortController.abort()
+      supabase.removeChannel(channel)
     }
   }, [isAuthenticated, user?.id, fetchSpinCount])
 

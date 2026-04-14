@@ -42,29 +42,24 @@ vi.mock('../../../lib/utils', () => ({
 // 测试数据
 // ============================================================
 
+// [v2] 测试数据已与 HomeFeedCategory 字段瘦身保持同步：移除 icon_key, color_token
 const mockCategories: HomeFeedCategory[] = [
   {
     id: 'cat-1',
     code: 'daily_goods',
     name_i18n: { zh: '日用百货', ru: 'Товары', tg: 'Молҳо' },
-    icon_key: 'icon_daily_goods',
-    color_token: '#FF6B35',
     sort_order: 0,
   },
   {
     id: 'cat-2',
     code: 'home_appliance',
     name_i18n: { zh: '家用电器', ru: 'Техника', tg: 'Техника' },
-    icon_key: 'icon_home_appliance',
-    color_token: '#3B82F6',
     sort_order: 1,
   },
   {
     id: 'cat-3',
     code: 'unknown_code',
     name_i18n: { zh: '未知分类', ru: 'Неизвестно', tg: 'Номаълум' },
-    icon_key: 'icon_unknown',
-    color_token: '#666666',
     sort_order: 2,
   },
 ];

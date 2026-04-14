@@ -10,7 +10,10 @@
  * - 链接生成（含归因参数）
  * - 进度条计算
  * - 单份价格显示
- * - 全额购买标识
+ *
+ * [v2] 测试数据已与 HomeFeedProductData 字段瘦身保持同步：
+ * 移除 description_i18n, image_urls, full_purchase_enabled,
+ * full_purchase_price, period, draw_time, end_time
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
@@ -69,28 +72,21 @@ vi.mock('../../LazyImage', () => ({
 }));
 
 // ============================================================
-// 测试数据
+// 测试数据（v2 字段瘦身后）
 // ============================================================
 
 const baseProduct: HomeFeedProductData = {
   lottery_id: 'lot-001',
   inventory_product_id: 'inv-001',
   title_i18n: { zh: '智能手机', ru: 'Смартфон', tg: 'Смартфон' },
-  description_i18n: { zh: '高性能手机', ru: 'Мощный телефон', tg: 'Телефони қавӣ' },
   image_url: 'https://cdn.example.com/phone.jpg',
-  image_urls: ['https://cdn.example.com/phone.jpg'],
   original_price: 2999,
   ticket_price: 10,
   total_tickets: 300,
   sold_tickets: 150,
   price_comparisons: [],
   currency: 'TJS',
-  full_purchase_enabled: false,
-  full_purchase_price: null,
   status: 'active',
-  period: null,
-  draw_time: null,
-  end_time: null,
 };
 
 const productWithComparison: HomeFeedProductData = {

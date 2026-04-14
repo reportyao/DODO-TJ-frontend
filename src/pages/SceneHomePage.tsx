@@ -2,21 +2,23 @@
  * 首页场景化改造 · 主页面
  *
  * 布局结构（从上到下）：
- * 1. BannerCarousel - 轮播图（复用现有组件）
- * 2. SubsidyPoolBanner - 补贴池横条（复用现有组件）
+ * 1. BannerCarousel - 轮播图（数据来自 feed，不再独立请求）
+ * 2. SubsidyPoolBanner - 补贴池横条
  * 3. CategoryGrid - 金刚区分类入口
  * 4. Feed 混合流 - 商品卡片 + 专题卡片穿插
  *
- * 数据来源：get-home-feed Edge Function
+ * 数据来源：get-home-feed Edge Function（单一请求）
  * 埋点：home_view / category_click / product_card_click / topic_card_click
  *
- * 与现有 HomePage.tsx 保持相同的页面壳结构（pb-20 bg-gray-50）。
+ * [v2 性能优化]
+ * - Banner 数据合并到 get-home-feed，首屏请求数从 3 减少到 2
+ * - BannerCarousel 改为接收 props，不再内部独立查询 banners 表
+ * - 移除 react-query banners 缓存键的独立查询
  */
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../contexts/UserContext';
-// PurchaseModal 已移除（购买在 LotteryDetailPage 完成）
 import BannerCarousel from '../components/BannerCarousel';
 import { SubsidyPoolBanner } from '../components/home/SubsidyPoolBanner';
 import { CategoryGrid } from '../components/home/CategoryGrid';
@@ -43,7 +45,7 @@ const SceneHomePage: React.FC = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>();
 
   // ============================================================
-  // 数据获取
+  // 数据获取（单一请求获取 banners + categories + products + placements）
   // ============================================================
   const { data: feedData, isLoading } = useHomeFeed(selectedCategoryId);
 
@@ -110,7 +112,7 @@ const SceneHomePage: React.FC = () => {
     const products = feedData.products || [];
     const placements = feedData.placements || [];
 
-    // [修复] 分类筛选时隐藏专题卡片，避免用户选择“数码科技”后仍看到“母婴好物”等不相关专题
+    // [修复] 分类筛选时隐藏专题卡片，避免用户选择"数码科技"后仍看到"母婴好物"等不相关专题
     if (selectedCategoryId) {
       // 分类筛选模式：只显示商品，不插入专题卡片
       return products;
@@ -176,9 +178,9 @@ const SceneHomePage: React.FC = () => {
 
   return (
     <div className="pb-20 bg-gray-50">
-      {/* Banner 广告位 */}
+      {/* Banner 广告位 - 数据来自 feed，不再独立请求 */}
       <div className="px-4 pt-4">
-        <BannerCarousel />
+        <BannerCarousel banners={feedData?.banners} />
       </div>
 
       {/* 补贴池横条 */}

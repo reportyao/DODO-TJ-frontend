@@ -9,6 +9,9 @@
  * - 插入类型: Db{TableName}Insert
  * - 更新类型: Db{TableName}Update
  * - 前端业务模型: {Name} (不带 Db 前缀)
+ *
+ * [v2 性能优化] HomeFeedProductData / HomeFeedBanner / HomeFeedCategory
+ * 已与瘦身后的 rpc_get_home_feed 对齐，移除首屏不需要的字段。
  */
 
 // ============================================================================
@@ -462,22 +465,30 @@ export interface HomeFeedResponse {
   placements: HomeFeedItem[];
 }
 
+/**
+ * [v2] Banner 类型：合并多语言图片字段
+ * 前端 BannerCarousel 不再独立查询 banners 表，直接使用 feed 中的数据
+ */
 export interface HomeFeedBanner {
   id: string;
   title: string;
   image_url: string;
+  image_url_zh: string | null;
+  image_url_ru: string | null;
+  image_url_tg: string | null;
   link_url: string | null;
+  link_type: string;
   sort_order: number;
-  start_time: string | null;
-  end_time: string | null;
 }
 
+/**
+ * [v2] Category 类型：移除 icon_key, color_token
+ * 前端 CategoryGrid 通过 code 映射图标，不需要这两个字段
+ */
 export interface HomeFeedCategory {
   id: string;
   code: string;
   name_i18n: I18nText;
-  icon_key: string;
-  color_token: string;
   sort_order: number;
 }
 
@@ -487,25 +498,24 @@ export interface HomeFeedItem {
   data: HomeFeedProductData | HomeFeedTopicData;
 }
 
+/**
+ * [v2] Product 类型：首屏字段瘦身
+ * 移除：description_i18n, image_urls, full_purchase_enabled,
+ *       full_purchase_price, period, draw_time, end_time
+ * 这些字段仅在详情页使用，首屏卡片不需要
+ */
 export interface HomeFeedProductData {
   lottery_id: string;
   inventory_product_id: string;
   title_i18n: I18nText;
-  description_i18n: I18nText;
   image_url: string;
-  image_urls: string[];
   original_price: number;
   ticket_price: number;
   total_tickets: number;
   sold_tickets: number;
   price_comparisons: unknown[];
   currency: string;
-  full_purchase_enabled: boolean;
-  full_purchase_price: number | null;
   status: string;
-  period: number | null;
-  draw_time: string | null;
-  end_time: string | null;
 }
 
 export interface HomeFeedTopicData {

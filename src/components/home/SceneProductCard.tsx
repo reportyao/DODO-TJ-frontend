@@ -5,11 +5,10 @@
  * 复用现有 ProductList 的卡片视觉样式（上图下文、双列网格），
  * 但增加了曝光埋点和来源追踪能力。
  *
- * 与 ProductList 中的卡片保持完全一致的视觉风格。
- *
- * [审查修复]
- * - 补充 product_card_click 点击埋点（原实现仅有曝光埋点，
- *   缺少点击事件，导致行为仪表盘商品 CTR 始终为 0）
+ * [v2 修复]
+ * - 移除对 description_i18n 的回退引用（字段已从首页 feed 瘦身移除）
+ * - 补充 product_card_click 点击埋点
+ * - 修复未登录用户点击商品时 navigate 的 redirect 参数编码
  */
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -26,7 +25,6 @@ function preloadLotteryDetailPage() {
   }
 
   return lotteryDetailPagePreloadPromise.catch(() => {
-    // 预加载失败不阻塞用户点击，实际路由跳转时仍会走 lazyWithRetry 的正式重试逻辑
     return null;
   });
 }
@@ -54,13 +52,15 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = ({
   const navigate = useNavigate();
   const { track } = useTrackEvent();
 
+  /**
+   * [v2 修复] 标题获取
+   * 原实现回退到 description_i18n，但该字段已从首页 feed 瘦身移除。
+   * 现在只使用 title_i18n，避免 undefined 回退导致空标题。
+   */
   const title = getLocalizedText(
     product.title_i18n as Record<string, string>,
     i18n.language
-  ) || getLocalizedText(
-    product.description_i18n as Record<string, string>,
-    i18n.language
-  );
+  ) || '';
 
   // 曝光追踪
   const exposureRef = useExposureTracker({
@@ -83,11 +83,6 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = ({
       ? Math.round((1 - product.original_price / competitorPrice) * 100)
       : 0;
 
-  /**
-   * [修复] 补充 product_card_click 点击埋点
-   * 原实现仅有曝光埋点（product_card_expose），没有点击事件，
-   * 导致行为仪表盘中 product_card_click 数据为空。
-   */
   // 构建带归因参数的链接
   const buildLotteryLink = () => {
     const params = new URLSearchParams();

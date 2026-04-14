@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../lib/supabase';
-import { queryKeys, staleTimes } from '../lib/react-query';
 import { trackEvent } from '../hooks/useTrackEvent';
+import type { HomeFeedBanner } from '../types/homepage';
 
+/**
+ * Banner 数据类型（兼容旧格式和新 HomeFeedBanner 格式）
+ */
 interface Banner {
   id: string;
   title: string;
@@ -17,42 +18,35 @@ interface Banner {
   link_type: string;
 }
 
+interface BannerCarouselProps {
+  /**
+   * [v2 性能优化] 外部传入 banner 数据，消除组件内部独立请求
+   * 由 SceneHomePage 从 get-home-feed 统一获取后传入
+   */
+  banners?: HomeFeedBanner[];
+}
+
 /**
  * 首页轮播图组件
  * 
- * 【性能优化】
- * - 使用 react-query 管理 banner 数据缓存（30分钟 staleTime）
- * - 只预加载当前和下一张图片（而非全部），减少首屏网络请求
- * - 非当前图片使用 loading="lazy" 延迟加载
- * - 语言切换时重置预加载状态
+ * [v2 性能优化]
+ * - 移除组件内部的独立 react-query 请求（原先直接查询 banners 表）
+ * - 改为接收外部传入的 banners 数据（来自 get-home-feed 统一接口）
+ * - 首页首屏请求数从 3 个减少到 2 个（get-home-feed + get-subsidy-pool）
+ * - 保留图片预加载、语言切换、自动轮播等所有功能
  *
- * 【埋点补全】
- * - 新增 banner_click 事件上报（文档 10.1 事件清单要求）
- * - 记录 banner_id、position、link_url 等归因信息
+ * [埋点]
+ * - banner_click 事件上报（文档 10.1 事件清单要求）
  */
-const BannerCarousel: React.FC = () => {
+const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners: externalBanners }) => {
   const { i18n } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const preloadedRef = useRef<Set<number>>(new Set());
 
-  // 使用 react-query 缓存 banner 数据，替代手动模块级缓存
-  const { data: banners = [], isLoading } = useQuery<Banner[]>({
-    queryKey: queryKeys.banners,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('banners')
-        .select('id, title, image_url, image_url_zh, image_url_ru, image_url_tg, link_url, link_type')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true })
-        .limit(20);
-
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: staleTimes.static, // 30分钟：轮播图配置很少变化
-    placeholderData: (previousData) => previousData,
-  });
+  // 使用外部传入的数据
+  const banners: Banner[] = useMemo(() => externalBanners || [], [externalBanners]);
+  const isLoading = !externalBanners;
 
   // 根据当前语言获取对应的图片URL
   const getLocalizedImageUrl = useCallback((banner: Banner): string => {
@@ -70,7 +64,7 @@ const BannerCarousel: React.FC = () => {
     return banner.image_url;
   }, [i18n.language]);
 
-  // 【性能优化】只预加载当前和下一张图片
+  // 只预加载当前和下一张图片
   const preloadAdjacentImages = useCallback((index: number) => {
     if (banners.length === 0) return;
 
@@ -132,9 +126,7 @@ const BannerCarousel: React.FC = () => {
     return () => clearInterval(interval);
   }, [banners.length, imagesLoaded]);
 
-  // ============================================================
   // Banner 点击埋点
-  // ============================================================
   const handleBannerClick = useCallback((banner: Banner, position: number) => {
     trackEvent({
       event_name: 'banner_click',
@@ -167,7 +159,7 @@ const BannerCarousel: React.FC = () => {
       {banners.map((banner, index) => {
         const isActive = index === currentIndex;
         const imageUrl = getLocalizedImageUrl(banner);
-        // 【性能优化】非当前和相邻的图片使用 lazy loading
+        // 非当前和相邻的图片使用 lazy loading
         const isNearby = Math.abs(index - currentIndex) <= 1 || 
           (currentIndex === 0 && index === banners.length - 1) ||
           (currentIndex === banners.length - 1 && index === 0);

@@ -1,8 +1,10 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
+import { staleTimes } from '../../lib/react-query';
 import { FireIcon } from '@heroicons/react/24/solid';
 
 interface SubsidyData {
@@ -69,37 +71,68 @@ function formatFullNumber(num: number): string {
  * 展示在 Banner 下方、商品列表上方
  * 包含：补贴池图标 + 剩余金额 + 跑马灯
  * 点击跳转到钱包页
+ *
+ * [v2 性能优化]
+ * - 使用 react-query 管理缓存（10 分钟 staleTime），避免每次进入首页都重新请求
+ * - 跑马灯 items 使用 useRef 保持稳定引用，避免不必要的重渲染
+ * - 跑马灯 interval 只在组件可见时运行（IntersectionObserver）
  */
 export const SubsidyPoolBanner: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [data, setData] = useState<SubsidyData | null>(null);
   const [currentMsgIndex, setCurrentMsgIndex] = useState(0);
+  const [isVisible, setIsVisible] = useState(false);
+  const bannerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  // [v2] 使用 react-query 缓存补贴池数据，10 分钟内不重复请求
+  const { data } = useQuery<SubsidyData | null>({
+    queryKey: ['subsidy-pool'],
+    queryFn: async () => {
       try {
         const { data: result, error } = await supabase.functions.invoke('get-subsidy-pool');
-        if (!error && result) setData(result);
+        if (!error && result) return result;
+        return null;
       } catch (err) {
         console.error('Failed to fetch subsidy pool:', err);
+        return null;
       }
-    };
-    fetchData();
+    },
+    staleTime: staleTimes.static, // 30 分钟
+    gcTime: 1000 * 60 * 60, // 缓存保留 1 小时
+    refetchOnWindowFocus: false,
+  });
+
+  // 跑马灯数据使用 useRef 保持稳定引用
+  const marqueeItemsRef = useRef<MarqueeItem[]>(generateFakeItems(15));
+  const marqueeItems = marqueeItemsRef.current;
+
+  // [v2] 使用 IntersectionObserver 检测可见性，不可见时暂停跑马灯
+  useEffect(() => {
+    const el = bannerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
-  const marqueeItems = useMemo(() => generateFakeItems(15), []);
-
+  // 跑马灯定时器 - 仅在可见时运行
   useEffect(() => {
-    if (marqueeItems.length === 0) return;
+    if (marqueeItems.length === 0 || !isVisible) return;
     const interval = setInterval(() => {
       setCurrentMsgIndex((prev) => (prev + 1) % marqueeItems.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, [marqueeItems.length]);
+  }, [marqueeItems.length, isVisible]);
 
   return (
     <motion.div
+      ref={bannerRef}
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
       onClick={() => navigate('/wallet')}

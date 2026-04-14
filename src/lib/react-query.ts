@@ -88,7 +88,12 @@ export const queryKeys = {
   // 支付配置
   paymentConfigs: ['payment', 'configs'] as const,
 
-  // 轮播图
+  /**
+   * [v2] 轮播图缓存键已废弃
+   * Banner 数据现在由 get-home-feed 统一返回，
+   * 不再有独立的 banners 查询。保留键定义以兼容旧代码引用。
+   * @deprecated 使用 homepageQueryKeys.homeFeed() 代替
+   */
   banners: ['banners'] as const,
 };
 
@@ -96,10 +101,12 @@ export const queryKeys = {
 // 不同数据类型的推荐 staleTime（供各 hook 引用）
 // ============================================================
 export const staleTimes = {
-  /** 静态配置类数据（轮播图、取货点、优惠券规则）：30分钟 */
+  /** 静态配置类数据（轮播图、取货点、优惠券规则、补贴池）：30分钟 */
   static: 1000 * 60 * 30,
-  /** 商品列表类数据（商城列表）：5分钟 */
-  list: 1000 * 60 * 5,
+  /** 商品列表类数据（商城列表、首页 feed）：3分钟
+   * [v2] 从 5 分钟调整为 3 分钟，配合 Edge Function 的 s-maxage=30 CDN 缓存，
+   * 确保商品上下架变更在合理时间内反映到首页 */
+  list: 1000 * 60 * 3,
   /** 用户资产类数据（钱包余额）：1分钟 */
   realtime: 1000 * 60 * 1,
   /** 详情页数据：3分钟 */

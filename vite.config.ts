@@ -7,7 +7,7 @@ import { compression } from 'vite-plugin-compression2'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   const buildTime = new Date().toISOString()
-  const appVersion = '2.5.3' // 升级版本号：性能优化（gzip 预压缩 + WebP 图片）
+  const appVersion = '2.6.0' // v2.6.0: 首页性能优化（字段瘦身 + 请求合并 + 缓存策略）
 
   return {
     plugins: [
@@ -45,14 +45,26 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       sourcemap: false,
-      minify: 'esbuild',  // Use esbuild instead of terser to avoid tree-shaking issues
+      minify: 'esbuild',
       assetsInlineLimit: 0,
       rollupOptions: {
         output: {
+          /**
+           * [v2] 手动分包策略优化
+           *
+           * 目标：减少首屏 JS 体积，提升缓存命中率
+           * - vendor: React 核心（变化极少，长期缓存）
+           * - supabase: Supabase SDK（独立更新周期）
+           * - motion: Framer Motion（体积大，独立缓存）
+           * - query: React Query（独立更新周期）
+           * - i18n: i18next + 语言包（语言切换时才需要）
+           */
           manualChunks: {
             vendor: ['react', 'react-dom', 'react-router-dom'],
             supabase: ['@supabase/supabase-js'],
             motion: ['framer-motion'],
+            query: ['@tanstack/react-query'],
+            i18n: ['i18next', 'react-i18next'],
           },
           chunkFileNames: 'assets/js/[name]-[hash].js',
           entryFileNames: 'assets/js/[name]-[hash].js',

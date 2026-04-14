@@ -6,6 +6,11 @@
  * - useHomeFeed: 数据获取、分类筛选、错误处理
  * - useCategoryProducts: 分类商品独立查询
  * - useTopicDetail: 专题详情获取
+ *
+ * [v2] 测试数据已与 RPC 字段瘦身保持同步：
+ * - Banner: 新增 image_url_zh/ru/tg, link_type；移除 start_time, end_time
+ * - Category: 移除 icon_key, color_token, is_active
+ * - Product: 移除 description_i18n, image_urls, full_purchase_enabled, full_purchase_price
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
@@ -57,15 +62,30 @@ vi.mock('../../lib/react-query', () => ({
 }));
 
 // ============================================================
-// 测试数据
+// 测试数据（v2 字段瘦身后）
 // ============================================================
 
 const mockFeedData = {
   banners: [
-    { id: 'b1', title: '测试Banner', image_url: 'https://cdn.example.com/b1.jpg', link_url: '/test', sort_order: 0, start_time: null, end_time: null },
+    {
+      id: 'b1',
+      title: '测试Banner',
+      image_url: 'https://cdn.example.com/b1.jpg',
+      image_url_zh: null,
+      image_url_ru: null,
+      image_url_tg: null,
+      link_url: '/test',
+      link_type: 'internal',
+      sort_order: 0,
+    },
   ],
   categories: [
-    { id: 'cat-1', code: 'daily_goods', name_i18n: { zh: '日用百货', ru: 'Товары', tg: 'Молҳо' }, icon_key: 'icon_daily_goods', color_token: '#FF6B35', sort_order: 0, is_active: true },
+    {
+      id: 'cat-1',
+      code: 'daily_goods',
+      name_i18n: { zh: '日用百货', ru: 'Товары', tg: 'Молҳо' },
+      sort_order: 0,
+    },
   ],
   products: [
     {
@@ -75,17 +95,13 @@ const mockFeedData = {
         lottery_id: 'lot-1',
         inventory_product_id: 'inv-1',
         title_i18n: { zh: '商品1', ru: 'Товар 1', tg: 'Мол 1' },
-        description_i18n: { zh: '描述', ru: 'Описание', tg: 'Тавсиф' },
         image_url: 'https://cdn.example.com/p1.jpg',
-        image_urls: [],
         original_price: 100,
         ticket_price: 10,
         total_tickets: 100,
         sold_tickets: 50,
         price_comparisons: [],
         currency: 'TJS',
-        full_purchase_enabled: false,
-        full_purchase_price: null,
         status: 'active',
       } as HomeFeedProductData,
     },
@@ -96,17 +112,13 @@ const mockFeedData = {
         lottery_id: 'lot-2',
         inventory_product_id: 'inv-2',
         title_i18n: { zh: '商品2', ru: 'Товар 2', tg: 'Мол 2' },
-        description_i18n: { zh: '描述2', ru: 'Описание 2', tg: 'Тавсиф 2' },
         image_url: 'https://cdn.example.com/p2.jpg',
-        image_urls: [],
         original_price: 200,
         ticket_price: 20,
         total_tickets: 50,
         sold_tickets: 25,
         price_comparisons: [],
         currency: 'TJS',
-        full_purchase_enabled: true,
-        full_purchase_price: 180,
         status: 'active',
       } as HomeFeedProductData,
     },
@@ -125,6 +137,7 @@ const mockFeedData = {
         cover_image_zh: null,
         cover_image_ru: null,
         cover_image_tg: null,
+        cover_image_url: null,
         theme_color: '#FF0000',
         card_style: 'standard',
         card_variant_name: null,
