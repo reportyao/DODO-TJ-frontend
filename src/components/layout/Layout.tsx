@@ -77,8 +77,8 @@ export const Layout: React.FC<LayoutProps> = ({
     if (!user?.id) return
     
     try {
-      const { data, error } = await supabase
-        .from('user_spin_balance')
+      const { data, error } = await (supabase
+        .from as any)('user_spin_balance')
         .select('spin_count')
         .eq('user_id', user.id)
         .maybeSingle()
@@ -86,7 +86,7 @@ export const Layout: React.FC<LayoutProps> = ({
       if (signal?.aborted) return
       
       if (!error && data) {
-        setSpinCount(data.spin_count || 0)
+        setSpinCount((data as any).spin_count || 0)
       }
     } catch (e) {
       // 表可能不存在，忽略错误
