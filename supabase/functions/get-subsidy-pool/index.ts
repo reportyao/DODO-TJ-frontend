@@ -46,29 +46,20 @@ serve(async (req: Request) => {
       totalIssued = configData.value.total_issued;
       source = "cache";
     } else {
-      // ── 策略 2：缓存未命中，使用 RPC 或直接查询做数据库聚合 ─────────
-      // 使用 .select() 获取所有 amount 但通过数据库端聚合减少传输量
-      // 注意：Supabase JS client 不直接支持 SUM 聚合，
-      // 但我们可以用 .select('amount') 配合 .csv() 或直接 RPC
-      // 这里回退到查询但只取 amount 列（比 select('*') 小得多）
-      const { data: txData, error: txError } = await supabase
-        .from("wallet_transactions")
-        .select("amount")
-        .in("type", ["BONUS", "DEPOSIT_BONUS", "FIRST_DEPOSIT_BONUS"]);
+        // ── 策略 2：缓存未命中，使用数据库端 RPC 聚合（避免全表扫描传输）───
+      const { data: rpcResult, error: rpcError } = await supabase
+        .rpc('rpc_get_subsidy_pool_total');
 
-      if (txError) {
-        console.error("Error querying bonus transactions:", txError);
+      if (rpcError) {
+        console.error("Error calling rpc_get_subsidy_pool_total:", rpcError);
         return new Response(
           JSON.stringify({ error: "Failed to query bonus transactions" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      totalIssued = (txData || []).reduce(
-        (sum: number, row: { amount: number }) => sum + Math.abs(row.amount),
-        0
-      );
-      source = "computed";
+      totalIssued = Number(rpcResult) || 0;
+      source = "computed_rpc";
 
       // 将计算结果写回 system_config 缓存
       await supabase

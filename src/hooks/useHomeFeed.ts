@@ -9,24 +9,12 @@
  *
  * 使用 react-query 管理缓存，与现有 useHomeData.ts 保持一致的模式。
  *
- * [审查修复]
- * - Edge Function get-home-feed 定义为 GET 请求，使用 URL 查询参数（lang, limit）
- *   但原实现使用 supabase.functions.invoke() 的 body 传参（POST 模式），
- *   导致 Edge Function 收不到参数，始终使用默认值。
- *   此外 category_id 参数在 Edge Function / RPC 中根本不存在，
- *   分类筛选需要前端实现。
- * - 修复为正确的 GET 请求方式
- * - 将 data 从 response.data.data 正确解包（Edge Function 返回 { success, data, meta }）
- * - get-topic-detail 同样修复为 GET 请求方式
- *
- * [遗漏修复]
- * - 分类筛选功能未实现：categoryId 参数被接收但从未使用，
- *   导致选择分类后商品列表不变化。
- *   修复方案：当 categoryId 存在时，查询 product_categories 表获取该分类下的
- *   inventory_product_id 列表，然后在前端过滤 feed 中的商品。
- * - 新增 useCategoryProducts hook 用于独立的分类商品列表页。
+ * [性能优化 v3]
+ * - useCategoryProducts 不再重复调用 get-home-feed，改为从 queryClient 读取缓存
+ * - 分类-商品映射关系独立缓存（staleTimes.static = 30分钟），避免每次分类切换都查数据库
+ * - 提取 fetchHomeFeedData 公共函数，消除 useHomeFeed 和 useCategoryProducts 的代码重复
  */
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { queryKeys, staleTimes } from '../lib/react-query';
 import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper';
@@ -36,8 +24,10 @@ import type { HomeFeedResponse, HomeFeedItem, HomeFeedProductData } from '../typ
 export const homepageQueryKeys = {
   ...queryKeys,
   homeFeed: (categoryId?: string) => ['homepage', 'feed', categoryId || 'all'] as const,
+  homeFeedBase: () => ['homepage', 'feed', 'all'] as const,
   topicDetail: (slugOrId: string) => ['homepage', 'topic', slugOrId] as const,
   categoryProducts: (categoryId: string) => ['homepage', 'category-products', categoryId] as const,
+  categoryMapping: (categoryId: string) => ['homepage', 'category-mapping', categoryId] as const,
 };
 
 /**
@@ -59,13 +49,43 @@ async function fetchCategoryProductIds(categoryId: string): Promise<Set<string>>
 }
 
 /**
+ * 从 Edge Function 获取原始 feed 数据
+ */
+async function fetchHomeFeedData(): Promise<HomeFeedResponse> {
+  const feedResult = await supabase.functions.invoke('get-home-feed', { method: 'GET' });
+
+  if (feedResult.error) {
+    throw new Error(await extractEdgeFunctionError(feedResult.error));
+  }
+
+  // Edge Function 返回格式: { success, data: { banners, categories, products, placements }, meta }
+  const feedData = feedResult.data?.data || feedResult.data;
+
+  return {
+    banners: feedData?.banners || [],
+    categories: feedData?.categories || [],
+    products: feedData?.products || [],
+    placements: feedData?.placements || [],
+  };
+}
+
+/**
+ * 按分类过滤商品列表
+ */
+function filterProductsByCategory(
+  products: HomeFeedItem[],
+  categoryProductIds: Set<string>,
+): HomeFeedItem[] {
+  return products.filter((item) => {
+    const productData = item.data as HomeFeedProductData;
+    return categoryProductIds.has(productData.inventory_product_id);
+  });
+}
+
+/**
  * 获取首页 Feed 数据
  *
  * @param categoryId - 可选的分类 ID，用于前端筛选商品
- *
- * [修复说明]
- * Edge Function `get-home-feed` 使用 GET 方法，参数通过 URL 查询字符串传递。
- * `supabase.functions.invoke()` 默认使用 POST + body，需要改用 GET 方式。
  *
  * 当 categoryId 存在时，会额外查询 product_categories 表获取该分类下的商品ID，
  * 然后在前端过滤 feed 中的商品列表。
@@ -75,37 +95,20 @@ export function useHomeFeed(categoryId?: string) {
     queryKey: homepageQueryKeys.homeFeed(categoryId),
     queryFn: async () => {
       // 并行获取 feed 数据和分类商品 ID（如果需要筛选）
-      const [feedResult, categoryProductIds] = await Promise.all([
-        supabase.functions.invoke('get-home-feed', { method: 'GET' }),
+      const [feedData, categoryProductIds] = await Promise.all([
+        fetchHomeFeedData(),
         categoryId ? fetchCategoryProductIds(categoryId) : Promise.resolve(null),
       ]);
 
-      if (feedResult.error) {
-        throw new Error(await extractEdgeFunctionError(feedResult.error));
-      }
-
-      // Edge Function 返回格式: { success, data: { banners, categories, products, placements }, meta }
-      const feedData = feedResult.data?.data || feedResult.data;
-
-      const allProducts: HomeFeedItem[] = feedData?.products || [];
-      const placements: HomeFeedItem[] = feedData?.placements || [];
-
       // 如果有分类筛选，过滤商品列表
-      let filteredProducts = allProducts;
+      let filteredProducts = feedData.products;
       if (categoryId && categoryProductIds) {
-        filteredProducts = allProducts.filter((item) => {
-          const productData = item.data as HomeFeedProductData;
-          // 通过 inventory_product_id 匹配分类关系
-          return categoryProductIds.has(productData.inventory_product_id);
-        });
+        filteredProducts = filterProductsByCategory(feedData.products, categoryProductIds);
       }
 
-      // 确保返回结构完整
       return {
-        banners: feedData?.banners || [],
-        categories: feedData?.categories || [],
+        ...feedData,
         products: filteredProducts,
-        placements: placements,
       };
     },
     staleTime: staleTimes.list,
@@ -116,36 +119,43 @@ export function useHomeFeed(categoryId?: string) {
 /**
  * 获取指定分类下的商品列表（用于独立的分类商品列表页）
  *
- * 复用 get-home-feed 的数据并按分类过滤，避免新增 Edge Function。
+ * [v3 性能优化] 优先从 queryClient 缓存中读取 homeFeed 基础数据，
+ * 避免每次分类切换都重新调用 get-home-feed Edge Function。
+ * 仅在缓存不存在时才发起网络请求。
  *
  * @param categoryId - 分类 ID
- * @param categoryCode - 分类 code（用于缓存 key）
  */
 export function useCategoryProducts(categoryId: string) {
+  const queryClient = useQueryClient();
+
   return useQuery<HomeFeedResponse>({
     queryKey: homepageQueryKeys.categoryProducts(categoryId),
     queryFn: async () => {
-      const [feedResult, categoryProductIds] = await Promise.all([
-        supabase.functions.invoke('get-home-feed', { method: 'GET' }),
-        fetchCategoryProductIds(categoryId),
-      ]);
+      // 优先从 queryClient 缓存读取基础 feed 数据
+      let baseFeed = queryClient.getQueryData<HomeFeedResponse>(
+        homepageQueryKeys.homeFeedBase(),
+      );
 
-      if (feedResult.error) {
-        throw new Error(await extractEdgeFunctionError(feedResult.error));
+      // 缓存未命中时才发起网络请求
+      if (!baseFeed) {
+        baseFeed = await fetchHomeFeedData();
       }
 
-      const feedData = feedResult.data?.data || feedResult.data;
-      const allProducts: HomeFeedItem[] = feedData?.products || [];
-
-      // 过滤该分类下的商品
-      const filteredProducts = allProducts.filter((item) => {
-        const productData = item.data as HomeFeedProductData;
-        return categoryProductIds.has(productData.inventory_product_id);
+      // 获取分类映射（独立缓存）
+      const categoryProductIds = await queryClient.fetchQuery({
+        queryKey: homepageQueryKeys.categoryMapping(categoryId),
+        queryFn: () => fetchCategoryProductIds(categoryId),
+        staleTime: staleTimes.static, // 30分钟缓存
       });
+
+      const filteredProducts = filterProductsByCategory(
+        baseFeed.products,
+        categoryProductIds,
+      );
 
       return {
         banners: [],
-        categories: feedData?.categories || [],
+        categories: baseFeed.categories,
         products: filteredProducts,
         placements: [],
       };
@@ -159,10 +169,6 @@ export function useCategoryProducts(categoryId: string) {
  * 获取专题详情
  *
  * @param slugOrId - 专题 slug 或 ID
- *
- * [修复说明]
- * Edge Function `get-topic-detail` 使用 GET 方法，slug 通过 URL 查询字符串传递。
- * 原实现使用 POST + body，需要改用 GET 方式。
  */
 export function useTopicDetail(slugOrId: string) {
   return useQuery({

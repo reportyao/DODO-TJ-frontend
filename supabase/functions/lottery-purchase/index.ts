@@ -82,63 +82,43 @@ async function rollbackAllocatedTickets(
       );
 
       if (!updateResponse.ok) {
-        // 如果 RPC 不存在，回退到直接 PATCH 更新
-        console.warn('rollback_lottery_sold_tickets RPC failed, falling back to direct PATCH');
-        const patchResponse = await fetch(
-          `${supabaseUrl}/rest/v1/lotteries?id=eq.${lotteryId}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'Authorization': `Bearer ${serviceRoleKey}`,
-              'apikey': serviceRoleKey,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=minimal',
-            },
-            body: JSON.stringify({
-              sold_tickets: `sold_tickets - ${ticketCount}`,
-              updated_at: new Date().toISOString(),
-            }),
-          }
-        );
-        
-        // PATCH 不支持表达式，改用 SQL RPC 或直接读写
-        if (!patchResponse.ok) {
-          // 最终回退：读取当前值再更新
-          try {
-            const getResp = await fetch(
-              `${supabaseUrl}/rest/v1/lotteries?id=eq.${lotteryId}&select=sold_tickets`,
-              {
-                headers: {
-                  'Authorization': `Bearer ${serviceRoleKey}`,
-                  'apikey': serviceRoleKey,
-                },
-              }
-            );
-            if (getResp.ok) {
-              const lotteries = await getResp.json();
-              if (lotteries[0]) {
-                const newSoldTickets = Math.max(0, lotteries[0].sold_tickets - ticketCount);
-                await fetch(
-                  `${supabaseUrl}/rest/v1/lotteries?id=eq.${lotteryId}`,
-                  {
-                    method: 'PATCH',
-                    headers: {
-                      'Authorization': `Bearer ${serviceRoleKey}`,
-                      'apikey': serviceRoleKey,
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      sold_tickets: newSoldTickets,
-                      updated_at: new Date().toISOString(),
-                    }),
-                  }
-                );
-                console.log(`Rolled back sold_tickets: ${lotteries[0].sold_tickets} -> ${newSoldTickets}`);
-              }
+        // RPC 失败，回退到读-改-写方式（PostgREST PATCH 不支持表达式）
+        console.warn('rollback_lottery_sold_tickets RPC failed, falling back to read-modify-write');
+        try {
+          const getResp = await fetch(
+            `${supabaseUrl}/rest/v1/lotteries?id=eq.${lotteryId}&select=sold_tickets`,
+            {
+              headers: {
+                'Authorization': `Bearer ${serviceRoleKey}`,
+                'apikey': serviceRoleKey,
+              },
             }
-          } catch (patchErr) {
-            console.error('Failed to rollback sold_tickets via fallback:', patchErr);
+          );
+          if (getResp.ok) {
+            const lotteries = await getResp.json();
+            if (lotteries[0]) {
+              const newSoldTickets = Math.max(0, lotteries[0].sold_tickets - ticketCount);
+              await fetch(
+                `${supabaseUrl}/rest/v1/lotteries?id=eq.${lotteryId}`,
+                {
+                  method: 'PATCH',
+                  headers: {
+                    'Authorization': `Bearer ${serviceRoleKey}`,
+                    'apikey': serviceRoleKey,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    sold_tickets: newSoldTickets,
+                    updated_at: new Date().toISOString(),
+                  }),
+                }
+              );
+              console.log(`Rolled back sold_tickets: ${lotteries[0].sold_tickets} -> ${newSoldTickets}`);
+            }
           }
+        } catch (patchErr) {
+          console.error('Failed to rollback sold_tickets via fallback:', patchErr);
+          logOrphanedTickets([], `sold_tickets rollback failed: ${patchErr}`, context);
         }
       } else {
         console.log(`Successfully rolled back sold_tickets by ${ticketCount}`);
