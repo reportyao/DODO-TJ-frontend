@@ -554,36 +554,23 @@ const LotteryDetailPage: React.FC = () => {
         });
       }
       
-      // 后台刷新钱包余额（不影响参与码显示）
-      refreshWallets();
-      
-      // 重置数量为 1
+      void refreshWallets().catch((walletError) => {
+        console.error('Background wallet refresh failed after lottery purchase:', walletError);
+      });
+
+      // 重置数量为 1，并将最终一致性刷新放到后台执行，避免额外阻塞成功反馈
       setQuantity(1);
-      
-      // 延迟后再从数据库刷新，确保数据最终一致性
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await Promise.all([
+      void Promise.all([
         refreshLotteryProgress(),
-        fetchMyTickets()
-      ]);
-      
-      // 检查是否售罄，优先使用 Edge Function 返回的结果
-      const isSoldOut = purchaseResult?.is_sold_out;
+        fetchMyTickets(),
+      ]).catch((refreshError) => {
+        console.warn('[LotteryDetail] Post-purchase background refresh failed:', refreshError);
+      });
+
+      const isSoldOut = Boolean(purchaseResult?.is_sold_out);
       if (isSoldOut) {
         toast.success(t('lottery.soldOutRedirect'));
         navigate(`/lottery/${id}/result`);
-      } else {
-        // 如果 Edge Function 没有返回售罄状态，再查询数据库确认
-        const { data: updatedLottery } = await supabase
-          .from('lotteries')
-          .select('status')
-          .eq('id', id)
-          .single();
-        
-        if (updatedLottery?.status === 'SOLD_OUT') {
-          toast.success(t('lottery.soldOutRedirect'));
-          navigate(`/lottery/${id}/result`);
-        }
       }
       
     } catch (error: any) {
@@ -709,10 +696,12 @@ const LotteryDetailPage: React.FC = () => {
             onClick={() => setIsImageModalOpen(true)}
           >
             {lottery.image_urls && lottery.image_urls.length > 0 ? (
-              <img
+              <LazyImage
                 src={lottery.image_urls[activeImageIndex]}
                 alt={title}
-                style={{ width: '100%', height: '100%', objectFit: 'contain', cursor: 'pointer', display: 'block', maxWidth: 'none' }}
+                priority="high"
+                objectFit="contain"
+                style={{ width: '100%', height: '100%', cursor: 'pointer', display: 'block', maxWidth: 'none' }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gray-200">
@@ -807,11 +796,12 @@ const LotteryDetailPage: React.FC = () => {
               </svg>
             </button>
             <div className="relative w-full h-full flex items-center justify-center p-4">
-              <img
+              <LazyImage
                 src={lottery.image_urls[activeImageIndex]}
                 alt={title}
-                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'pointer' }}
-                onClick={() => setIsImageModalOpen(false)}
+                priority="high"
+                objectFit="contain"
+                style={{ position: 'relative', maxWidth: '100%', maxHeight: '100%', width: '100%', height: '100%', cursor: 'pointer' }}
               />
               {lottery.image_urls.length > 1 && (
                 <>

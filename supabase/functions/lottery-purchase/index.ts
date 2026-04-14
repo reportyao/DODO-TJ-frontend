@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0'
+import { validateSessionWithUser } from '../_shared/auth.ts'
 import { mapErrorCode, getHttpStatusForErrorCode } from '../_shared/errorResponse.ts'
 
 /**
@@ -210,6 +212,13 @@ Deno.serve(async (req) => {
       throw new Error('服务器配置错误');
     }
 
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+
     // 【BUG修复】一元夺宝不允许使用抵扣券，强制忽略前端传入的 useCoupon 参数
     const { lotteryId, quantity, paymentMethod, session_token, useCoupon: _useCouponIgnored, idempotency_key } = await req.json();
     // 强制设为 false：iTJS抵扣券仅适用于全款购买，不适用于一元夺宝
@@ -223,33 +232,24 @@ Deno.serve(async (req) => {
       throw new Error('数量无效：必须在1到100之间');
     }
 
-    // 【R15修复】幂等性查重：如果提供了 idempotency_key，在开始时查询 edge_function_logs
-    // 防止网络超时后用户重试导致重复扣款
     if (idempotency_key) {
-      const idempotencyCheckResponse = await fetch(
-        `${supabaseUrl}/rest/v1/edge_function_logs?function_name=eq.lottery-purchase&status=eq.success&details->>idempotency_key=eq.${encodeURIComponent(idempotency_key)}&select=id,details&limit=1`,
-        {
-          headers: {
-            'Authorization': `Bearer ${serviceRoleKey}`,
-            'apikey': serviceRoleKey,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      if (idempotencyCheckResponse.ok) {
-        const existingLogs = await idempotencyCheckResponse.json();
-        if (existingLogs.length > 0) {
-          // 找到重复请求，返回原始结果
-          const cachedResult = existingLogs[0].details?.result_data;
-          console.log('Idempotency hit, returning cached result for key:', idempotency_key);
-          return new Response(JSON.stringify({ data: cachedResult, idempotency_hit: true }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
+      const { data: existingLogs, error: idempotencyError } = await supabaseAdmin
+        .from('edge_function_logs')
+        .select('details')
+        .eq('function_name', 'lottery-purchase')
+        .eq('status', 'success')
+        .filter('details->>idempotency_key', 'eq', idempotency_key)
+        .limit(1);
+
+      if (!idempotencyError && existingLogs && existingLogs.length > 0) {
+        const cachedResult = existingLogs[0].details?.result_data;
+        console.log('Idempotency hit, returning cached result for key:', idempotency_key);
+        return new Response(JSON.stringify({ data: cachedResult, idempotency_hit: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
     }
 
-    // ✅ 使用自定义 session token 验证用户
     let sessionToken = session_token;
     if (!sessionToken) {
       const authHeader = req.headers.get('authorization');
@@ -257,178 +257,84 @@ Deno.serve(async (req) => {
         sessionToken = authHeader.replace('Bearer ', '');
       }
     }
-    
+
     if (!sessionToken) {
       throw new Error('未授权：缺少会话令牌');
     }
 
-    // ✅ 查询 user_sessions 表验证 token
-    const sessionResponse = await fetch(
-      `${supabaseUrl}/rest/v1/user_sessions?session_token=eq.${sessionToken}&is_active=eq.true&select=*`,
-      {
-        headers: {
-          'Authorization': `Bearer ${serviceRoleKey}`,
-          'apikey': serviceRoleKey,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const validatedSession = await validateSessionWithUser(supabaseAdmin, sessionToken);
+    const user = validatedSession.user as Record<string, any>;
+    const userId = validatedSession.userId;
 
-    if (!sessionResponse.ok) {
-      throw new Error('未授权：无效的会话令牌');
+    const [
+      { data: lottery, error: lotteryError },
+      { count: userEntryCount, error: userEntriesError },
+      { data: walletRows, error: walletError },
+    ] = await Promise.all([
+      supabaseAdmin
+        .from('lotteries')
+        .select('*')
+        .eq('id', lotteryId)
+        .limit(1)
+        .maybeSingle(),
+      supabaseAdmin
+        .from('lottery_entries')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('lottery_id', lotteryId),
+      supabaseAdmin
+        .from('wallets')
+        .select('type, balance')
+        .eq('user_id', userId)
+        .in('type', ['TJS', 'LUCKY_COIN']),
+    ]);
+
+    if (lotteryError) {
+      throw new Error(`查询商品失败: ${lotteryError.message}`);
     }
 
-    const sessions = await sessionResponse.json();
-    if (sessions.length === 0) {
-      throw new Error('未授权：会话不存在或已过期');
-    }
-
-    const session = sessions[0];
-
-    // ✅ 检查 session 是否过期
-    const expiresAt = new Date(session.expires_at);
-    if (expiresAt < new Date()) {
-      throw new Error('未授权：会话已过期');
-    }
-
-    // ✅ 单独查询用户信息
-    const userResponse = await fetch(
-      `${supabaseUrl}/rest/v1/users?id=eq.${session.user_id}&select=*`,
-      {
-        headers: {
-          'Authorization': `Bearer ${serviceRoleKey}`,
-          'apikey': serviceRoleKey,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!userResponse.ok) {
-      throw new Error('用户不存在');
-    }
-
-    const users = await userResponse.json();
-    if (users.length === 0) {
-      throw new Error('用户不存在');
-    }
-
-    const user = users[0];
-    const userId = user.id;
-
-    // ✅ 获取彩票信息
-    const lotteryResponse = await fetch(
-      `${supabaseUrl}/rest/v1/lotteries?id=eq.${lotteryId}&select=*`,
-      {
-        headers: {
-          'Authorization': `Bearer ${serviceRoleKey}`,
-          'apikey': serviceRoleKey,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    const lotteries = await lotteryResponse.json();
-    if (lotteries.length === 0) {
+    if (!lottery) {
       throw new Error('商品不存在');
     }
 
-    const lottery = lotteries[0];
+    if (userEntriesError) {
+      throw new Error(`查询购买记录失败: ${userEntriesError.message}`);
+    }
 
-    // 验证彩票状态
+    if (walletError) {
+      throw new Error(`查询钱包失败: ${walletError.message}`);
+    }
+
     if (lottery.status !== 'ACTIVE') {
       throw new Error(`商品未在售中，当前状态: ${lottery.status}`);
     }
 
-    // 注意：end_time 已在业务上废弃，不再作为活动结束判定条件。
-    // 活动是否可参与仅以 status 与剩余份数为准，避免旧数据中的历史 end_time 误杀 ACTIVE 场次。
-
-    // ✅ 检查是否有足够的票（预检查，实际检查在RPC函数中）
     if (lottery.sold_tickets + quantity > lottery.total_tickets) {
       throw new Error('库存不足');
     }
 
-    // 检查用户购买限制
-    const userEntriesResponse = await fetch(
-      `${supabaseUrl}/rest/v1/lottery_entries?user_id=eq.${userId}&lottery_id=eq.${lotteryId}&select=id`,
-      {
-        headers: {
-          'Authorization': `Bearer ${serviceRoleKey}`,
-          'apikey': serviceRoleKey,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    const userEntries = await userEntriesResponse.json();
-    
-    // ✅ 支持无限购买
+    const existingEntryCount = userEntryCount || 0;
     if (!lottery.unlimited_purchase && lottery.max_per_user) {
-      if (userEntries.length + quantity > lottery.max_per_user) {
+      if (existingEntryCount + quantity > lottery.max_per_user) {
         throw new Error(`超出每人最大购买限制: ${lottery.max_per_user}`);
       }
     }
 
-    // 计算总金额
     const totalAmount = lottery.ticket_price * quantity;
-    // 【修复】验证总金额必须大于 0
     if (!totalAmount || totalAmount <= 0) {
       throw new Error('价格配置无效');
     }
 
-    // ============================================================
-    // 【业务重构】混合支付预检查
-    // 获取用户 TJS 和 LUCKY_COIN 钱包余额 + 抵扣券数量，进行总资产预检查
-    // 实际扣款由 process_mixed_payment RPC 在数据库事务中完成
-    // ============================================================
-    
-    // 获取 TJS 钱包
-    const tjsWalletResponse = await fetch(
-      `${supabaseUrl}/rest/v1/wallets?user_id=eq.${userId}&type=eq.TJS&select=*`,
-      {
-        headers: {
-          'Authorization': `Bearer ${serviceRoleKey}`,
-          'apikey': serviceRoleKey,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    const tjsWallets = await tjsWalletResponse.json();
-    const tjsBalance = tjsWallets.length > 0 ? (parseFloat(tjsWallets[0].balance) || 0) : 0;
+    const tjsBalance = (walletRows || []).reduce((balance, wallet: any) => {
+      if (wallet.type !== 'TJS') return balance;
+      return parseFloat(wallet.balance || '0') || 0;
+    }, 0);
+    const lcBalance = (walletRows || []).reduce((balance, wallet: any) => {
+      if (wallet.type !== 'LUCKY_COIN') return balance;
+      return parseFloat(wallet.balance || '0') || 0;
+    }, 0);
+    const couponValue = 0;
 
-    // 获取 LUCKY_COIN 钱包
-    const lcWalletResponse = await fetch(
-      `${supabaseUrl}/rest/v1/wallets?user_id=eq.${userId}&type=eq.LUCKY_COIN&select=*`,
-      {
-        headers: {
-          'Authorization': `Bearer ${serviceRoleKey}`,
-          'apikey': serviceRoleKey,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    const lcWallets = await lcWalletResponse.json();
-    const lcBalance = lcWallets.length > 0 ? (parseFloat(lcWallets[0].balance) || 0) : 0;
-
-    // 检查抵扣券（如果选择使用）
-    let couponValue = 0;
-    if (useCoupon) {
-      const couponResponse = await fetch(
-        `${supabaseUrl}/rest/v1/coupons?user_id=eq.${userId}&status=eq.VALID&expires_at=gt.${new Date().toISOString()}&select=amount&order=expires_at.asc&limit=1`,
-        {
-          headers: {
-            'Authorization': `Bearer ${serviceRoleKey}`,
-            'apikey': serviceRoleKey,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      const coupons = await couponResponse.json();
-      if (coupons.length > 0) {
-        couponValue = parseFloat(coupons[0].amount) || 0;
-      }
-    }
-
-    // 总可用资产预检查
     const totalAvailable = tjsBalance + lcBalance + couponValue;
     if (totalAvailable < totalAmount) {
       throw new Error(`余额不足。可用: ${totalAvailable.toFixed(2)} (TJS: ${tjsBalance.toFixed(2)}, 积分: ${lcBalance.toFixed(2)}, 优惠券: ${couponValue.toFixed(2)}), 需要: ${totalAmount.toFixed(2)}`);
@@ -573,36 +479,41 @@ Deno.serve(async (req) => {
       throw new Error(`支付失败: ${paymentError}`);
     }
 
-    // 更新订单状态
-    await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${order.id}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${serviceRoleKey}`,
-        'apikey': serviceRoleKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        status: 'PAID',
-        paid_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }),
-    });
-
-    // ✅ 重新查询lottery获取最新的sold_tickets
-    const updatedLotteryResponse = await fetch(
-      `${supabaseUrl}/rest/v1/lotteries?id=eq.${lotteryId}&select=sold_tickets,total_tickets`,
-      {
+    const paidAt = new Date().toISOString();
+    const [orderStatusResponse, updatedLotteryResponse] = await Promise.all([
+      fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${order.id}`, {
+        method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${serviceRoleKey}`,
           'apikey': serviceRoleKey,
           'Content-Type': 'application/json',
         },
-      }
-    );
-    
+        body: JSON.stringify({
+          status: 'PAID',
+          paid_at: paidAt,
+          updated_at: paidAt,
+        }),
+      }),
+      fetch(`${supabaseUrl}/rest/v1/lotteries?id=eq.${lotteryId}&select=sold_tickets,total_tickets`, {
+        headers: {
+          'Authorization': `Bearer ${serviceRoleKey}`,
+          'apikey': serviceRoleKey,
+          'Content-Type': 'application/json',
+        },
+      }),
+    ]);
+
+    if (!orderStatusResponse.ok) {
+      console.error('Failed to update lottery order status:', await orderStatusResponse.text());
+    }
+
+    if (!updatedLotteryResponse.ok) {
+      throw new Error(`查询最新库存失败: ${await updatedLotteryResponse.text()}`);
+    }
+
     const updatedLotteries = await updatedLotteryResponse.json();
     const updatedLottery = updatedLotteries[0];
-    const isSoldOut = updatedLottery.sold_tickets >= updatedLottery.total_tickets;
+    const isSoldOut = updatedLottery && updatedLottery.sold_tickets >= updatedLottery.total_tickets;
 
     // 如果售罄，更新状态和开奖时间
     if (isSoldOut) {
@@ -639,26 +550,26 @@ Deno.serve(async (req) => {
     const tjsDeducted = paymentResult.tjs_deducted || 0;
     const hasReferrer = user.referred_by_id || user.referrer_id;
     if (hasReferrer && tjsDeducted > 0) {
-      try {
-        const commissionResponse = await fetch(`${supabaseUrl}/functions/v1/handle-purchase-commission`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${serviceRoleKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            order_id: order.id,
-            user_id: userId,
-            order_amount: tjsDeducted
-          }),
+      fetch(`${supabaseUrl}/functions/v1/handle-purchase-commission`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${serviceRoleKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          order_id: order.id,
+          user_id: userId,
+          order_amount: tjsDeducted
+        }),
+      })
+        .then(async (commissionResponse) => {
+          if (!commissionResponse.ok) {
+            console.error('Failed to process commission:', await commissionResponse.text());
+          }
+        })
+        .catch((commissionError: unknown) => {
+          console.error('Commission processing error:', commissionError);
         });
-        
-        if (!commissionResponse.ok) {
-          console.error('Failed to process commission:', await commissionResponse.text());
-        }
-      } catch (commissionError: unknown) {
-        console.error('Commission processing error:', commissionError);
-      }
     }
 
     // 【修改】计算支付后的剩余余额（从 RPC 返回值中获取）
@@ -668,6 +579,8 @@ Deno.serve(async (req) => {
     // 返回购买结果
     const result = {
       success: true,
+      order_id: order.id,
+      order_number: order.order_number,
       order: {
         id: order.id,
         order_number: order.order_number,
@@ -675,6 +588,9 @@ Deno.serve(async (req) => {
         status: 'PAID',
       },
       lottery_entries: allocatedTickets,
+      ticket_numbers: allocatedTickets
+        .map((ticket: any) => ticket?.ticket_number)
+        .filter(Boolean),
       participation_codes: participationCodes,
       remaining_balance: remainingTjsBalance,
       remaining_lc_balance: remainingLcBalance,

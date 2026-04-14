@@ -248,7 +248,9 @@ const FullPurchaseConfirmPage: React.FC = () => {
 
       if (data?.success) {
         toast.success(t('lottery.fullPurchaseSuccess'));
-        await refreshWallets();
+        void refreshWallets().catch((refreshError) => {
+          console.error('Background wallet refresh failed after full purchase:', refreshError);
+        });
         const orderId = data.data?.order_id;
 
         // ============================================================

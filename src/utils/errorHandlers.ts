@@ -16,7 +16,9 @@ const isIgnorableDomAnimationError = (error: unknown, fallbackMessage = '') => {
 }
 
 const logIgnoredDomAnimationError = (source: string, error: unknown) => {
-  console.warn(`[DOM animation warning][${source}]`, error)
+  if (import.meta.env.DEV) {
+    console.debug(`[DOM animation warning][${source}]`, error)
+  }
 }
 
 export const setupGlobalErrorHandlers = () => {
@@ -60,10 +62,13 @@ export const setupGlobalErrorHandlers = () => {
 
   // 添加 Framer Motion 特定的错误处理（覆盖 console.error）
   const originalConsoleError = console.error
+  const originalConsoleDebug = console.debug.bind(console)
   console.error = (...args) => {
     const message = args.join(' ')
     if (isIgnorableDomAnimationError(args[0], message) || message.includes('framer-motion')) {
-      originalConsoleError.call(console, '[Ignored DOM animation error]', ...args)
+      if (import.meta.env.DEV) {
+        originalConsoleDebug('[Ignored DOM animation error]', ...args)
+      }
       return
     }
     originalConsoleError.apply(console, args)

@@ -5,18 +5,15 @@ import { useUser } from '../contexts/UserContext';
 import { useInviteStats } from '../hooks/useInviteStats';
 import { Lottery } from '../lib/supabase';
 import { PurchaseModal } from '../components/lottery/PurchaseModal';
-import { useSupabase } from '../contexts/SupabaseContext';
 import { ProductList } from '../components/home/ProductList';
 import BannerCarousel from '../components/BannerCarousel';
 import { SubsidyPoolBanner } from '../components/home/SubsidyPoolBanner';
-import toast from 'react-hot-toast';
 import { useLotteries } from '../hooks/useHomeData';
 
 
 const HomePage: React.FC = () => {
   const { t } = useTranslation();
-  const { user, wallets, isLoading: userLoading, refreshWallets } = useUser();
-  const { lotteryService } = useSupabase();
+  const { user, isLoading: userLoading } = useUser();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { stats: _inviteStats } = useInviteStats();
   
@@ -59,18 +56,8 @@ const HomePage: React.FC = () => {
   const [selectedLottery, setSelectedLottery] = useState<Lottery | null>(null);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
 
-  const handlePurchaseConfirm = async (lotteryId: string, quantity: number) => {
-    try {
-      await lotteryService.purchaseTickets(lotteryId, quantity);
-      toast.success(t('lottery.purchaseSuccess'));
-      await refetchLotteries();
-      await refreshWallets();
-    } catch (error: any) {
-      toast.error(error.message || t('error.networkError'));
-    } finally {
-      setIsPurchaseModalOpen(false);
-      setSelectedLottery(null);
-    }
+  const handlePurchaseConfirm = (_lotteryId: string, _quantity: number) => {
+    void refetchLotteries();
   };
 
   // 转换商城数据格式用于列表
@@ -115,7 +102,10 @@ const HomePage: React.FC = () => {
       <PurchaseModal
         lottery={selectedLottery}
         isOpen={isPurchaseModalOpen}
-        onClose={() => setIsPurchaseModalOpen(false)}
+        onClose={() => {
+          setIsPurchaseModalOpen(false)
+          setSelectedLottery(null)
+        }}
         onConfirm={handlePurchaseConfirm}
       />
     </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { LazyImage } from '../LazyImage';
 import { formatCurrency, getLocalizedText } from '../../lib/utils';
 
 interface PriceComparison {
@@ -113,7 +114,7 @@ export const ProductList: React.FC<ProductListProps> = ({
       ) : products.length > 0 ? (
         /* 双列网格布局 */
         <div className="grid grid-cols-2 gap-3">
-          {products.map((product) => {
+          {products.map((product, index) => {
             const competitorPrice = getHighestCompetitorPrice(product);
             const savingsPercent = competitorPrice ? getSavingsPercent(product.price, competitorPrice) : 0;
             
@@ -141,22 +142,17 @@ export const ProductList: React.FC<ProductListProps> = ({
                   }}
                 >
                   {product.image_url ? (
-                    <img
+                    <LazyImage
                       src={product.image_url}
                       alt={getProductTitle(product)}
-                      loading="lazy"
-                      decoding="async"
+                      priority={index < 4 ? 'high' : 'low'}
+                      objectFit="cover"
                       style={{
                         position: 'absolute',
                         top: 0,
                         left: 0,
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover',
-                        objectPosition: 'center',
-                      }}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23f0f0f0" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-size="14"%3ENo Image%3C/text%3E%3C/svg%3E';
                       }}
                     />
                   ) : (

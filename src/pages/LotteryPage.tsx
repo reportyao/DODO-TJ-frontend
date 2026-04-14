@@ -9,15 +9,12 @@ import { useSupabase } from '../contexts/SupabaseContext'
 import { LotteryCard } from '../components/lottery/LotteryCard'
 import { PurchaseModal } from '../components/lottery/PurchaseModal'
 import { AdjustmentsHorizontalIcon, ClockIcon, ClipboardDocumentListIcon, PlayIcon, InformationCircleIcon, XMarkIcon } from '@heroicons/react/24/outline'
-import toast from 'react-hot-toast'
-import { useUser } from '../contexts/UserContext'
 import { useNavigate } from 'react-router-dom'
 
 const LotteryPage: React.FC = () => {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { lotteryService } = useSupabase()
-  const { refreshWallets } = useUser()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'upcoming' | 'completed' | 'drawResult'>('active')
@@ -56,18 +53,8 @@ const LotteryPage: React.FC = () => {
     setIsPurchaseModalOpen(true)
   }
 
-  const handlePurchaseConfirm = async (lotteryId: string, quantity: number) => {
-    try {
-      await lotteryService.purchaseTickets(lotteryId, quantity)
-      toast.success(t('lottery.purchaseSuccess'))
-      refetch()
-      await refreshWallets()
-    } catch (error: any) {
-      toast.error(error.message || t('error.networkError'))
-    } finally {
-      setIsPurchaseModalOpen(false)
-      setSelectedLottery(null)
-    }
+  const handlePurchaseConfirm = (_lotteryId: string, _quantity: number) => {
+    void refetch()
   }
 
   return (
@@ -174,7 +161,10 @@ const LotteryPage: React.FC = () => {
       <PurchaseModal
         lottery={selectedLottery}
         isOpen={isPurchaseModalOpen}
-        onClose={() => setIsPurchaseModalOpen(false)}
+        onClose={() => {
+          setIsPurchaseModalOpen(false)
+          setSelectedLottery(null)
+        }}
         onConfirm={handlePurchaseConfirm}
       />
 

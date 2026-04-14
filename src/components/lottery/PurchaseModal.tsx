@@ -13,7 +13,7 @@ interface PurchaseModalProps {
   lottery: Lottery | null
   isOpen: boolean
   onClose: () => void
-  onConfirm: (lotteryId: string, quantity: number) => Promise<void>
+  onConfirm: (lotteryId: string, quantity: number, result?: any) => Promise<void> | void
 }
 
 export const PurchaseModal: React.FC<PurchaseModalProps> = ({
@@ -28,8 +28,8 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
   const [showSuccess, setShowSuccess] = useState(false)
 
   const { lotteryService } = useSupabase()
-  const { refreshWallets } = useUser() // 引入 refreshWallets
-  const { t } = useTranslation() // 引入 t
+  const { refreshWallets } = useUser()
+  const { t } = useTranslation()
 
   if (!lottery) return null
 
@@ -48,21 +48,31 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
 
     try {
       setIsLoading(true)
-      // 调用抽象后的购买服务
-      const order = await lotteryService.purchaseTickets(lottery.id, quantity)
-      
-      // 购买成功后，使用订单中的 ticket_numbers
-      const codes = order.ticket_numbers.map((num: number) => `#${num.toString().padStart(5, '0')}`)
+      const response = await lotteryService.purchaseTickets(lottery.id, quantity)
+      const purchaseResult = response?.data || response
+
+      const rawCodes = (
+        purchaseResult?.participation_codes
+        ?? purchaseResult?.ticket_numbers?.map((num: number) => num.toString().padStart(5, '0'))
+        ?? purchaseResult?.lottery_entries
+          ?.map((entry: any) => String(entry?.participation_code || entry?.ticket_number || entry?.numbers || ''))
+          .filter(Boolean)
+        ?? []
+      ) as string[]
+
+      const codes = rawCodes.map((code) => (code.startsWith('#') ? code : `#${code}`))
       setPurchasedCodes(codes)
       setShowSuccess(true)
-      
-      toast.success(t('lottery.purchaseSuccess'))
-      
-      // 刷新钱包余额
-      await refreshWallets()
 
-      // 触发外部刷新，例如刷新商城列表
-      onConfirm(lottery.id, quantity) 
+      toast.success(t('lottery.purchaseSuccess'))
+
+      void refreshWallets().catch((walletError) => {
+        console.error('Wallet refresh failed after lottery purchase:', walletError)
+      })
+
+      void Promise.resolve(onConfirm(lottery.id, quantity, purchaseResult)).catch((postPurchaseError) => {
+        console.error('Post-purchase refresh failed:', postPurchaseError)
+      })
     } catch (error: any) {
       console.error('Purchase failed:', error)
       toast.error(error.message || t('lottery.purchaseFailed'))
