@@ -85,7 +85,7 @@ const MyTicketsPage: React.FC = () => {
         total_tickets: lotteryData.total_tickets,
         sold_tickets: lotteryData.sold_tickets,
         status: lotteryData.status,
-        winning_numbers: lotteryData.winning_numbers as string[] | undefined,
+        winning_numbers: (lotteryData.winning_numbers as unknown) as string[] | undefined,
         winning_user_id: lotteryData.winning_user_id,
       });
 

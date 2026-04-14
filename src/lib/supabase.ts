@@ -934,7 +934,7 @@ export const referralService = {
 			      // 点赞
       const { error } = await supabase
         .from('likes')
-        .insert({ post_id: showoffId, user_id: user.id });
+        .insert({ post_id: showoffId, user_id: user.id, target_id: showoffId, target_type: 'showoff' });
 			
 			      if (error) {
 			        console.error('Failed to like showoff:', error);

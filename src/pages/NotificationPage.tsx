@@ -68,8 +68,10 @@ const NotificationPage: React.FC = () => {
       if (!notificationsError && notificationsData) {
         allNotifications.push(...notificationsData.map(n => ({
           ...n,
+          title_i18n: n.title_i18n as Record<string, string> | undefined,
+          message_i18n: n.message_i18n as Record<string, string> | undefined,
           source: 'notifications'
-        })));
+        } as Notification)));
       }
 
       // 2. 获取充值记录

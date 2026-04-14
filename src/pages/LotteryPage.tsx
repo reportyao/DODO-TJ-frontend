@@ -39,7 +39,7 @@ const LotteryPage: React.FC = () => {
 
   const filteredLotteries = useMemo(() => {
     return lotteries.filter(lottery => {
-      const titleText = getLocalizedText(lottery.name_i18n as Record<string, string> | null, i18n.language) || lottery.title;
+      const titleText = getLocalizedText(lottery.title_i18n as Record<string, string> | null, i18n.language) || lottery.title;
       const matchesSearch = titleText.toLowerCase().includes(searchQuery.toLowerCase())
       
       if (filter === 'all') return matchesSearch

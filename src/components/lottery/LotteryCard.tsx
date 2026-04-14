@@ -211,7 +211,7 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
         {/* 抽奖标题 */}
 	        <h3 className="text-lg font-bold text-gray-900 mb-1">
 	          {(() => {
-	            const localizedName = getLocalizedText(lottery.name_i18n as Record<string, string> | null, i18n.language);
+	            const localizedName = getLocalizedText(lottery.title_i18n as Record<string, string> | null, i18n.language);
 	            const localizedTitle = getLocalizedText(lottery.title_i18n as Record<string, string> | null, i18n.language);
 	            return localizedName || localizedTitle || lottery.title;
 	          })()}

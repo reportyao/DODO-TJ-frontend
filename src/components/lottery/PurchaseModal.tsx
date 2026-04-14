@@ -176,7 +176,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
                   <div style={{ position: 'relative', width: '80px', height: '80px', flexShrink: 0, borderRadius: '0.75rem', overflow: 'hidden' }}>
                     <LazyImage
                       src={lottery.image_url}
-                      alt={getLocalizedText(lottery.name_i18n as Record<string, string> | null, t('language')) || lottery.title}
+                      alt={getLocalizedText(lottery.title_i18n as Record<string, string> | null, t('language')) || lottery.title}
                       style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
                     />
                   </div>
@@ -188,7 +188,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
                   </div>
                 )}
                 <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-1">{getLocalizedText(lottery.name_i18n as Record<string, string> | null, t('language')) || lottery.title}</h4>
+                  <h4 className="font-semibold text-gray-900 mb-1">{getLocalizedText(lottery.title_i18n as Record<string, string> | null, t('language')) || lottery.title}</h4>
                   <p className="text-sm text-gray-500">{t('lottery.period')}: {lottery.id}</p>
                   <p className="text-sm text-gray-500">{t('lottery.unitPrice')}: TJS{lottery.ticket_price.toFixed(2)}</p>
                 </div>

@@ -27,7 +27,7 @@ import { useTrackEvent } from '../hooks/useTrackEvent';
 
 type Lottery = Tables<'lotteries'>;
 type Showoff = Tables<'showoffs'> & {
-  user: Tables<'profiles'>;
+  user: Tables<'users'>;
   image_urls?: string[];
 };
 

@@ -68,7 +68,7 @@ const HomePage: React.FC = () => {
     price: l.original_price || l.ticket_price * l.total_tickets,
     ticket_price: l.ticket_price,
     title_i18n: l.title_i18n as Record<string, string> | null,
-    name_i18n: l.name_i18n as Record<string, string> | null,
+    name_i18n: (l as any).name_i18n as Record<string, string> | null,
     sold_tickets: l.sold_tickets,
     total_tickets: l.total_tickets,
     status: l.status,
