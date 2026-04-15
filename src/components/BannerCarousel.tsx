@@ -154,16 +154,25 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners: externalBanner
 
   const currentBanner = banners[currentIndex];
 
+  const activeBannerIndices = useMemo(() => {
+    if (banners.length === 0) return [] as number[];
+
+    const indices = new Set<number>([
+      currentIndex,
+      (currentIndex + 1) % banners.length,
+      (currentIndex - 1 + banners.length) % banners.length,
+    ]);
+
+    return Array.from(indices);
+  }, [banners.length, currentIndex]);
+
   const BannerContent = () => (
     <div className="relative h-40 overflow-hidden rounded-2xl bg-gray-100">
-      {banners.map((banner, index) => {
+      {activeBannerIndices.map((index) => {
+        const banner = banners[index];
         const isActive = index === currentIndex;
         const imageUrl = getLocalizedImageUrl(banner);
-        // 非当前和相邻的图片使用 lazy loading
-        const isNearby = Math.abs(index - currentIndex) <= 1 || 
-          (currentIndex === 0 && index === banners.length - 1) ||
-          (currentIndex === banners.length - 1 && index === 0);
-        
+
         return (
           <div
             key={`${banner.id}-${i18n.language}`}
@@ -173,13 +182,15 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners: externalBanner
               transform: isActive ? 'scale(1)' : 'scale(1.02)',
               transition: 'opacity 700ms ease-in-out, transform 700ms ease-in-out',
               zIndex: isActive ? 1 : 0,
+              pointerEvents: isActive ? 'auto' : 'none',
             }}
           >
             <img
               src={imageUrl}
               alt={banner.title}
-              loading={isNearby ? 'eager' : 'lazy'}
-              decoding="async"
+              loading={index === 0 ? 'eager' : 'lazy'}
+              fetchPriority={index === 0 ? 'high' : 'auto'}
+              decoding={index === currentIndex ? 'sync' : 'async'}
               style={{
                 width: '100%',
                 height: '100%',

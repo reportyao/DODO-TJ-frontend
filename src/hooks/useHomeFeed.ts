@@ -91,18 +91,32 @@ function filterProductsByCategory(
  * 然后在前端过滤 feed 中的商品列表。
  */
 export function useHomeFeed(categoryId?: string) {
+  const queryClient = useQueryClient();
+
   return useQuery<HomeFeedResponse>({
     queryKey: homepageQueryKeys.homeFeed(categoryId),
     queryFn: async () => {
-      // 并行获取 feed 数据和分类商品 ID（如果需要筛选）
-      const [feedData, categoryProductIds] = await Promise.all([
-        fetchHomeFeedData(),
-        categoryId ? fetchCategoryProductIds(categoryId) : Promise.resolve(null),
-      ]);
+      const cachedBaseFeed = queryClient.getQueryData<HomeFeedResponse>(
+        homepageQueryKeys.homeFeedBase(),
+      );
 
-      // 如果有分类筛选，过滤商品列表
+      const feedData = categoryId && cachedBaseFeed
+        ? cachedBaseFeed
+        : await queryClient.fetchQuery({
+            queryKey: homepageQueryKeys.homeFeedBase(),
+            queryFn: fetchHomeFeedData,
+            staleTime: staleTimes.list,
+          });
+
+      // 如果有分类筛选，只额外查询分类映射并在前端过滤
       let filteredProducts = feedData.products;
-      if (categoryId && categoryProductIds) {
+      if (categoryId) {
+        const categoryProductIds = await queryClient.fetchQuery({
+          queryKey: homepageQueryKeys.categoryMapping(categoryId),
+          queryFn: () => fetchCategoryProductIds(categoryId),
+          staleTime: staleTimes.static,
+        });
+
         filteredProducts = filterProductsByCategory(feedData.products, categoryProductIds);
       }
 

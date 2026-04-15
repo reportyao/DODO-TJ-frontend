@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 // 调试面板通过事件触发，不需要直接导入
 import { 
@@ -53,9 +52,7 @@ export const BottomNavigation: React.FC = () => {
 
   return (
     <>
-      <motion.nav
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
+      <nav
         className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-50"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
@@ -92,12 +89,11 @@ export const BottomNavigation: React.FC = () => {
               }
 
               return (
-                <motion.button
+                <button
                   key={item.name}
                   onClick={handleClick}
-                  whileTap={{ scale: 0.95 }}
                   className={cn(
-                    "flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200",
+                    "flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 active:scale-95",
                     isActive 
                       ? "text-primary bg-amber-50" 
                       : "text-gray-600 hover:text-gray-900"
@@ -107,16 +103,7 @@ export const BottomNavigation: React.FC = () => {
                     <Icon className="w-6 h-6" />
                     
                     {isActive && (
-                      <motion.div
-                        layoutId="activeTab"
-                        className="absolute -inset-1 bg-amber-100 rounded-lg -z-10"
-                        initial={false}
-                        transition={{
-                          type: "spring",
-                          stiffness: 500,
-                          damping: 30
-                        }}
-                      />
+                      <div className="absolute -inset-1 bg-amber-100 rounded-lg -z-10" />
                     )}
                   </div>
                   
@@ -126,12 +113,12 @@ export const BottomNavigation: React.FC = () => {
                   )}>
                     {item.name}
                   </span>
-                </motion.button>
+                </button>
               )
             })}
           </div>
         </div>
-      </motion.nav>
+      </nav>
 
       {/* 调试面板由 App.tsx 中的 DebugFloatingButton 组件处理 */}
     </>

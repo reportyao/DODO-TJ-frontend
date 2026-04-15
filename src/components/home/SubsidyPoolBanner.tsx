@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { staleTimes } from '../../lib/react-query';
@@ -105,6 +104,10 @@ export const SubsidyPoolBanner: React.FC = () => {
   // 跑马灯数据使用 useRef 保持稳定引用
   const marqueeItemsRef = useRef<MarqueeItem[]>(generateFakeItems(15));
   const marqueeItems = marqueeItemsRef.current;
+  const currentItem = useMemo(
+    () => (marqueeItems.length > 0 ? marqueeItems[currentMsgIndex] : null),
+    [currentMsgIndex, marqueeItems],
+  );
 
   // [v2] 使用 IntersectionObserver 检测可见性，不可见时暂停跑马灯
   useEffect(() => {
@@ -131,12 +134,10 @@ export const SubsidyPoolBanner: React.FC = () => {
   }, [marqueeItems.length, isVisible]);
 
   return (
-    <motion.div
+    <div
       ref={bannerRef}
-      initial={{ opacity: 0, y: 5 }}
-      animate={{ opacity: 1, y: 0 }}
       onClick={() => navigate('/wallet')}
-      className="mx-4 mt-3 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 shadow-md cursor-pointer active:scale-[0.98] transition-transform"
+      className="mx-4 mt-3 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 shadow-md cursor-pointer active:scale-[0.98] transition-transform duration-200"
     >
       <div className="flex items-center px-3 py-2.5 space-x-2.5">
         {/* 左侧：图标 + 剩余金额 */}
@@ -153,31 +154,25 @@ export const SubsidyPoolBanner: React.FC = () => {
 
         {/* 右侧：跑马灯 */}
         <div className="flex-1 overflow-hidden h-5 relative">
-          <AnimatePresence mode="wait">
-            {marqueeItems.length > 0 && (
-              <motion.div
-                key={currentMsgIndex}
-                initial={{ y: 16, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -16, opacity: 0 }}
-                transition={{ duration: 0.35, ease: 'easeInOut' }}
-                className="absolute inset-0 flex items-center text-white/90 text-[11px] whitespace-nowrap"
-              >
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-400 mr-1.5 flex-shrink-0 animate-pulse" />
-                <span className="truncate">
-                  {marqueeItems[currentMsgIndex].name}
-                  ({marqueeItems[currentMsgIndex].phone})
-                  {' '}{t('subsidyPool.marqueeDeposit')}{' '}
-                  {marqueeItems[currentMsgIndex].amount} TJS{' '}
-                  {t('subsidyPool.marqueeBonus')}{' '}
-                  {marqueeItems[currentMsgIndex].bonus}{' '}
-                  {t('subsidyPool.marqueePoints')}
-                </span>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {currentItem && (
+            <div
+              key={currentMsgIndex}
+              className="absolute inset-0 flex items-center text-white/90 text-[11px] whitespace-nowrap transition-opacity duration-300"
+            >
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-400 mr-1.5 flex-shrink-0 animate-pulse" />
+              <span className="truncate">
+                {currentItem.name}
+                ({currentItem.phone})
+                {' '}{t('subsidyPool.marqueeDeposit')}{' '}
+                {currentItem.amount} TJS{' '}
+                {t('subsidyPool.marqueeBonus')}{' '}
+                {currentItem.bonus}{' '}
+                {t('subsidyPool.marqueePoints')}
+              </span>
+            </div>
+          )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

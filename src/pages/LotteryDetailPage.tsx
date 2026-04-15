@@ -151,7 +151,6 @@ const LotteryDetailPage: React.FC = () => {
     setIsLoading(true);
     try {
       // 获取商品信息，包含关联的库存商品信息
-      // 使用直接 fetch 绕过缓存，确保获取最新数据
       const { data, error } = await supabase
         .from('lotteries')
         .select('*')
@@ -160,58 +159,57 @@ const LotteryDetailPage: React.FC = () => {
 
       if (error) throw error;
 
-      // 如果有关联的库存商品ID，单独查询库存商品信息
-      // 兼容历史 lotteries 记录：商品“说人话”文案、规格材质等新字段优先从 lotteries 读取，缺失时回退到库存商品
-      let inventoryProductData = null;
-      const inventoryProductId = data?.inventory_product_id;
-      if (inventoryProductId) {
-        const { data: invData } = await supabase
-          .from('inventory_products')
-          .select('id, stock, original_price, status, name, name_i18n, description, description_i18n, specifications, specifications_i18n, material, material_i18n, details, details_i18n, ai_understanding')
-          .eq('id', inventoryProductId)
-          .single();
-        inventoryProductData = invData;
-      }
+      const inventoryProductPromise = data?.inventory_product_id
+        ? supabase
+            .from('inventory_products')
+            .select('id, stock, original_price, status, name, name_i18n, description, description_i18n, specifications, specifications_i18n, material, material_i18n, details, details_i18n, ai_understanding')
+            .eq('id', data.inventory_product_id)
+            .single()
+        : Promise.resolve({ data: null, error: null });
 
-      // 将库存商品信息附加到lottery对象
-      const lotteryWithInventory = {
-        ...data,
-        inventory_product: inventoryProductData
-      };
-
-      setLottery(lotteryWithInventory);
-      
-      // 如果已完成处理订单，检查是否有新一轮 ACTIVE 期（同一商品）
-      if (data && data.status === 'COMPLETED') {
-        try {
-          // 查找同一商品的最新 ACTIVE 期
-          const { data: nextRound } = await supabase
+      const nextRoundPromise = data?.status === 'COMPLETED'
+        ? supabase
             .from('lotteries')
             .select('id')
             .eq('status', 'ACTIVE')
             .eq('title', data.title)
             .order('created_at', { ascending: false })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null });
 
-          if (nextRound && nextRound.id !== id) {
-            // 有新一轮，跳转到新一轮的详情页
-            navigate(`/lottery/${nextRound.id}`, { replace: true });
-            return;
-          }
-        } catch (nextRoundError) {
-          console.warn('[LotteryDetail] Failed to check next round:', nextRoundError);
+      const myTicketsPromise = user ? fetchMyTickets() : Promise.resolve();
+
+      const [inventoryResult, nextRoundResult] = await Promise.all([
+        inventoryProductPromise,
+        nextRoundPromise,
+        myTicketsPromise,
+      ]).then(([inventory, nextRound]) => [inventory, nextRound] as const);
+
+      const inventoryProductData = inventoryResult?.data || null;
+      const nextRound = nextRoundResult?.data || null;
+
+      // 将库存商品信息附加到 lottery 对象
+      const lotteryWithInventory = {
+        ...data,
+        inventory_product: inventoryProductData,
+      };
+
+      setLottery(lotteryWithInventory);
+      
+      // 如果已完成处理订单，检查是否有新一轮 ACTIVE 期（同一商品）
+      if (data && data.status === 'COMPLETED') {
+        if (nextRound && nextRound.id !== id) {
+          // 有新一轮，跳转到新一轮的详情页
+          navigate(`/lottery/${nextRound.id}`, { replace: true });
+          return;
         }
+
         // 没有新一轮，跳转到处理订单结果页
         navigate(`/lottery/${id}/result`);
       } else if (data && data.status === 'SOLD_OUT') {
         // 已售罄但还未处理订单，跳转到处理订单结果页（等待处理订单）
         navigate(`/lottery/${id}/result`);
-      }
-
-      // 获取我的参与码
-      if (user) {
-        fetchMyTickets();
       }
     } catch (error) {
       console.error('Failed to fetch lottery:', error);

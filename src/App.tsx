@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { Toaster } from "react-hot-toast"
 import PWAInstallPrompt from "./components/PWAInstallPrompt"
 import PWAUpdateNotification from "./components/PWAUpdateNotification"
+import SceneHomePage from "./pages/SceneHomePage"
 
 import { Layout } from "./components/layout/Layout"
 import { RealtimeNotificationsProvider } from "./components/RealtimeNotificationsProvider"
@@ -51,7 +52,6 @@ const MyTicketsPage = lazyWithRetry(() => import("./pages/MyTicketsPage"))
 const MyPrizesPage = lazyWithRetry(() => import("./pages/MyPrizesPage"))
 
 // 首页场景化改造页面
-const SceneHomePage = lazyWithRetry(() => import("./pages/SceneHomePage"))
 const TopicDetailPage = lazyWithRetry(() => import("./pages/TopicDetailPage"))
 const CategoryProductsPage = lazyWithRetry(() => import("./pages/CategoryProductsPage"))
 

@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useUser } from '../contexts/UserContext'
 // Note: This page uses Edge Functions directly, which is acceptable for this level of abstraction.
 // In a larger application, these could also be moved to the service layer.
-import { uploadImages } from '../lib/uploadImage'
+import { prewarmImageCompression, uploadImages } from '../lib/uploadImage'
 import { ArrowLeft, Upload, CheckCircle2, Loader2, X, Image as ImageIcon } from 'lucide-react'
 import { formatCurrency } from '../lib/utils'
 import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper'
+import { staleTimes } from '../lib/react-query'
 import toast from 'react-hot-toast'
 
 interface PaymentConfig {
@@ -54,8 +56,6 @@ export default function DepositPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { user, sessionToken } = useUser()
-  const [loading, setLoading] = useState(false)
-  const [configs, setConfigs] = useState<PaymentConfig[]>([])
   const [selectedMethod, setSelectedMethod] = useState<PaymentConfig | null>(null)
   const [amount, setAmount] = useState('')
   const [payerName, setPayerName] = useState('')
@@ -71,31 +71,35 @@ export default function DepositPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID())
 
-  useEffect(() => {
-    fetchPaymentConfigs()
-  }, [])
-
-  const fetchPaymentConfigs = async () => {
-    try {
-      setLoading(true)
+  const { data: configs = [], isLoading: loading } = useQuery<PaymentConfig[]>({
+    queryKey: ['payment', 'configs', 'deposit'],
+    queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('get-payment-config', {
         body: { type: 'DEPOSIT' }
       })
 
       if (error) throw new Error(await extractEdgeFunctionError(error))
-      
-      if (data?.success && data?.data) {
-        setConfigs(data.data)
-        if (data.data.length > 0) {
-          setSelectedMethod(data.data[0])
-        }
+      return data?.success && data?.data ? data.data : []
+    },
+    staleTime: staleTimes.static,
+    gcTime: 1000 * 60 * 60,
+    placeholderData: (previousData) => previousData,
+  })
+
+  useEffect(() => {
+    prewarmImageCompression()
+  }, [])
+
+  useEffect(() => {
+    if (configs.length === 0) return
+
+    setSelectedMethod((current) => {
+      if (current && configs.some((config) => config.id === current.id)) {
+        return current
       }
-    } catch (error) {
-      console.error(t('deposit.failedToLoadConfig') + ':', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+      return configs[0]
+    })
+  }, [configs])
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     

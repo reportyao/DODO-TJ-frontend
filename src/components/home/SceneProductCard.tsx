@@ -42,7 +42,7 @@ interface SceneProductCardProps {
   sourceCategoryId?: string;
 }
 
-export const SceneProductCard: React.FC<SceneProductCardProps> = ({
+export const SceneProductCard: React.FC<SceneProductCardProps> = React.memo(({
   product,
   position,
   sourceCategoryId,
@@ -118,6 +118,7 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = ({
   };
 
   const imageUrl = product.image_url || '';
+  const imagePriority = position < 4 ? 'high' : 'low';
 
   return (
     <div ref={exposureRef}>
@@ -148,6 +149,7 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = ({
           <LazyImage
             src={imageUrl}
             alt={title}
+            priority={imagePriority}
             style={{
               position: 'absolute',
               top: 0,
@@ -221,6 +223,6 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = ({
       </Link>
     </div>
   );
-};
+});
 
 export default SceneProductCard;

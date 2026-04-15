@@ -10,6 +10,32 @@ import { supabase } from './supabase'
  * - 长缓存：cacheControl 设为1年（图片URL含hash，天然支持缓存破坏）
  */
 
+let compressionModulePromise: Promise<typeof import('browser-image-compression')> | null = null
+
+function loadCompressionModule() {
+  if (!compressionModulePromise) {
+    compressionModulePromise = import('browser-image-compression')
+  }
+  return compressionModulePromise
+}
+
+export function prewarmImageCompression(): void {
+  if (typeof window === 'undefined') return
+
+  const warmup = () => {
+    void loadCompressionModule().catch(() => {
+      compressionModulePromise = null
+    })
+  }
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(warmup, { timeout: 1200 })
+    return
+  }
+
+  globalThis.setTimeout(warmup, 300)
+}
+
 /** 获取当前网络状态，用于自适应压缩参数 */
 function getNetworkQuality(): 'fast' | 'slow' {
   const connection = (navigator as any).connection || 
@@ -47,12 +73,18 @@ export async function uploadImage(
     let fileExt = file.name.split('.').pop() || 'jpg'
     let fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 
+    const shouldCompress =
+      compress &&
+      file.type.startsWith('image/') &&
+      file.size > 250 * 1024 &&
+      !file.type.includes('webp')
+
     // 尝试压缩图片（如果启用且是图片类型）
-    if (compress && file.type.startsWith('image/')) {
+    if (shouldCompress) {
       try {
         
         // 动态导入 browser-image-compression 以避免加载失败
-        const imageCompression = (await import('browser-image-compression')).default
+        const imageCompression = (await loadCompressionModule()).default
         
         // 【弱网自适应】根据网络状态调整压缩参数
         const networkQuality = getNetworkQuality()

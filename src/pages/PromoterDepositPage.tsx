@@ -66,6 +66,8 @@ interface DepositRecord {
 // ============================================================
 // 组件
 // ============================================================
+const QUICK_AMOUNTS_CACHE_KEY = 'promoter_deposit_quick_amounts_cache_v1'
+
 const PromoterDepositPage: React.FC = () => {
   const { t } = useTranslation()
   const { user } = useUser()
@@ -136,6 +138,15 @@ const PromoterDepositPage: React.FC = () => {
   // ========== 加载快捷金额配置 ==========
   const loadQuickAmounts = useCallback(async () => {
     try {
+      const cachedQuickAmounts = sessionStorage.getItem(QUICK_AMOUNTS_CACHE_KEY)
+      if (cachedQuickAmounts) {
+        const parsedCache = JSON.parse(cachedQuickAmounts)
+        if (Array.isArray(parsedCache) && parsedCache.length > 0) {
+          setQuickAmounts(parsedCache)
+          return
+        }
+      }
+
       const response = await fetch(
         `${SUPABASE_URL}/rest/v1/system_config?key=eq.promoter_deposit_quick_amounts&select=value`,
         {
@@ -153,6 +164,7 @@ const PromoterDepositPage: React.FC = () => {
             : data[0].value
           if (parsed?.amounts && Array.isArray(parsed.amounts)) {
             setQuickAmounts(parsed.amounts)
+            sessionStorage.setItem(QUICK_AMOUNTS_CACHE_KEY, JSON.stringify(parsed.amounts))
           }
         }
       }
