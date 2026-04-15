@@ -10,7 +10,7 @@ interface SpinFloatingButtonProps {
 
 /**
  * 首页浮动入口按钮
- * 位置：右侧中间，点击跳转到抽奖页面
+ * 位置：右侧中间，点击跳转到商品页面
  * 样式：动态抖动的礼盒图标
  */
 const SpinFloatingButton: React.FC<SpinFloatingButtonProps> = ({ spinCount = 0 }) => {
@@ -62,7 +62,7 @@ const SpinFloatingButton: React.FC<SpinFloatingButtonProps> = ({ spinCount = 0 }
         >
           <GiftIcon className="w-6 h-6 text-white" />
           
-          {/* 抽奖次数徽章 */}
+          {/* 购物次数徽章 */}
           {spinCount > 0 && (
             <SafeMotion
               initial={{ scale: 0 }}

@@ -208,7 +208,7 @@ const LotteryPage: React.FC = () => {
                     </p>
                   </section>
 
-                  {/* 开奖机制 */}
+                  {/* 处理订单机制 */}
                   <section>
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-1.5 h-6 bg-primary rounded-full"></div>

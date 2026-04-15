@@ -1,12 +1,12 @@
 // 180秒倒计时组件
-// 用于商城售罄后显示开奖倒计时
+// 用于商城售罄后显示处理倒计时
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Clock } from 'lucide-react';
 
 interface CountdownTimerProps {
-  drawTime: string;  // ISO 8601 格式的开奖时间
+  drawTime: string;  // ISO 8601 格式的处理时间
   onCountdownEnd?: () => void;  // 倒计时结束回调
 }
 

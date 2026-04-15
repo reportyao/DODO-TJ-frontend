@@ -521,7 +521,7 @@ export const lotteryService: any = {
   },
 
   /**
-   * 执行开奖 - 统一使用 auto-lottery-draw Edge Function
+   * 执行处理订单 - 统一使用 auto-lottery-draw Edge Function
    * @param lotteryId 商城 ID
    */
   async drawLottery(lotteryId: string): Promise<any> {

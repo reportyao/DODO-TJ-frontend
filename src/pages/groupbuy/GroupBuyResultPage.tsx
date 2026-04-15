@@ -116,7 +116,7 @@ export default function GroupBuyResultPage() {
 
   useEffect(() => {
     if (result && user) {
-      // 检查当前用户是否是中奖者
+      // 检查当前用户是否是获奖者
       if (result.winner_id === user.id) {
         setIsWinner(true);
         // Trigger confetti animation only if not already claimed
@@ -285,7 +285,7 @@ export default function GroupBuyResultPage() {
                            result.session?.expires_at && 
                            new Date(result.session.expires_at).getTime() < Date.now();
 
-  // 【新增】超时、取消或过期未开奖的情况
+  // 【新增】超时、取消或过期未处理订单的情况
   if (result.status === 'TIMEOUT' || result.status === 'CANCELLED' || result.status === 'EXPIRED' || isActuallyExpired) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-20">
@@ -456,7 +456,7 @@ export default function GroupBuyResultPage() {
     );
   }
 
-  // 已开奖的情况（SUCCESS）
+  // 已处理订单的情况（SUCCESS）
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 pb-20">
       {/* Header - 简化为返回按钮 */}
@@ -489,7 +489,7 @@ export default function GroupBuyResultPage() {
             </button>
           </div>
         ) : isParticipant ? (
-          // 【新增】未中奖参与者的提示
+          // 【新增】未获奖参与者的提示
           <div className="bg-white rounded-3xl p-8 text-center shadow-lg">
             <Coins className="w-16 h-16 text-primary mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
@@ -671,7 +671,7 @@ export default function GroupBuyResultPage() {
         </div>
       )}
 
-      {/* 底部按钮已移除，中奖者通过卡片内的“立即查看”按钮跳转 */}
+      {/* 底部按钮已移除，获奖者通过卡片内的“立即查看”按钮跳转 */}
 
       {/* Claim Modal */}
       {showClaimModal && (

@@ -115,7 +115,7 @@ export default function MyGroupBuysPage() {
         </div>
       );
         } else if (order.status === 'LOST' || order.session.status === 'TIMEOUT') {
-      // 新增逻辑：未成团或未中奖，显示已退款到余额
+      // 新增逻辑：未成团或未获奖，显示已退款到余额
       return (
         <div className="flex items-center gap-1 bg-amber-100 text-primary-dark px-3 py-1 rounded-full text-sm font-bold">
           <RefreshCw className="w-4 h-4" />

@@ -50,7 +50,7 @@ export const queryKeys = {
   userProfile: (userId: string) => ['user', 'profile', userId] as const,
   userWallets: (userId: string) => ['user', 'wallets', userId] as const,
   
-  // 商城（抽奖）相关
+  // 商城（商品）相关
   lotteries: {
     all: ['lotteries'] as const,
     lists: () => ['lotteries', 'list'] as const,

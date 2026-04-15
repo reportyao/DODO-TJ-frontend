@@ -47,7 +47,7 @@ interface UnifiedOrder {
   expires_at?: string;
   session_id?: string;
   refund_lucky_coins?: number;
-  // 抽奖特有
+  // 购物特有
   lottery_period?: string;
   lottery_id?: string;
   shipping?: any;
@@ -240,15 +240,15 @@ const OrderManagementPage: React.FC = () => {
       if (order.pickup_status === 'PICKED_UP' && order.result_id) {
         navigate(`/order-detail/${order.result_id}`);
       } else {
-        // 其他状态的拼团订单跳转到开奖结果页
+        // 其他状态的拼团订单跳转到处理订单结果页
         navigate(`/group-buy/result/${order.session_id}`);
       }
     } else if (order.order_type === 'lottery' && order.lottery_id) {
-      // 已中奖的一元夺宝订单（来自prizes表，有pickup_status）跳转到物流详情页
+      // 已获奖的一元购物订单（来自prizes表，有pickup_status）跳转到物流详情页
       if (order.pickup_status) {
         navigate(`/order-detail/${order.id}`);
       } else if (order.status === 'WON') {
-        // 中奖的订单（来自orders表，无pickup_status）也应跳转到物流详情页
+        // 获奖的订单（来自orders表，无pickup_status）也应跳转到物流详情页
         // 需要通过 prize_id 跳转，如果没有则跳转到商品页
         if ((order as any).prize_id) {
           navigate(`/order-detail/${(order as any).prize_id}`);
@@ -256,7 +256,7 @@ const OrderManagementPage: React.FC = () => {
           navigate(`/lottery/${order.lottery_id}`);
         }
       } else {
-        // 未开奖或未中奖的订单跳转到商品详情页
+        // 未处理订单或未获奖的订单跳转到商品详情页
         navigate(`/lottery/${order.lottery_id}`);
       }
     } else if (order.order_type === 'full_purchase') {
@@ -409,7 +409,7 @@ const OrderManagementPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* 底部操作区（仅中奖且待领取） */}
+                  {/* 底部操作区（仅获奖且待领取） */}
                   {order.pickup_status === 'PENDING_CLAIM' && (
                     <div className="mt-4 pt-4 border-t border-dashed border-gray-100 flex justify-end space-x-3">
                       <button

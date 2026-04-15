@@ -41,7 +41,7 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
   className
 }) => {
 	  const { t, i18n } = useTranslation()
-  // 卖罄后显示开奖倒计时，否则仅在 end_time 存在时显示活动倒计时
+  // 卖罄后显示处理倒计时，否则仅在 end_time 存在时显示活动倒计时
   const [timeRemaining, setTimeRemaining] = useState(() => getTimeRemaining(getLotteryCountdownTarget(lottery)));
 
   useEffect(() => {
@@ -83,7 +83,7 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
 	        className
 	      )}
 	    >
-      {/* 抽奖图片 - 智能展示图片，根据图片数量自动调整布局 */}
+      {/* 商品图片 - 智能展示图片，根据图片数量自动调整布局 */}
       <div style={{ position: 'relative', height: '144px', overflow: 'hidden', backgroundColor: '#ffffff' }}>
         {(() => {
           const allImages = lottery.image_urls && lottery.image_urls.length > 0 
@@ -208,7 +208,7 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
       </div>
 
       <div className="p-4">
-        {/* 抽奖标题 */}
+        {/* 商品标题 */}
 	        <h3 className="text-lg font-bold text-gray-900 mb-1">
 	          {(() => {
 	            const localizedName = getLocalizedText(lottery.title_i18n as Record<string, string> | null, i18n.language);
@@ -223,7 +223,7 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
 		          </p>
 		        )}
 
-        {/* 抽奖信息 */}
+        {/* 商品信息 */}
         <div className="space-y-3">
           {/* 价格和参与信息 */}
           <div className="grid grid-cols-3 gap-2">
@@ -266,7 +266,7 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
             </div>
           </div>
 
-          {/* 售罄后显示开奖倒计时 */}
+          {/* 售罄后显示处理倒计时 */}
           {isSoldOut && timeRemaining.total > 0 && (
             <div className="flex items-center text-xs text-red-600 font-semibold">
               <ClockIcon className="w-3 h-3 mr-1" />
@@ -290,7 +290,7 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
 		            </div>
 	          )}
 
-          {/* 中奖号码 */}
+          {/* 获奖号码 */}
 	          {lottery.status === 'COMPLETED' && lottery.winning_ticket_number && (
 		            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
 			              <p className="text-xs text-yellow-700 mb-1">{t('lottery.luckyNumber')}</p>

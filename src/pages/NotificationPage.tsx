@@ -219,7 +219,7 @@ const NotificationPage: React.FC = () => {
         console.error('Failed to fetch group buy results:', e);
       }
 
-      // 6. 获取商城记录（购买、中奖、未中）
+      // 6. 获取商城记录（购买、获奖、未中）
       try {
         const { data: ordersData, error: ordersError } = await supabase
           .from('orders')
@@ -228,7 +228,7 @@ const NotificationPage: React.FC = () => {
           .order('created_at', { ascending: false })
           .limit(20);
         
-        // 单独查询中奖记录
+        // 单独查询获奖记录
         const { data: prizesData } = await supabase
           .from('prizes')
           .select('id, status, lottery_id')
@@ -236,7 +236,7 @@ const NotificationPage: React.FC = () => {
           .limit(50);
 
         if (!ordersError && ordersData) {
-          // 创建中奖记录映射 (通过lottery_id)
+          // 创建获奖记录映射 (通过lottery_id)
           const prizeMap = new Map();
           if (prizesData) {
             prizesData.forEach(prize => {
@@ -262,7 +262,7 @@ const NotificationPage: React.FC = () => {
               source: 'orders'
             });
 
-            // 中奖记录
+            // 获奖记录
             if (prize) {
               const isWon = prize.status === 'WON' || prize.status === 'CLAIMED' || prize.status === 'PENDING_PICKUP';
               if (isWon) {
@@ -520,8 +520,8 @@ const NotificationPage: React.FC = () => {
         console.error('Failed to fetch logistics/pickup notifications:', e);
       }
 
-      // 11. 一元夺宝中奖消息（从 prizes 表获取）
-      // 注意：section 6 已经处理了商城中奖，这里补充从 prizes 直接获取确保不遗漏
+      // 11. 一元购物获奖消息（从 prizes 表获取）
+      // 注意：section 6 已经处理了商城获奖，这里补充从 prizes 直接获取确保不遗漏
       try {
         const { data: winPrizes, error: winError } = await supabase
           .from('prizes')

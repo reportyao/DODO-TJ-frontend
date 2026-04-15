@@ -181,7 +181,7 @@ const LotteryDetailPage: React.FC = () => {
 
       setLottery(lotteryWithInventory);
       
-      // 如果已完成开奖，检查是否有新一轮 ACTIVE 期（同一商品）
+      // 如果已完成处理订单，检查是否有新一轮 ACTIVE 期（同一商品）
       if (data && data.status === 'COMPLETED') {
         try {
           // 查找同一商品的最新 ACTIVE 期
@@ -202,10 +202,10 @@ const LotteryDetailPage: React.FC = () => {
         } catch (nextRoundError) {
           console.warn('[LotteryDetail] Failed to check next round:', nextRoundError);
         }
-        // 没有新一轮，跳转到开奖结果页
+        // 没有新一轮，跳转到处理订单结果页
         navigate(`/lottery/${id}/result`);
       } else if (data && data.status === 'SOLD_OUT') {
-        // 已售罄但还未开奖，跳转到开奖结果页（等待开奖）
+        // 已售罄但还未处理订单，跳转到处理订单结果页（等待处理订单）
         navigate(`/lottery/${id}/result`);
       }
 
@@ -335,7 +335,7 @@ const LotteryDetailPage: React.FC = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [fetchLottery]);
 
-  // 移除活动结束时间倒计时，只保留售罄后的 180 秒开奖倒计时
+  // 移除活动结束时间倒计时，只保留售罄后的 180 秒处理倒计时
 
   if (isLoading) {
     return <div className="text-center py-10">{t('common.loading')}...</div>;
@@ -438,7 +438,7 @@ const LotteryDetailPage: React.FC = () => {
   
   // 全款购买库存：仅使用库存商品库存，如果没有关联库存商品则显示为无限（不影响一元购物份数）
   // 重要：份数（total_tickets/sold_tickets）和库存（inventory_products.stock）是两个独立的概念
-  // 份数用于一元购物抽奖，库存用于全款购买
+  // 份数用于一元购物，库存用于全款购买
   const fullPurchaseStock = inventoryProduct ? inventoryProduct.stock : 999999;
   
   // 全款购买价格：优先使用full_purchase_price，其次使用库存商品原价，最后使用计算价格
@@ -470,7 +470,7 @@ const LotteryDetailPage: React.FC = () => {
     // 计算需要的总金额
     const totalCost = lottery.ticket_price * quantity;
     
-    // 【BUG修复】一元夺宝不使用抵扣券，直接用全额计算
+    // 【BUG修复】一元购物不使用抵扣券，直接用全额计算
     const actualPointsNeeded = totalCost;
     
     // 检查总可用资产（TJS + LUCKY_COIN，不包含抵扣券）
@@ -508,7 +508,7 @@ const LotteryDetailPage: React.FC = () => {
     setIsPurchasing(true);
     
     try {
-      // 【BUG修复】一元夺宝购买强制不使用抵扣券，传入 false
+      // 【BUG修复】一元购物购买强制不使用抵扣券，传入 false
       const order = await lotteryService.purchaseTickets(lottery.id, quantity, user.id, false);
       
       toast.success(t('lottery.purchaseSuccess'));
@@ -519,7 +519,7 @@ const LotteryDetailPage: React.FC = () => {
 
       // ============================================================
       // 订单链路埋点（文档 10.1 事件清单要求）
-      // 一元夺宝购买成功 = order_create + order_pay_success
+      // 一元购物购买成功 = order_create + order_pay_success
       // ============================================================
       const orderId = purchaseResult?.order_id || purchaseResult?.id;
       const inventoryProductId = lottery?.inventory_product_id;
@@ -587,7 +587,7 @@ const LotteryDetailPage: React.FC = () => {
         toast.error(error.message || t('error.purchaseFailed'));
       }
       
-      // 刷新抽奖数据以获取最新状态
+      // 刷新商品数据以获取最新状态
       await fetchLottery();
     } finally {
       setIsPurchasing(false);
@@ -1024,7 +1024,7 @@ const LotteryDetailPage: React.FC = () => {
               </p>
             </div>
 
-            {/* 180秒开奖倒计时 */}
+            {/* 180秒处理倒计时 */}
             {isSoldOut && lottery.draw_time && (
               <CountdownTimer 
                 drawTime={lottery.draw_time} 
@@ -1111,8 +1111,8 @@ const LotteryDetailPage: React.FC = () => {
               )}
             </div>
 
-            {/* 【BUG修复】抵扣券开关已从一元夺宝区域移除 */}
-            {/* iTJS优惠券仅适用于全款购买，不适用于一元夺宝(lottery) */}
+            {/* 【BUG修复】抵扣券开关已从一元购物区域移除 */}
+            {/* iTJS优惠券仅适用于全款购买，不适用于一元购物(lottery) */}
 
             {/* 余额显示 + 合计 */}
             <div className="flex items-center justify-between text-sm px-1">

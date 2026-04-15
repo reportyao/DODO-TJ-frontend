@@ -57,7 +57,7 @@ const OrderPage: React.FC = () => {
     try {
       const allOrders: Order[] = [];
 
-      // 1. 获取抽奖购买订单
+      // 1. 获取购物订单
       const { data: lotteryOrders, error: lotteryError } = await supabase
         .from('orders')
         .select(`

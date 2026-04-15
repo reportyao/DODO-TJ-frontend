@@ -18,7 +18,7 @@ import toast from 'react-hot-toast';
 
 interface Ticket {
   id: string;
-  numbers: string; // 7位数开奖码
+  numbers: string; // 7位数处理订单码
   created_at: string;
   is_winning: boolean;
 }
@@ -32,7 +32,7 @@ interface LotteryInfo {
   total_tickets: number;
   sold_tickets: number;
   status: string;
-  winning_numbers?: string[]; // 中奖号码数组
+  winning_numbers?: string[]; // 获奖号码数组
   winning_user_id?: string;
 }
 
@@ -91,7 +91,7 @@ const MyTicketsPage: React.FC = () => {
 
       setTickets(entriesData?.map(entry => ({
         id: entry.id,
-        numbers: entry.numbers as string, // 7位数开奖码
+        numbers: entry.numbers as string, // 7位数处理订单码
         created_at: entry.created_at,
         is_winning: entry.is_winning || false,
       })) || []);
@@ -117,7 +117,7 @@ const MyTicketsPage: React.FC = () => {
     }
   };
 
-  // 格式化7位数开奖码显示
+  // 格式化7位数处理订单码显示
   const formatWinningCode = (code: string) => {
     // 确保是7位数
     return code.padStart(7, '0');

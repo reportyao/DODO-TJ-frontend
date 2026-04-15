@@ -202,7 +202,7 @@ describe('SceneProductCard', () => {
   });
 
   describe('链接生成', () => {
-    it('应生成正确的抽奖详情链接（含归因参数）', () => {
+    it('应生成正确的商品详情链接（含归因参数）', () => {
       renderWithRouter(
         <SceneProductCard product={baseProduct} position={0} sourceCategoryId="cat-1" />
       );

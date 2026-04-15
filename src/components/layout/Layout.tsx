@@ -29,7 +29,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [showNewUserGift, setShowNewUserGift] = useState(false)
   const [giftAmount, setGiftAmount] = useState(10)
   
-  // 抽奖次数
+  // 购物次数
   const [spinCount, setSpinCount] = useState(0)
 
   // 检查是否需要显示新人礼物弹窗
@@ -64,7 +64,7 @@ export const Layout: React.FC<LayoutProps> = ({
   }
 
   /**
-   * [v2 性能优化] 获取用户抽奖次数
+   * [v2 性能优化] 获取用户购物次数
    *
    * 修复问题：
    * 1. 原实现使用原始 fetch + SUPABASE_ANON_KEY 绕过 RLS，存在安全隐患
@@ -187,7 +187,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {showBottomNav && <BottomNavigation />}
       
-      {/* 转盘抽奖浮动入口 - 仅在登录后显示 */}
+      {/* 推荐浮动入口 - 仅在登录后显示 */}
       {isAuthenticated && <SpinFloatingButton spinCount={spinCount} />}
       
       {/* 新人礼物弹窗 */}

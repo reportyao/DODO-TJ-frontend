@@ -46,7 +46,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const map: Record<string, string> = {
-        'home.lotteryProducts': '抽奖商品',
+        'home.lotteryProducts': '热门商品',
         'common.noData': '暂无数据',
         'common.back': '返回',
         'subsidyPool.subsidyPrice': '补贴价',
@@ -285,7 +285,7 @@ describe('TopicDetailPage', () => {
 
     it('应渲染商品列表标题', () => {
       renderPage();
-      expect(screen.getByText('抽奖商品')).toBeInTheDocument();
+      expect(screen.getByText('热门商品')).toBeInTheDocument();
     });
 
     it('应渲染所有挂载商品', () => {
@@ -313,7 +313,7 @@ describe('TopicDetailPage', () => {
     it('无商品时不应渲染商品区域', () => {
       mockTopicData = { topic: mockTopic, products: [] };
       renderPage();
-      expect(screen.queryByText('抽奖商品')).not.toBeInTheDocument();
+      expect(screen.queryByText('热门商品')).not.toBeInTheDocument();
     });
   });
 

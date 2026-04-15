@@ -271,7 +271,7 @@ const LotteryResultPage: React.FC = () => {
     loadData();
   }, [fetchLottery, fetchTicketsAndParticipants]);
 
-  // 当确认是中奖用户时，获取奖品信息
+  // 当确认是获奖用户时，获取奖品信息
   useEffect(() => {
     if (lottery?.winning_user_id === currentUser?.id) {
       fetchPrizeInfo();
@@ -279,13 +279,13 @@ const LotteryResultPage: React.FC = () => {
     }
   }, [lottery, currentUser, fetchPrizeInfo, loadPickupPoints]);
 
-  // 倒计时结束后执行开奖
+  // 倒计时结束后执行处理订单
   const handleDrawLottery = async () => {
     if (!id) return;
 
     setIsDrawing(true);
     try {
-      // 调用 Edge Function 进行开奖，而不是直接调用 RPC
+      // 调用 Edge Function 进行处理订单，而不是直接调用 RPC
       const { data, error } = await supabase.functions.invoke('auto-lottery-draw', {
         body: { lotteryId: id }
       });
@@ -301,7 +301,7 @@ const LotteryResultPage: React.FC = () => {
       console.error('Draw failed:', error);
       toast.error(t('lottery.drawFailed'));
       
-      // 即使失败也刷新，可能已经开奖了
+      // 即使失败也刷新，可能已经处理订单了
       await fetchLottery();
     } finally {
       setIsDrawing(false);
@@ -414,7 +414,7 @@ const LotteryResultPage: React.FC = () => {
 
   const isSoldOut = lottery.status === 'SOLD_OUT';
   const isCompleted = lottery.status === 'COMPLETED';
-  // 获取中奖号码 - 优先使用 winning_numbers 数组中的7位数开奖码
+  // 获取获奖号码 - 优先使用 winning_numbers 数组中的7位数处理订单码
   const winningTicketNumber = lottery.winning_numbers?.[0] 
     ? (typeof lottery.winning_numbers[0] === 'string' 
         ? parseInt(lottery.winning_numbers[0]) 
@@ -425,7 +425,7 @@ const LotteryResultPage: React.FC = () => {
   const isCurrentUserWinner = currentUser?.id === lottery.winning_user_id;
   const myTickets = tickets.filter(t => t.user_id === currentUser?.id);
 
-  // 判断是否需要领取 - 修复: 即使 prizeInfo 不存在，只要是中奖用户且没有领取码，就显示按钮
+  // 判断是否需要领取 - 修复: 即使 prizeInfo 不存在，只要是获奖用户且没有领取码，就显示按钮
   const needsClaim = isCurrentUserWinner && (!prizeInfo || !prizeInfo.pickup_code);
   const hasClaimed = isCurrentUserWinner && prizeInfo?.pickup_code;
   const isPickedUp = prizeInfo?.pickup_status === 'PICKED_UP' || prizeInfo?.picked_up_at;
@@ -494,7 +494,7 @@ const LotteryResultPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* 开奖倒计时 */}
+        {/* 处理倒计时 */}
         {isSoldOut && lottery.draw_time && !isCompleted && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -515,7 +515,7 @@ const LotteryResultPage: React.FC = () => {
           </motion.div>
         )}
 
-        {/* 中奖结果 */}
+        {/* 获奖结果 */}
         {isCompleted && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -538,7 +538,7 @@ const LotteryResultPage: React.FC = () => {
               {isCurrentUserWinner ? t('lottery.youWon') : t('lottery.drawCompleted')}
             </h3>
 
-            {/* 中奖号码 */}
+            {/* 获奖号码 */}
             <div className={`inline-block px-6 py-3 rounded-xl mb-6 ${
               isCurrentUserWinner ? 'bg-white/20' : 'bg-gradient-to-r from-yellow-100 to-orange-100'
             }`}>
@@ -550,7 +550,7 @@ const LotteryResultPage: React.FC = () => {
               </p>
             </div>
 
-            {/* 中奖用户 */}
+            {/* 获奖用户 */}
             <div className="flex items-center justify-center gap-3 mb-4">
               {winningUser && (
                 <div className={`flex items-center gap-3 px-4 py-2 rounded-xl ${
@@ -579,7 +579,7 @@ const LotteryResultPage: React.FC = () => {
               </p>
             )}
             
-            {/* 中奖用户的领取按钮 */}
+            {/* 获奖用户的领取按钮 */}
             {isCurrentUserWinner && (
               <div className="mt-6">
                 {isPickedUp ? (
@@ -810,7 +810,7 @@ const LotteryResultPage: React.FC = () => {
                       let translatedFormula = formula;
                       if (formula && typeof formula === 'string') {
                         // 尝试从中文formula中提取数值
-                        // 格式: "中奖索引 = {sum} % {total} = {index}，对应号码: {number}"
+                        // 格式: "获奖索引 = {sum} % {total} = {index}，对应号码: {number}"
                         const match = formula.match(/([\d.]+)\s*%\s*([\d.]+)\s*=\s*([\d.]+)[^\d]+(\d+)/);
                         if (match) {
                           const [, sum, total, index, number] = match;

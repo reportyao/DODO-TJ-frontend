@@ -35,7 +35,7 @@ interface InviteRecord {
   status: string;
 }
 
-// 抽奖数据接口
+// 商品数据接口
 interface SpinData {
   spin_balance: {
     spin_count: number;
@@ -52,7 +52,7 @@ interface SpinData {
   invite_records: InviteRecord[];
 }
 
-// 6格转盘组件
+// 6格推荐组件
 const SpinWheel: React.FC<{
   rewards: SpinReward[];
   isSpinning: boolean;
@@ -91,7 +91,7 @@ const SpinWheel: React.FC<{
     return colors[index % colors.length];
   };
 
-  // 抽奖动画
+  // 动画效果
   useEffect(() => {
     if (isSpinning && targetIndex !== null) {
       let currentIndex = 0;
@@ -155,7 +155,7 @@ const SpinWheel: React.FC<{
 
   return (
     <div className="relative">
-      {/* 6格转盘 - 2行3列布局 */}
+      {/* 6格推荐 - 2行3列布局 */}
       <div className="grid grid-cols-3 gap-2 p-4">
         {displayRewards.slice(0, 6).map((reward, index) => {
           const isHighlighted = highlightIndex === index;
@@ -210,7 +210,7 @@ const SpinLotteryPage: React.FC = () => {
   const [showResult, setShowResult] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // 加载抽奖数据
+  // 加载商品数据
   const loadSpinData = useCallback(async () => {
     if (!user) return;
     
@@ -236,7 +236,7 @@ const SpinLotteryPage: React.FC = () => {
     loadSpinData();
   }, [loadSpinData]);
 
-  // 执行抽奖
+  // 执行购物
   const handleSpin = async () => {
     if (!user || !spinData || spinData.spin_balance.spin_count <= 0 || isSpinning) {
       if (spinData?.spin_balance.spin_count <= 0) {
@@ -257,11 +257,11 @@ const SpinLotteryPage: React.FC = () => {
       if (error) throw new Error(await extractEdgeFunctionError(error));
 
       if (data?.success) {
-        // 找到中奖奖项的索引
+        // 找到获奖奖项的索引
         const rewardIndex = spinData.rewards.findIndex(r => r.id === data.reward.id);
         setTargetIndex(rewardIndex >= 0 ? rewardIndex : data.reward.display_order);
         
-        // 保存中奖结果
+        // 保存获奖结果
         setLastReward({
           id: data.reward.id,
           reward_name: data.reward.name,
@@ -272,7 +272,7 @@ const SpinLotteryPage: React.FC = () => {
           is_jackpot: data.reward.is_jackpot
         });
 
-        // 更新抽奖次数
+        // 更新购物次数
         setSpinData(prev => prev ? {
           ...prev,
           spin_balance: {
@@ -294,7 +294,7 @@ const SpinLotteryPage: React.FC = () => {
     }
   };
 
-  // 抽奖动画结束
+  // 动画效果结束
   const handleSpinEnd = () => {
     setIsSpinning(false);
     setShowResult(true);
@@ -407,7 +407,7 @@ const SpinLotteryPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 转盘区域 */}
+      {/* 推荐区域 */}
       <div className="px-4 -mt-4">
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <SpinWheel
@@ -418,7 +418,7 @@ const SpinLotteryPage: React.FC = () => {
             language={i18n.language}
           />
           
-          {/* 抽奖按钮 */}
+          {/* 购物按钮 */}
           <div className="px-4 pb-4">
             <button
               onClick={handleSpin}
@@ -435,7 +435,7 @@ const SpinLotteryPage: React.FC = () => {
             </button>
           </div>
 
-          {/* 中奖结果展示 */}
+          {/* 获奖结果展示 */}
           {showResult && lastReward && (
             <SafeMotion
               initial={{ opacity: 0, y: 20 }}

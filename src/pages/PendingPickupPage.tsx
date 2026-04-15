@@ -11,7 +11,7 @@ import { motion } from 'framer-motion';
 
 interface PendingPickupItem {
   id: string;
-  type: 'lottery' | 'groupbuy' | 'full_purchase' | 'prize'; // 类型：商城抽奖、拼团、全款购买、中奖
+  type: 'lottery' | 'groupbuy' | 'full_purchase' | 'prize'; // 类型：商城购物、拼团、全款购买、获奖
   productId: string;
   productTitle: string;
   productImage: string;
@@ -142,7 +142,7 @@ const PendingPickupPage: React.FC = () => {
         console.error('Error fetching full purchase orders:', err);
       }
 
-      // 2. 获取中奖记录（prizes）- 未提货的
+      // 2. 获取获奖记录（prizes）- 未提货的
       // 【BUG修复】兼容 pickup_status 为 null 的历史数据
       try {
         const { data: prizes, error: prizesError } = await (authClient as any)
@@ -194,7 +194,7 @@ const PendingPickupPage: React.FC = () => {
         console.error('Error fetching prizes:', err);
       }
 
-      // 3. 获取拼团中奖记录（group_buy_results）- 未提货的
+      // 3. 获取拼团获奖记录（group_buy_results）- 未提货的
       try {
         const { data: groupBuyResults, error: groupBuyResultsError } = await (authClient as any)
           .from('group_buy_results')

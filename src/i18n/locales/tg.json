@@ -1311,7 +1311,7 @@
     "pickupVerifiedTitle": "Маҳсулот гирифта шуд",
     "pickupVerifiedContent": "{{product}} бо муваффақият гирифта шуд",
     "lotteryWinTitle": "🎉 Шумо ғолиб шудед!",
-    "lotteryWinPrizeContent": "Табрик! Шумо дар лотерея {{product}}-ро бурдед!"
+    "lotteryWinPrizeContent": "Табрик! Шумо дар товаря {{product}}-ро бурдед!"
   },
   "cities": {
     "dushanbe": "Душанбе",

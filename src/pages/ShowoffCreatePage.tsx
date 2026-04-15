@@ -23,7 +23,7 @@ interface WinningLottery {
   prize_image: string;
   winning_number: string;
   draw_time: string;
-  source_type: 'lottery' | 'group_buy'; // 来源类型：抽奖或拼团
+  source_type: 'lottery' | 'group_buy'; // 来源类型：购物或团购
 }
 
 const ShowoffCreatePage: React.FC = () => {
@@ -49,7 +49,7 @@ const ShowoffCreatePage: React.FC = () => {
       const supabaseUrl = SUPABASE_URL;
       const supabaseKey = SUPABASE_ANON_KEY;
 
-      // 1. 直接查询 prizes 表获取用户的中奖记录（抽奖类型）
+      // 1. 直接查询 prizes 表获取用户的获奖记录（购物类型）
       const prizesResponse = await fetch(
         `${supabaseUrl}/rest/v1/prizes?user_id=eq.${user.id}&select=*&order=won_at.desc`,
         {
@@ -68,7 +68,7 @@ const ShowoffCreatePage: React.FC = () => {
 
       const prizes = await prizesResponse.json();
 
-      // 2. 查询拼团中奖记录 - 用户是中奖者的记录
+      // 2. 查询拼团获奖记录 - 用户是获奖者的记录
       const groupBuyResponse = await fetch(
         `${supabaseUrl}/rest/v1/group_buy_results?user_id=eq.${user.id}&status=eq.PENDING&select=*&order=created_at.desc`,
         {
@@ -153,7 +153,7 @@ const ShowoffCreatePage: React.FC = () => {
       const publishedShowoffs = showoffsResponse.ok ? await showoffsResponse.json() : [];
       const publishedPrizeIds = new Set(publishedShowoffs.map((s: any) => s.prize_id).filter(Boolean));
 
-      // 4. 过滤掉已有 APPROVED 或 PENDING 晒单的中奖记录
+      // 4. 过滤掉已有 APPROVED 或 PENDING 晒单的获奖记录
       const availablePrizes = enrichedPrizes
         .filter((prize: any) => !publishedPrizeIds.has(prize.id));
 
@@ -161,7 +161,7 @@ const ShowoffCreatePage: React.FC = () => {
         .filter((result: any) => !publishedPrizeIds.has(result.id));
 
       // 5. 转换为 WinningLottery 格式
-      // 抽奖中奖记录
+      // 购物获奖记录
       const lotteryWinnings: WinningLottery[] = availablePrizes.map((prize: any) => {
         // 获取商品名称，优先使用 title_i18n 多语言标题，其次使用 prize_name，最后使用 lottery.title
         const titleI18n = prize.lottery?.title_i18n;
@@ -188,7 +188,7 @@ const ShowoffCreatePage: React.FC = () => {
         };
       });
 
-      // 拼团中奖记录
+      // 拼团获奖记录
       const groupBuyWinnings: WinningLottery[] = availableGroupBuyResults.map((result: any) => {
         const product = result.product;
         // 获取商品名称，优先使用 title（多语言），其次使用 name
@@ -300,7 +300,7 @@ const ShowoffCreatePage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // 获取选中的中奖记录
+      // 获取选中的获奖记录
       const selectedLotteryData = winningLotteries.find(l => l.id === selectedLottery);
       if (!selectedLotteryData) {
         console.error('[ShowoffCreatePage] Selected lottery not found:', selectedLottery);

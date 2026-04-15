@@ -48,7 +48,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const map: Record<string, string> = {
-        'home.lotteryProducts': '抽奖商品',
+        'home.lotteryProducts': '热门商品',
         'common.noData': '暂无数据',
       };
       return map[key] || key;
@@ -156,7 +156,7 @@ describe('SceneHomePage', () => {
       expect(screen.getByTestId('banner-carousel')).toBeInTheDocument();
       expect(screen.getByTestId('subsidy-pool-banner')).toBeInTheDocument();
       expect(screen.getByTestId('category-grid')).toBeInTheDocument();
-      expect(screen.getByText('抽奖商品')).toBeInTheDocument();
+      expect(screen.getByText('热门商品')).toBeInTheDocument();
     });
   });
 

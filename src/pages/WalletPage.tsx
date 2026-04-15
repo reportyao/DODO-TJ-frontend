@@ -260,7 +260,7 @@ const WalletPage: React.FC = () => {
 
   const getAmountIcon = (type: string, walletType?: string) => {
     // 积分类交易使用积分图标，其他使用金钱图标
-    // LOTTERY_PURCHASE: 参与商城, EXCHANGE: 余额兑换, SPIN_REWARD: 转盘奖励, COIN_EXCHANGE: 余额兑换积分
+    // LOTTERY_PURCHASE: 参与购物, EXCHANGE: 余额兑换, SPIN_REWARD: 购物奖励, COIN_EXCHANGE: 余额兑换积分
     const pointsTypes = ['SPIN_REWARD', 'LOTTERY_PURCHASE', 'EXCHANGE', 'COIN_EXCHANGE', 'COMMISSION', 'BONUS', 'DEPOSIT_BONUS'];
     if (pointsTypes.includes(type)) {
       return <span className="text-yellow-600 mr-1">🍀</span>

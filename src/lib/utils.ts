@@ -62,7 +62,7 @@ export function formatDate(dateString: string): string {
   }
 }
 
-// 获取抽奖状态文本（支持国际化）
+// 获取商品状态文本（支持国际化）
 export function getLotteryStatusText(status: string, t?: (key: string) => string): string {
   if (t) {
     const keyMap: Record<string, string> = {
@@ -88,7 +88,7 @@ export function getLotteryStatusText(status: string, t?: (key: string) => string
   return statusMap[status] || status;
 }
 
-// 获取抽奖状态颜色
+// 获取商品状态颜色
 export function getLotteryStatusColor(status: string): string {
   const colorMap: Record<string, string> = {
     'ACTIVE': 'bg-green-100 text-green-700',
@@ -109,7 +109,7 @@ export interface LotteryStatusLike {
   draw_time?: string | null;
 }
 
-// 统一抽奖是否可继续参与的判定逻辑
+// 统一商品是否可继续购买的判定逻辑
 export function isLotteryPurchasable(lottery: LotteryStatusLike): boolean {
   const status = lottery.status ?? '';
   const soldTickets = lottery.sold_tickets ?? 0;
@@ -126,7 +126,7 @@ export function isLotteryPurchasable(lottery: LotteryStatusLike): boolean {
   return true;
 }
 
-// 统一抽奖倒计时目标：售罄后显示 draw_time，其余场景仅在 end_time 存在时才显示
+// 统一商品倒计时目标：售罄后显示 draw_time，其余场景仅在 end_time 存在时才显示
 export function getLotteryCountdownTarget(lottery: LotteryStatusLike): string | null {
   if (lottery.status === 'SOLD_OUT' && lottery.draw_time) {
     return lottery.draw_time;
