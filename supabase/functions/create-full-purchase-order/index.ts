@@ -32,8 +32,8 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   })
 }
 
-function runInBackground(task: Promise<unknown>, label: string) {
-  const wrapped = task.catch((error) => {
+function runInBackground(task: PromiseLike<unknown>, label: string) {
+  const wrapped = Promise.resolve(task).catch((error) => {
     console.error(`[CreateFullPurchaseOrder] Background task failed: ${label}`, error)
   })
 

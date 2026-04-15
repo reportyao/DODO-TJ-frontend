@@ -39,23 +39,42 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const SUPABASE_URL = supabaseUrl;
 export const SUPABASE_ANON_KEY = supabaseAnonKey;
 
-// 创建 Supabase 客户端实例
-// 不在此处设置全局 Authorization header，因为初始化时 localStorage 中可能没有 token
-// 匿名请求会自动使用 anon key；已登录用户的请求通过 getAuthHeaders() 动态注入
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+// 创建 Supabase 基础客户端实例
+// 保留一个无额外自定义 header 的基础实例，用于 Edge Functions / Auth 等不需要 x-session-token 的场景。
+const supabaseBaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
-// Helper 函数：获取带有自定义 session token 的请求选项
-function getAuthHeaders() {
+type SupabaseClientInstance = ReturnType<typeof createClient<Database>>;
+
+function getActiveDatabaseClient(): SupabaseClientInstance {
   const sessionToken = localStorage.getItem('custom_session_token');
-  if (sessionToken) {
-    return {
-      headers: {
-        Authorization: `Bearer ${sessionToken}`
-      }
-    };
+  if (!sessionToken) {
+    return supabaseBaseClient;
   }
-  return {};
+  return getAuthenticatedClient();
 }
+
+function createDynamicSupabaseClient(): SupabaseClientInstance {
+  return new Proxy(supabaseBaseClient as SupabaseClientInstance, {
+    get(target, prop, receiver) {
+      // 这些模块不应自动附带 x-session-token，避免跨域预检或兼容性问题
+      if (prop === 'auth' || prop === 'functions' || prop === 'storage') {
+        return Reflect.get(target as object, prop, receiver);
+      }
+
+      // 仅对数据库查询相关 API 动态切换到带 x-session-token 的客户端
+      if (prop === 'from' || prop === 'rpc' || prop === 'schema') {
+        const client = getActiveDatabaseClient();
+        const value = Reflect.get(client as object, prop, receiver);
+        return typeof value === 'function' ? value.bind(client) : value;
+      }
+
+      const value = Reflect.get(target as object, prop, receiver);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  }) as SupabaseClientInstance;
+}
+
+export const supabase = createDynamicSupabaseClient();
 
 /**
  * 获取带有 session token 的认证 Supabase 客户端（单例缓存版）
@@ -73,7 +92,7 @@ let _cachedToken: string | null = null;
 export function getAuthenticatedClient() {
   const sessionToken = localStorage.getItem('custom_session_token');
   if (!sessionToken) {
-    return supabase;
+    return supabaseBaseClient;
   }
   // token 未变化时复用缓存实例，避免每次都创建新的 GoTrueClient
   if (sessionToken === _cachedToken && _cachedAuthClient) {

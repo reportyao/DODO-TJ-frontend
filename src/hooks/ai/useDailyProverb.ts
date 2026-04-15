@@ -19,8 +19,8 @@ export function useDailyProverb() {
     // 获取用户ID (从localStorage或context)
     const getUserId = () => {
       try {
-        // 尝试从localStorage获取用户信息
-        const userStr = localStorage.getItem('user');
+        // 优先读取迁移后的 custom_user，兼容旧版 user 存储键
+        const userStr = localStorage.getItem('custom_user') || localStorage.getItem('user');
         if (userStr) {
           const user = JSON.parse(userStr);
           return user.id || 0;

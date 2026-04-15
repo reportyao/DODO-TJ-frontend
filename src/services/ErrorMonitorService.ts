@@ -206,7 +206,7 @@ function getPlatformInfo(): {
 // 获取当前用户ID
 function getCurrentUserId(): string | undefined {
   try {
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem('custom_user') || localStorage.getItem('user');
     if (userStr) {
       const user = JSON.parse(userStr);
       return user.id;
