@@ -158,7 +158,7 @@ async function handleSearch(supabaseClient: any, pickupCode: string, staffInfo: 
     .from('prizes')
     .select('id, prize_name, prize_image, prize_value, pickup_code, pickup_status, expires_at, claimed_at, user_id, lottery_id, pickup_point_id')
     .eq('pickup_code', pickupCode)
-    .neq('pickup_status', 'PICKED_UP')  // 关键：排除已核销
+    .or('pickup_status.is.null,pickup_status.neq.PICKED_UP')  // 关键：排除已核销，但兼容历史 null 状态
     .maybeSingle()
 
   if (prizes) {
@@ -219,7 +219,7 @@ async function handleSearch(supabaseClient: any, pickupCode: string, staffInfo: 
     .from('group_buy_results')
     .select('id, pickup_code, pickup_status, logistics_status, expires_at, claimed_at, winner_id, product_id, session_id, pickup_point_id')
     .eq('pickup_code', pickupCode)
-    .neq('pickup_status', 'PICKED_UP')  // 关键：排除已核销
+    .or('pickup_status.is.null,pickup_status.neq.PICKED_UP')  // 关键：排除已核销，但兼容历史 null 状态
     .maybeSingle()
 
   if (groupBuyResult) {
@@ -282,7 +282,7 @@ async function handleSearch(supabaseClient: any, pickupCode: string, staffInfo: 
     .from('full_purchase_orders')
     .select('id, order_number, pickup_code, pickup_status, logistics_status, expires_at, claimed_at, user_id, lottery_id, pickup_point_id, metadata')
     .eq('pickup_code', pickupCode)
-    .neq('pickup_status', 'PICKED_UP')  // 关键：排除已核销
+    .or('pickup_status.is.null,pickup_status.neq.PICKED_UP')  // 关键：排除已核销，但兼容历史 null 状态
     .maybeSingle()
 
   if (fullPurchaseOrder) {
