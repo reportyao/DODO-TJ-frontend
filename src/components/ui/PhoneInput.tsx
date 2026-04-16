@@ -72,7 +72,7 @@ interface PhoneInputProps {
 function parsePhone(fullPhone: string): { country: Country; localNumber: string } {
   const defaultCountry = COUNTRIES[0] // 塔吉克斯坦
 
-  if (!fullPhone) return { country: defaultCountry, localNumber: '' }
+  if (!fullPhone) {return { country: defaultCountry, localNumber: '' }}
 
   // 尝试匹配各国区号（从长到短，避免 +7 匹配到 +992 的情况）
   const sorted = [...COUNTRIES].sort((a, b) => b.dialCode.length - a.dialCode.length)
@@ -124,7 +124,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
 
   // 计算下拉菜单位置（Portal 模式需要手动定位）
   const updateDropdownPosition = useCallback(() => {
-    if (!triggerRef.current) return
+    if (!triggerRef.current) {return}
     const rect = triggerRef.current.getBoundingClientRect()
     setDropdownStyle({
       position: 'fixed',
@@ -137,7 +137,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
 
   // 打开下拉时计算位置
   const handleToggleDropdown = () => {
-    if (disabled) return
+    if (disabled) {return}
     if (!dropdownOpen) {
       updateDropdownPosition()
     }
@@ -146,7 +146,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
 
   // 点击外部关闭下拉
   useEffect(() => {
-    if (!dropdownOpen) return
+    if (!dropdownOpen) {return}
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node

@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     // 去重（以防两个字段都有值时重复返回）
     const seenIds = new Set<string>();
     const invitedUsers = invitedUsersRaw.filter((u: any) => {
-      if (seenIds.has(u.id)) return false;
+      if (seenIds.has(u.id)) {return false;}
       seenIds.add(u.id);
       return true;
     });

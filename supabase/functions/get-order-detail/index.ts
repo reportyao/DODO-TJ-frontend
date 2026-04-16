@@ -27,20 +27,20 @@ function getCached(key: string): unknown | null {
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data
   }
-  if (cached) cache.delete(key)
+  if (cached) {cache.delete(key)}
   return null
 }
 
 function setCache(key: string, data: unknown): void {
   if (cache.size >= MAX_CACHE_SIZE) {
     const oldestKey = cache.keys().next().value
-    if (oldestKey) cache.delete(oldestKey)
+    if (oldestKey) {cache.delete(oldestKey)}
   }
   cache.set(key, { data, timestamp: Date.now() })
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') {return new Response('ok', { headers: corsHeaders })}
 
   try {
     let requestBody: { order_id?: string; user_id?: string; session_token?: string }

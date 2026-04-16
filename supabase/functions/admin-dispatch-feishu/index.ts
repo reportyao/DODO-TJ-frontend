@@ -155,7 +155,7 @@ function buildFlowTriggerPayload(
   
   // 清理消息内容,确保格式正确
   // 将 \n 转换为实际换行符
-  let cleanMessage = message
+  const cleanMessage = message
     .replace(/\\n/g, '\n')  // 将字符串 \n 转换为实际换行
     .trim()
   

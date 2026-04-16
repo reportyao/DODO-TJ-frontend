@@ -59,7 +59,7 @@ function mergeKeys(target, source) {
 
 // Add Chinese keys
 for (const [section, keys] of Object.entries(newKeys)) {
-  if (!zh[section]) zh[section] = {};
+  if (!zh[section]) {zh[section] = {};}
   for (const [key, translations] of Object.entries(keys)) {
     zh[section][key] = translations.zh;
   }
@@ -67,7 +67,7 @@ for (const [section, keys] of Object.entries(newKeys)) {
 
 // Add Russian keys
 for (const [section, keys] of Object.entries(newKeys)) {
-  if (!ru[section]) ru[section] = {};
+  if (!ru[section]) {ru[section] = {};}
   for (const [key, translations] of Object.entries(keys)) {
     ru[section][key] = translations.ru;
   }
@@ -75,7 +75,7 @@ for (const [section, keys] of Object.entries(newKeys)) {
 
 // Add Tajik keys
 for (const [section, keys] of Object.entries(newKeys)) {
-  if (!tg[section]) tg[section] = {};
+  if (!tg[section]) {tg[section] = {};}
   for (const [key, translations] of Object.entries(keys)) {
     tg[section][key] = translations.tg;
   }

@@ -142,8 +142,8 @@ async function validatePickupStaff(supabaseClient: any, userId: string) {
  * 获取本地化文本（优先中文）
  */
 function getLocalizedText(text: any): string {
-  if (!text) return ''
-  if (typeof text === 'string') return text
+  if (!text) {return ''}
+  if (typeof text === 'string') {return text}
   return text.zh || text.ru || text.tg || ''
 }
 
@@ -521,15 +521,15 @@ async function handleGetTodayLogs(supabaseClient: any, userId: string) {
   }
 
   // 第二步：根据 order_type 分组查询不同表的商品信息
-  let prizeMap: Record<string, { prize_name: string; prize_image: string }> = {}
+  const prizeMap: Record<string, { prize_name: string; prize_image: string }> = {}
   const lotteryIds: string[] = []
   const groupBuyIds: string[] = []
   const fullPurchaseIds: string[] = []
   for (const log of (logs || [])) {
-    if (!log.prize_id) continue
-    if (log.order_type === 'group_buy') groupBuyIds.push(log.prize_id)
-    else if (log.order_type === 'full_purchase') fullPurchaseIds.push(log.prize_id)
-    else lotteryIds.push(log.prize_id) // 默认归为 lottery
+    if (!log.prize_id) {continue}
+    if (log.order_type === 'group_buy') {groupBuyIds.push(log.prize_id)}
+    else if (log.order_type === 'full_purchase') {fullPurchaseIds.push(log.prize_id)}
+    else {lotteryIds.push(log.prize_id)} // 默认归为 lottery
   }
 
   // 查询 prizes 表（积分商城）
@@ -541,14 +541,14 @@ async function handleGetTodayLogs(supabaseClient: any, userId: string) {
     if (prizes) {
       // 对于没有 prize_name 的，尝试从 lotteries 表获取
       const missingLotteryIds = prizes.filter((p: any) => !p.prize_name && p.lottery_id).map((p: any) => p.lottery_id)
-      let lotteryMap: Record<string, any> = {}
+      const lotteryMap: Record<string, any> = {}
       if (missingLotteryIds.length > 0) {
         const { data: lotteries } = await supabaseClient
           .from('lotteries')
           .select('id, title, title_i18n, image_url')
           .in('id', missingLotteryIds)
         if (lotteries) {
-          for (const l of lotteries) lotteryMap[l.id] = l
+          for (const l of lotteries) {lotteryMap[l.id] = l}
         }
       }
       for (const p of prizes) {
@@ -569,14 +569,14 @@ async function handleGetTodayLogs(supabaseClient: any, userId: string) {
       .in('id', groupBuyIds)
     if (gbResults) {
       const productIds = gbResults.filter((r: any) => r.product_id).map((r: any) => r.product_id)
-      let productMap: Record<string, any> = {}
+      const productMap: Record<string, any> = {}
       if (productIds.length > 0) {
         const { data: products } = await supabaseClient
           .from('group_buy_products')
           .select('id, title, title_i18n, name_i18n, image_url')
           .in('id', productIds)
         if (products) {
-          for (const prod of products) productMap[prod.id] = prod
+          for (const prod of products) {productMap[prod.id] = prod}
         }
       }
       for (const r of gbResults) {
@@ -598,14 +598,14 @@ async function handleGetTodayLogs(supabaseClient: any, userId: string) {
     if (fpOrders) {
       // 对于 metadata 中没有商品信息的，尝试从 lotteries 获取
       const fpLotteryIds = fpOrders.filter((o: any) => o.lottery_id).map((o: any) => o.lottery_id)
-      let fpLotteryMap: Record<string, any> = {}
+      const fpLotteryMap: Record<string, any> = {}
       if (fpLotteryIds.length > 0) {
         const { data: lotteries } = await supabaseClient
           .from('lotteries')
           .select('id, title, title_i18n, image_url')
           .in('id', fpLotteryIds)
         if (lotteries) {
-          for (const l of lotteries) fpLotteryMap[l.id] = l
+          for (const l of lotteries) {fpLotteryMap[l.id] = l}
         }
       }
       for (const o of fpOrders) {

@@ -59,7 +59,7 @@ interface MarketListing {
 	        },
 	      });
 	
-	      if (error) throw new Error(await extractEdgeFunctionError(error));
+	      if (error) {throw new Error(await extractEdgeFunctionError(error));}
 	
 	      const result = data as { success: boolean; data: any[]; error?: string };
 	
@@ -215,7 +215,7 @@ interface MarketListing {
         },
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
 
       const result = data as { success: boolean; error?: string; data?: any };
 
@@ -240,7 +240,7 @@ interface MarketListing {
     const draw = new Date(drawTime).getTime();
     const diff = draw - now;
 
-    if (diff <= 0) return t('lottery.drawn');
+    if (diff <= 0) {return t('lottery.drawn');}
 
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));

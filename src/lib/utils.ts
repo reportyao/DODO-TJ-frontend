@@ -14,7 +14,7 @@ export function formatCurrency(currency: string, amount: number | undefined | nu
 // 日期时间格式化（显示用户本地时间）
 // 使用 Intl.DateTimeFormat 确保正确显示用户所在时区的时间
 export function formatDateTime(dateString: string): string {
-  if (!dateString) return '';
+  if (!dateString) {return '';}
   
   try {
     const date = new Date(dateString);
@@ -41,7 +41,7 @@ export function formatDateTime(dateString: string): string {
 
 // 仅格式化日期（不包含时间）
 export function formatDate(dateString: string): string {
-  if (!dateString) return '';
+  if (!dateString) {return '';}
   
   try {
     const date = new Date(dateString);
@@ -174,15 +174,15 @@ export function getTimeRemainingText(endTime: string, t?: (key: string, opts?: a
   const { total, days, hours, minutes } = getTimeRemaining(endTime);
   
   if (t) {
-    if (total <= 0) return t('common.ended');
-    if (days > 0) return t('common.daysHours', { days, hours });
-    if (hours > 0) return t('common.hoursMinutes', { hours, minutes });
+    if (total <= 0) {return t('common.ended');}
+    if (days > 0) {return t('common.daysHours', { days, hours });}
+    if (hours > 0) {return t('common.hoursMinutes', { hours, minutes });}
     return t('common.minutesOnly', { minutes });
   }
   // Fallback without t function
-  if (total <= 0) return 'Ended';
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (total <= 0) {return 'Ended';}
+  if (days > 0) {return `${days}d ${hours}h`;}
+  if (hours > 0) {return `${hours}h ${minutes}m`;}
   return `${minutes}m`;
 }
 
@@ -255,7 +255,7 @@ export async function shareContent(text: string, url?: string, title?: string): 
       return;
     } catch (e) {
       // 用户取消分享或 API 不可用，回退到 WhatsApp
-      if ((e as DOMException)?.name === 'AbortError') return;
+      if ((e as DOMException)?.name === 'AbortError') {return;}
       console.warn('[Share] Web Share API failed, falling back to WhatsApp:', e);
     }
   }
@@ -330,7 +330,7 @@ export function getOptimizedImageUrl(
     resize?: 'cover' | 'contain' | 'fill';
   }
 ): string {
-  if (!originalUrl) return '';
+  if (!originalUrl) {return '';}
   try {
     const url = new URL(originalUrl);
     // 仅处理 Supabase Storage 的公开对象 URL

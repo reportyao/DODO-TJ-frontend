@@ -35,7 +35,7 @@ export function useRealtimeNotifications(options: UseRealtimeNotificationsOption
   const reconnectAttemptsRef = useRef(0);
 
   const connect = useCallback(async () => {
-    if (!enabled) return;
+    if (!enabled) {return;}
 
     // 使用传入的 userId（来自 UserContext），不再依赖 supabase.auth
     if (!userId) {

@@ -42,8 +42,8 @@ const LotteryPage: React.FC = () => {
       const titleText = getLocalizedText(lottery.title_i18n as Record<string, string> | null, i18n.language) || lottery.title;
       const matchesSearch = titleText.toLowerCase().includes(searchQuery.toLowerCase())
       
-      if (filter === 'all') return matchesSearch
-      if (filter === 'drawResult') return matchesSearch && lottery.status === 'COMPLETED'
+      if (filter === 'all') {return matchesSearch}
+      if (filter === 'drawResult') {return matchesSearch && lottery.status === 'COMPLETED'}
       return matchesSearch && lottery.status === filter.toUpperCase()
     })
   }, [lotteries, searchQuery, filter, i18n.language])

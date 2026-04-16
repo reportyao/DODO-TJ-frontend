@@ -120,14 +120,14 @@ async function generatePickupCode(supabase: any): Promise<string> {
     const { data: eg } = await supabase.from('group_buy_results').select('id').eq('pickup_code', code).maybeSingle();
     const { data: ef } = await supabase.from('full_purchase_orders').select('id').eq('pickup_code', code).maybeSingle();
     
-    if (!ep && !eg && !ef) return code;
+    if (!ep && !eg && !ef) {return code;}
     attempts++;
   }
   throw new Error('生成提货码失败，请重试');
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') {return new Response('ok', { headers: corsHeaders })}
 
   try {
     const body = await req.json()
@@ -135,7 +135,7 @@ serve(async (req) => {
 
     console.log('[ClaimPrize] Request:', { prize_id, lottery_id, order_type, pickup_point_id });
 
-    if (!session_token) throw new Error('缺少会话令牌');
+    if (!session_token) {throw new Error('缺少会话令牌');}
     const { userId } = await validateSession(session_token);
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -160,14 +160,14 @@ serve(async (req) => {
     if (prize_id) {
       const { data, error } = await supabase.from(tableName).select('*').eq('id', prize_id).eq(userIdField, userId).single();
       prizeData = data;
-      if (error) throw new Error('未找到奖品记录');
+      if (error) {throw new Error('未找到奖品记录');}
     } else if (lottery_id) {
       const { data, error } = await supabase.from(tableName).select('*').eq('lottery_id', lottery_id).eq(userIdField, userId).maybeSingle();
       prizeData = data;
       
       if (!prizeData && !error && order_type === 'lottery') {
         const { data: lot } = await supabase.from('lotteries').select('*').eq('id', lottery_id).single();
-        if (!lot || lot.winner_id !== userId) throw new Error('您不是该抽奖的中奖者');
+        if (!lot || lot.winner_id !== userId) {throw new Error('您不是该抽奖的中奖者');}
         
         const { data: np, error: ce } = await supabase.from('prizes').insert({
           user_id: userId,
@@ -175,12 +175,12 @@ serve(async (req) => {
           status: 'PENDING',
           pickup_status: 'PENDING_CLAIM'
         }).select().single();
-        if (ce) throw new Error('创建奖品记录失败');
+        if (ce) {throw new Error('创建奖品记录失败');}
         prizeData = np;
       }
     }
 
-    if (!prizeData) throw new Error('记录不存在或不属于您');
+    if (!prizeData) {throw new Error('记录不存在或不属于您');}
     validatePrizeFields(prizeData, tableName);
     validateStatusConsistency(prizeData);
 
@@ -202,7 +202,7 @@ serve(async (req) => {
 
     if (pickup_point_id) {
       const { data: pp } = await supabase.from('pickup_points').select('id, status').eq('id', pickup_point_id).single();
-      if (!pp || pp.status !== 'ACTIVE') throw new Error('自提点不存在或不可用');
+      if (!pp || pp.status !== 'ACTIVE') {throw new Error('自提点不存在或不可用');}
     }
 
     const pickupCode = await generatePickupCode(supabase);
@@ -219,7 +219,7 @@ serve(async (req) => {
     };
 
     const { data: ur, error: ue } = await supabase.from(tableName).update(updateData).eq('id', prizeData.id).select().single();
-    if (ue) throw new Error(`更新状态失败: ${ue.message}`);
+    if (ue) {throw new Error(`更新状态失败: ${ue.message}`);}
 
     await supabase.from('pickup_logs').insert({
       prize_id: prizeData.id,

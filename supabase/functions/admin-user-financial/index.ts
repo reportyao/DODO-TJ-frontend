@@ -97,7 +97,7 @@ async function getFinancialSummary(supabaseClient: any, userId: string, period: 
     .select('*')
     .eq('user_id', userId)
 
-  if (walletsError) throw walletsError
+  if (walletsError) {throw walletsError}
 
   const luckyCoinsWallet = wallets.find((w: any) => w.type === 'LUCKY_COIN')
   const cashWallet = wallets.find((w: any) => w.type === 'TJS')
@@ -109,7 +109,7 @@ async function getFinancialSummary(supabaseClient: any, userId: string, period: 
     .eq('user_id', userId)
     .eq('status', 'settled')
 
-  if (commissionsError) throw commissionsError
+  if (commissionsError) {throw commissionsError}
 
   const level1Commission = commissions.filter((c: any) => c.level === 1).reduce((sum: number, c: any) => sum + parseFloat(c.amount), 0)
   const level2Commission = commissions.filter((c: any) => c.level === 2).reduce((sum: number, c: any) => sum + parseFloat(c.amount), 0)
@@ -136,14 +136,14 @@ async function getFinancialSummary(supabaseClient: any, userId: string, period: 
   const walletIds = wallets.map((w: any) => w.id)
 
   // 获取全部交易（用于分类统计）
-  let allQuery = supabaseClient
+  const allQuery = supabaseClient
     .from('wallet_transactions')
     .select('type, amount, wallet_id')
     .in('wallet_id', walletIds)
     .eq('status', 'COMPLETED')
 
   const { data: allTransactions, error: allTransactionsError } = await allQuery
-  if (allTransactionsError) throw allTransactionsError
+  if (allTransactionsError) {throw allTransactionsError}
 
   // 获取时间段内的交易
   let periodQuery = supabaseClient
@@ -158,7 +158,7 @@ async function getFinancialSummary(supabaseClient: any, userId: string, period: 
   }
 
   const { data: periodTransactions, error: periodTransactionsError } = await periodQuery
-  if (periodTransactionsError) throw periodTransactionsError
+  if (periodTransactionsError) {throw periodTransactionsError}
 
   // 【改进】分别按钱包类型计算统计数据
   const tjsTransactions = allTransactions.filter((t: any) => t.wallet_id === cashWalletId)
@@ -285,7 +285,7 @@ async function getTransactions(supabaseClient: any, userId: string, options: any
     .select('id, type, currency')
     .eq('user_id', userId)
 
-  if (walletsError) throw walletsError
+  if (walletsError) {throw walletsError}
 
   // 【新增】按钱包类型筛选
   let filteredWallets = wallets
@@ -341,7 +341,7 @@ async function getTransactions(supabaseClient: any, userId: string, options: any
 
   const { data: transactions, error: transactionsError, count } = await query
 
-  if (transactionsError) throw transactionsError
+  if (transactionsError) {throw transactionsError}
 
   // 3. 增强交易数据
   const enhancedTransactions = transactions.map((t: any) => {
@@ -400,10 +400,10 @@ async function exportTransactions(supabaseClient: any, userId: string, options: 
     .in('wallet_id', walletIds)
     .order('created_at', { ascending: false })
 
-  if (transactionType) query = query.eq('type', transactionType)
-  if (status) query = query.eq('status', status)
-  if (startDate) query = query.gte('created_at', startDate)
-  if (endDate) query = query.lte('created_at', endDate)
+  if (transactionType) {query = query.eq('type', transactionType)}
+  if (status) {query = query.eq('status', status)}
+  if (startDate) {query = query.gte('created_at', startDate)}
+  if (endDate) {query = query.lte('created_at', endDate)}
 
   const { data: transactions } = await query
 

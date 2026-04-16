@@ -31,7 +31,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
   const { refreshWallets } = useUser()
   const { t } = useTranslation()
 
-  if (!lottery) return null
+  if (!lottery) {return null}
 
   const maxPurchase = Math.min(lottery.total_tickets - lottery.sold_tickets, 10)
   const totalPrice = lottery.ticket_price * quantity
@@ -44,7 +44,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
   }
 
   const handleConfirm = async () => {
-    if (!lottery) return
+    if (!lottery) {return}
 
     try {
       setIsLoading(true)

@@ -1,4 +1,3 @@
-'''
 import { test, expect } from '@playwright/test';
 
 test.describe('Home Page', () => {
@@ -15,7 +14,7 @@ test.describe('Home Page', () => {
 
     // 检查热门积分商城标题
     await expect(page.getByRole('heading', { name: '热门积分商城' })).toBeVisible();
-    
+
     // 检查是否有积分商城卡片（假设至少有一个）
     // 由于数据是模拟的，我们检查是否有文章元素存在
     await expect(page.getByRole('article').first()).toBeVisible();
@@ -33,4 +32,3 @@ test.describe('Home Page', () => {
     await expect(page.getByRole('heading').first()).toBeVisible();
   });
 });
-'''

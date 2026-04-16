@@ -186,7 +186,7 @@ export const likeService = {
    */
   async isLiked(showoffId: string): Promise<boolean> {
     const user = await authService.getCurrentUser();
-    if (!user) return false;
+    if (!user) {return false;}
 
     const { data, error } = await supabase
       .from('likes')
@@ -209,7 +209,7 @@ export const likeService = {
    */
   async likeShowoff(showoffId: string): Promise<void> {
     const user = await authService.getCurrentUser();
-    if (!user) throw new Error('User not logged in');
+    if (!user) {throw new Error('User not logged in');}
 
     const { error } = await supabase
       .from('likes')
@@ -227,7 +227,7 @@ export const likeService = {
    */
   async unlikeShowoff(showoffId: string): Promise<void> {
     const user = await authService.getCurrentUser();
-    if (!user) throw new Error('User not logged in');
+    if (!user) {throw new Error('User not logged in');}
 
     const { error } = await supabase
       .from('likes')
@@ -255,7 +255,7 @@ export const authService = {
     const storedUser = localStorage.getItem('custom_user');
     const sessionToken = localStorage.getItem('custom_session_token');
     
-    if (!storedUser || !sessionToken) return null;
+    if (!storedUser || !sessionToken) {return null;}
 
     try {
       const parsedUser = JSON.parse(storedUser);
@@ -606,7 +606,7 @@ export const walletService = {
    */
   async getBalance(currency: Currency): Promise<number> {
     const user = await authService.getCurrentUser();
-    if (!user) throw new Error('User not logged in');
+    if (!user) {throw new Error('User not logged in');}
 
     // 调用 Supabase 存储过程 get_user_wallet_balance
                const { data, error } = await supabase.rpc("get_user_wallet_balance" as any, {
@@ -693,10 +693,10 @@ export const referralService = {
    */
     async getInviteStats(): Promise<InviteStats | null> {
     const user = await authService.getCurrentUser();
-    if (!user) throw new Error('User not logged in');
+    if (!user) {throw new Error('User not logged in');}
 
     const sessionToken = localStorage.getItem('custom_session_token');
-    if (!sessionToken) throw new Error('Unauthorized: missing session_token');
+    if (!sessionToken) {throw new Error('Unauthorized: missing session_token');}
 
     const { data, error } = await supabase.functions.invoke('get-user-referral-stats', {
       body: { session_token: sessionToken }
@@ -715,10 +715,10 @@ export const referralService = {
    */
   async getInvitedUsers(): Promise<InvitedUser[]> {
     const user = await authService.getCurrentUser();
-    if (!user) throw new Error('User not logged in');
+    if (!user) {throw new Error('User not logged in');}
 
     const sessionToken = localStorage.getItem('custom_session_token');
-    if (!sessionToken) throw new Error('Unauthorized: missing session_token');
+    if (!sessionToken) {throw new Error('Unauthorized: missing session_token');}
 
     const { data, error } = await supabase.functions.invoke('get-invited-users', {
       body: { session_token: sessionToken }
@@ -844,7 +844,7 @@ export const referralService = {
     let uid = userId;
     if (!uid) {
       const user = await authService.getCurrentUser();
-      if (!user) throw new Error('User not logged in');
+      if (!user) {throw new Error('User not logged in');}
       uid = user.id;
     }
 
@@ -885,7 +885,7 @@ export const referralService = {
     let uid = userId;
     if (!uid) {
       const user = await authService.getCurrentUser();
-      if (!user) throw new Error('User not logged in');
+      if (!user) {throw new Error('User not logged in');}
       uid = user.id;
     }
 
@@ -924,7 +924,7 @@ export const referralService = {
 	  // 原始的 toggleLike 逻辑被拆分为 likeShowoff 和 unlikeShowoff
 		  async toggleLike(showoffId: string): Promise<void> {
 		    const user = await authService.getCurrentUser();
-		    if (!user) throw new Error('User not logged in');
+		    if (!user) {throw new Error('User not logged in');}
 
     const { data: existingLike, error: selectError } = await supabase
       .from('likes')
@@ -976,7 +976,7 @@ export const referralService = {
     let userId = params.user_id;
     if (!userId) {
       const user = await authService.getCurrentUser();
-      if (!user) throw new Error('User not logged in');
+      if (!user) {throw new Error('User not logged in');}
       userId = user.id;
     }
 

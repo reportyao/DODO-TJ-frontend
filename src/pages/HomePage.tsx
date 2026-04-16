@@ -14,7 +14,7 @@ import { useLotteries } from '../hooks/useHomeData';
 const HomePage: React.FC = () => {
   const { t } = useTranslation();
   const { user, isLoading: userLoading } = useUser();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const { stats: _inviteStats } = useInviteStats();
   
   // 使用 react-query hooks 获取数据（自动缓存、重试、后台刷新）

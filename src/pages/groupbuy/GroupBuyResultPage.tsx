@@ -147,7 +147,7 @@ export default function GroupBuyResultPage() {
   }, [result, user]);
 
   const fetchResult = async () => {
-    if (!sessionId) return;
+    if (!sessionId) {return;}
 
     try {
       setLoading(true);
@@ -155,7 +155,7 @@ export default function GroupBuyResultPage() {
         body: { type: 'session-result', session_id: sessionId },
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
       if (data?.success) {
         setResult(data.data);
       }
@@ -187,7 +187,7 @@ export default function GroupBuyResultPage() {
   };
 
   const handleClaimPrize = async () => {
-    if (!result || !sessionToken || !selectedPointId) return;
+    if (!result || !sessionToken || !selectedPointId) {return;}
 
     setIsSubmitting(true);
     try {
@@ -200,7 +200,7 @@ export default function GroupBuyResultPage() {
         },
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
 
       if (data?.success) {
         toast.success(t('orders.claimSuccess'));
@@ -225,9 +225,9 @@ export default function GroupBuyResultPage() {
 
   // 修复多语言对象渲染问题 - 2026-01-21
   const getLocalizedText = (text: any) => {
-    if (!text) return '';
-    if (typeof text === 'string') return text;
-    if (typeof text !== 'object') return String(text);
+    if (!text) {return '';}
+    if (typeof text === 'string') {return text;}
+    if (typeof text !== 'object') {return String(text);}
     
     // 尝试获取当前语言的文本
     const currentLang = text[i18n.language];
@@ -248,7 +248,7 @@ export default function GroupBuyResultPage() {
   };
 
   const formatDateTime = (dateString: string) => {
-    if (!dateString) return '';
+    if (!dateString) {return '';}
     return new Date(dateString).toLocaleString();
   };
 

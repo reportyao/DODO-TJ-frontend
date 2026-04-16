@@ -96,7 +96,7 @@ const SpinWheel: React.FC<{
     if (isSpinning && targetIndex !== null) {
       let currentIndex = 0;
       let speed = 50;
-      let rounds = 0;
+      const rounds = 0;
       const totalRounds = 3; // 转3圈
       const totalSteps = totalRounds * 6 + targetIndex;
       let step = 0;
@@ -134,8 +134,8 @@ const SpinWheel: React.FC<{
   // 清理
   useEffect(() => {
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (intervalRef.current) {clearInterval(intervalRef.current);}
+      if (timeoutRef.current) {clearTimeout(timeoutRef.current);}
     };
   }, []);
 
@@ -212,7 +212,7 @@ const SpinLotteryPage: React.FC = () => {
 
   // 加载商品数据
   const loadSpinData = useCallback(async () => {
-    if (!user) return;
+    if (!user) {return;}
     
     try {
       setIsLoading(true);
@@ -220,7 +220,7 @@ const SpinLotteryPage: React.FC = () => {
         body: { user_id: user.id, session_token: sessionToken }
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
       if (data?.success) {
         setSpinData(data.data);
       }
@@ -254,7 +254,7 @@ const SpinLotteryPage: React.FC = () => {
         body: { user_id: user.id, session_token: sessionToken }
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
 
       if (data?.success) {
         // 找到获奖奖项的索引
@@ -311,7 +311,7 @@ const SpinLotteryPage: React.FC = () => {
 
   // 【迁移修复】复制邀请链接
   const copyInviteLink = async () => {
-    if (!spinData?.referral_code) return;
+    if (!spinData?.referral_code) {return;}
     
     const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
     const inviteLink = `${appDomain}?ref=${spinData.referral_code}`;
@@ -327,7 +327,7 @@ const SpinLotteryPage: React.FC = () => {
 
   // 【迁移修复】分享邀请 - 使用 Web Share API 或 WhatsApp
   const shareInvite = () => {
-    if (!spinData?.referral_code) return;
+    if (!spinData?.referral_code) {return;}
     
     const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
     const inviteLink = `${appDomain}?ref=${spinData.referral_code}`;
@@ -348,7 +348,7 @@ const SpinLotteryPage: React.FC = () => {
 
   // 获取本地化奖项名称
   const getRewardName = (reward: SpinReward | null) => {
-    if (!reward) return '';
+    if (!reward) {return '';}
     if (reward.reward_name_i18n && reward.reward_name_i18n[i18n.language]) {
       return reward.reward_name_i18n[i18n.language];
     }

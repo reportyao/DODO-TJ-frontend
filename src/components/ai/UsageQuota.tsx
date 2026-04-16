@@ -13,8 +13,8 @@ export function UsageQuota({ quota }: UsageQuotaProps) {
   
   // 根据剩余次数显示不同颜色
   const getColor = () => {
-    if (percentage > 50) return 'text-green-600';
-    if (percentage > 20) return 'text-yellow-600';
+    if (percentage > 50) {return 'text-green-600';}
+    if (percentage > 20) {return 'text-yellow-600';}
     return 'text-red-600';
   };
 

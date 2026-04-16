@@ -98,7 +98,7 @@ export function useAIQuota(): UseAIQuotaReturn {
 
   // 定时刷新（每5分钟，减少请求频率）
   useEffect(() => {
-    if (!user) return;
+    if (!user) {return;}
 
     const interval = setInterval(() => {
       fetchQuota(false);

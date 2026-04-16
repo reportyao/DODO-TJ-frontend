@@ -233,8 +233,8 @@ async function handleCommission(event: QueuedEvent): Promise<void> {
   let level = 1;
 
   for (const setting of settings) {
-    if (!currentUserId || level > 3) break;
-    if (setting.level !== level) continue;
+    if (!currentUserId || level > 3) {break;}
+    if (setting.level !== level) {continue;}
 
     const rate = parseFloat(setting.rate);
     const minPayoutAmount = parseFloat(setting.min_payout_amount || '0');
@@ -614,7 +614,7 @@ async function handleFirstGroupBuy(event: QueuedEvent): Promise<void> {
 
   // 步骤 3: 检查用户的拼团订单数量（确认是否为首次）
   // 查询用户的拼团订单
-  let ordersQuery = supabase
+  const ordersQuery = supabase
     .from('group_buy_orders')
     .select('id')
     .eq('status', 'PAID')

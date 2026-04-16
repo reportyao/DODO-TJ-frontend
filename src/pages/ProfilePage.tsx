@@ -42,7 +42,7 @@ const ProfilePage: React.FC = () => {
 
   // 生成用户个人二维码
   useEffect(() => {
-    if (!user?.id) return
+    if (!user?.id) {return}
     const qrContent = `dodo://user/${user.id}`
     QRCode.toDataURL(qrContent, {
       width: 200,
@@ -56,7 +56,7 @@ const ProfilePage: React.FC = () => {
 
   // 获取用户 ID 的短格式显示（前8位）
   const shortUserId = useMemo(() => {
-    if (!user?.id) return '------'
+    if (!user?.id) {return '------'}
     return user.id.substring(0, 8).toUpperCase()
   }, [user?.id])
 
@@ -66,7 +66,7 @@ const ProfilePage: React.FC = () => {
 
   useEffect(() => {
     const checkStaffStatus = async () => {
-      if (!user?.id) return
+      if (!user?.id) {return}
       try {
         const response = await fetch(
           `${SUPABASE_URL}/rest/v1/rpc/check_pickup_staff_status`,
@@ -151,7 +151,7 @@ const ProfilePage: React.FC = () => {
 
   const handleShareReferral = () => {
     const code = user?.referral_code || user?.invite_code;
-    if (!code) return;
+    if (!code) {return;}
     
     // 使用 PWA 域名生成分享链接
     const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;

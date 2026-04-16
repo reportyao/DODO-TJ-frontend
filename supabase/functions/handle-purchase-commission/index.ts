@@ -153,7 +153,7 @@ serve(async (req) => {
       .eq('id', user_id)
       .single()
 
-    if (userError) throw userError
+    if (userError) {throw userError}
 
     // 优先使用 referred_by_id（新字段），回退到 referrer_id（旧字段）
     const referrerId = userData?.referred_by_id || userData?.referrer_id
@@ -170,10 +170,10 @@ serve(async (req) => {
     let level = 1
 
     for (const setting of settings) {
-      if (!currentUserId || level > 3) break
+      if (!currentUserId || level > 3) {break}
       
       // 确保配置级别与当前遍历级别匹配
-      if (setting.level !== level) continue
+      if (setting.level !== level) {continue}
 
       const rate = parseFloat(setting.rate)
       const minPayoutAmount = parseFloat(setting.min_payout_amount || '0')

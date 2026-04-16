@@ -68,7 +68,7 @@ function ImageCarousel({ images, alt }: { images: string[]; alt: string }) {
 
   // 自动播放
   useEffect(() => {
-    if (!images || images.length <= 1 || !autoPlayEnabled) return;
+    if (!images || images.length <= 1 || !autoPlayEnabled) {return;}
     
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
@@ -281,7 +281,7 @@ function SquadBuyConfirmModal({
   isProcessing: boolean;
   t: any;
 }) {
-  if (!isOpen) return null;
+  if (!isOpen) {return null;}
 
   const groupSize = product.group_size || 3;
   const totalPrice = product.price_per_person * groupSize;
@@ -438,7 +438,7 @@ export default function GroupBuyDetailPage() {
         }
       );
 
-      if (productError) throw productError;
+      if (productError) {throw productError;}
       if (productResponse?.success) {
         setProduct(productResponse.data);
       }
@@ -451,7 +451,7 @@ export default function GroupBuyDetailPage() {
         }
       );
 
-      if (sessionsError) throw sessionsError;
+      if (sessionsError) {throw sessionsError;}
       
       if (sessionsResponse?.success) {
         const sessionsData = sessionsResponse.data || [];
@@ -486,7 +486,7 @@ export default function GroupBuyDetailPage() {
       return;
     }
 
-    if (!product) return;
+    if (!product) {return;}
 
     const targetSessionId = sessionId || 'new';
     setJoiningSessionId(targetSessionId);
@@ -516,7 +516,7 @@ export default function GroupBuyDetailPage() {
         },
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
 
       if (data?.success) {
         toast.success(t('groupBuy.joinSuccess'));
@@ -547,7 +547,7 @@ export default function GroupBuyDetailPage() {
       return;
     }
 
-    if (!product) return;
+    if (!product) {return;}
 
     // 检查用户是否已在某个进行中的session中
     if (userParticipatedSessions.size > 0) {
@@ -560,7 +560,7 @@ export default function GroupBuyDetailPage() {
 
   // 一键包团：确认支付
   const handleConfirmSquadBuy = async () => {
-    if (!user || !product) return;
+    if (!user || !product) {return;}
 
     setIsSquadBuying(true);
 
@@ -594,7 +594,7 @@ export default function GroupBuyDetailPage() {
         },
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
 
       if (!data?.success) {
         throw new Error(data?.error || 'Squad buy failed');
@@ -673,7 +673,7 @@ export default function GroupBuyDetailPage() {
     const expiry = new Date(expiresAt).getTime();
     const diff = expiry - now;
 
-    if (diff <= 0) return t('groupBuy.expired');
+    if (diff <= 0) {return t('groupBuy.expired');}
 
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -685,13 +685,13 @@ export default function GroupBuyDetailPage() {
   };
 
   const getLocalizedText = (text: { zh: string; ru: string; tg: string } | string): string => {
-    if (typeof text === 'string') return text;
+    if (typeof text === 'string') {return text;}
     const lang = i18n.language as 'zh' | 'ru' | 'tg';
     return text[lang] || text.zh || '';
   };
 
   const getProductImages = (): string[] => {
-    if (!product) return [];
+    if (!product) {return [];}
     if (product.images && product.images.length > 0) {
       return product.images;
     }
@@ -702,8 +702,8 @@ export default function GroupBuyDetailPage() {
   };
 
   const truncateUsername = (username: string | null, maxLength: number = 10): string => {
-    if (!username) return 'User';
-    if (username.length <= maxLength) return username;
+    if (!username) {return 'User';}
+    if (username.length <= maxLength) {return username;}
     return username.substring(0, maxLength) + '...';
   };
 

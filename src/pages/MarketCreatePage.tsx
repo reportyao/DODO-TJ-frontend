@@ -126,16 +126,16 @@ const MarketCreatePage: React.FC = () => {
   const selectedTicketData = myTickets.find(t => t.id === selectedTicket);
 
   const calculateDiscount = () => {
-    if (!selectedTicketData || !sellingPrice) return 0;
+    if (!selectedTicketData || !sellingPrice) {return 0;}
     const price = parseFloat(sellingPrice);
-    if (isNaN(price) || price >= selectedTicketData.purchase_price) return 0;
+    if (isNaN(price) || price >= selectedTicketData.purchase_price) {return 0;}
     return Math.round(((selectedTicketData.purchase_price - price) / selectedTicketData.purchase_price) * 100);
   };
 
   const calculateProfit = () => {
-    if (!selectedTicketData || !sellingPrice) return 0;
+    if (!selectedTicketData || !sellingPrice) {return 0;}
     const price = parseFloat(sellingPrice);
-    if (isNaN(price)) return 0;
+    if (isNaN(price)) {return 0;}
     return price - selectedTicketData.purchase_price;
   };
 
@@ -151,7 +151,7 @@ const MarketCreatePage: React.FC = () => {
     }
 
     const price = parseFloat(sellingPrice);
-    if (!selectedTicketData) return;
+    if (!selectedTicketData) {return;}
 
     if (price > selectedTicketData.purchase_price * 1.5) {
       toast.error(t('market.priceTooHighError'));

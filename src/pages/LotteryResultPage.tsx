@@ -50,7 +50,7 @@ interface PrizeInfo {
 
 // 转换为用户本地时间
 function toLocalTime(dateString: string): string {
-  if (!dateString) return '';
+  if (!dateString) {return '';}
   const date = new Date(dateString);
   
   // 使用用户本地时区显示时间
@@ -88,14 +88,14 @@ const LotteryResultPage: React.FC = () => {
 
   // 获取本地化文本
   const getLocalText = (text: any): string => {
-    if (!text) return '';
-    if (typeof text === 'string') return text;
+    if (!text) {return '';}
+    if (typeof text === 'string') {return text;}
     return text[i18n.language] || text.zh || text.ru || text.tg || '';
   };
 
   // 获取商城信息
   const fetchLottery = useCallback(async () => {
-    if (!id) return;
+    if (!id) {return;}
     
     try {
       const { data, error } = await supabase
@@ -104,7 +104,7 @@ const LotteryResultPage: React.FC = () => {
         .eq('id', id)
         .single();
 
-      if (error) throw error;
+      if (error) {throw error;}
       setLottery(data);
     } catch (error: any) {
       console.error('Failed to fetch lottery:', error);
@@ -114,7 +114,7 @@ const LotteryResultPage: React.FC = () => {
 
   // 获取所有票据和参与用户 (支持 tickets 表和 lottery_entries 表)
   const fetchTicketsAndParticipants = useCallback(async () => {
-    if (!id) return;
+    if (!id) {return;}
 
     try {
       // 从 lottery_entries 表获取参与记录（统一使用此表）
@@ -126,7 +126,7 @@ const LotteryResultPage: React.FC = () => {
         .order('created_at', { ascending: true })
         .limit(500);
 
-      if (entriesError) throw entriesError;
+      if (entriesError) {throw entriesError;}
 
       // 转换为统一格式
       const combinedTickets = (entriesData || []).map(e => {
@@ -162,14 +162,14 @@ const LotteryResultPage: React.FC = () => {
           .in('id', userIds)
           .limit(500);
 
-        if (usersError) throw usersError;
+        if (usersError) {throw usersError;}
 
         // 组织参与者数据
         const participantsMap: { [key: string]: ParticipantWithTickets } = {};
         
         combinedTickets?.forEach(ticket => {
           const user = usersData?.find(u => u.id === ticket.user_id);
-          if (!user) return;
+          if (!user) {return;}
 
           if (!participantsMap[user.id]) {
             participantsMap[user.id] = {
@@ -192,7 +192,7 @@ const LotteryResultPage: React.FC = () => {
   
   // 获取奖品信息
   const fetchPrizeInfo = useCallback(async () => {
-    if (!id || !currentUser?.id) return;
+    if (!id || !currentUser?.id) {return;}
     
     setIsLoadingPrizeInfo(true);
     try {
@@ -281,7 +281,7 @@ const LotteryResultPage: React.FC = () => {
 
   // 倒计时结束后执行处理订单
   const handleDrawLottery = async () => {
-    if (!id) return;
+    if (!id) {return;}
 
     setIsDrawing(true);
     try {
@@ -340,7 +340,7 @@ const LotteryResultPage: React.FC = () => {
   // 提交领取请求
   const handleSubmitClaim = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sessionToken || !id) return;
+    if (!sessionToken || !id) {return;}
 
     setIsSubmitting(true);
     try {
@@ -361,7 +361,7 @@ const LotteryResultPage: React.FC = () => {
         body: requestBody
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
 
       const result = data as { success: boolean; error?: string; data?: any };
 
@@ -432,11 +432,11 @@ const LotteryResultPage: React.FC = () => {
   
   // 计算剩余时间
   const getRemainingTime = () => {
-    if (!prizeInfo?.expires_at) return null;
+    if (!prizeInfo?.expires_at) {return null;}
     const now = new Date();
     const expiresAt = new Date(prizeInfo.expires_at);
     const diffMs = expiresAt.getTime() - now.getTime();
-    if (diffMs <= 0) return { expired: true, days: 0, hours: 0 };
+    if (diffMs <= 0) {return { expired: true, days: 0, hours: 0 };}
     const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     return { expired: false, days, hours };

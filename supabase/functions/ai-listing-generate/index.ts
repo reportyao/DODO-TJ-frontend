@@ -44,7 +44,7 @@ async function withRetry<T>(
     try {
       return await fn();
     } catch (error) {
-      if (i === maxRetries - 1) throw error;
+      if (i === maxRetries - 1) {throw error;}
       const delay = baseDelay * Math.pow(2, i);
       console.log(
         `[withRetry] 第 ${i + 1} 次失败，${delay}ms 后重试:`,
@@ -105,7 +105,7 @@ function cleanAIText(value: unknown): string {
 }
 
 function cleanAITextList(value: unknown, limit: number = 6): string[] {
-  if (!Array.isArray(value)) return [];
+  if (!Array.isArray(value)) {return [];}
   return value
     .map((item) => cleanAIText(item))
     .filter(Boolean)

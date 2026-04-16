@@ -15,7 +15,7 @@ function shouldLog(level: LogLevel): boolean {
 }
 
 function sanitizeObject(obj: unknown): unknown {
-  if (typeof obj !== 'object' || obj === null) return obj
+  if (typeof obj !== 'object' || obj === null) {return obj}
 
   const SENSITIVE_KEYS = [
     'password',
@@ -30,7 +30,7 @@ function sanitizeObject(obj: unknown): unknown {
   const sanitized: Record<string, any> = Array.isArray(obj) ? [...(obj as any[])] : { ...(obj as Record<string, any>) }
 
   for (const key in sanitized) {
-    if (!Object.prototype.hasOwnProperty.call(sanitized, key)) continue
+    if (!Object.prototype.hasOwnProperty.call(sanitized, key)) {continue}
     if (SENSITIVE_KEYS.includes(key.toLowerCase())) {
       sanitized[key] = '***REDACTED***'
     } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
@@ -47,22 +47,22 @@ function formatMessage(level: string, message: string): string {
 
 export const logger = {
   debug: (message: string, data?: unknown): void => {
-    if (!isDevelopment || !shouldLog('DEBUG')) return
+    if (!isDevelopment || !shouldLog('DEBUG')) {return}
     console.debug(formatMessage('DEBUG', message), sanitizeObject(data))
   },
 
   info: (message: string, data?: unknown): void => {
-    if (!shouldLog('INFO')) return
+    if (!shouldLog('INFO')) {return}
     console.info(formatMessage('INFO', message), sanitizeObject(data))
   },
 
   warn: (message: string, data?: unknown): void => {
-    if (!shouldLog('WARN')) return
+    if (!shouldLog('WARN')) {return}
     console.warn(formatMessage('WARN', message), sanitizeObject(data))
   },
 
   error: (message: string, error?: unknown): void => {
-    if (!shouldLog('ERROR')) return
+    if (!shouldLog('ERROR')) {return}
     console.error(formatMessage('ERROR', message), sanitizeObject(error))
   }
 }

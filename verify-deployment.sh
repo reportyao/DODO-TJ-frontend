@@ -51,7 +51,7 @@ fi
 
 echo ""
 echo "4. 检查 Git 仓库状态..."
-GIT_COMMIT=$(ssh ${PROD_SERVER_USER}@${PROD_SERVER_IP} "cd /root/luckymart-tj-frontend && git log --oneline -1")
+GIT_COMMIT=$(ssh ${PROD_SERVER_USER}@${PROD_SERVER_IP} "cd /root/DODO-TJ-frontend && git log --oneline -1")
 echo -e "${GREEN}✓${NC} 当前提交: ${GIT_COMMIT}"
 
 echo ""

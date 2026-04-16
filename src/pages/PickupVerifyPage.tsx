@@ -212,7 +212,7 @@ const PickupVerifyPage: React.FC = () => {
   // ========== 拍照上传 ==========
   const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file) {return}
 
     // 本地预览
     const reader = new FileReader()
@@ -244,7 +244,7 @@ const PickupVerifyPage: React.FC = () => {
 
   // ========== 确认核销 ==========
   const handleVerify = async () => {
-    if (!orderData) return
+    if (!orderData) {return}
 
     setIsVerifying(true)
     setShowConfirmModal(false)
@@ -309,7 +309,7 @@ const PickupVerifyPage: React.FC = () => {
 
   // ========== 计算剩余天数 ==========
   const getRemainingDays = (expiresAt: string | null) => {
-    if (!expiresAt) return null
+    if (!expiresAt) {return null}
     const now = new Date()
     const expires = new Date(expiresAt)
     const diff = expires.getTime() - now.getTime()
@@ -325,7 +325,7 @@ const PickupVerifyPage: React.FC = () => {
   }
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '-'
+    if (!dateStr) {return '-'}
     return new Date(dateStr).toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'ru-RU', {
       year: 'numeric',
       month: '2-digit',

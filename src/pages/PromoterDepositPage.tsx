@@ -91,11 +91,11 @@ function normalizeQuickAmounts(rawValue: unknown): number[] {
 }
 
 function readQuickAmountsCache(): number[] | undefined {
-  if (typeof window === 'undefined') return undefined
+  if (typeof window === 'undefined') {return undefined}
 
   try {
     const cachedQuickAmounts = sessionStorage.getItem(QUICK_AMOUNTS_CACHE_KEY)
-    if (!cachedQuickAmounts) return undefined
+    if (!cachedQuickAmounts) {return undefined}
 
     const parsedCache = JSON.parse(cachedQuickAmounts)
     if (Array.isArray(parsedCache) && parsedCache.length > 0) {
@@ -245,7 +245,7 @@ const PromoterDepositPage: React.FC = () => {
 
   // ========== 搜索用户 ==========
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return
+    if (!searchQuery.trim()) {return}
 
     setIsSearching(true)
     try {
@@ -304,13 +304,13 @@ const PromoterDepositPage: React.FC = () => {
 
   // ========== 确认充值 ==========
   const handleConfirm = () => {
-    if (!targetUser || !amount) return
+    if (!targetUser || !amount) {return}
     setStep('confirm')
   }
 
   // ========== 执行充值 ==========
   const handleDeposit = async () => {
-    if (!targetUser || !amount) return
+    if (!targetUser || !amount) {return}
 
     setIsSubmitting(true)
     try {
@@ -354,9 +354,9 @@ const PromoterDepositPage: React.FC = () => {
 
   // ========== 获取用户显示名称 ==========
   const getUserDisplayName = (u: TargetUser | null) => {
-    if (!u) return '---'
-    if (u.first_name) return u.first_name + (u.last_name ? ' ' + u.last_name : '')
-    if (u.phone_number) return u.phone_number.slice(0, 3) + '****'
+    if (!u) {return '---'}
+    if (u.first_name) {return u.first_name + (u.last_name ? ' ' + u.last_name : '')}
+    if (u.phone_number) {return u.phone_number.slice(0, 3) + '****'}
     return u.id.substring(0, 8)
   }
 
@@ -403,7 +403,7 @@ const PromoterDepositPage: React.FC = () => {
         <button
           onClick={() => {
             setShowHistory(!showHistory)
-            if (!showHistory) loadHistory()
+            if (!showHistory) {loadHistory()}
           }}
           className="p-1"
         >

@@ -40,7 +40,7 @@ const CouponListPage: React.FC = () => {
   const { data: coupons = [], isLoading } = useQuery({
     queryKey: ['coupons', user?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!user?.id) {return [];}
       const { data, error } = await supabase
         .from('coupons')
         .select('*')
@@ -48,7 +48,7 @@ const CouponListPage: React.FC = () => {
         .order('created_at', { ascending: false })
         .limit(100);
       
-      if (error) throw error;
+      if (error) {throw error;}
       return (data || []) as Coupon[];
     },
     enabled: !!user?.id,

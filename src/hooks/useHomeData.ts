@@ -55,7 +55,7 @@ export function useGroupBuyProducts() {
         body: { type: 'products' },
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
       if (data?.success) {
         // 按创建时间从新到旧排序
         return [...data.data].sort(

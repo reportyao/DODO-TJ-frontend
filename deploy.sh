@@ -23,7 +23,7 @@ PROD_SERVER_PASS="Lingjiu123@"
 PROD_DOMAIN="tezbarakat.com"
 DEPLOY_PATH="/var/www/${PROD_DOMAIN}/html"
 ADMIN_DEPLOY_PATH="/var/www/${PROD_DOMAIN}/admin"
-GIT_REPO_PATH="/root/luckymart-tj-frontend"
+GIT_REPO_PATH="/root/DODO-TJ-frontend"
 ADMIN_GIT_REPO_PATH="/root/projects/luckymart-tj-admin"
 
 # 打印带颜色的消息
@@ -94,7 +94,7 @@ deploy_frontend() {
         set -e
         
         echo "[INFO] 进入前端仓库目录..."
-        cd /root/luckymart-tj-frontend
+        cd /root/DODO-TJ-frontend
         
         echo "[INFO] 拉取最新代码..."
         git pull origin main

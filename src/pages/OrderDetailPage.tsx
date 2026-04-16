@@ -85,7 +85,7 @@ const OrderDetailPage: React.FC = () => {
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user || !id) return;
+    if (!user || !id) {return;}
     fetchOrderDetail();
   }, [user, id]);
 
@@ -103,8 +103,8 @@ const OrderDetailPage: React.FC = () => {
         }
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
-      if (!data) throw new Error('Order not found');
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
+      if (!data) {throw new Error('Order not found');}
 
       setOrder(data);
     } catch (error) {
@@ -116,8 +116,8 @@ const OrderDetailPage: React.FC = () => {
   };
 
   const getLocalizedText = (text: any): string => {
-    if (!text) return '';
-    if (typeof text === 'string') return text;
+    if (!text) {return '';}
+    if (typeof text === 'string') {return text;}
     return text[i18n.language] || text.zh || text.ru || text.tg || '';
   };
 
@@ -182,8 +182,8 @@ const OrderDetailPage: React.FC = () => {
         }
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
-      if (!data?.success) throw new Error(data?.error || 'Update failed');
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
+      if (!data?.success) {throw new Error(data?.error || 'Update failed');}
 
       toast.success(t('orders.pickupPointUpdated'));
       
@@ -272,7 +272,7 @@ const OrderDetailPage: React.FC = () => {
 
   // 计算有效期（创建后30天）
   const getExpiryDate = () => {
-    if (!order?.created_at) return null;
+    if (!order?.created_at) {return null;}
     const createdDate = new Date(order.created_at);
     const expiryDate = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000);
     return expiryDate;
@@ -281,14 +281,14 @@ const OrderDetailPage: React.FC = () => {
   // 检查是否已过期
   const isExpired = () => {
     const expiryDate = getExpiryDate();
-    if (!expiryDate) return false;
+    if (!expiryDate) {return false;}
     return new Date() > expiryDate;
   };
 
   // 获取剩余天数
   const getRemainingDays = () => {
     const expiryDate = getExpiryDate();
-    if (!expiryDate) return 0;
+    if (!expiryDate) {return 0;}
     const now = new Date();
     const diffTime = expiryDate.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));

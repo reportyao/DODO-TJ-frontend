@@ -113,7 +113,7 @@ export const SubsidyPoolCard: React.FC = () => {
 
   // 跑马灯自动滚动
   useEffect(() => {
-    if (marqueeItems.length === 0) return;
+    if (marqueeItems.length === 0) {return;}
     const interval = setInterval(() => {
       setCurrentMsgIndex((prev) => (prev + 1) % marqueeItems.length);
     }, 3000);

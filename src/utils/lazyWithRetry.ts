@@ -29,7 +29,7 @@ const RELOAD_ATTEMPTED_KEY = 'chunk_reload_attempted'
  * - Vite 动态 import 失败：标准错误信息
  */
 function isChunkLoadError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
+  if (!(error instanceof Error)) {return false}
 
   const message = error.message.toLowerCase()
   const name = error.name.toLowerCase()

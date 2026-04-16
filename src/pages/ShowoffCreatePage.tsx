@@ -83,7 +83,7 @@ const ShowoffCreatePage: React.FC = () => {
 
       // 获取关联的彩票信息
       const lotteryIds = [...new Set(prizes.map((p: any) => p.lottery_id).filter(Boolean))];
-      let lotteriesMap: Record<string, any> = {};
+      const lotteriesMap: Record<string, any> = {};
       
       if (lotteryIds.length > 0) {
         const lotteriesResponse = await fetch(
@@ -105,7 +105,7 @@ const ShowoffCreatePage: React.FC = () => {
 
       // 获取关联的拼团商品信息
       const productIds = [...new Set(groupBuyResults.map((g: any) => g.product_id).filter(Boolean))];
-      let productsMap: Record<string, any> = {};
+      const productsMap: Record<string, any> = {};
       
       if (productIds.length > 0) {
         const productsResponse = await fetch(

@@ -50,20 +50,20 @@ function createOrderNumber() {
 }
 
 function mapErrorCode(errorMessage: string) {
-  if (errorMessage.includes('未授权')) return 'UNAUTHORIZED'
-  if (errorMessage.includes('缺少商品ID')) return 'MISSING_LOTTERY_ID'
-  if (errorMessage.includes('商品不存在')) return 'LOTTERY_NOT_FOUND'
-  if (errorMessage.includes('该商品当前不可购买')) return 'LOTTERY_INACTIVE'
-  if (errorMessage.includes('该商品不支持全款购买')) return 'FULL_PURCHASE_DISABLED'
-  if (errorMessage.includes('库存不足') || errorMessage.includes('商品已售罄')) return 'OUT_OF_STOCK'
-  if (errorMessage.includes('商品价格配置异常')) return 'INVALID_PRICE'
-  if (errorMessage.includes('总资产不足') || errorMessage.includes('INSUFFICIENT_BALANCE')) return 'INSUFFICIENT_BALANCE'
-  if (errorMessage.includes('自提点不存在')) return 'PICKUP_POINT_NOT_FOUND'
-  if (errorMessage.includes('该自提点当前不可用')) return 'PICKUP_POINT_INACTIVE'
-  if (errorMessage.includes('创建订单失败')) return 'ORDER_CREATE_FAILED'
-  if (errorMessage.includes('支付失败')) return 'PAYMENT_FAILED'
-  if (errorMessage.includes('库存更新失败')) return 'INVENTORY_UPDATE_FAILED'
-  if (errorMessage.includes('库存已变动')) return 'INVENTORY_CONFLICT'
+  if (errorMessage.includes('未授权')) {return 'UNAUTHORIZED'}
+  if (errorMessage.includes('缺少商品ID')) {return 'MISSING_LOTTERY_ID'}
+  if (errorMessage.includes('商品不存在')) {return 'LOTTERY_NOT_FOUND'}
+  if (errorMessage.includes('该商品当前不可购买')) {return 'LOTTERY_INACTIVE'}
+  if (errorMessage.includes('该商品不支持全款购买')) {return 'FULL_PURCHASE_DISABLED'}
+  if (errorMessage.includes('库存不足') || errorMessage.includes('商品已售罄')) {return 'OUT_OF_STOCK'}
+  if (errorMessage.includes('商品价格配置异常')) {return 'INVALID_PRICE'}
+  if (errorMessage.includes('总资产不足') || errorMessage.includes('INSUFFICIENT_BALANCE')) {return 'INSUFFICIENT_BALANCE'}
+  if (errorMessage.includes('自提点不存在')) {return 'PICKUP_POINT_NOT_FOUND'}
+  if (errorMessage.includes('该自提点当前不可用')) {return 'PICKUP_POINT_INACTIVE'}
+  if (errorMessage.includes('创建订单失败')) {return 'ORDER_CREATE_FAILED'}
+  if (errorMessage.includes('支付失败')) {return 'PAYMENT_FAILED'}
+  if (errorMessage.includes('库存更新失败')) {return 'INVENTORY_UPDATE_FAILED'}
+  if (errorMessage.includes('库存已变动')) {return 'INVENTORY_CONFLICT'}
   return 'UNKNOWN_ERROR'
 }
 

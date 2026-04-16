@@ -60,10 +60,10 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     .trim();
 
   let resolvedObjectFit: CSSProperties['objectFit'] = 'cover';
-  if (className.includes('object-contain')) resolvedObjectFit = 'contain';
-  else if (className.includes('object-fill')) resolvedObjectFit = 'fill';
-  else if (className.includes('object-none')) resolvedObjectFit = 'none';
-  else if (className.includes('object-scale-down')) resolvedObjectFit = 'scale-down';
+  if (className.includes('object-contain')) {resolvedObjectFit = 'contain';}
+  else if (className.includes('object-fill')) {resolvedObjectFit = 'fill';}
+  else if (className.includes('object-none')) {resolvedObjectFit = 'none';}
+  else if (className.includes('object-scale-down')) {resolvedObjectFit = 'scale-down';}
 
   const containerStyle: CSSProperties = {
     position: 'relative',

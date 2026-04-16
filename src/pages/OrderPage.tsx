@@ -46,12 +46,12 @@ const OrderPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const getLocalizedText = (i18nObj: any, lang: string) => {
-    if (!i18nObj) return '';
+    if (!i18nObj) {return '';}
     return i18nObj[lang] || i18nObj['zh'] || i18nObj['en'] || '';
   };
 
   const fetchOrders = useCallback(async () => {
-    if (!user || !sessionToken) return;
+    if (!user || !sessionToken) {return;}
     
     setIsLoading(true);
     try {

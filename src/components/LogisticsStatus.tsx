@@ -77,7 +77,7 @@ export const LogisticsStatus: React.FC<LogisticsStatusProps> = ({
   ];
 
   const getStatusIndex = (s: string | null): number => {
-    if (!s) return 0;
+    if (!s) {return 0;}
     const index = steps.findIndex(step => step.key === s);
     return index >= 0 ? index : 0;
   };
@@ -85,13 +85,13 @@ export const LogisticsStatus: React.FC<LogisticsStatusProps> = ({
   const currentIndex = getStatusIndex(status);
 
   const getStatusColor = (index: number): string => {
-    if (index < currentIndex) return 'text-green-500 bg-green-100';
-    if (index === currentIndex) return 'text-primary bg-amber-100';
+    if (index < currentIndex) {return 'text-green-500 bg-green-100';}
+    if (index === currentIndex) {return 'text-primary bg-amber-100';}
     return 'text-gray-400 bg-gray-100';
   };
 
   const getLineColor = (index: number): string => {
-    if (index < currentIndex) return 'bg-green-500';
+    if (index < currentIndex) {return 'bg-green-500';}
     return 'bg-gray-200';
   };
 

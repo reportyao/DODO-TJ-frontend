@@ -78,7 +78,7 @@ const PendingPickupPage: React.FC = () => {
   }, [user]);
 
   const fetchPendingPickupItems = async () => {
-    if (!user) return;
+    if (!user) {return;}
     
     setIsLoading(true);
     try {

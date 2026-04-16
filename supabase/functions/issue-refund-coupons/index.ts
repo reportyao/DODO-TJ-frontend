@@ -84,7 +84,7 @@ serve(async (req) => {
 
     let totalCouponsIssued = 0;
     let totalUsersProcessed = 0;
-    let errors: string[] = [];
+    const errors: string[] = [];
 
     // 批量查询所有用户的 phone_number，用于通知
     const allUserIds = losers.map((l: any) => l.user_id).filter(Boolean);

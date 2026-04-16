@@ -51,7 +51,7 @@ const NotificationPage: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
 
   const fetchNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!user) {return;}
     
     setIsLoading(true);
     try {

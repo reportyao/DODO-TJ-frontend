@@ -21,11 +21,11 @@ function logTest(name, passed, details = '') {
   if (passed) {
     passedTests++;
     console.log(`✅ [PASS] ${name}`);
-    if (details) console.log(`    └─ ${details}`);
+    if (details) {console.log(`    └─ ${details}`);}
   } else {
     failedTests++;
     console.log(`❌ [FAIL] ${name}`);
-    if (details) console.log(`    └─ ${details}`);
+    if (details) {console.log(`    └─ ${details}`);}
   }
 }
 

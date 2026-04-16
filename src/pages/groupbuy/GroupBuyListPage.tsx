@@ -42,7 +42,7 @@ export default function GroupBuyListPage() {
         body: { type: 'products' },
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
       if (data?.success) {
         // 按创建时间从新到旧排序
         const sortedProducts = [...data.data].sort((a: any, b: any) => {
@@ -58,9 +58,9 @@ export default function GroupBuyListPage() {
   };
 
   const getLocalizedText = (text: any) => {
-    if (!text) return '';
-    if (typeof text === 'string') return text;
-    if (typeof text !== 'object') return String(text);
+    if (!text) {return '';}
+    if (typeof text === 'string') {return text;}
+    if (typeof text !== 'object') {return String(text);}
     
     const currentLang = text[i18n.language];
     if (currentLang && typeof currentLang === 'string' && currentLang.trim()) {

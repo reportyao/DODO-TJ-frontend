@@ -42,7 +42,7 @@ const MyPrizesPage: React.FC = () => {
   const loadPrizes = useCallback(async () => {
     setIsLoading(true);
     try {
-      if (!user) return;
+      if (!user) {return;}
 
       if (!sessionToken) {
         throw new Error('User not authenticated');
@@ -54,7 +54,7 @@ const MyPrizesPage: React.FC = () => {
 	        },
 	      });
 	
-	      if (error) throw new Error(await extractEdgeFunctionError(error));
+	      if (error) {throw new Error(await extractEdgeFunctionError(error));}
 	
 	      const result = data as { success: boolean; data: any[]; error?: string };
 	
@@ -287,7 +287,7 @@ const ShippingModal: React.FC<{
         }
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
 
       const result = data as { success: boolean; error?: string };
 

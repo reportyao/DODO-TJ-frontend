@@ -81,13 +81,13 @@ export const ProductList: React.FC<ProductListProps> = ({
 
   // 获取竞品最高价格（用于划线对比）
   const getHighestCompetitorPrice = (product: Product): number | null => {
-    if (!product.price_comparisons || product.price_comparisons.length === 0) return null;
+    if (!product.price_comparisons || product.price_comparisons.length === 0) {return null;}
     return Math.max(...product.price_comparisons.map(pc => pc.price));
   };
 
   // 计算节省百分比
   const getSavingsPercent = (ourPrice: number, competitorPrice: number): number => {
-    if (competitorPrice <= 0) return 0;
+    if (competitorPrice <= 0) {return 0;}
     return Math.round((1 - ourPrice / competitorPrice) * 100);
   };
 

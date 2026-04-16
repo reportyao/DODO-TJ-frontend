@@ -92,7 +92,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
   }, []);
 
   const fetchLottery = useCallback(async () => {
-    if (!lotteryId) return;
+    if (!lotteryId) {return;}
     try {
       const { data, error } = await supabase
         .from('lotteries')
@@ -100,7 +100,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
         .eq('id', lotteryId)
         .single();
 
-      if (error) throw error;
+      if (error) {throw error;}
 
       let inventoryProductData = null;
       const inventoryProductId = data?.inventory_product_id;
@@ -134,7 +134,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
         .order('created_at', { ascending: true })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {throw error;}
       if (data && data.length > 0) {
         setPickupPoints(data as PickupPoint[]);
       }
@@ -145,7 +145,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
   }, [supabase, t]);
 
   const fetchCouponCount = useCallback(async () => {
-    if (!user) return;
+    if (!user) {return;}
     try {
       const { data, error } = await supabase
         .from('coupons')
@@ -174,7 +174,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
 
   // 根据距离排序的自提点列表
   const sortedPickupPoints = useMemo(() => {
-    if (!userLocation) return pickupPoints;
+    if (!userLocation) {return pickupPoints;}
     
     return [...pickupPoints].sort((a, b) => {
       const aLat = a.latitude;
@@ -183,8 +183,8 @@ const FullPurchaseConfirmPage: React.FC = () => {
       const bLng = b.longitude;
 
       // 没有坐标的排到最后
-      if (!aLat || !aLng) return 1;
-      if (!bLat || !bLng) return -1;
+      if (!aLat || !aLng) {return 1;}
+      if (!bLat || !bLng) {return -1;}
 
       const distA = calculateDistance(userLocation.lat, userLocation.lng, aLat, aLng);
       const distB = calculateDistance(userLocation.lat, userLocation.lng, bLat, bLng);
@@ -209,7 +209,7 @@ const FullPurchaseConfirmPage: React.FC = () => {
 
   // 获取自提点距离
   const getPointDistance = useCallback((point: PickupPoint): string | null => {
-    if (!userLocation || !point.latitude || !point.longitude) return null;
+    if (!userLocation || !point.latitude || !point.longitude) {return null;}
     const dist = calculateDistance(userLocation.lat, userLocation.lng, point.latitude, point.longitude);
     return formatDistance(dist);
   }, [userLocation]);

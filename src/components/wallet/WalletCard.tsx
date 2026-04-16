@@ -34,7 +34,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({
   
   // 获取今日佣金
   const fetchTodayCommission = useCallback(async () => {
-    if (!user) return
+    if (!user) {return}
     setIsLoadingCommission(true)
     try {
       // 获取今天的开始时间（UTC）

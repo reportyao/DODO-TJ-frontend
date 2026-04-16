@@ -45,7 +45,7 @@ async function withRetry<T>(
     try {
       return await fn();
     } catch (error) {
-      if (i === maxRetries - 1) throw error;
+      if (i === maxRetries - 1) {throw error;}
       const delay = baseDelay * Math.pow(2, i);
       console.log(
         `[withRetry] 第 ${i + 1} 次失败，${delay}ms 后重试:`,
@@ -96,7 +96,7 @@ function checkI18nCompleteness(
   languages: string[]
 ): string[] {
   const missing: string[] = [];
-  if (!obj) return languages;
+  if (!obj) {return languages;}
   for (const lang of languages) {
     if (!obj[lang] || obj[lang].trim().length === 0) {
       missing.push(lang);
@@ -325,7 +325,7 @@ ${localContextHints.length > 0 ? `【本地生活提示】\n${localContextHints.
 
   const result = await response.json();
   const rawContent = result.choices?.[0]?.message?.content;
-  if (!rawContent) throw new Error("专题分析层返回内容为空");
+  if (!rawContent) {throw new Error("专题分析层返回内容为空");}
 
   return parseAIJson(rawContent);
 }
@@ -355,9 +355,9 @@ async function runContentGeneration(
     .filter((e: any) => e.example_good || e.example_bad)
     .map((e: any) => {
       let ref = `[${e.lexicon_group}]`;
-      if (e.example_good) ref += `\n  好例子: ${e.example_good}`;
-      if (e.example_bad) ref += `\n  坏例子: ${e.example_bad}`;
-      if (e.tone_notes) ref += `\n  口吻要求: ${e.tone_notes}`;
+      if (e.example_good) {ref += `\n  好例子: ${e.example_good}`;}
+      if (e.example_bad) {ref += `\n  坏例子: ${e.example_bad}`;}
+      if (e.tone_notes) {ref += `\n  口吻要求: ${e.tone_notes}`;}
       return ref;
     }).join("\n");
 

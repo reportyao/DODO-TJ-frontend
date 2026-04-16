@@ -111,7 +111,7 @@ const OrderManagementPage: React.FC = () => {
   const { data, isLoading, isError, refetch, isRefetching } = useQuery<OrdersResponse>({
     queryKey: ['orders', user?.id],
     queryFn: async () => {
-      if (!user || !sessionToken) throw new Error('User not authenticated');
+      if (!user || !sessionToken) {throw new Error('User not authenticated');}
       
       const { data, error } = await supabase.functions.invoke('get-my-orders', {
         body: {
@@ -120,7 +120,7 @@ const OrderManagementPage: React.FC = () => {
         },
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
       return data;
     },
     enabled: !!user && !!sessionToken,
@@ -135,7 +135,7 @@ const OrderManagementPage: React.FC = () => {
   const filteredOrders = useMemo(() => {
     // 过滤掉拼团订单（拼团功能已隐藏）
     const nonGroupBuyOrders = allOrders.filter(order => order.order_type !== 'group_buy');
-    if (activeTab === 'all') return nonGroupBuyOrders;
+    if (activeTab === 'all') {return nonGroupBuyOrders;}
     if (activeTab === 'lottery') {
       // 商城 Tab 包含 lottery、exchange、full_purchase 类型
       return nonGroupBuyOrders.filter(order => 
@@ -149,8 +149,8 @@ const OrderManagementPage: React.FC = () => {
 
   // 获取本地化文本
   const getLocalizedText = (text: any): string => {
-    if (!text) return '';
-    if (typeof text === 'string') return text;
+    if (!text) {return '';}
+    if (typeof text === 'string') {return text;}
     return text[i18n.language] || text.zh || text.ru || text.tg || '';
   };
 

@@ -86,7 +86,7 @@ const LotteryDetailPage: React.FC = () => {
 
   // 自动播放图片（修复：移除activeImageIndex依赖，避免定时器冲突）
   useEffect(() => {
-    if (!lottery?.image_urls || lottery.image_urls.length <= 1 || !autoPlayEnabled) return;
+    if (!lottery?.image_urls || lottery.image_urls.length <= 1 || !autoPlayEnabled) {return;}
     
     const timer = setInterval(() => {
       setActiveImageIndex((prev) => 
@@ -132,7 +132,7 @@ const LotteryDetailPage: React.FC = () => {
             .order('expires_at', { ascending: true })
             .limit(20);
 
-          if (error) throw error;
+          if (error) {throw error;}
 
           const validCouponCount = data?.length || 0;
           return {
@@ -174,7 +174,7 @@ const LotteryDetailPage: React.FC = () => {
             .order('created_at', { ascending: true })
             .limit(200);
 
-          if (error) throw error;
+          if (error) {throw error;}
 
           return (data || []).map((entry: any) => {
             if (entry.participation_code) {
@@ -197,7 +197,7 @@ const LotteryDetailPage: React.FC = () => {
   }, [id, user, supabase, queryClient]);
 
   const fetchLottery = useCallback(async () => {
-    if (!id) return;
+    if (!id) {return;}
 
     const cachedLottery = queryClient.getQueryData<LotteryDetailQueryResult>(lotteryDetailQueryKey(id));
     if (cachedLottery) {
@@ -219,7 +219,7 @@ const LotteryDetailPage: React.FC = () => {
             .eq('id', id)
             .single();
 
-          if (error) throw error;
+          if (error) {throw error;}
 
           const inventoryProductPromise = data?.inventory_product_id
             ? supabase
@@ -284,7 +284,7 @@ const LotteryDetailPage: React.FC = () => {
   // 轻量级刷新：仅更新 sold_tickets 和库存，不触发 loading 状态和跳转逻辑
   // 用于购买成功后立即刷新进度条，避免 fetchLottery 的 setIsLoading(true) 导致页面闪烁
   const refreshLotteryProgress = useCallback(async () => {
-    if (!id) return;
+    if (!id) {return;}
     try {
       const { data, error } = await supabase
         .from('lotteries')
@@ -292,10 +292,10 @@ const LotteryDetailPage: React.FC = () => {
         .eq('id', id)
         .single();
 
-      if (error || !data) return;
+      if (error || !data) {return;}
 
       setLottery(prev => {
-        if (!prev) return prev;
+        if (!prev) {return prev;}
         return {
           ...prev,
           sold_tickets: data.sold_tickets,
@@ -305,7 +305,7 @@ const LotteryDetailPage: React.FC = () => {
       });
 
       queryClient.setQueryData<LotteryDetailQueryResult>(lotteryDetailQueryKey(id), (previous) => {
-        if (!previous) return previous;
+        if (!previous) {return previous;}
         return {
           ...previous,
           lottery: {
@@ -340,14 +340,14 @@ const LotteryDetailPage: React.FC = () => {
             .order('created_at', { ascending: false })
             .limit(3);
 
-          if (showoffsError) throw showoffsError;
+          if (showoffsError) {throw showoffsError;}
 
           if (!showoffsData || showoffsData.length === 0) {
             return [];
           }
 
           const userIds = [...new Set(showoffsData.map((s: any) => s.user_id).filter(Boolean))];
-          let usersMap: Record<string, any> = {};
+          const usersMap: Record<string, any> = {};
 
           if (userIds.length > 0) {
             const { data: usersData, error: usersError } = await supabase
@@ -634,14 +634,14 @@ const LotteryDetailPage: React.FC = () => {
 
         // 立即更新 sold_tickets（原子性更新，与参与码同步）
         setLottery(prev => {
-          if (!prev) return prev;
+          if (!prev) {return prev;}
           return {
             ...prev,
             sold_tickets: prev.sold_tickets + quantity,
           };
         });
         queryClient.setQueryData<LotteryDetailQueryResult>(lotteryDetailQueryKey(id), (previous) => {
-          if (!previous) return previous;
+          if (!previous) {return previous;}
           return {
             ...previous,
             lottery: {

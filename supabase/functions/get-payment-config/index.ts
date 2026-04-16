@@ -28,7 +28,7 @@ serve(async (req) => {
     if (req.method === 'POST') {
       try {
         const body = await req.json()
-        if (body?.type) configType = body.type
+        if (body?.type) {configType = body.type}
       } catch (_) { /* ignore */ }
     }
 

@@ -62,7 +62,7 @@ const MyTicketsPage: React.FC = () => {
         .eq('id', lotteryId)
         .single();
 
-      if (lotteryError) throw lotteryError;
+      if (lotteryError) {throw lotteryError;}
 
       // 获取用户的参与记录（lottery_entries表）
       const { data: entriesData, error: entriesError } = await supabase
@@ -74,7 +74,7 @@ const MyTicketsPage: React.FC = () => {
         .order('created_at', { ascending: true })
         .limit(200);
 
-      if (entriesError) throw entriesError;
+      if (entriesError) {throw entriesError;}
 
       setLottery({
         id: lotteryData.id,

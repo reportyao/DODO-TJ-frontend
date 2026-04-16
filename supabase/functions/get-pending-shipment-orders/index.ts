@@ -50,7 +50,7 @@ serve(async (req) => {
 
     // 1. 获取待发货的全款购买订单
     if (!orderType || orderType === 'FULL_PURCHASE') {
-      let query = supabase
+      const query = supabase
         .from('full_purchase_orders')
         .select(`
           id,
@@ -105,7 +105,7 @@ serve(async (req) => {
 
     // 2. 获取待发货的一元购物中奖订单
     if (!orderType || orderType === 'LOTTERY_PRIZE') {
-      let query = supabase
+      const query = supabase
         .from('prizes')
         .select(`
           id,
@@ -160,7 +160,7 @@ serve(async (req) => {
 
     // 3. 获取待发货的拼团中奖订单
     if (!orderType || orderType === 'GROUP_BUY') {
-      let query = supabase
+      const query = supabase
         .from('group_buy_results')
         .select(`
           id,

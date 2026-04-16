@@ -439,7 +439,7 @@ function resolveTemplate(
         'session_code': String(data.session_code ?? ''),
       };
       const templateCode = config.templateGroupBuyWin;
-      if (!templateCode) return null;
+      if (!templateCode) {return null;}
       return { templateCode, templateParams: params, waLanguage };
     }
     case 'lottery_result': {
@@ -449,7 +449,7 @@ function resolveTemplate(
         'draw_number': String(data.lottery_code ?? data.draw_number ?? ''),
       };
       const templateCode = config.templateLottery;
-      if (!templateCode) return null;
+      if (!templateCode) {return null;}
       return { templateCode, templateParams: params, waLanguage };
     }
     default:
@@ -643,10 +643,10 @@ serve(async (req: Request) => {
 
   // 验证必要的环境变量
   const missingVars: string[] = [];
-  if (!aliyunAccessKeyId) missingVars.push('ALIYUN_ACCESS_KEY_ID');
-  if (!aliyunAccessKeySecret) missingVars.push('ALIYUN_ACCESS_KEY_SECRET');
-  if (!aliyunFrom) missingVars.push('ALIYUN_CAMS_FROM');
-  if (!aliyunCustSpaceId) missingVars.push('ALIYUN_CAMS_CUST_SPACE_ID');
+  if (!aliyunAccessKeyId) {missingVars.push('ALIYUN_ACCESS_KEY_ID');}
+  if (!aliyunAccessKeySecret) {missingVars.push('ALIYUN_ACCESS_KEY_SECRET');}
+  if (!aliyunFrom) {missingVars.push('ALIYUN_CAMS_FROM');}
+  if (!aliyunCustSpaceId) {missingVars.push('ALIYUN_CAMS_CUST_SPACE_ID');}
 
   if (missingVars.length > 0) {
     const errMsg = `Missing required environment variables: ${missingVars.join(', ')}`;

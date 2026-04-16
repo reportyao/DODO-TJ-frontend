@@ -83,7 +83,7 @@ const InvitePage: React.FC = () => {
         body: { user_id: user.id, session_token: sessionToken }
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
 
       if (data) {
         setStats(data.stats || {

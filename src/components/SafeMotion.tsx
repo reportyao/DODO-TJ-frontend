@@ -29,11 +29,11 @@ const SafeMotion: React.FC<SafeMotionProps> = ({
     className,
     // 添加额外的安全检查
     onAnimationStart: (definition: any) => {
-      if (!isMountedRef.current) return
+      if (!isMountedRef.current) {return}
       motionProps.onAnimationStart?.(definition)
     },
     onAnimationComplete: (definition: any) => {
-      if (!isMountedRef.current) return
+      if (!isMountedRef.current) {return}
       motionProps.onAnimationComplete?.(definition)
     },
     // 在严格模式下减少动画复杂性

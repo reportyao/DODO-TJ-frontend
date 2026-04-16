@@ -89,7 +89,7 @@ export const SubsidyPoolBanner: React.FC = () => {
     queryFn: async () => {
       try {
         const { data: result, error } = await supabase.functions.invoke('get-subsidy-pool');
-        if (!error && result) return result;
+        if (!error && result) {return result;}
         return null;
       } catch (err) {
         console.error('Failed to fetch subsidy pool:', err);
@@ -112,7 +112,7 @@ export const SubsidyPoolBanner: React.FC = () => {
   // [v2] 使用 IntersectionObserver 检测可见性，不可见时暂停跑马灯
   useEffect(() => {
     const el = bannerRef.current;
-    if (!el) return;
+    if (!el) {return;}
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -126,7 +126,7 @@ export const SubsidyPoolBanner: React.FC = () => {
 
   // 跑马灯定时器 - 仅在可见时运行
   useEffect(() => {
-    if (marqueeItems.length === 0 || !isVisible) return;
+    if (marqueeItems.length === 0 || !isVisible) {return;}
     const interval = setInterval(() => {
       setCurrentMsgIndex((prev) => (prev + 1) % marqueeItems.length);
     }, 3000);

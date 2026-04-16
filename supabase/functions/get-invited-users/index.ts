@@ -221,9 +221,9 @@ serve(async (req) => {
       .map((u: any) => {
         // 确定层级
         let userLevel = 0
-        if (level1Users?.some((l1: any) => l1.id === u.id)) userLevel = 1
-        else if (level2Users.some((l2: any) => l2.id === u.id)) userLevel = 2
-        else if (level3Users.some((l3: any) => l3.id === u.id)) userLevel = 3
+        if (level1Users?.some((l1: any) => l1.id === u.id)) {userLevel = 1}
+        else if (level2Users.some((l2: any) => l2.id === u.id)) {userLevel = 2}
+        else if (level3Users.some((l3: any) => l3.id === u.id)) {userLevel = 3}
 
         // 构建显示名称：优先使用 first_name + last_name，其次 phone_number 脱敏显示，最后使用 User + ID
         let displayName = '';

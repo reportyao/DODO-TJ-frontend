@@ -78,7 +78,7 @@ export default function DepositPage() {
         body: { type: 'DEPOSIT' }
       })
 
-      if (error) throw new Error(await extractEdgeFunctionError(error))
+      if (error) {throw new Error(await extractEdgeFunctionError(error))}
       return data?.success && data?.data ? data.data : []
     },
     staleTime: staleTimes.static,
@@ -91,7 +91,7 @@ export default function DepositPage() {
   }, [])
 
   useEffect(() => {
-    if (configs.length === 0) return
+    if (configs.length === 0) {return}
 
     setSelectedMethod((current) => {
       if (current && configs.some((config) => config.id === current.id)) {
@@ -141,7 +141,7 @@ export default function DepositPage() {
       // 模拟压缩进度
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
-          if (prev < 30) return prev + 5
+          if (prev < 30) {return prev + 5}
           return prev
         })
       }, 200)
@@ -260,7 +260,7 @@ export default function DepositPage() {
         body: requestBody
       })
 
-      if (error) throw new Error(await extractEdgeFunctionError(error))
+      if (error) {throw new Error(await extractEdgeFunctionError(error))}
 
       if (data?.success) {
         setSuccess(true)

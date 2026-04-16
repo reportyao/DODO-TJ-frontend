@@ -82,10 +82,10 @@ serve(async (req) => {
       updated_at: new Date().toISOString()
     }
 
-    if (trackingNumber) updateData.tracking_number = trackingNumber
-    if (shippingCompany) updateData.shipping_company = shippingCompany
-    if (shippingMethod) updateData.shipping_method = shippingMethod
-    if (adminNotes) updateData.admin_notes = adminNotes
+    if (trackingNumber) {updateData.tracking_number = trackingNumber}
+    if (shippingCompany) {updateData.shipping_company = shippingCompany}
+    if (shippingMethod) {updateData.shipping_method = shippingMethod}
+    if (adminNotes) {updateData.admin_notes = adminNotes}
 
     if (status === 'SHIPPED') {
       updateData.shipped_at = new Date().toISOString()

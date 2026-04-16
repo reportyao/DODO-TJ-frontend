@@ -1,20 +1,20 @@
-import React, { useState, useCallback, CSSProperties } from 'react'
-import { useTranslation } from 'react-i18next'
+import React, { useState, useCallback, CSSProperties } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface LazyImageProps {
-  src: string
-  alt: string
-  placeholder?: string
-  className?: string
+  src: string;
+  alt: string;
+  placeholder?: string;
+  className?: string;
   /** 额外的容器内联样式 */
-  style?: CSSProperties
-  width?: number
-  height?: number
-  onLoad?: () => void
-  onError?: () => void
-  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down'
+  style?: CSSProperties;
+  width?: number;
+  height?: number;
+  onLoad?: () => void;
+  onError?: () => void;
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
   /** 加载优先级：'high' 用于首屏可见图片，'low' 用于屏幕外图片 */
-  priority?: 'high' | 'low' | 'auto'
+  priority?: 'high' | 'low' | 'auto';
 }
 
 /**
@@ -50,41 +50,47 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   objectFit = 'cover',
   priority = 'auto',
 }) => {
-  const [isLoading, setIsLoading] = useState(true)
-  const [hasError, setHasError] = useState(false)
-  const { t } = useTranslation()
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const { t } = useTranslation();
 
   const handleLoad = useCallback(() => {
-    setIsLoading(false)
-    onLoad?.()
-  }, [onLoad])
+    setIsLoading(false);
+    onLoad?.();
+  }, [onLoad]);
 
   const handleError = useCallback(() => {
-    setIsLoading(false)
-    setHasError(true)
-    onError?.()
-  }, [onError])
+    setIsLoading(false);
+    setHasError(true);
+    onError?.();
+  }, [onError]);
 
   // 从 className 中检测 objectFit 覆盖
-  let resolvedObjectFit = objectFit
-  if (className.includes('object-contain')) resolvedObjectFit = 'contain'
-  else if (className.includes('object-cover')) resolvedObjectFit = 'cover'
-  else if (className.includes('object-fill')) resolvedObjectFit = 'fill'
-  else if (className.includes('object-none')) resolvedObjectFit = 'none'
-  else if (className.includes('object-scale-down')) resolvedObjectFit = 'scale-down'
+  let resolvedObjectFit = objectFit;
+  if (className.includes('object-contain')) {
+    resolvedObjectFit = 'contain';
+  } else if (className.includes('object-cover')) {
+    resolvedObjectFit = 'cover';
+  } else if (className.includes('object-fill')) {
+    resolvedObjectFit = 'fill';
+  } else if (className.includes('object-none')) {
+    resolvedObjectFit = 'none';
+  } else if (className.includes('object-scale-down')) {
+    resolvedObjectFit = 'scale-down';
+  }
 
   // 从 className 中移除 object-* 类（已通过内联样式处理）
   const containerClassName = className
     .replace(/\bobject-(cover|contain|fill|none|scale-down)\b/g, '')
     .replace(/\s+/g, ' ')
-    .trim()
+    .trim();
 
   // 容器样式：保持 relative + overflow:hidden 以支持加载占位和错误提示
   const containerStyle: CSSProperties = {
     position: 'relative',
     overflow: 'hidden',
     ...externalStyle,
-  }
+  };
 
   // img 样式：absolute 填充容器
   const imgStyle: CSSProperties = {
@@ -99,7 +105,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
     transition: 'opacity 0.3s',
     maxWidth: 'none',
     display: 'block',
-  }
+  };
 
   // 占位/错误层
   const overlayStyle: CSSProperties = {
@@ -108,28 +114,24 @@ export const LazyImage: React.FC<LazyImageProps> = ({
     left: 0,
     right: 0,
     bottom: 0,
-  }
+  };
 
   return (
-    <div
-      className={containerClassName}
-      style={containerStyle}
-    >
+    <div className={containerClassName} style={containerStyle}>
       <img
         src={src}
         alt={alt}
         loading={priority === 'high' ? 'eager' : 'lazy'}
         decoding="async"
-        // @ts-ignore - fetchpriority 是新的 HTML 属性，TS 尚未完全支持
-        fetchpriority={priority === 'auto' ? undefined : priority}
+        {...({
+          fetchPriority: priority === 'auto' ? undefined : priority,
+        } as unknown as React.ImgHTMLAttributes<HTMLImageElement>)}
         onLoad={handleLoad}
         onError={handleError}
         style={imgStyle}
       />
 
-      {isLoading && (
-        <div style={{ ...overlayStyle, backgroundColor: '#e5e7eb' }} />
-      )}
+      {isLoading && <div style={{ ...overlayStyle, backgroundColor: '#e5e7eb' }} />}
 
       {hasError && (
         <div
@@ -145,7 +147,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default LazyImage
+export default LazyImage;

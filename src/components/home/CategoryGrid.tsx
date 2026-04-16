@@ -57,7 +57,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
     );
   }
 
-  if (categories.length === 0) return null;
+  if (categories.length === 0) {return null;}
 
   return (
     <div className="px-4 mt-3">

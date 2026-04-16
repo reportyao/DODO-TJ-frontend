@@ -20,7 +20,7 @@ function loadCompressionModule() {
 }
 
 export function prewarmImageCompression(): void {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined') {return}
 
   const warmup = () => {
     void loadCompressionModule().catch(() => {
@@ -70,7 +70,7 @@ export async function uploadImage(
 
     let fileToUpload = file
     let contentType = file.type || 'application/octet-stream'
-    let fileExt = file.name.split('.').pop() || 'jpg'
+    const fileExt = file.name.split('.').pop() || 'jpg'
     let fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 
     const shouldCompress =

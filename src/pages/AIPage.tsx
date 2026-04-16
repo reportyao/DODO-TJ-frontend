@@ -81,7 +81,7 @@ export default function AIPage() {
   const handleQuickSend = async () => {
     const trimmedInput = quickInput.trim();
     
-    if (!trimmedInput || sending) return;
+    if (!trimmedInput || sending) {return;}
 
     // 添加用户消息到全局状态
     const userMessage: Message = {

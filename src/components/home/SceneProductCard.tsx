@@ -87,7 +87,7 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = React.memo(({
   const buildLotteryLink = () => {
     const params = new URLSearchParams();
     params.set('src_page', 'home');
-    if (sourceCategoryId) params.set('src_category', sourceCategoryId);
+    if (sourceCategoryId) {params.set('src_category', sourceCategoryId);}
     return `/lottery/${product.lottery_id}?${params.toString()}`;
   };
   const lotteryLink = buildLotteryLink();

@@ -235,10 +235,10 @@ serve(async (req) => {
           const rpcErrorCode = rpcError.code
           let standardCode = 'ERR_SERVER_ERROR'
           
-          if (rpcError.message.includes('SELF_DEPOSIT_FORBIDDEN')) standardCode = 'ERR_SELF_DEPOSIT_FORBIDDEN'
-          else if (rpcError.message.includes('DAILY_COUNT_EXCEEDED')) standardCode = 'ERR_DAILY_COUNT_EXCEEDED'
-          else if (rpcError.message.includes('DAILY_LIMIT_EXCEEDED')) standardCode = 'ERR_DAILY_LIMIT_EXCEEDED'
-          else if (rpcError.message.includes('AMOUNT_MUST_BE_INTEGER')) standardCode = 'ERR_AMOUNT_MUST_BE_INTEGER'
+          if (rpcError.message.includes('SELF_DEPOSIT_FORBIDDEN')) {standardCode = 'ERR_SELF_DEPOSIT_FORBIDDEN'}
+          else if (rpcError.message.includes('DAILY_COUNT_EXCEEDED')) {standardCode = 'ERR_DAILY_COUNT_EXCEEDED'}
+          else if (rpcError.message.includes('DAILY_LIMIT_EXCEEDED')) {standardCode = 'ERR_DAILY_LIMIT_EXCEEDED'}
+          else if (rpcError.message.includes('AMOUNT_MUST_BE_INTEGER')) {standardCode = 'ERR_AMOUNT_MUST_BE_INTEGER'}
           
           throwCoded(standardCode, `Deposit failed: ${rpcError.message}`)
         }

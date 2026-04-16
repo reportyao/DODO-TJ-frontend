@@ -80,7 +80,7 @@ const ProfileEditPage: React.FC = () => {
 
   // ========== 保存基本信息（昵称 + 头像） ==========
   const handleSaveBasic = useCallback(async () => {
-    if (!hasBasicChanges) return
+    if (!hasBasicChanges) {return}
     if (isUploadingAvatar) {
       toast.error(t('profile.waitForAvatarUpload'))
       return

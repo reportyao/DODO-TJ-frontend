@@ -71,7 +71,7 @@ export function AIChat({ initialMessages = [], onMessagesChange, onBack, onQuota
   const handleSend = async () => {
     const trimmedInput = input.trim();
     
-    if (!trimmedInput || loading) return;
+    if (!trimmedInput || loading) {return;}
 
     // 添加用户消息
     const userMessage: Message = {

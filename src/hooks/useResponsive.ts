@@ -40,11 +40,11 @@ export function useResponsive(): ResponsiveState {
   })
 
   const getBreakpoint = useCallback((width: number): Breakpoint => {
-    if (width < BREAKPOINTS.sm) return 'xs'
-    if (width < BREAKPOINTS.md) return 'sm'
-    if (width < BREAKPOINTS.lg) return 'md'
-    if (width < BREAKPOINTS.xl) return 'lg'
-    if (width < BREAKPOINTS['2xl']) return 'xl'
+    if (width < BREAKPOINTS.sm) {return 'xs'}
+    if (width < BREAKPOINTS.md) {return 'sm'}
+    if (width < BREAKPOINTS.lg) {return 'md'}
+    if (width < BREAKPOINTS.xl) {return 'lg'}
+    if (width < BREAKPOINTS['2xl']) {return 'xl'}
     return '2xl'
   }, [])
 

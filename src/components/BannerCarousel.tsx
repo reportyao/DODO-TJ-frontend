@@ -28,7 +28,7 @@ interface BannerCarouselProps {
 
 /**
  * 首页轮播图组件
- * 
+ *
  * [v2 性能优化]
  * - 移除组件内部的独立 react-query 请求（原先直接查询 banners 表）
  * - 改为接收外部传入的 banners 数据（来自 get-home-feed 统一接口）
@@ -49,41 +49,60 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners: externalBanner
   const isLoading = !externalBanners;
 
   // 根据当前语言获取对应的图片URL
-  const getLocalizedImageUrl = useCallback((banner: Banner): string => {
-    const lang = i18n.language;
-    
-    if (lang === 'zh' && banner.image_url_zh) return banner.image_url_zh;
-    if (lang === 'ru' && banner.image_url_ru) return banner.image_url_ru;
-    if (lang === 'tg' && banner.image_url_tg) return banner.image_url_tg;
-    
-    // 回退优先级：中文 > 俄语 > 塔吉克语 > 默认
-    if (banner.image_url_zh) return banner.image_url_zh;
-    if (banner.image_url_ru) return banner.image_url_ru;
-    if (banner.image_url_tg) return banner.image_url_tg;
-    
-    return banner.image_url;
-  }, [i18n.language]);
+  const getLocalizedImageUrl = useCallback(
+    (banner: Banner): string => {
+      const lang = i18n.language;
+
+      if (lang === 'zh' && banner.image_url_zh) {
+        return banner.image_url_zh;
+      }
+      if (lang === 'ru' && banner.image_url_ru) {
+        return banner.image_url_ru;
+      }
+      if (lang === 'tg' && banner.image_url_tg) {
+        return banner.image_url_tg;
+      }
+
+      // 回退优先级：中文 > 俄语 > 塔吉克语 > 默认
+      if (banner.image_url_zh) {
+        return banner.image_url_zh;
+      }
+      if (banner.image_url_ru) {
+        return banner.image_url_ru;
+      }
+      if (banner.image_url_tg) {
+        return banner.image_url_tg;
+      }
+
+      return banner.image_url;
+    },
+    [i18n.language]
+  );
 
   // 只预加载当前和下一张图片
-  const preloadAdjacentImages = useCallback((index: number) => {
-    if (banners.length === 0) return;
-
-    const indicesToPreload = [
-      index,
-      (index + 1) % banners.length,
-    ];
-
-    indicesToPreload.forEach((i) => {
-      if (preloadedRef.current.has(i)) return;
-      preloadedRef.current.add(i);
-
-      const img = new Image();
-      const banner = banners[i];
-      if (banner) {
-        img.src = getLocalizedImageUrl(banner);
+  const preloadAdjacentImages = useCallback(
+    (index: number) => {
+      if (banners.length === 0) {
+        return;
       }
-    });
-  }, [banners, getLocalizedImageUrl]);
+
+      const indicesToPreload = [index, (index + 1) % banners.length];
+
+      indicesToPreload.forEach((i) => {
+        if (preloadedRef.current.has(i)) {
+          return;
+        }
+        preloadedRef.current.add(i);
+
+        const img = new Image();
+        const banner = banners[i];
+        if (banner) {
+          img.src = getLocalizedImageUrl(banner);
+        }
+      });
+    },
+    [banners, getLocalizedImageUrl]
+  );
 
   // 首次加载时预加载前两张图片
   useEffect(() => {
@@ -94,7 +113,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners: externalBanner
       img.onload = () => setImagesLoaded(true);
       img.onerror = () => setImagesLoaded(true);
       img.src = getLocalizedImageUrl(banners[0]);
-      
+
       // 2秒超时强制显示
       const timeout = setTimeout(() => setImagesLoaded(true), 2000);
       return () => clearTimeout(timeout);
@@ -117,7 +136,9 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners: externalBanner
 
   // 自动轮播
   useEffect(() => {
-    if (banners.length <= 1 || !imagesLoaded) return;
+    if (banners.length <= 1 || !imagesLoaded) {
+      return;
+    }
 
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % banners.length);
@@ -142,20 +163,10 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners: externalBanner
     });
   }, []);
 
-  if (isLoading && banners.length === 0) {
-    return (
-      <div className="relative h-40 bg-gray-200 rounded-2xl animate-pulse"></div>
-    );
-  }
-
-  if (banners.length === 0) {
-    return null;
-  }
-
-  const currentBanner = banners[currentIndex];
-
   const activeBannerIndices = useMemo(() => {
-    if (banners.length === 0) return [] as number[];
+    if (banners.length === 0) {
+      return [] as number[];
+    }
 
     const indices = new Set<number>([
       currentIndex,
@@ -165,6 +176,16 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners: externalBanner
 
     return Array.from(indices);
   }, [banners.length, currentIndex]);
+
+  if (isLoading && banners.length === 0) {
+    return <div className="relative h-40 bg-gray-200 rounded-2xl animate-pulse"></div>;
+  }
+
+  if (banners.length === 0) {
+    return null;
+  }
+
+  const currentBanner = banners[currentIndex];
 
   const BannerContent = () => (
     <div className="relative h-40 overflow-hidden rounded-2xl bg-gray-100">
@@ -201,7 +222,8 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners: externalBanner
                 transition: 'opacity 300ms ease-in-out',
               }}
               onError={(e) => {
-                (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="800" height="320"%3E%3Crect fill="%23f0f0f0" width="800" height="320"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-size="24"%3EBanner%3C/text%3E%3C/svg%3E';
+                (e.target as HTMLImageElement).src =
+                  'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="800" height="320"%3E%3Crect fill="%23f0f0f0" width="800" height="320"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-size="24"%3EBanner%3C/text%3E%3C/svg%3E';
               }}
             />
           </div>

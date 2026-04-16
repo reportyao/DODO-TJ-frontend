@@ -192,7 +192,7 @@ function getLocalizedText(
   language: string,
   fallback: string = ''
 ): string {
-  if (!textI18n) return fallback
+  if (!textI18n) {return fallback}
   return textI18n[language] || textI18n.zh || textI18n.ru || textI18n.tg || fallback
 }
 
@@ -226,7 +226,7 @@ export async function sendBatchShippedNotification(
   estimatedArrivalDate: string
 ): Promise<boolean> {
   const userInfo = await getUserNotificationInfo(supabase, userId)
-  if (!userInfo) return false
+  if (!userInfo) {return false}
 
   const lang = (userInfo.preferred_language in notificationTemplates 
     ? userInfo.preferred_language 
@@ -250,7 +250,7 @@ export async function sendBatchInTransitTJNotification(
   batchNo: string
 ): Promise<boolean> {
   const userInfo = await getUserNotificationInfo(supabase, userId)
-  if (!userInfo) return false
+  if (!userInfo) {return false}
 
   const lang = (userInfo.preferred_language in notificationTemplates 
     ? userInfo.preferred_language 
@@ -279,7 +279,7 @@ export async function sendBatchArrivedNotification(
   expiresAt: string
 ): Promise<boolean> {
   const userInfo = await getUserNotificationInfo(supabase, userId)
-  if (!userInfo) return false
+  if (!userInfo) {return false}
 
   const lang = (userInfo.preferred_language in notificationTemplates 
     ? userInfo.preferred_language 
@@ -317,7 +317,7 @@ export async function sendBatchItemMissingNotification(
   productNameI18n: Record<string, string> | null
 ): Promise<boolean> {
   const userInfo = await getUserNotificationInfo(supabase, userId)
-  if (!userInfo) return false
+  if (!userInfo) {return false}
 
   const lang = (userInfo.preferred_language in notificationTemplates 
     ? userInfo.preferred_language 
@@ -341,7 +341,7 @@ export async function sendBatchItemDamagedNotification(
   productNameI18n: Record<string, string> | null
 ): Promise<boolean> {
   const userInfo = await getUserNotificationInfo(supabase, userId)
-  if (!userInfo) return false
+  if (!userInfo) {return false}
 
   const lang = (userInfo.preferred_language in notificationTemplates 
     ? userInfo.preferred_language 

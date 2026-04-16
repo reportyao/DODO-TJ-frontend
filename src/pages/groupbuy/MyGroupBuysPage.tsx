@@ -53,7 +53,7 @@ export default function MyGroupBuysPage() {
   }, [user]);
 
   const fetchOrders = async () => {
-    if (!user) return;
+    if (!user) {return;}
 
     try {
       setLoading(true);
@@ -61,7 +61,7 @@ export default function MyGroupBuysPage() {
         body: { type: 'my-orders', user_id: user.id },
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {throw new Error(await extractEdgeFunctionError(error));}
       if (data?.success) {
         setOrders(data.data);
       }
@@ -73,9 +73,9 @@ export default function MyGroupBuysPage() {
   };
 
   const getLocalizedText = (text: any) => {
-    if (!text) return '';
-    if (typeof text === 'string') return text;
-    if (typeof text !== 'object') return String(text);
+    if (!text) {return '';}
+    if (typeof text === 'string') {return text;}
+    if (typeof text !== 'object') {return String(text);}
     
     const currentLang = text[i18n.language];
     if (currentLang && typeof currentLang === 'string' && currentLang.trim()) {
@@ -133,10 +133,10 @@ export default function MyGroupBuysPage() {
   };
 
   const filteredOrders = orders.filter((order) => {
-    if (filter === 'all') return true;
-    if (filter === 'active') return order.session.status === 'ACTIVE';
+    if (filter === 'all') {return true;}
+    if (filter === 'active') {return order.session.status === 'ACTIVE';}
     if (filter === 'completed')
-      return order.session.status === 'SUCCESS' || order.session.status === 'TIMEOUT';
+      {return order.session.status === 'SUCCESS' || order.session.status === 'TIMEOUT';}
     return true;
   });
 

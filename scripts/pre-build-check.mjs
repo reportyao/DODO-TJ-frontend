@@ -75,7 +75,7 @@ const optimizedImageUrlUsages = [];
 
 for (const file of tsFiles) {
   // 跳过 utils.ts 中的定义本身
-  if (file.endsWith('lib/utils.ts')) continue;
+  if (file.endsWith('lib/utils.ts')) {continue;}
   
   const content = readFileSync(file, 'utf-8');
   const lines = content.split('\n');
@@ -83,7 +83,7 @@ for (const file of tsFiles) {
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
     // 跳过注释行
-    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
+    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) {continue;}
     if (trimmed.includes('getOptimizedImageUrl')) {
       optimizedImageUrlUsages.push({
         file: relative(ROOT, file),
@@ -110,8 +110,8 @@ const optimizedImageUsages = [];
 
 for (const file of tsFiles) {
   // 跳过组件定义本身和工具函数定义
-  if (file.endsWith('OptimizedImage.tsx')) continue;
-  if (file.endsWith('lib/utils.ts')) continue;
+  if (file.endsWith('OptimizedImage.tsx')) {continue;}
+  if (file.endsWith('lib/utils.ts')) {continue;}
   
   const content = readFileSync(file, 'utf-8');
   const lines = content.split('\n');
@@ -119,7 +119,7 @@ for (const file of tsFiles) {
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
     // 跳过注释行
-    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
+    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) {continue;}
     if (trimmed.includes('OptimizedImage')) {
       optimizedImageUsages.push({
         file: relative(ROOT, file),
@@ -146,7 +146,7 @@ const lazyImageWidthUsages = [];
 
 for (const file of tsFiles) {
   // 跳过 LazyImage 组件定义本身
-  if (file.endsWith('LazyImage.tsx')) continue;
+  if (file.endsWith('LazyImage.tsx')) {continue;}
   
   const content = readFileSync(file, 'utf-8');
   
@@ -243,7 +243,7 @@ let missingKeys = 0;
 for (const lang of LANGUAGES) {
   for (const key of allKeys) {
     if (!(key in (locales[lang] || {}))) {
-      if (missingKeys === 0) log(RED, '  ❌ 发现缺失的翻译 key:');
+      if (missingKeys === 0) {log(RED, '  ❌ 发现缺失的翻译 key:');}
       log(RED, `     [${lang}] 缺少: ${key}`);
       missingKeys++;
     }

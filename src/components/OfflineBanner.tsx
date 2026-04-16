@@ -14,7 +14,7 @@ const OfflineBanner: React.FC = () => {
   const { isOnline, isSlow } = useNetwork();
   const { t } = useTranslation();
 
-  if (isOnline && !isSlow) return null;
+  if (isOnline && !isSlow) {return null;}
 
   if (!isOnline) {
     return (

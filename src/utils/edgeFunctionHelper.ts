@@ -27,11 +27,11 @@ import i18n from '../i18n/config'
  * @returns 翻译后的错误提示，如果翻译不存在则返回 null
  */
 function translateErrorCode(errorCode: string): string | null {
-  if (!errorCode || !errorCode.startsWith('ERR_')) return null
+  if (!errorCode || !errorCode.startsWith('ERR_')) {return null}
   const translationKey = `edgeErrors.${errorCode}`
   const translated = i18n.t(translationKey)
   // i18n.t 在 key 不存在时返回 key 本身
-  if (translated === translationKey) return null
+  if (translated === translationKey) {return null}
   return translated
 }
 

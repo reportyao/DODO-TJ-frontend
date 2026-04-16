@@ -79,7 +79,7 @@ export function calculatePickupCodeExpiry(daysValid: number = 30): string {
  * @returns 是否有效
  */
 export function isPickupCodeValid(expiresAt: string | null): boolean {
-  if (!expiresAt) return false;
+  if (!expiresAt) {return false;}
   return new Date() < new Date(expiresAt);
 }
 
@@ -91,6 +91,6 @@ export function isPickupCodeValid(expiresAt: string | null): boolean {
  * @returns 格式化后的提货码
  */
 export function formatPickupCode(code: string): string {
-  if (code.length !== 6) return code;
+  if (code.length !== 6) {return code;}
   return `${code.slice(0, 3)}-${code.slice(3)}`;
 }

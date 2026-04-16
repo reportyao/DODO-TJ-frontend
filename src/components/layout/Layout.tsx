@@ -36,7 +36,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // 检查是否需要显示新人礼物弹窗
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated) {return}
 
     const checkNewUserGift = () => {
       const newUserGiftShown = localStorage.getItem('new_user_gift_shown')
@@ -93,7 +93,7 @@ export const Layout: React.FC<LayoutProps> = ({
    * 4. 添加 AbortController 防止组件卸载后的状态更新
    */
   const fetchSpinCount = useCallback(async (signal?: AbortSignal) => {
-    if (!user?.id) return
+    if (!user?.id) {return}
     
     try {
       const { data, error } = await supabase
@@ -102,7 +102,7 @@ export const Layout: React.FC<LayoutProps> = ({
         .eq('user_id', user.id)
         .maybeSingle()
 
-      if (signal?.aborted) return
+      if (signal?.aborted) {return}
       
       if (!error && data) {
         setSpinCount(data.spin_count || 0)
@@ -113,11 +113,11 @@ export const Layout: React.FC<LayoutProps> = ({
   }, [user?.id])
 
   useEffect(() => {
-    if (!isAuthenticated || !user?.id) return
+    if (!isAuthenticated || !user?.id) {return}
 
     const abortController = new AbortController()
     const bootstrap = () => {
-      if (abortController.signal.aborted) return
+      if (abortController.signal.aborted) {return}
 
       void fetchSpinCount(abortController.signal)
 

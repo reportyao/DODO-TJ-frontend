@@ -35,7 +35,7 @@ export const PWAUpdateNotification: React.FC<PWAUpdateNotificationProps> = ({
 
       // 自动隐藏（注意：定时器引用必须在 useEffect 作用域内管理，不能在回调内返回）
       if (autoHideDuration > 0) {
-        if (autoHideTimer) clearTimeout(autoHideTimer);
+        if (autoHideTimer) {clearTimeout(autoHideTimer);}
         autoHideTimer = setTimeout(() => {
           setShowNotification(false);
         }, autoHideDuration);
@@ -45,7 +45,7 @@ export const PWAUpdateNotification: React.FC<PWAUpdateNotificationProps> = ({
     // 组件卸载时：取消事件监听 + 清理定时器
     return () => {
       unsubscribe();
-      if (autoHideTimer) clearTimeout(autoHideTimer);
+      if (autoHideTimer) {clearTimeout(autoHideTimer);}
     };
   }, [autoHideDuration]);
 

@@ -13,7 +13,7 @@ const serializeError = (error: any) => {
  * 这类错误通常由网络问题或版本更新导致
  */
 function isChunkLoadError(error: any): boolean {
-  if (!(error instanceof Error)) return false;
+  if (!(error instanceof Error)) {return false;}
 
   const message = error.message.toLowerCase();
   const name = error.name.toLowerCase();
@@ -34,7 +34,7 @@ function isChunkLoadError(error: any): boolean {
 }
 
 function isIgnorableDomAnimationError(error: any): boolean {
-  if (!(error instanceof Error)) return false;
+  if (!(error instanceof Error)) {return false;}
 
   const message = error.message || '';
   const name = error.name || '';

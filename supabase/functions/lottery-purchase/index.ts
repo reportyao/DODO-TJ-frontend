@@ -306,11 +306,11 @@ Deno.serve(async (req) => {
     }
 
     const tjsBalance = (walletRows || []).reduce((balance, wallet: any) => {
-      if (wallet.type !== 'TJS') return balance;
+      if (wallet.type !== 'TJS') {return balance;}
       return parseFloat(wallet.balance || '0') || 0;
     }, 0);
     const lcBalance = (walletRows || []).reduce((balance, wallet: any) => {
-      if (wallet.type !== 'LUCKY_COIN') return balance;
+      if (wallet.type !== 'LUCKY_COIN') {return balance;}
       return parseFloat(wallet.balance || '0') || 0;
     }, 0);
     const couponValue = 0;

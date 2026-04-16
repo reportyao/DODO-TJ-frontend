@@ -20,9 +20,9 @@ const userPreferenceDetector = {
         const parsedUser = JSON.parse(storedUser);
         const lang = parsedUser.preferred_language || parsedUser.language_code;
         if (lang) {
-          if (lang.startsWith('zh')) return 'zh';
-          if (lang.startsWith('ru')) return 'ru';
-          if (lang.startsWith('tg') || lang.startsWith('fa')) return 'tg';
+          if (lang.startsWith('zh')) {return 'zh';}
+          if (lang.startsWith('ru')) {return 'ru';}
+          if (lang.startsWith('tg') || lang.startsWith('fa')) {return 'tg';}
         }
       }
 

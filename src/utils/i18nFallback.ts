@@ -37,7 +37,7 @@ export function getI18nText(
   value: I18nText | null | undefined,
   lang: SupportedLang
 ): { text: string; hitLang: SupportedLang | null } {
-  if (!value) return { text: '', hitLang: null };
+  if (!value) {return { text: '', hitLang: null };}
 
   const order = FALLBACK_ORDER[lang] || FALLBACK_ORDER.zh;
 
@@ -85,7 +85,7 @@ export function getCoverImage(
   } | null | undefined,
   lang: SupportedLang
 ): string | null {
-  if (!images) return null;
+  if (!images) {return null;}
 
   const order = FALLBACK_ORDER[lang] || FALLBACK_ORDER.zh;
 
@@ -99,10 +99,10 @@ export function getCoverImage(
   }
 
   // 回退到默认封面
-  if (images.cover_image_default) return images.cover_image_default;
+  if (images.cover_image_default) {return images.cover_image_default;}
 
   // [BUG-M6 修复] 最终回退到 AI 生成的封面图
-  if ((images as any).cover_image_url) return (images as any).cover_image_url;
+  if ((images as any).cover_image_url) {return (images as any).cover_image_url;}
 
   return null;
 }

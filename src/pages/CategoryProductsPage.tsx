@@ -41,7 +41,7 @@ const CategoryProductsPage: React.FC = () => {
 
   // 从返回的 categories 中找到当前分类信息
   const currentCategory: HomeFeedCategory | undefined = useMemo(() => {
-    if (!data?.categories) return undefined;
+    if (!data?.categories) {return undefined;}
     return data.categories.find((c) => c.id === categoryId);
   }, [data?.categories, categoryId]);
 

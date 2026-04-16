@@ -25,7 +25,7 @@ const sessionCache = new Map<string, { value: ValidatedSession; timestamp: numbe
 
 function getCachedSession(sessionToken: string): ValidatedSession | null {
   const cached = sessionCache.get(sessionToken)
-  if (!cached) return null
+  if (!cached) {return null}
 
   if (Date.now() - cached.timestamp > SESSION_CACHE_TTL_MS) {
     sessionCache.delete(sessionToken)

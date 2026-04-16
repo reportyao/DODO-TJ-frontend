@@ -142,7 +142,7 @@ const ShowoffPage: React.FC = () => {
       const inventoryProductIds = [...new Set(showoffsData.map((s: any) => s.inventory_product_id).filter(Boolean))];
 
       // 3. 批量获取用户信息
-      let usersMap: Record<string, any> = {};
+      const usersMap: Record<string, any> = {};
       if (userIds.length > 0) {
         const usersResponse = await fetch(
           `${supabaseUrl}/rest/v1/users?id=in.(${userIds.join(',')})&select=id,phone_number,first_name,avatar_url`,
@@ -162,7 +162,7 @@ const ShowoffPage: React.FC = () => {
       }
 
       // 4. 批量获取彩票信息
-      let lotteriesMap: Record<string, any> = {};
+      const lotteriesMap: Record<string, any> = {};
       if (lotteryIds.length > 0) {
         const lotteriesResponse = await fetch(
           `${supabaseUrl}/rest/v1/lotteries?id=in.(${lotteryIds.join(",")})&select=id,title,title_i18n,image_url`,
@@ -182,7 +182,7 @@ const ShowoffPage: React.FC = () => {
       }
 
       // 5. 批量获取库存商品信息（用于运营晒单关联的未上架商品）
-      let inventoryProductsMap: Record<string, any> = {};
+      const inventoryProductsMap: Record<string, any> = {};
       if (inventoryProductIds.length > 0) {
         const inventoryResponse = await fetch(
           `${supabaseUrl}/rest/v1/inventory_products?id=in.(${inventoryProductIds.join(",")})&select=id,name,name_i18n,image_url`,
@@ -280,7 +280,7 @@ const ShowoffPage: React.FC = () => {
 
   // 无限滚动加载
   useEffect(() => {
-    if (isLoading || isLoadingMore || !hasMore) return;
+    if (isLoading || isLoadingMore || !hasMore) {return;}
 
     observerRef.current = new IntersectionObserver(
       (entries) => {

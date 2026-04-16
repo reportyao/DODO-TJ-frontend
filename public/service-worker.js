@@ -82,10 +82,10 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   // 只处理 GET 请求
-  if (request.method !== 'GET') return;
+  if (request.method !== 'GET') {return;}
 
   // 跳过非 HTTP(S) 请求
-  if (!url.protocol.startsWith('http')) return;
+  if (!url.protocol.startsWith('http')) {return;}
 
   // 图片：缓存优先
   if (isImageRequest(url)) {
@@ -144,11 +144,11 @@ async function imageCacheStrategy(request) {
   
   // 尝试从缓存中匹配（忽略查询参数以提高命中率）
   const cached = await cache.match(request, { ignoreSearch: true });
-  if (cached) return cached;
+  if (cached) {return cached;}
 
   try {
     const response = await fetch(request);
-    if (!response || response.status !== 200) return response;
+    if (!response || response.status !== 200) {return response;}
     
     const clone = response.clone();
     // 异步写入缓存，不阻塞响应
@@ -261,9 +261,9 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     clients.matchAll({ type: 'window' }).then((clientList) => {
       for (const client of clientList) {
-        if ('focus' in client) return client.focus();
+        if ('focus' in client) {return client.focus();}
       }
-      if (clients.openWindow) return clients.openWindow('/');
+      if (clients.openWindow) {return clients.openWindow('/');}
     })
   );
 });

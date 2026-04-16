@@ -88,7 +88,7 @@ export default function WithdrawPage() {
         body: requestBody
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error))
+      if (error) {throw new Error(await extractEdgeFunctionError(error))}
 
       if (data?.success) {
         setSuccess(true)

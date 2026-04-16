@@ -29,7 +29,7 @@ export default function timestampPlugin() {
         const srcPath = resolve(srcDir, `${lang}.json`);
         const pubPath = resolve(pubDir, `${lang}.json`);
         
-        if (!existsSync(srcPath)) continue;
+        if (!existsSync(srcPath)) {continue;}
         
         try {
           const srcContent = readFileSync(srcPath, 'utf-8');

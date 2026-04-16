@@ -86,7 +86,7 @@ function cleanText(value: unknown): string {
 }
 
 function cleanStringList(value: unknown, limit: number = 6): string[] {
-  if (!Array.isArray(value)) return [];
+  if (!Array.isArray(value)) {return [];}
   return value
     .map((item) => cleanText(item))
     .filter(Boolean)

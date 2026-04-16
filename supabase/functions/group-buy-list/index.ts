@@ -25,7 +25,7 @@ function createResponse(data: any, status: number = 200) {
 
 // Helper function to map database fields to frontend expected fields
 function mapProductToFrontend(product: any) {
-  if (!product) return null;
+  if (!product) {return null;}
   
   return {
     id: product.id,
@@ -145,12 +145,12 @@ Deno.serve(async (req) => {
       const allUserIds = new Set<string>();
       sessions?.forEach((session: any) => {
         session.orders?.forEach((order: any) => {
-          if (order.user_id) allUserIds.add(order.user_id);
+          if (order.user_id) {allUserIds.add(order.user_id);}
         });
       });
 
       // 查询用户信息（同时支持 id 和 telegram_id 匹配）
-      let usersMap: Record<string, any> = {};
+      const usersMap: Record<string, any> = {};
       if (allUserIds.size > 0) {
         const userIdArray = Array.from(allUserIds);
         
@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
 
       // 获取用户信息
       const userIds = orders?.map(o => o.user_id) || [];
-      let usersMap: Record<string, any> = {};
+      const usersMap: Record<string, any> = {};
       
       if (userIds.length > 0) {
         const { data: usersByUuid } = await supabase
@@ -336,7 +336,7 @@ Deno.serve(async (req) => {
 
       // 获取参与者的用户信息（同时支持UUID和telegram_id）
       const userIds = orders?.map(o => o.user_id) || [];
-      let usersMap: Record<string, any> = {};
+      const usersMap: Record<string, any> = {};
       
       if (userIds.length > 0) {
         const { data: usersByUuid } = await supabase

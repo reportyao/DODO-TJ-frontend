@@ -34,9 +34,9 @@ interface AIUnderstandingCardProps {
 }
 
 const normalizeLanguage = (lang: string): keyof LocalizedAIText => {
-  if (lang === 'zh-CN' || lang === 'zh') return 'zh';
-  if (lang === 'ru') return 'ru';
-  if (lang === 'tg') return 'tg';
+  if (lang === 'zh-CN' || lang === 'zh') {return 'zh';}
+  if (lang === 'ru') {return 'ru';}
+  if (lang === 'tg') {return 'tg';}
   return 'zh';
 };
 
@@ -61,12 +61,12 @@ const buildLanguagePriority = (
 };
 
 const resolveAIText = (value: AITextValue, lang: string, aiUnderstanding?: AIUnderstandingCardProps['aiUnderstanding']) => {
-  if (!value) return '';
-  if (typeof value === 'string') return value;
+  if (!value) {return '';}
+  if (typeof value === 'string') {return value;}
 
   const priority = buildLanguagePriority(lang, aiUnderstanding);
   for (const language of priority) {
-    if (value[language]) return value[language] || '';
+    if (value[language]) {return value[language] || '';}
   }
 
   return '';

@@ -60,7 +60,7 @@ function getOrCreateSessionId(): string {
 let cachedDeviceInfo: Record<string, unknown> | null = null;
 
 function getDeviceInfo(): Record<string, unknown> {
-  if (cachedDeviceInfo) return cachedDeviceInfo;
+  if (cachedDeviceInfo) {return cachedDeviceInfo;}
   try {
     cachedDeviceInfo = {
       ua: navigator.userAgent.slice(0, 200),
@@ -101,7 +101,7 @@ let isFlushing = false; // [修复] 防止并发 flush 导致事件重复处理
  */
 async function flushQueue() {
   // [修复] 防止并发执行（定时器 + beforeunload + visibilitychange 可能同时触发）
-  if (isFlushing) return;
+  if (isFlushing) {return;}
   isFlushing = true;
 
   try {
@@ -110,7 +110,7 @@ async function flushQueue() {
       EVENT_QUEUE.unshift(...RETRY_QUEUE.splice(0));
     }
 
-    if (EVENT_QUEUE.length === 0) return;
+    if (EVENT_QUEUE.length === 0) {return;}
 
     const batch = EVENT_QUEUE.splice(0, MAX_BATCH_SIZE);
 
@@ -159,7 +159,7 @@ async function flushQueue() {
 }
 
 function ensureFlushTimer() {
-  if (flushTimer) return;
+  if (flushTimer) {return;}
   flushTimer = setInterval(flushQueue, FLUSH_INTERVAL);
 
   // 页面卸载时最后一次 flush
@@ -268,7 +268,7 @@ export function useExposureTracker(
   const dwellMs = options?.dwellMs ?? 300;      // 文档规定: 停留 300ms
 
   useEffect(() => {
-    if (!enabled || !elementRef.current) return;
+    if (!enabled || !elementRef.current) {return;}
 
     const observer = new IntersectionObserver(
       (entries) => {

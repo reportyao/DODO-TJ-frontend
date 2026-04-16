@@ -69,7 +69,7 @@ class CacheManager {
         break
     }
 
-    if (!cacheData) return null
+    if (!cacheData) {return null}
 
     // 检查是否过期
     if (cacheData.expiry && Date.now() > cacheData.expiry) {

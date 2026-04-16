@@ -18,7 +18,7 @@
 
 ```bash
 # 1. 进入项目目录
-cd /path/to/luckymart-tj-frontend
+cd /home/ubuntu/workspace_dodo/DODO-TJ-frontend
 
 # 2. 给脚本添加执行权限（首次使用）
 chmod +x deploy.sh
@@ -47,12 +47,12 @@ chmod +x deploy.sh
 ### ⚠️ 已弃用的部署方式
 以下部署方式已**不再使用**，请勿尝试：
 - ❌ 使用 PM2 运行 `pnpm run preview`
-- ❌ 部署到 `/root/projects/luckymart-tj-frontend`
+- ❌ 继续使用旧仓库路径 `/root/luckymart-tj-frontend`
 - ❌ 使用 Nginx 反向代理到 4173 端口
 
 ### ✅ 标准部署方式
 **唯一推荐的部署方式**：
-1. 构建静态文件：`ppnpm build`
+1. 构建静态文件：`pnpm build`
 2. 部署到 Nginx 目录：`/var/www/tezbarakat.com/html`
 3. 重启 Nginx：`systemctl restart nginx`
 
@@ -110,16 +110,16 @@ ssh root@47.82.73.79
 
 ```bash
 # 进入前端仓库目录
-cd /root/luckymart-tj-frontend
+cd /root/DODO-TJ-frontend
 
 # 拉取最新代码
 git pull origin main
 
 # 安装依赖
-ppnpm install
+pnpm install
 
 # 构建前端
-ppnpm build
+pnpm build
 ```
 
 ### 步骤 4: 部署到 Nginx 目录
@@ -177,7 +177,7 @@ systemctl restart nginx
 ssh root@47.82.73.79
 
 # 进入仓库目录
-cd /root/luckymart-tj-frontend
+cd /root/DODO-TJ-frontend
 
 # 查看提交历史
 git log --oneline
@@ -186,7 +186,7 @@ git log --oneline
 git reset --hard <commit-id>
 
 # 重新构建并部署
-ppnpm build
+pnpm build
 rm -rf /var/www/tezbarakat.com/html/*
 cp -rf dist/* /var/www/tezbarakat.com/html/
 systemctl restart nginx
@@ -301,7 +301,7 @@ server {
 1. 确认代码已推送到 GitHub：`git log --oneline`
 2. 确认服务器已拉取最新代码：
    ```bash
-   ssh root@47.82.73.79 "cd /root/luckymart-tj-frontend && git log --oneline"
+   ssh root@47.82.73.79 "cd /root/DODO-TJ-frontend && git log --oneline"
    ```
 3. 确认构建成功：检查 `dist/` 目录是否有新文件
 4. 确认 Nginx 已重启：

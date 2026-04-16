@@ -485,7 +485,7 @@ serve(async (req) => {
           const pickupPoint = prize.pickup_point_id ? pickupPointsMap.get(prize.pickup_point_id) : null;
           
           // 确定状态
-          let displayStatus = prize.status || 'PENDING';
+          const displayStatus = prize.status || 'PENDING';
 
           // 计算显示金额：优先使用 ticket_price，否则使用 prize_value
           const displayAmount = lottery?.ticket_price || prize.prize_value || 0;

@@ -136,8 +136,8 @@ const PromoterCenterPage: React.FC = () => {
       return
     }
 
-    if (showRefresh) setIsRefreshing(true)
-    else setIsLoading(true)
+    if (showRefresh) {setIsRefreshing(true)}
+    else {setIsLoading(true)}
 
     try {
       const sessionToken = localStorage.getItem('custom_session_token')
@@ -181,7 +181,7 @@ const PromoterCenterPage: React.FC = () => {
 
   // ========== 今日打卡 ==========
   const handleCheckIn = async () => {
-    if (!user?.id || isChecking) return
+    if (!user?.id || isChecking) {return}
     setIsChecking(true)
 
     try {
@@ -255,7 +255,7 @@ const PromoterCenterPage: React.FC = () => {
 
   // ========== 环比趋势计算 ==========
   const getTrend = (current: number, previous: number) => {
-    if (previous === 0) return current > 0 ? 100 : 0
+    if (previous === 0) {return current > 0 ? 100 : 0}
     return Math.round(((current - previous) / previous) * 100)
   }
 
@@ -498,7 +498,7 @@ interface OverviewTabProps {
 const OverviewTab: React.FC<OverviewTabProps> = ({
   stats, todayLog, timeRange, isChecking, onCheckIn, getTrend, t
 }) => {
-  if (!stats) return null
+  if (!stats) {return null}
 
   const regTrend = getTrend(stats.registrations, stats.prev_registrations)
   const chargeTrend = getTrend(stats.charges, stats.prev_charges)
@@ -765,7 +765,7 @@ interface TeamTabProps {
 }
 
 const TeamTab: React.FC<TeamTabProps> = ({ team, t }) => {
-  if (!team) return null
+  if (!team) {return null}
 
   return (
     <div className="space-y-4">
@@ -880,17 +880,17 @@ interface LeaderboardTabProps {
 
 const LeaderboardTab: React.FC<LeaderboardTabProps> = ({ leaderboard, t }) => {
   const getRankIcon = (index: number) => {
-    if (index === 0) return '🥇'
-    if (index === 1) return '🥈'
-    if (index === 2) return '🥉'
+    if (index === 0) {return '🥇'}
+    if (index === 1) {return '🥈'}
+    if (index === 2) {return '🥉'}
     return `${index + 1}`
   }
 
   const getRankBg = (index: number, isMe: boolean) => {
-    if (isMe) return 'bg-green-50 border-2 border-green-300'
-    if (index === 0) return 'bg-yellow-50'
-    if (index === 1) return 'bg-gray-50'
-    if (index === 2) return 'bg-orange-50'
+    if (isMe) {return 'bg-green-50 border-2 border-green-300'}
+    if (index === 0) {return 'bg-yellow-50'}
+    if (index === 1) {return 'bg-gray-50'}
+    if (index === 2) {return 'bg-orange-50'}
     return 'bg-white'
   }
 
@@ -971,7 +971,7 @@ const LeaderboardTab: React.FC<LeaderboardTabProps> = ({ leaderboard, t }) => {
 // ============================================================
 
 const TrendBadge: React.FC<{ value: number }> = ({ value }) => {
-  if (value === 0) return null
+  if (value === 0) {return null}
   const isUp = value > 0
 
   return (

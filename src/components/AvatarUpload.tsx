@@ -50,13 +50,13 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
   const displayUrl = previewUrl || currentAvatarUrl
 
   const handleClick = useCallback(() => {
-    if (disabled || isUploading) return
+    if (disabled || isUploading) {return}
     fileInputRef.current?.click()
   }, [disabled, isUploading])
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file) {return}
 
     // 重置 input value，允许重复选择同一文件
     e.target.value = ''
@@ -112,7 +112,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
         role="button"
         tabIndex={0}
         aria-label={t('profile.changeAvatar')}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick() }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') {handleClick()} }}
       >
         {/* 头像图片或占位符 */}
         {displayUrl && !imgLoadError ? (

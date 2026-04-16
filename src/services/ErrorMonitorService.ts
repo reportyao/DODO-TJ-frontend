@@ -119,15 +119,15 @@ function parseUserAgent(ua: string): {
   } else if (/Mac OS X (\d+[._]\d+)/i.test(ua)) {
     result.osName = 'macOS';
     const match = ua.match(/Mac OS X (\d+[._]\d+)/i);
-    if (match) result.osVersion = match[1].replace('_', '.');
+    if (match) {result.osVersion = match[1].replace('_', '.');}
   } else if (/Android (\d+(\.\d+)?)/i.test(ua)) {
     result.osName = 'Android';
     const match = ua.match(/Android (\d+(\.\d+)?)/i);
-    if (match) result.osVersion = match[1];
+    if (match) {result.osVersion = match[1];}
   } else if (/iPhone OS (\d+_\d+)/i.test(ua) || /iPad.*OS (\d+_\d+)/i.test(ua)) {
     result.osName = 'iOS';
     const match = ua.match(/(?:iPhone|iPad).*OS (\d+_\d+)/i);
-    if (match) result.osVersion = match[1].replace('_', '.');
+    if (match) {result.osVersion = match[1].replace('_', '.');}
   } else if (/Linux/i.test(ua)) {
     result.osName = 'Linux';
   }
@@ -219,7 +219,7 @@ function getCurrentUserId(): string | undefined {
 
 // 脱敏处理敏感数据
 function sanitizeData(data: unknown): unknown {
-  if (data === null || data === undefined) return data;
+  if (data === null || data === undefined) {return data;}
   
   if (typeof data === 'string') {
     // 脱敏可能的敏感信息
@@ -258,7 +258,7 @@ class ErrorMonitorService {
 
   // 初始化错误监控
   init(appVersion?: string) {
-    if (this.isInitialized) return;
+    if (this.isInitialized) {return;}
     
     if (appVersion) {
       this.appVersion = appVersion;

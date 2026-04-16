@@ -44,7 +44,7 @@ async function cleanupExpiredSessions(supabase: any): Promise<number> {
       .delete()
       .lt('expires_at', new Date().toISOString())
       .select('id');
-    if (error) throw error;
+    if (error) {throw error;}
     return data?.length || 0;
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
@@ -62,7 +62,7 @@ async function cleanupOldMessages(supabase: any): Promise<number> {
       .delete()
       .lt('created_at', thirtyDaysAgo)
       .select('id');
-    if (error) throw error;
+    if (error) {throw error;}
     return data?.length || 0;
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
@@ -85,7 +85,7 @@ async function cleanupFailedNotifications(supabase: any): Promise<number> {
       .in('status', ['failed', 'skipped', 'sent'])
       .lt('created_at', sevenDaysAgo)
       .select('id');
-    if (!deleteError) cleaned += deletedOld?.length || 0;
+    if (!deleteError) {cleaned += deletedOld?.length || 0;}
   } catch (err: unknown) {
     console.error('Error deleting old notifications:', err instanceof Error ? err.message : String(err));
   }
