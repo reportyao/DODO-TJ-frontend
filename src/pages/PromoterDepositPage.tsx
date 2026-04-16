@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -28,7 +29,8 @@ import {
   ClockIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
-import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
+import { staleTimes } from '../lib/react-query'
 import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper'
 import toast from 'react-hot-toast'
 
@@ -67,6 +69,46 @@ interface DepositRecord {
 // 组件
 // ============================================================
 const QUICK_AMOUNTS_CACHE_KEY = 'promoter_deposit_quick_amounts_cache_v1'
+const DEFAULT_QUICK_AMOUNTS = [10, 20, 50, 100, 200, 500]
+const PROMOTER_QUICK_AMOUNTS_QUERY_KEY = ['payment', 'configs', 'promoter', 'quick-amounts'] as const
+
+function normalizeQuickAmounts(rawValue: unknown): number[] {
+  try {
+    const parsed = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue
+    if (parsed && typeof parsed === 'object' && 'amounts' in parsed && Array.isArray((parsed as { amounts?: unknown[] }).amounts)) {
+      const amounts = (parsed as { amounts: unknown[] }).amounts
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value) && value > 0)
+      if (amounts.length > 0) {
+        return amounts
+      }
+    }
+  } catch (error) {
+    console.warn('[PromoterDepositPage] Failed to normalize quick amounts:', error)
+  }
+
+  return DEFAULT_QUICK_AMOUNTS
+}
+
+function readQuickAmountsCache(): number[] | undefined {
+  if (typeof window === 'undefined') return undefined
+
+  try {
+    const cachedQuickAmounts = sessionStorage.getItem(QUICK_AMOUNTS_CACHE_KEY)
+    if (!cachedQuickAmounts) return undefined
+
+    const parsedCache = JSON.parse(cachedQuickAmounts)
+    if (Array.isArray(parsedCache) && parsedCache.length > 0) {
+      return parsedCache
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value) && value > 0)
+    }
+  } catch (error) {
+    console.warn('[PromoterDepositPage] Failed to read quick amounts cache:', error)
+  }
+
+  return undefined
+}
 
 const PromoterDepositPage: React.FC = () => {
   const { t } = useTranslation()
@@ -87,7 +129,6 @@ const PromoterDepositPage: React.FC = () => {
   const [note, setNote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [stats, setStats] = useState<DepositStats | null>(null)
-  const [quickAmounts, setQuickAmounts] = useState<number[]>([10, 20, 50, 100, 200, 500])
   const [history, setHistory] = useState<DepositRecord[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [depositResult, setDepositResult] = useState<any>(null)
@@ -135,42 +176,31 @@ const PromoterDepositPage: React.FC = () => {
     }
   }, [callPromoterDeposit])
 
-  // ========== 加载快捷金额配置 ==========
-  const loadQuickAmounts = useCallback(async () => {
-    try {
-      const cachedQuickAmounts = sessionStorage.getItem(QUICK_AMOUNTS_CACHE_KEY)
-      if (cachedQuickAmounts) {
-        const parsedCache = JSON.parse(cachedQuickAmounts)
-        if (Array.isArray(parsedCache) && parsedCache.length > 0) {
-          setQuickAmounts(parsedCache)
-          return
-        }
+  const { data: quickAmounts = DEFAULT_QUICK_AMOUNTS } = useQuery<number[]>({
+    queryKey: PROMOTER_QUICK_AMOUNTS_QUERY_KEY,
+    enabled: isPromoterVerified,
+    initialData: () => readQuickAmountsCache(),
+    placeholderData: (previousData) => previousData,
+    staleTime: staleTimes.static,
+    gcTime: 1000 * 60 * 60,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('system_config')
+        .select('value')
+        .eq('key', 'promoter_deposit_quick_amounts')
+        .maybeSingle()
+
+      if (error) {
+        throw error
       }
 
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/system_config?key=eq.promoter_deposit_quick_amounts&select=value`,
-        {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          },
-        }
-      )
-      if (response.ok) {
-        const data = await response.json()
-        if (data?.[0]?.value) {
-          const parsed = typeof data[0].value === 'string'
-            ? JSON.parse(data[0].value)
-            : data[0].value
-          if (parsed?.amounts && Array.isArray(parsed.amounts)) {
-            setQuickAmounts(parsed.amounts)
-            sessionStorage.setItem(QUICK_AMOUNTS_CACHE_KEY, JSON.stringify(parsed.amounts))
-          }
-        }
+      const amounts = normalizeQuickAmounts(data?.value)
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(QUICK_AMOUNTS_CACHE_KEY, JSON.stringify(amounts))
       }
-    } catch (err) {
-    }
-  }, [])
+      return amounts
+    },
+  })
 
   // ========== 加载充值历史 ==========
   const loadHistory = useCallback(async () => {
@@ -212,13 +242,6 @@ const PromoterDepositPage: React.FC = () => {
     }
     verifyPromoterStatus()
   }, [user?.id, callPromoterDeposit])
-
-  // ========== 初始化 ==========
-  useEffect(() => {
-    if (isPromoterVerified) {
-      loadQuickAmounts()
-    }
-  }, [isPromoterVerified, loadQuickAmounts])
 
   // ========== 搜索用户 ==========
   const handleSearch = async () => {

@@ -24,6 +24,8 @@ import { CountdownTimer } from '../components/CountdownTimer';
 import { AIUnderstandingCard } from '../components/AIUnderstandingCard';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTrackEvent } from '../hooks/useTrackEvent';
+import { useQueryClient } from '@tanstack/react-query';
+import { staleTimes } from '../lib/react-query';
 
 type Lottery = Tables<'lotteries'>;
 type Showoff = Tables<'showoffs'> & {
@@ -37,6 +39,24 @@ interface PriceComparisonItem {
   price: number;
 }
 
+interface LotteryDetailQueryResult {
+  lottery: Lottery & {
+    inventory_product?: any | null;
+  };
+  nextRoundId: string | null;
+}
+
+interface CouponSummary {
+  validCouponCount: number;
+  couponTotalAmount: number;
+  shouldUseCoupon: boolean;
+}
+
+const lotteryDetailQueryKey = (lotteryId: string) => ['lottery-detail', 'detail', lotteryId] as const;
+const lotteryTicketsQueryKey = (lotteryId: string, userId: string) => ['lottery-detail', 'tickets', lotteryId, userId] as const;
+const lotteryCouponQueryKey = (userId: string) => ['lottery-detail', 'coupon-summary', userId] as const;
+const lotteryRandomShowoffsQueryKey = ['lottery-detail', 'random-showoffs'] as const;
+
 const LotteryDetailPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { supabase } = useSupabase();
@@ -44,6 +64,7 @@ const LotteryDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { track } = useTrackEvent();
+  const queryClient = useQueryClient();
 
   // ============================================================
   // 来源归因：从 URL 参数中提取来源信息
@@ -89,126 +110,167 @@ const LotteryDetailPage: React.FC = () => {
   // 获取用户有效抵扣券数量和最早到期那张券的面额
   // 【R14修复】每次订单只能使用一张抵扣券（最早到期），前端显示金额须与后端保持一致
   const fetchCouponCount = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setValidCouponCount(0);
+      setCouponTotalAmount(0);
+      setUseCoupon(false);
+      return;
+    }
+
     try {
-      const { data, error } = await supabase
-        .from('coupons')
-        .select('amount')
-        .eq('user_id', user.id)
-        .eq('status', 'VALID')
-        .gt('expires_at', new Date().toISOString())
-        .order('expires_at', { ascending: true })
-        .limit(20);
-      if (!error && data) {
-        setValidCouponCount(data.length);
-        // 只取最早到期的一张券面额（与后端 process_mixed_payment LIMIT 1 逻辑一致）
-        setCouponTotalAmount(data.length > 0 ? (Number(data[0].amount) || 0) : 0);
-        setUseCoupon(data.length > 0);
-      }
+      const summary = await queryClient.fetchQuery<CouponSummary>({
+        queryKey: lotteryCouponQueryKey(user.id),
+        staleTime: staleTimes.detail,
+        gcTime: 1000 * 60 * 30,
+        queryFn: async () => {
+          const { data, error } = await supabase
+            .from('coupons')
+            .select('amount')
+            .eq('user_id', user.id)
+            .eq('status', 'VALID')
+            .gt('expires_at', new Date().toISOString())
+            .order('expires_at', { ascending: true })
+            .limit(20);
+
+          if (error) throw error;
+
+          const validCouponCount = data?.length || 0;
+          return {
+            validCouponCount,
+            couponTotalAmount: validCouponCount > 0 ? (Number(data?.[0]?.amount) || 0) : 0,
+            shouldUseCoupon: validCouponCount > 0,
+          };
+        },
+      });
+
+      setValidCouponCount(summary.validCouponCount);
+      setCouponTotalAmount(summary.couponTotalAmount);
+      setUseCoupon(summary.shouldUseCoupon);
     } catch (e) {
       console.error('Failed to fetch coupon count:', e);
     }
-  }, [user, supabase]);
+  }, [user, supabase, queryClient]);
 
   const fetchMyTickets = useCallback(async () => {
-    if (!id || !user) return;
-    try {
-      // 【BUG修复】同时查询 participation_code 和 numbers 字段，兼容新旧两种数据格式
-      // 旧版 purchase_lottery_with_concurrency_control 只写入 numbers 字段
-      // 新版 allocate_lottery_tickets 只写入 participation_code 字段
-      const { data, error } = await supabase
-        .from('lottery_entries')
-        .select('participation_code, numbers')
-        .eq('lottery_id', id)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true })
-        .limit(200);
+    if (!id || !user) {
+      setMyTickets([]);
+      return [] as string[];
+    }
 
-      if (error) throw error;
-      if (data) {
-        const codes = data.map((entry: any) => {
-          // 优先使用 participation_code（新版字段）
-          if (entry.participation_code) {
-            return String(entry.participation_code);
-          }
-          // 兼容旧版 numbers 字段
-          if (entry.numbers != null) {
-            // numbers 可能是字符串或 JSON
-            const numVal = typeof entry.numbers === 'string' ? entry.numbers : String(entry.numbers);
-            return numVal;
-          }
-          return null;
-        }).filter(Boolean) as string[];
-        setMyTickets(codes);
-      }
+    try {
+      const codes = await queryClient.fetchQuery<string[]>({
+        queryKey: lotteryTicketsQueryKey(id, user.id),
+        staleTime: staleTimes.detail,
+        gcTime: 1000 * 60 * 30,
+        queryFn: async () => {
+          // 【BUG修复】同时查询 participation_code 和 numbers 字段，兼容新旧两种数据格式
+          // 旧版 purchase_lottery_with_concurrency_control 只写入 numbers 字段
+          // 新版 allocate_lottery_tickets 只写入 participation_code 字段
+          const { data, error } = await supabase
+            .from('lottery_entries')
+            .select('participation_code, numbers')
+            .eq('lottery_id', id)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: true })
+            .limit(200);
+
+          if (error) throw error;
+
+          return (data || []).map((entry: any) => {
+            if (entry.participation_code) {
+              return String(entry.participation_code);
+            }
+            if (entry.numbers != null) {
+              return typeof entry.numbers === 'string' ? entry.numbers : String(entry.numbers);
+            }
+            return null;
+          }).filter(Boolean) as string[];
+        },
+      });
+
+      setMyTickets(codes);
+      return codes;
     } catch (error) {
       console.error('Failed to fetch my tickets:', error);
+      return [] as string[];
     }
-  }, [id, user, supabase]);
+  }, [id, user, supabase, queryClient]);
 
   const fetchLottery = useCallback(async () => {
     if (!id) return;
-    setIsLoading(true);
+
+    const cachedLottery = queryClient.getQueryData<LotteryDetailQueryResult>(lotteryDetailQueryKey(id));
+    if (cachedLottery) {
+      setLottery(cachedLottery.lottery);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+
     try {
-      // 获取商品信息，包含关联的库存商品信息
-      const { data, error } = await supabase
-        .from('lotteries')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-
-      const inventoryProductPromise = data?.inventory_product_id
-        ? supabase
-            .from('inventory_products')
-            .select('id, stock, original_price, status, name, name_i18n, description, description_i18n, specifications, specifications_i18n, material, material_i18n, details, details_i18n, ai_understanding')
-            .eq('id', data.inventory_product_id)
-            .single()
-        : Promise.resolve({ data: null, error: null });
-
-      const nextRoundPromise = data?.status === 'COMPLETED'
-        ? supabase
+      const lotteryPromise = queryClient.fetchQuery<LotteryDetailQueryResult>({
+        queryKey: lotteryDetailQueryKey(id),
+        staleTime: staleTimes.detail,
+        gcTime: 1000 * 60 * 30,
+        queryFn: async () => {
+          const { data, error } = await supabase
             .from('lotteries')
-            .select('id')
-            .eq('status', 'ACTIVE')
-            .eq('title', data.title)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-        : Promise.resolve({ data: null, error: null });
+            .select('*')
+            .eq('id', id)
+            .single();
 
-      const myTicketsPromise = user ? fetchMyTickets() : Promise.resolve();
+          if (error) throw error;
 
-      const [inventoryResult, nextRoundResult] = await Promise.all([
-        inventoryProductPromise,
-        nextRoundPromise,
-        myTicketsPromise,
-      ]).then(([inventory, nextRound]) => [inventory, nextRound] as const);
+          const inventoryProductPromise = data?.inventory_product_id
+            ? supabase
+                .from('inventory_products')
+                .select('id, stock, original_price, status, name, name_i18n, description, description_i18n, specifications, specifications_i18n, material, material_i18n, details, details_i18n, ai_understanding')
+                .eq('id', data.inventory_product_id)
+                .single()
+            : Promise.resolve({ data: null, error: null });
 
-      const inventoryProductData = inventoryResult?.data || null;
-      const nextRound = nextRoundResult?.data || null;
+          const nextRoundPromise = data?.status === 'COMPLETED'
+            ? supabase
+                .from('lotteries')
+                .select('id')
+                .eq('status', 'ACTIVE')
+                .eq('title', data.title)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+            : Promise.resolve({ data: null, error: null });
 
-      // 将库存商品信息附加到 lottery 对象
-      const lotteryWithInventory = {
-        ...data,
-        inventory_product: inventoryProductData,
-      };
+          const [inventoryResult, nextRoundResult] = await Promise.all([
+            inventoryProductPromise,
+            nextRoundPromise,
+          ]);
 
-      setLottery(lotteryWithInventory);
+          return {
+            lottery: {
+              ...data,
+              inventory_product: inventoryResult?.data || null,
+            },
+            nextRoundId: nextRoundResult?.data?.id || null,
+          };
+        },
+      });
+
+      const myTicketsPromise = user ? fetchMyTickets() : Promise.resolve([] as string[]);
+      const [lotteryResult, ticketCodes] = await Promise.all([lotteryPromise, myTicketsPromise]);
+
+      setLottery(lotteryResult.lottery);
+      if (user) {
+        setMyTickets(ticketCodes);
+      }
       
-      // 如果已完成处理订单，检查是否有新一轮 ACTIVE 期（同一商品）
-      if (data && data.status === 'COMPLETED') {
-        if (nextRound && nextRound.id !== id) {
-          // 有新一轮，跳转到新一轮的详情页
-          navigate(`/lottery/${nextRound.id}`, { replace: true });
+      if (lotteryResult.lottery.status === 'COMPLETED') {
+        if (lotteryResult.nextRoundId && lotteryResult.nextRoundId !== id) {
+          navigate(`/lottery/${lotteryResult.nextRoundId}`, { replace: true });
           return;
         }
 
-        // 没有新一轮，跳转到处理订单结果页
         navigate(`/lottery/${id}/result`);
-      } else if (data && data.status === 'SOLD_OUT') {
-        // 已售罄但还未处理订单，跳转到处理订单结果页（等待处理订单）
+      } else if (lotteryResult.lottery.status === 'SOLD_OUT') {
         navigate(`/lottery/${id}/result`);
       }
     } catch (error) {
@@ -217,14 +279,13 @@ const LotteryDetailPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [id, supabase, t, user, fetchMyTickets]);
+  }, [id, supabase, t, user, fetchMyTickets, navigate, queryClient]);
 
   // 轻量级刷新：仅更新 sold_tickets 和库存，不触发 loading 状态和跳转逻辑
   // 用于购买成功后立即刷新进度条，避免 fetchLottery 的 setIsLoading(true) 导致页面闪烁
   const refreshLotteryProgress = useCallback(async () => {
     if (!id) return;
     try {
-      // 添加时间戳参数绕过任何可能的缓存
       const { data, error } = await supabase
         .from('lotteries')
         .select('sold_tickets, total_tickets, status')
@@ -233,7 +294,6 @@ const LotteryDetailPage: React.FC = () => {
 
       if (error || !data) return;
 
-      // 更新 lottery 状态中的 sold_tickets，保留其他字段不变
       setLottery(prev => {
         if (!prev) return prev;
         return {
@@ -243,59 +303,80 @@ const LotteryDetailPage: React.FC = () => {
           status: data.status,
         };
       });
+
+      queryClient.setQueryData<LotteryDetailQueryResult>(lotteryDetailQueryKey(id), (previous) => {
+        if (!previous) return previous;
+        return {
+          ...previous,
+          lottery: {
+            ...previous.lottery,
+            sold_tickets: data.sold_tickets,
+            total_tickets: data.total_tickets,
+            status: data.status,
+          },
+        };
+      });
     } catch (err) {
       console.warn('[LotteryDetail] Failed to refresh progress:', err);
     }
-  }, [id, supabase]);
+  }, [id, supabase, queryClient]);
 
   const fetchRandomShowoffs = useCallback(async () => {
+    const cachedShowoffs = queryClient.getQueryData<Showoff[]>(lotteryRandomShowoffsQueryKey);
+    if (cachedShowoffs) {
+      setRandomShowoffs(cachedShowoffs);
+    }
+
     try {
-      // 获取最近的 3 个已审核晒单（包含 display_username 和 display_avatar_url 字段）
-      const { data: showoffsData, error: showoffsError } = await supabase
-        .from('showoffs')
-        .select('*')
-        .eq('status', 'APPROVED')
-        .order('created_at', { ascending: false })
-        .limit(3);
+      const showoffs = await queryClient.fetchQuery<Showoff[]>({
+        queryKey: lotteryRandomShowoffsQueryKey,
+        staleTime: staleTimes.static,
+        gcTime: 1000 * 60 * 60,
+        queryFn: async () => {
+          const { data: showoffsData, error: showoffsError } = await supabase
+            .from('showoffs')
+            .select('*')
+            .eq('status', 'APPROVED')
+            .order('created_at', { ascending: false })
+            .limit(3);
 
-      if (showoffsError) throw showoffsError;
+          if (showoffsError) throw showoffsError;
 
-      if (showoffsData && showoffsData.length > 0) {
-        // 批量获取真实用户信息（仅针对有 user_id 的晒单）
-        const userIds = [...new Set(showoffsData.map((s: any) => s.user_id).filter(Boolean))];
-        let usersMap: Record<string, any> = {};
-
-        if (userIds.length > 0) {
-          const { data: usersData, error: usersError } = await supabase
-            .from('users')
-            .select('id, phone_number, first_name, avatar_url')
-            .in('id', userIds)
-            .limit(50);
-
-          if (!usersError && usersData) {
-            usersData.forEach((u: any) => {
-              usersMap[u.id] = u;
-            });
+          if (!showoffsData || showoffsData.length === 0) {
+            return [];
           }
-        }
 
-        // 合并数据：优先使用运营晒单的 display_username/display_avatar_url，
-        // 其次使用真实用户的 first_name/phone_number/avatar_url
-        const enrichedShowoffs = showoffsData.map((showoff: any) => ({
-          ...showoff,
-          image_urls: showoff.image_urls || showoff.images || [],
-          user: usersMap[showoff.user_id] || null
-        }));
+          const userIds = [...new Set(showoffsData.map((s: any) => s.user_id).filter(Boolean))];
+          let usersMap: Record<string, any> = {};
 
-        setRandomShowoffs(enrichedShowoffs);
-      } else {
-        setRandomShowoffs([]);
-      }
+          if (userIds.length > 0) {
+            const { data: usersData, error: usersError } = await supabase
+              .from('users')
+              .select('id, phone_number, first_name, avatar_url')
+              .in('id', userIds)
+              .limit(50);
+
+            if (!usersError && usersData) {
+              usersData.forEach((u: any) => {
+                usersMap[u.id] = u;
+              });
+            }
+          }
+
+          return showoffsData.map((showoff: any) => ({
+            ...showoff,
+            image_urls: showoff.image_urls || showoff.images || [],
+            user: usersMap[showoff.user_id] || null
+          }));
+        },
+      });
+
+      setRandomShowoffs(showoffs);
     } catch (error) {
       console.error('Failed to fetch random showoffs:', error);
       setRandomShowoffs([]);
     }
-  }, [supabase]);
+  }, [supabase, queryClient]);
 
   useEffect(() => {
     fetchLottery();
@@ -540,14 +621,33 @@ const LotteryDetailPage: React.FC = () => {
       const newParticipationCodes: string[] = purchaseResult?.participation_codes || [];
       
       if (newParticipationCodes.length > 0) {
+        const appendedCodes = newParticipationCodes.map(String);
+
         // 立即更新参与码列表（追加新购买的参与码）
-        setMyTickets(prev => [...prev, ...newParticipationCodes.map(String)]);
+        setMyTickets(prev => [...prev, ...appendedCodes]);
+        if (user) {
+          queryClient.setQueryData<string[]>(lotteryTicketsQueryKey(id, user.id), (previous = []) => [
+            ...previous,
+            ...appendedCodes,
+          ]);
+        }
+
         // 立即更新 sold_tickets（原子性更新，与参与码同步）
         setLottery(prev => {
           if (!prev) return prev;
           return {
             ...prev,
             sold_tickets: prev.sold_tickets + quantity,
+          };
+        });
+        queryClient.setQueryData<LotteryDetailQueryResult>(lotteryDetailQueryKey(id), (previous) => {
+          if (!previous) return previous;
+          return {
+            ...previous,
+            lottery: {
+              ...previous.lottery,
+              sold_tickets: previous.lottery.sold_tickets + quantity,
+            },
           };
         });
       }
@@ -558,9 +658,13 @@ const LotteryDetailPage: React.FC = () => {
 
       // 重置数量为 1，并将最终一致性刷新放到后台执行，避免额外阻塞成功反馈
       setQuantity(1);
+      if (user) {
+        void queryClient.invalidateQueries({ queryKey: lotteryCouponQueryKey(user.id) });
+      }
       void Promise.all([
         refreshLotteryProgress(),
         fetchMyTickets(),
+        fetchCouponCount(),
       ]).catch((refreshError) => {
         console.warn('[LotteryDetail] Post-purchase background refresh failed:', refreshError);
       });

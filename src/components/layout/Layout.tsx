@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from "react"
+import React, { useState, useEffect, useCallback } from "react"
+import { useLocation } from "react-router-dom"
 import { useUser } from "../../contexts/UserContext"
 import { cn } from "../../lib/utils"
 import { BottomNavigation } from "../navigation/BottomNavigation"
@@ -23,6 +24,8 @@ export const Layout: React.FC<LayoutProps> = ({
 }) => {
   const { user, isAuthenticated } = useUser()
   const { t } = useTranslation()
+  const location = useLocation()
+  const isHomeRoute = location.pathname === '/'
   
   // 新人礼物弹窗状态
   const [showNewUserGift, setShowNewUserGift] = useState(false)
@@ -33,6 +36,8 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // 检查是否需要显示新人礼物弹窗
   useEffect(() => {
+    if (!isAuthenticated) return
+
     const checkNewUserGift = () => {
       const newUserGiftShown = localStorage.getItem('new_user_gift_shown')
       const newUserGiftData = localStorage.getItem('new_user_gift_data')
@@ -50,10 +55,25 @@ export const Layout: React.FC<LayoutProps> = ({
       }
     }
 
-    if (isAuthenticated) {
-      checkNewUserGift()
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let idleId: number | null = null
+
+    if (isHomeRoute && typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(checkNewUserGift, { timeout: 1200 })
+    } else {
+      const delay = isHomeRoute ? 400 : 0
+      timer = setTimeout(checkNewUserGift, delay)
     }
-  }, [isAuthenticated])
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer)
+      }
+      if (idleId !== null && typeof window !== 'undefined' && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      }
+    }
+  }, [isAuthenticated, isHomeRoute])
 
   // 关闭新人礼物弹窗
   const handleCloseNewUserGift = () => {
@@ -96,39 +116,58 @@ export const Layout: React.FC<LayoutProps> = ({
     if (!isAuthenticated || !user?.id) return
 
     const abortController = new AbortController()
+    const bootstrap = () => {
+      if (abortController.signal.aborted) return
 
-    // [v2] 延迟 1.5 秒加载，让首屏核心请求优先
-    const delayTimer = setTimeout(() => {
-      if (!abortController.signal.aborted) {
-        fetchSpinCount(abortController.signal)
-      }
-    }, 1500)
-    
-    // 订阅实时更新
-    const channel = supabase
-      .channel('spin_balance_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_spin_balance',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          if (payload.new && typeof payload.new === 'object' && 'spin_count' in payload.new) {
-            setSpinCount((payload.new as Record<string, number>).spin_count || 0)
+      void fetchSpinCount(abortController.signal)
+
+      return supabase
+        .channel(`spin_balance_changes:${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'user_spin_balance',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            if (payload.new && typeof payload.new === 'object' && 'spin_count' in payload.new) {
+              setSpinCount((payload.new as Record<string, number>).spin_count || 0)
+            }
           }
-        }
-      )
-      .subscribe()
+        )
+        .subscribe()
+    }
+
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let idleId: number | null = null
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
+    const startBootstrap = () => {
+      channel = bootstrap() || null
+    }
+
+    if (isHomeRoute && typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(startBootstrap, { timeout: 2500 })
+    } else {
+      const delay = isHomeRoute ? 2200 : 1500
+      timer = setTimeout(startBootstrap, delay)
+    }
 
     return () => {
-      clearTimeout(delayTimer)
+      if (timer) {
+        clearTimeout(timer)
+      }
+      if (idleId !== null && typeof window !== 'undefined' && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      }
       abortController.abort()
-      supabase.removeChannel(channel)
+      if (channel) {
+        supabase.removeChannel(channel)
+      }
     }
-  }, [isAuthenticated, user?.id, fetchSpinCount])
+  }, [isAuthenticated, user?.id, fetchSpinCount, isHomeRoute])
 
   return (
     <div className={cn(
