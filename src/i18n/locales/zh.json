@@ -248,6 +248,7 @@
     "statusSoldOut": "已售完",
     "statusDrawn": "已处理",
     "statusCancelled": "已取消",
+    "statusExpired": "已过期",
     "ticketUnit": "张",
     "unknownProduct": "未知商品",
     "howToPlay": "活动规则",

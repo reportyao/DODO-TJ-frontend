@@ -174,7 +174,7 @@ serve(async (req) => {
 
     const { data: lottery, error: lotteryError } = await supabase
       .from('lotteries')
-      .select('id, title, title_i18n, image_url, image_urls, currency, status, full_purchase_enabled, inventory_product_id, sold_tickets, total_tickets, full_purchase_price, original_price, ticket_price')
+      .select('id, title, title_i18n, image_url, image_urls, currency, status, full_purchase_enabled, inventory_product_id, sold_tickets, total_tickets, full_purchase_price, original_price, ticket_price, end_time')
       .eq('id', lottery_id)
       .single()
 
@@ -185,6 +185,14 @@ serve(async (req) => {
 
     if (lottery.status !== 'ACTIVE') {
       throw new Error('该商品当前不可购买')
+    }
+
+    // 检查 end_time 是否已过期，防止状态机卡滞时用户仍能购买
+    if (lottery.end_time) {
+      const endTime = new Date(lottery.end_time).getTime()
+      if (!isNaN(endTime) && endTime <= Date.now()) {
+        throw new Error('商品已过期，无法购买')
+      }
     }
 
     if (lottery.full_purchase_enabled === false) {

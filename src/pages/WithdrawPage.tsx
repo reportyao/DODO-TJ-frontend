@@ -38,10 +38,24 @@ export default function WithdrawPage() {
   const balanceWallet = wallets.find(w => w.type === 'TJS' && w.currency === 'TJS')
   const balance = balanceWallet?.balance || 0
 
+  // 与后端 withdraw-request Edge Function 保持一致的提现限额
+  const MIN_WITHDRAW = 50
+  const MAX_WITHDRAW = 10000
+
   const handleSubmit = async () => {
     const amountNum = parseFloat(amount)
     if (!amountNum || amountNum <= 0) {
       toast.error(t('wallet.pleaseEnterValidAmount'))
+      return
+    }
+
+    // 前端同步校验提现金额范围（与后端 MIN_WITHDRAW / MAX_WITHDRAW 保持一致）
+    if (amountNum < MIN_WITHDRAW) {
+      toast.error(t('wallet.minWithdrawError', { min: MIN_WITHDRAW }))
+      return
+    }
+    if (amountNum > MAX_WITHDRAW) {
+      toast.error(t('wallet.maxWithdrawError', { max: MAX_WITHDRAW }))
       return
     }
 
@@ -173,6 +187,9 @@ export default function WithdrawPage() {
             placeholder={t('wallet.enterAmount')}
             className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary"
           />
+          <p className="text-xs text-gray-400 mt-2">
+            {t('wallet.minWithdrawError', { min: MIN_WITHDRAW })} | {t('wallet.maxWithdrawError', { max: MAX_WITHDRAW })}
+          </p>
         </div>
 
 

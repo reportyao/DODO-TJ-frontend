@@ -289,6 +289,14 @@ Deno.serve(async (req) => {
       throw new Error(`商品未在售中，当前状态: ${lottery.status}`);
     }
 
+    // 检查 end_time 是否已过期，防止状态机卡滞时用户仍能购买
+    if (lottery.end_time) {
+      const endTime = new Date(lottery.end_time).getTime();
+      if (!isNaN(endTime) && endTime <= Date.now()) {
+        throw new Error('商品已过期，无法购买');
+      }
+    }
+
     if (lottery.sold_tickets + quantity > lottery.total_tickets) {
       throw new Error('库存不足');
     }

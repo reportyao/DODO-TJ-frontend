@@ -71,7 +71,8 @@ export function getLotteryStatusText(status: string, t?: (key: string) => string
       'COMPLETED': 'lottery.statusCompleted',
       'SOLD_OUT': 'lottery.statusSoldOut',
       'DRAWN': 'lottery.statusDrawn',
-      'CANCELLED': 'lottery.statusCancelled'
+      'CANCELLED': 'lottery.statusCancelled',
+      'EXPIRED': 'lottery.statusExpired'
     };
     const key = keyMap[status];
     return key ? t(key) : status;
@@ -83,7 +84,8 @@ export function getLotteryStatusText(status: string, t?: (key: string) => string
     'COMPLETED': 'Completed',
     'SOLD_OUT': 'Sold Out',
     'DRAWN': 'Drawn',
-    'CANCELLED': 'Cancelled'
+    'CANCELLED': 'Cancelled',
+    'EXPIRED': 'Expired'
   };
   return statusMap[status] || status;
 }
@@ -96,7 +98,8 @@ export function getLotteryStatusColor(status: string): string {
     'COMPLETED': 'bg-gray-100 text-gray-700',
     'SOLD_OUT': 'bg-red-100 text-red-700',
     'DRAWN': 'bg-amber-100 text-primary-dark',
-    'CANCELLED': 'bg-gray-100 text-gray-500'
+    'CANCELLED': 'bg-gray-100 text-gray-500',
+    'EXPIRED': 'bg-orange-100 text-orange-700'
   };
   return colorMap[status] || 'bg-gray-100 text-gray-700';
 }
@@ -110,6 +113,7 @@ export interface LotteryStatusLike {
 }
 
 // 统一商品是否可继续购买的判定逻辑
+// 增加 end_time 过期检查：即使数据库 status 仍为 ACTIVE，前端也应阻止购买已过期商品
 export function isLotteryPurchasable(lottery: LotteryStatusLike): boolean {
   const status = lottery.status ?? '';
   const soldTickets = lottery.sold_tickets ?? 0;
@@ -121,6 +125,14 @@ export function isLotteryPurchasable(lottery: LotteryStatusLike): boolean {
 
   if (totalTickets > 0 && soldTickets >= totalTickets) {
     return false;
+  }
+
+  // 检查 end_time 是否已过期
+  if (lottery.end_time) {
+    const endTime = new Date(lottery.end_time).getTime();
+    if (!Number.isNaN(endTime) && endTime <= Date.now()) {
+      return false;
+    }
   }
 
   return true;

@@ -248,6 +248,7 @@
     "statusSoldOut": "Распродано",
     "statusDrawn": "Заказ обработан",
     "statusCancelled": "Отменено",
+    "statusExpired": "Истекло",
     "ticketUnit": "шт.",
     "unknownProduct": "Неизвестный товар",
     "howToPlay": "Правила акции",
