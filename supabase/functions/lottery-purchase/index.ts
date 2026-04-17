@@ -289,16 +289,28 @@ Deno.serve(async (req) => {
       throw new Error(`商品未在售中，当前状态: ${lottery.status}`);
     }
 
-    // 检查 end_time 是否已过期，防止状态机卡滞时用户仍能购买
-    if (lottery.end_time) {
-      const endTime = new Date(lottery.end_time).getTime();
-      if (!isNaN(endTime) && endTime <= Date.now()) {
-        throw new Error('商品已过期，无法购买');
+    if (lottery.inventory_product_id) {
+      const { data: inventoryProduct, error: inventoryProductError } = await supabaseAdmin
+        .from('inventory_products')
+        .select('id, stock, status')
+        .eq('id', lottery.inventory_product_id)
+        .single();
+
+      if (inventoryProductError || !inventoryProduct) {
+        throw new Error('关联库存商品不存在，无法参与当前活动');
+      }
+
+      if (inventoryProduct.status !== 'ACTIVE') {
+        throw new Error('关联库存商品未启用，无法参与当前活动');
+      }
+
+      if (Number(inventoryProduct.stock ?? 0) <= 0) {
+        throw new Error('关联库存已售罄，当前活动无法继续参与');
       }
     }
 
     if (lottery.sold_tickets + quantity > lottery.total_tickets) {
-      throw new Error('库存不足');
+      throw new Error('当前活动参与份数已售罄');
     }
 
     const existingEntryCount = userEntryCount || 0;

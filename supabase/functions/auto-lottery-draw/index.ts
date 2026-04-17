@@ -317,7 +317,116 @@ serve(async (req) => {
 
     console.log(`[AutoLotteryDraw] Prize created: ${prize?.id}`);
 
-    // 12. 发送中奖通知给中奖用户
+    // 12. 关联库存商品在开奖完成后真正消耗 1 件库存
+    if (lottery.inventory_product_id) {
+      const { data: inventoryProduct, error: inventoryProductError } = await supabaseClient
+        .from('inventory_products')
+        .select('id, stock')
+        .eq('id', lottery.inventory_product_id)
+        .single();
+
+      if (inventoryProductError || !inventoryProduct) {
+        console.error('[AutoLotteryDraw] Failed to load inventory product during prize fulfillment:', inventoryProductError);
+        await supabaseClient.from('prizes').delete().eq('id', prize.id);
+        await supabaseClient.from('lottery_results').delete().eq('id', lotteryResultId);
+        await supabaseClient
+          .from('lotteries')
+          .update({
+            status: 'SOLD_OUT',
+            winning_user_id: null,
+            winning_numbers: null,
+            winning_ticket_number: null,
+            draw_time: null,
+            actual_draw_time: null,
+            draw_algorithm_data: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', lotteryId);
+        await supabaseClient
+          .from('lottery_entries')
+          .update({ is_winning: false, updated_at: new Date().toISOString() })
+          .eq('id', winningEntry.id);
+        throw new Error('开奖后扣减库存失败：找不到关联库存商品');
+      }
+
+      if (Number(inventoryProduct.stock ?? 0) <= 0) {
+        console.error('[AutoLotteryDraw] Inventory stock already exhausted before prize fulfillment:', inventoryProduct);
+        await supabaseClient.from('prizes').delete().eq('id', prize.id);
+        await supabaseClient.from('lottery_results').delete().eq('id', lotteryResultId);
+        await supabaseClient
+          .from('lotteries')
+          .update({
+            status: 'SOLD_OUT',
+            winning_user_id: null,
+            winning_numbers: null,
+            winning_ticket_number: null,
+            draw_time: null,
+            actual_draw_time: null,
+            draw_algorithm_data: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', lotteryId);
+        await supabaseClient
+          .from('lottery_entries')
+          .update({ is_winning: false, updated_at: new Date().toISOString() })
+          .eq('id', winningEntry.id);
+        throw new Error('开奖后扣减库存失败：当前库存不足');
+      }
+
+      const newStock = Number(inventoryProduct.stock) - 1;
+      const { data: updatedInventory, error: updateInventoryError } = await supabaseClient
+        .from('inventory_products')
+        .update({
+          stock: newStock,
+          updated_at: drawTime,
+        })
+        .eq('id', inventoryProduct.id)
+        .eq('stock', inventoryProduct.stock)
+        .select('id')
+        .maybeSingle();
+
+      if (updateInventoryError || !updatedInventory) {
+        console.error('[AutoLotteryDraw] Failed to decrement inventory for lottery prize:', updateInventoryError);
+        await supabaseClient.from('prizes').delete().eq('id', prize.id);
+        await supabaseClient.from('lottery_results').delete().eq('id', lotteryResultId);
+        await supabaseClient
+          .from('lotteries')
+          .update({
+            status: 'SOLD_OUT',
+            winning_user_id: null,
+            winning_numbers: null,
+            winning_ticket_number: null,
+            draw_time: null,
+            actual_draw_time: null,
+            draw_algorithm_data: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', lotteryId);
+        await supabaseClient
+          .from('lottery_entries')
+          .update({ is_winning: false, updated_at: new Date().toISOString() })
+          .eq('id', winningEntry.id);
+        throw new Error('开奖后扣减库存失败：库存状态已变化，请稍后重试');
+      }
+
+      const { error: inventoryTransactionError } = await supabaseClient
+        .from('inventory_transactions')
+        .insert({
+          inventory_product_id: inventoryProduct.id,
+          transaction_type: 'LOTTERY_PRIZE',
+          quantity: -1,
+          stock_before: inventoryProduct.stock,
+          stock_after: newStock,
+          related_lottery_id: lotteryId,
+          notes: `一元夺宝开奖消耗库存，中奖用户 ${winningEntry.user_id}`,
+        });
+
+      if (inventoryTransactionError) {
+        console.error('[AutoLotteryDraw] Failed to record inventory transaction for lottery prize:', inventoryTransactionError);
+      }
+    }
+
+    // 13. 发送中奖通知给中奖用户
     try {
       const notificationId = generateUUID();
       await supabaseClient.from('notifications').insert({
@@ -347,7 +456,7 @@ serve(async (req) => {
       // 通知失败不影响开奖结果
     }
 
-    // 13. 发送开奖公告通知给所有参与者（非中奖者）
+    // 14. 发送开奖公告通知给所有参与者（非中奖者）
     try {
       const participantIds = [...new Set(entries.map((e: any) => e.user_id))];
       const announcements = participantIds
@@ -384,7 +493,7 @@ serve(async (req) => {
     }
 
     // ============================================================
-    // 14. 【业务重构】统计未中奖用户的参与份数，异步调用 issue-refund-coupons
+    // 15. 【业务重构】统计未中奖用户的参与份数，异步调用 issue-refund-coupons
     // 每个未中奖用户按其购买的份数获得等量的 1 TJS 抵扣券
     // ============================================================
     try {
@@ -434,95 +543,136 @@ serve(async (req) => {
     console.log(`[AutoLotteryDraw] Draw completed successfully for lottery ${lotteryId}`);
 
     // ============================================================
-    // 15. 自动创建新一轮：克隆当前 lottery，重置为 ACTIVE 状态
+    // 16. 自动创建新一轮：仅当关联库存仍有可用余量时才继续新开活动
     // ============================================================
     let newRoundId: string | null = null;
     try {
-      const newId = generateUUID();
-      // 计算新期号：兼容 LM 前缀十六进制格式和纯数字格式
-      let newPeriod: string;
-      const oldPeriod = lottery.period || '';
-      if (oldPeriod.startsWith('LM')) {
-        // LM前缀格式：LM + 十六进制时间戳，生成新的LM前缀
-        newPeriod = 'LM' + Date.now().toString(16).toUpperCase();
-      } else {
-        const numPeriod = parseInt(oldPeriod);
-        newPeriod = (numPeriod > 0 && !isNaN(numPeriod)) ? String(numPeriod + 1) : ('LM' + Date.now().toString(16).toUpperCase());
+      let shouldCreateNextRound = true;
+
+      if (lottery.inventory_product_id) {
+        const [{ data: latestInventory, error: latestInventoryError }, { count: activeLotteryCount, error: activeLotteryCountError }] = await Promise.all([
+          supabaseClient
+            .from('inventory_products')
+            .select('id, stock, status')
+            .eq('id', lottery.inventory_product_id)
+            .single(),
+          supabaseClient
+            .from('lotteries')
+            .select('id', { count: 'exact', head: true })
+            .eq('inventory_product_id', lottery.inventory_product_id)
+            .eq('status', 'ACTIVE'),
+        ]);
+
+        if (latestInventoryError || !latestInventory) {
+          throw latestInventoryError || new Error('开奖后读取库存失败');
+        }
+
+        if (activeLotteryCountError) {
+          throw activeLotteryCountError;
+        }
+
+        shouldCreateNextRound = latestInventory.status === 'ACTIVE' && Number(latestInventory.stock ?? 0) > Number(activeLotteryCount ?? 0);
       }
-      const now = new Date().toISOString();
-      // 新一轮的结束时间 = 当前时间 + 7天
-      const newEndTime = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      // 构建新一轮数据，严格只包含 DB 中实际存在的列
-      // 已验证的列: actual_draw_time, ai_understanding, algorithm_id, created_at, currency,
-      //   description, description_i18n, draw_algorithm_data, draw_time, drawn_at,
-      //   end_time, full_purchase_enabled, full_purchase_price, id, image_url,
-      //   image_urls, inventory_product_id, inventory_product_sku, is_featured,
-      //   material_i18n, max_per_user, original_price, period, price_comparisons,
-      //   product_id, sold_tickets, sort_order, specifications_i18n, start_time,
-      //   status, ticket_price, title, title_i18n, total_tickets, unlimited_purchase,
-      //   updated_at, vrf_proof, vrf_timestamp, winning_numbers, winning_ticket_number,
-      //   winning_user_id
-      const newRound: Record<string, unknown> = {
-        id: newId,
-        title: lottery.title,
-        title_i18n: lottery.title_i18n || null,
-        description: lottery.description,
-        description_i18n: lottery.description_i18n || null,
-        image_url: lottery.image_url,
-        image_urls: lottery.image_urls,
-        original_price: lottery.original_price || 0,
-        ticket_price: lottery.ticket_price,
-        total_tickets: lottery.total_tickets,
-        sold_tickets: 0,
-        status: 'ACTIVE',
-        draw_time: null,
-        drawn_at: null,
-        sort_order: lottery.sort_order || 0,
-        is_featured: lottery.is_featured || false,
-        full_purchase_enabled: lottery.full_purchase_enabled || false,
-        full_purchase_price: lottery.full_purchase_price,
-        price_comparisons: lottery.price_comparisons || null,
-        inventory_product_id: lottery.inventory_product_id || null,
-        inventory_product_sku: lottery.inventory_product_sku || null,
-        specifications_i18n: lottery.specifications_i18n || null,
-        material_i18n: lottery.material_i18n || null,
-        currency: lottery.currency || 'TJS',
-        max_per_user: lottery.max_per_user || 10,
-        actual_draw_time: null,
-        draw_algorithm_data: null,
-        end_time: newEndTime,
-        period: newPeriod,
-        product_id: lottery.product_id || null,
-        start_time: now,
-        unlimited_purchase: lottery.unlimited_purchase || false,
-        vrf_proof: null,
-        vrf_timestamp: null,
-        winning_numbers: null,
-        winning_ticket_number: null,
-        winning_user_id: null,
-        algorithm_id: lottery.algorithm_id || null,
-        ai_understanding: lottery.ai_understanding || null,
-        created_at: now,
-        updated_at: now,
-      };
+      if (shouldCreateNextRound) {
+        const newId = generateUUID();
+        let newPeriod: string;
+        const oldPeriod = lottery.period || '';
+        if (oldPeriod.startsWith('LM')) {
+          newPeriod = 'LM' + Date.now().toString(16).toUpperCase();
+        } else {
+          const numPeriod = parseInt(oldPeriod);
+          newPeriod = (numPeriod > 0 && !isNaN(numPeriod)) ? String(numPeriod + 1) : ('LM' + Date.now().toString(16).toUpperCase());
+        }
+        const now = new Date().toISOString();
 
-      console.log(`[AutoLotteryDraw] Attempting to create new round with period: ${newPeriod}, id: ${newId}`);
+        const newRound: Record<string, unknown> = {
+          id: newId,
+          title: lottery.title,
+          title_i18n: lottery.title_i18n || null,
+          description: lottery.description,
+          description_i18n: lottery.description_i18n || null,
+          image_url: lottery.image_url,
+          image_urls: lottery.image_urls,
+          original_price: lottery.original_price || 0,
+          ticket_price: lottery.ticket_price,
+          total_tickets: lottery.total_tickets,
+          sold_tickets: 0,
+          status: 'ACTIVE',
+          draw_time: null,
+          drawn_at: null,
+          sort_order: lottery.sort_order || 0,
+          is_featured: lottery.is_featured || false,
+          full_purchase_enabled: lottery.full_purchase_enabled || false,
+          full_purchase_price: lottery.full_purchase_price,
+          price_comparisons: lottery.price_comparisons || null,
+          inventory_product_id: lottery.inventory_product_id || null,
+          inventory_product_sku: lottery.inventory_product_sku || null,
+          specifications_i18n: lottery.specifications_i18n || null,
+          material_i18n: lottery.material_i18n || null,
+          currency: lottery.currency || 'TJS',
+          max_per_user: lottery.max_per_user || 10,
+          actual_draw_time: null,
+          draw_algorithm_data: null,
+          end_time: null,
+          period: newPeriod,
+          product_id: lottery.product_id || null,
+          start_time: now,
+          unlimited_purchase: lottery.unlimited_purchase || false,
+          vrf_proof: null,
+          vrf_timestamp: null,
+          winning_numbers: null,
+          winning_ticket_number: null,
+          winning_user_id: null,
+          algorithm_id: lottery.algorithm_id || null,
+          ai_understanding: lottery.ai_understanding || null,
+          created_at: now,
+          updated_at: now,
+        };
 
-      const { error: insertError } = await supabaseClient
-        .from('lotteries')
-        .insert(newRound);
+        console.log(`[AutoLotteryDraw] Attempting to create new round with period: ${newPeriod}, id: ${newId}`);
 
-      if (insertError) {
-        console.error(`[AutoLotteryDraw] Failed to create new round: ${insertError.message}`);
-        console.error(`[AutoLotteryDraw] Insert error details: ${JSON.stringify(insertError)}`);
+        const { error: insertError } = await supabaseClient
+          .from('lotteries')
+          .insert(newRound);
+
+        if (insertError) {
+          console.error(`[AutoLotteryDraw] Failed to create new round: ${insertError.message}`);
+          console.error(`[AutoLotteryDraw] Insert error details: ${JSON.stringify(insertError)}`);
+        } else {
+          newRoundId = newId;
+          console.log(`[AutoLotteryDraw] New round created successfully: ${newId}, period: ${newPeriod}`);
+        }
       } else {
-        newRoundId = newId;
-        console.log(`[AutoLotteryDraw] New round created successfully: ${newId}, period: ${newPeriod}`);
+        console.log(`[AutoLotteryDraw] Inventory exhausted or inactive after draw, skipping new round for lottery ${lotteryId}`);
+      }
+
+      if (lottery.inventory_product_id) {
+        const { count: finalActiveLotteryCount, error: finalActiveLotteryCountError } = await supabaseClient
+          .from('lotteries')
+          .select('id', { count: 'exact', head: true })
+          .eq('inventory_product_id', lottery.inventory_product_id)
+          .eq('status', 'ACTIVE');
+
+        if (finalActiveLotteryCountError) {
+          throw finalActiveLotteryCountError;
+        }
+
+        const { error: syncReservedStockError } = await supabaseClient
+          .from('inventory_products')
+          .update({
+            reserved_stock: finalActiveLotteryCount || 0,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', lottery.inventory_product_id);
+
+        if (syncReservedStockError) {
+          throw syncReservedStockError;
+        }
       }
     } catch (newRoundError: unknown) {
       const errMsg = newRoundError instanceof Error ? newRoundError.message : String(newRoundError);
-      console.error(`[AutoLotteryDraw] Failed to create new round (exception): ${errMsg}`);
+      console.error(`[AutoLotteryDraw] Failed to create new round or sync reservations (exception): ${errMsg}`);
       // 新一轮创建失败不影响开奖结果
     }
 

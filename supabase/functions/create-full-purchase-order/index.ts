@@ -174,7 +174,7 @@ serve(async (req) => {
 
     const { data: lottery, error: lotteryError } = await supabase
       .from('lotteries')
-      .select('id, title, title_i18n, image_url, image_urls, currency, status, full_purchase_enabled, inventory_product_id, sold_tickets, total_tickets, full_purchase_price, original_price, ticket_price, end_time')
+      .select('id, title, title_i18n, image_url, image_urls, currency, status, full_purchase_enabled, inventory_product_id, sold_tickets, total_tickets, full_purchase_price, original_price, ticket_price')
       .eq('id', lottery_id)
       .single()
 
@@ -187,23 +187,15 @@ serve(async (req) => {
       throw new Error('该商品当前不可购买')
     }
 
-    // 检查 end_time 是否已过期，防止状态机卡滞时用户仍能购买
-    if (lottery.end_time) {
-      const endTime = new Date(lottery.end_time).getTime()
-      if (!isNaN(endTime) && endTime <= Date.now()) {
-        throw new Error('商品已过期，无法购买')
-      }
-    }
-
     if (lottery.full_purchase_enabled === false) {
       throw new Error('该商品不支持全款购买')
     }
 
-    const [inventoryResult, pickupPointResult] = await Promise.all([
+    const [inventoryResult, pickupPointResult, activeLotteryCountResult] = await Promise.all([
       lottery.inventory_product_id
         ? supabase
             .from('inventory_products')
-            .select('id, stock, original_price, status')
+            .select('id, stock, reserved_stock, original_price, status')
             .eq('id', lottery.inventory_product_id)
             .single()
         : Promise.resolve({ data: null, error: null }),
@@ -214,6 +206,13 @@ serve(async (req) => {
             .eq('id', pickup_point_id)
             .single()
         : Promise.resolve({ data: null, error: null }),
+      lottery.inventory_product_id
+        ? supabase
+            .from('lotteries')
+            .select('id', { count: 'exact', head: true })
+            .eq('inventory_product_id', lottery.inventory_product_id)
+            .eq('status', 'ACTIVE')
+        : Promise.resolve({ count: 0, error: null }),
     ])
 
     if (inventoryResult.error) {
@@ -225,14 +224,25 @@ serve(async (req) => {
       throw new Error('自提点不存在')
     }
 
+    if (activeLotteryCountResult.error) {
+      console.error('[CreateFullPurchaseOrder] Active lottery count error:', activeLotteryCountResult.error)
+      throw new Error('校验活动库存占用失败')
+    }
+
     if (pickupPointResult.data && pickupPointResult.data.status !== 'ACTIVE') {
       throw new Error('该自提点当前不可用')
     }
 
     const inventoryProduct = inventoryResult.data
+    const activeLotteryCount = activeLotteryCountResult.count ?? 0
     if (inventoryProduct) {
       if ((inventoryProduct.stock ?? 0) <= 0) {
         throw new Error('库存不足，无法全款购买')
+      }
+
+      const availableForFullPurchase = Number(inventoryProduct.stock ?? 0) - Number(activeLotteryCount)
+      if (availableForFullPurchase <= 0) {
+        throw new Error('当前库存已被在售活动占用，暂不可全款购买')
       }
     } else if ((lottery.sold_tickets ?? 0) >= (lottery.total_tickets ?? 0)) {
       throw new Error('商品已售罄')
@@ -321,7 +331,70 @@ serve(async (req) => {
     }
 
     if (inventoryProduct) {
-      const newStock = Number(inventoryProduct.stock) - 1
+      const [{ data: latestInventory, error: latestInventoryError }, { count: latestActiveLotteryCount, error: latestActiveLotteryCountError }] = await Promise.all([
+        supabase
+          .from('inventory_products')
+          .select('id, stock')
+          .eq('id', inventoryProduct.id)
+          .single(),
+        supabase
+          .from('lotteries')
+          .select('id', { count: 'exact', head: true })
+          .eq('inventory_product_id', inventoryProduct.id)
+          .eq('status', 'ACTIVE'),
+      ])
+
+      if (latestInventoryError || !latestInventory) {
+        console.error('[CreateFullPurchaseOrder] Reload inventory error:', latestInventoryError)
+        await supabase
+          .from('full_purchase_orders')
+          .update({
+            status: 'REFUND_PENDING',
+            metadata: {
+              ...orderPayload.metadata,
+              refund_reason: 'INVENTORY_RELOAD_FAILED',
+              refund_detail: latestInventoryError?.message,
+            },
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', orderId)
+        throw new Error('库存重载失败，订单已标记为待退款，请联系客服')
+      }
+
+      if (latestActiveLotteryCountError) {
+        console.error('[CreateFullPurchaseOrder] Reload active lottery count error:', latestActiveLotteryCountError)
+        await supabase
+          .from('full_purchase_orders')
+          .update({
+            status: 'REFUND_PENDING',
+            metadata: {
+              ...orderPayload.metadata,
+              refund_reason: 'ACTIVE_LOTTERY_COUNT_RELOAD_FAILED',
+              refund_detail: latestActiveLotteryCountError.message,
+            },
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', orderId)
+        throw new Error('活动库存占用重载失败，订单已标记为待退款，请联系客服')
+      }
+
+      const latestAvailableForFullPurchase = Number(latestInventory.stock ?? 0) - Number(latestActiveLotteryCount ?? 0)
+      if (latestAvailableForFullPurchase <= 0) {
+        await supabase
+          .from('full_purchase_orders')
+          .update({
+            status: 'REFUND_PENDING',
+            metadata: {
+              ...orderPayload.metadata,
+              refund_reason: 'INVENTORY_RESERVED_FOR_ACTIVE_LOTTERY',
+            },
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', orderId)
+        throw new Error('当前剩余库存已被在售活动占用，订单已标记为待退款，请联系客服')
+      }
+
+      const newStock = Number(latestInventory.stock) - 1
       const { data: updatedInventory, error: updateInventoryError } = await supabase
         .from('inventory_products')
         .update({
@@ -329,7 +402,7 @@ serve(async (req) => {
           updated_at: new Date().toISOString(),
         })
         .eq('id', inventoryProduct.id)
-        .eq('stock', inventoryProduct.stock)
+        .eq('stock', latestInventory.stock)
         .select('id')
         .maybeSingle()
 
@@ -370,7 +443,7 @@ serve(async (req) => {
           inventory_product_id: inventoryProduct.id,
           transaction_type: 'FULL_PURCHASE',
           quantity: -1,
-          stock_before: inventoryProduct.stock,
+          stock_before: latestInventory.stock,
           stock_after: newStock,
           related_order_id: orderId,
           related_lottery_id: lottery_id,

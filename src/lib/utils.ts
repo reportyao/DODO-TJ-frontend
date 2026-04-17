@@ -113,7 +113,7 @@ export interface LotteryStatusLike {
 }
 
 // 统一商品是否可继续购买的判定逻辑
-// 增加 end_time 过期检查：即使数据库 status 仍为 ACTIVE，前端也应阻止购买已过期商品
+// 活动不再按固定时间到期，只要仍为 ACTIVE 且份数未售罄即可继续参与
 export function isLotteryPurchasable(lottery: LotteryStatusLike): boolean {
   const status = lottery.status ?? '';
   const soldTickets = lottery.sold_tickets ?? 0;
@@ -127,24 +127,16 @@ export function isLotteryPurchasable(lottery: LotteryStatusLike): boolean {
     return false;
   }
 
-  // 检查 end_time 是否已过期
-  if (lottery.end_time) {
-    const endTime = new Date(lottery.end_time).getTime();
-    if (!Number.isNaN(endTime) && endTime <= Date.now()) {
-      return false;
-    }
-  }
-
   return true;
 }
 
-// 统一商品倒计时目标：售罄后显示 draw_time，其余场景仅在 end_time 存在时才显示
+// 统一商品倒计时目标：仅在售罄后显示 draw_time，其余场景不再展示活动到期倒计时
 export function getLotteryCountdownTarget(lottery: LotteryStatusLike): string | null {
   if (lottery.status === 'SOLD_OUT' && lottery.draw_time) {
     return lottery.draw_time;
   }
 
-  return lottery.end_time || null;
+  return null;
 }
 
 // 获取剩余时间
