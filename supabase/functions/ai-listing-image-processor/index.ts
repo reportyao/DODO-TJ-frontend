@@ -23,21 +23,15 @@ import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
 // ============================================================
 // 静态资源（字体 & resvg-wasm）懒加载 + 模块级缓存
 // ============================================================
-const FONT_REGULAR_URL = new URL("../_shared/fonts/Montserrat-Regular.ttf", import.meta.url);
-const FONT_BOLD_URL = new URL("../_shared/fonts/Montserrat-Bold.ttf", import.meta.url);
+// ⚠️ Supabase functions deploy 仅打包被静态 import 发现的文件。二进制资源（.ttf 等）会被丢弃。
+// 使用 base64 内嵌的 fonts.ts，完全避开该问题且冗迟几乎为 0。
+import { FONT_BOLD, FONT_REGULAR } from "./fonts.ts";
 
-let fontRegularCache: ArrayBuffer | null = null;
-let fontBoldCache: ArrayBuffer | null = null;
 let resvgReady = false;
 
-async function ensureFontsLoaded() {
-  if (fontRegularCache && fontBoldCache) {return;}
-  const [reg, bold] = await Promise.all([
-    Deno.readFile(FONT_REGULAR_URL),
-    Deno.readFile(FONT_BOLD_URL),
-  ]);
-  fontRegularCache = reg.buffer.slice(reg.byteOffset, reg.byteOffset + reg.byteLength) as ArrayBuffer;
-  fontBoldCache = bold.buffer.slice(bold.byteOffset, bold.byteOffset + bold.byteLength) as ArrayBuffer;
+function ensureFontsLoaded() {
+  // 字体在模块加载时已被解码，无需任何运行时 IO。
+  return;
 }
 
 async function ensureResvgReady() {
@@ -77,6 +71,24 @@ type TaskRow = {
   attempt_count: number;
 };
 
+/**
+ * 安全的大二进制转 base64，避免 btoa(String.fromCharCode(...arr)) 的栈溢出。
+ * 分块 32KB 逐段转 String，再一次性 btoa。
+ */
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  const CHUNK = 0x8000; // 32KB
+  const parts: string[] = [];
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    parts.push(
+      String.fromCharCode.apply(
+        null,
+        bytes.subarray(i, i + CHUNK) as unknown as number[],
+      ),
+    );
+  }
+  return btoa(parts.join(""));
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -92,10 +104,16 @@ async function claimNextTask(supabase: any): Promise<TaskRow | null> {
   // 优先让 SQL 完成 CAS：SELECT ... FOR UPDATE SKIP LOCKED + UPDATE
   // 通过 RPC 实现；若项目内无对应 RPC，则退化为 "SELECT LIMIT 1 → UPDATE by id"
   // 对本项目当前单实例 cron（每分钟 1 次）足够安全
+  //
+  // ⚠️ 同时处理孤儿任务：某次运行被网关超时/进程谋杀 → 任务会永远卡在 processing。
+  // 这里带上 "5 分钟以外仍是 processing 也视为可重新认领" 的兑底语义。
+  const orphanThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
   const { data: picked, error: selErr } = await supabase
     .from("ai_image_tasks")
     .select("*")
-    .eq("status", "pending")
+    .or(
+      `status.eq.pending,and(status.eq.processing,last_attempt_at.lt.${orphanThreshold})`,
+    )
     .lt("attempt_count", 3)
     .order("created_at", { ascending: true })
     .limit(1)
@@ -106,8 +124,9 @@ async function claimNextTask(supabase: any): Promise<TaskRow | null> {
   }
   if (!picked) {return null;}
 
-  // CAS 更新为 processing（带状态条件，防并发双拿）
-  const { data: updated, error: updErr } = await supabase
+  // CAS 更新为 processing（带原状态条件，防并发双拿）
+  // 使用原状态进行 CAS，保证仅能从 pending 或超时的 processing 转进。
+  const claimQuery = supabase
     .from("ai_image_tasks")
     .update({
       status: "processing",
@@ -116,7 +135,8 @@ async function claimNextTask(supabase: any): Promise<TaskRow | null> {
       error_message: null,
     })
     .eq("id", picked.id)
-    .eq("status", "pending")
+    .eq("status", picked.status); // 原状态不变才能认领
+  const { data: updated, error: updErr } = await claimQuery
     .select("*")
     .maybeSingle();
 
@@ -341,7 +361,7 @@ async function renderPosterPng(
   theme: "light" | "dark",
   position: "top" | "center" | "bottom"
 ): Promise<Uint8Array> {
-  await ensureFontsLoaded();
+  ensureFontsLoaded();
   await ensureResvgReady();
 
   // 下载万相图并转 data URL 供 Satori <img> 使用
@@ -351,15 +371,18 @@ async function renderPosterPng(
   }
   const bgBuf = new Uint8Array(await bgResp.arrayBuffer());
   const bgMime = bgResp.headers.get("content-type") || "image/png";
-  const bgB64 = btoa(String.fromCharCode(...bgBuf));
+  // ⚠️ 注意：1024x1024 PNG 通常 1-3MB，Uint8Array 长度可达百万级。
+  // String.fromCharCode(...arr) 会触发 V8 参数栈溢出 (RangeError: Maximum call stack)。
+  // 必须分块编码。
+  const bgB64 = uint8ArrayToBase64(bgBuf);
   const bgDataUrl = `data:${bgMime};base64,${bgB64}`;
 
   const options: SatoriOptions = {
     width: POSTER_W,
     height: POSTER_H,
     fonts: [
-      { name: "Montserrat", data: fontRegularCache!, weight: 400, style: "normal" },
-      { name: "Montserrat", data: fontBoldCache!, weight: 700, style: "normal" },
+      { name: "Montserrat", data: FONT_REGULAR, weight: 400, style: "normal" },
+      { name: "Montserrat", data: FONT_BOLD, weight: 700, style: "normal" },
     ],
   };
 
@@ -504,11 +527,24 @@ serve(async (req) => {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
-  // 鉴权：仅接受带 service_role JWT 的调用（pg_cron 和运维可用）
+  // 鉴权：仅接受 service_role JWT 调用（pg_cron 与运维）
+  // 使用 JWT payload 解析方式而非字面比对，避免 Supabase 多 service_role 凭据轮换/CLI/Dashboard
+  // 注入差异导致的误拒。Edge Function 平台已经做过签名校验，这里只校验 role claim。
   const auth = req.headers.get("authorization") || "";
-  const expected = `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""}`;
-  if (!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || auth !== expected) {
-    return jsonResponse({ error: "unauthorized" }, 401);
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  if (!m) {
+    return jsonResponse({ error: "unauthorized: missing bearer" }, 401);
+  }
+  try {
+    const parts = m[1].split(".");
+    if (parts.length !== 3) {throw new Error("bad jwt");}
+    const payloadJson = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    const payload = JSON.parse(payloadJson);
+    if (payload.role !== "service_role") {
+      return jsonResponse({ error: "unauthorized: not service_role" }, 401);
+    }
+  } catch (_e) {
+    return jsonResponse({ error: "unauthorized: bad jwt" }, 401);
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
