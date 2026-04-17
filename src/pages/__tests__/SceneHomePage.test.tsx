@@ -85,6 +85,8 @@ vi.mock('../../components/home/TopicCard', () => ({
   TopicCard: ({ topic }: { topic: { title_i18n: Record<string, string> } }) => (
     <div data-testid="topic-card">{topic.title_i18n.zh}</div>
   ),
+  normalizeTopicCardStyle: () => 'banner',
+  getTopicCardGridSpan: () => 'col-span-2',
 }));
 
 vi.mock('../../components/home/SceneProductCard', () => ({
@@ -107,6 +109,24 @@ const mockProducts = [
   { type: 'product', item_id: 'p2', data: { lottery_id: 'l2', inventory_product_id: 'inv2', title_i18n: { zh: '商品2' }, image_url: '', original_price: 200, ticket_price: 20, total_tickets: 20, sold_tickets: 10, price_comparisons: [], currency: 'TJS', status: 'active' } },
   { type: 'product', item_id: 'p3', data: { lottery_id: 'l3', inventory_product_id: 'inv3', title_i18n: { zh: '商品3' }, image_url: '', original_price: 300, ticket_price: 30, total_tickets: 30, sold_tickets: 15, price_comparisons: [], currency: 'TJS', status: 'active' } },
 ];
+
+const mockProductsOverflow = Array.from({ length: 8 }, (_, index) => ({
+  type: 'product',
+  item_id: `overflow-${index + 1}`,
+  data: {
+    lottery_id: `overflow-lottery-${index + 1}`,
+    inventory_product_id: `overflow-inventory-${index + 1}`,
+    title_i18n: { zh: `扩展商品${index + 1}` },
+    image_url: '',
+    original_price: 100 + index,
+    ticket_price: 10 + index,
+    total_tickets: 10 + index,
+    sold_tickets: index,
+    price_comparisons: [],
+    currency: 'TJS',
+    status: 'active',
+  },
+}));
 
 const mockPlacements = [
   {
@@ -237,6 +257,25 @@ describe('SceneHomePage', () => {
       const topicCards = screen.getAllByTestId('topic-card');
       expect(topicCards).toHaveLength(1);
       expect(screen.getByText('夏季专题')).toBeInTheDocument();
+    });
+
+    it('商品数量超过 6 个时也应一次性完整渲染', () => {
+      mockFeedData = {
+        categories: mockCategories,
+        products: mockProductsOverflow,
+        placements: [],
+        banners: [],
+      };
+
+      render(
+        <MemoryRouter>
+          <SceneHomePage />
+        </MemoryRouter>
+      );
+
+      const productCards = screen.getAllByTestId('product-card');
+      expect(productCards).toHaveLength(8);
+      expect(screen.getByText('扩展商品8')).toBeInTheDocument();
     });
 
     it('分类数量应正确传递给 CategoryGrid', () => {

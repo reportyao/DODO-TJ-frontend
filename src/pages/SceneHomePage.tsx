@@ -38,7 +38,6 @@ const SceneHomePage: React.FC = () => {
   const { user, isLoading: userLoading } = useUser();
   const { track } = useTrackEvent();
   const nav = useNavigate();
-  const INITIAL_VISIBLE_FEED_COUNT = 6;
 
   // ============================================================
   // 分类筛选状态
@@ -148,36 +147,10 @@ const SceneHomePage: React.FC = () => {
     return result;
   }, [feedData, selectedCategoryId]);
 
-  const [visibleFeedCount, setVisibleFeedCount] = useState(INITIAL_VISIBLE_FEED_COUNT);
-
-  useEffect(() => {
-    setVisibleFeedCount(INITIAL_VISIBLE_FEED_COUNT);
-
-    if (mixedFeed.length <= INITIAL_VISIBLE_FEED_COUNT) {
-      return;
-    }
-
-    const scheduleExpansion = () => {
-      setVisibleFeedCount(mixedFeed.length);
-    };
-
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      const idleId = window.requestIdleCallback(scheduleExpansion, { timeout: 500 });
-      return () => window.cancelIdleCallback(idleId);
-    }
-
-    const timer = globalThis.setTimeout(scheduleExpansion, 120);
-    return () => globalThis.clearTimeout(timer);
-  }, [mixedFeed]);
-
-  const visibleFeed = useMemo(
-    () => mixedFeed.slice(0, visibleFeedCount),
-    [mixedFeed, visibleFeedCount],
-  );
-
   // ============================================================
   // 渲染
   // ============================================================
+
 
   // 分离商品和专题用于渲染
   const renderFeedItem = (item: HomeFeedItem, index: number): React.ReactNode => {
@@ -247,7 +220,7 @@ const SceneHomePage: React.FC = () => {
           </div>
         ) : mixedFeed.length > 0 ? (
           <div className="grid grid-cols-2 gap-3">
-            {visibleFeed.map((item, index) => renderFeedItem(item, index))}
+            {mixedFeed.map((item, index) => renderFeedItem(item, index))}
           </div>
         ) : (
           <div className="text-center py-12">
