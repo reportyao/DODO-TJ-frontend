@@ -13,6 +13,13 @@
  * - useCategoryProducts 不再重复调用 get-home-feed，改为从 queryClient 读取缓存
  * - 分类-商品映射关系独立缓存（staleTimes.static = 30分钟），避免每次分类切换都查数据库
  * - 提取 fetchHomeFeedData 公共函数，消除 useHomeFeed 和 useCategoryProducts 的代码重复
+ *
+ * [BUG FIX v4]
+ * - 修复首页死锁问题：当 categoryId 为 undefined 时，
+ *   homeFeed('all') 和 homeFeedBase('all') 使用相同的 queryKey，
+ *   导致 queryFn 内部的 fetchQuery 等待自身完成，形成死锁。
+ * - 解决方案：无分类时直接调用 fetchHomeFeedData，不再嵌套 fetchQuery；
+ *   有分类时使用独立的 homeFeedBase queryKey 来缓存基础数据。
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
@@ -24,7 +31,8 @@ import type { HomeFeedResponse, HomeFeedItem, HomeFeedProductData } from '../typ
 export const homepageQueryKeys = {
   ...queryKeys,
   homeFeed: (categoryId?: string) => ['homepage', 'feed', categoryId || 'all'] as const,
-  homeFeedBase: () => ['homepage', 'feed', 'all'] as const,
+  // [v4] 基础 feed 使用独立的 queryKey 前缀，避免与 homeFeed('all') 冲突
+  homeFeedBase: () => ['homepage', 'feed-base'] as const,
   topicDetail: (slugOrId: string) => ['homepage', 'topic', slugOrId] as const,
   categoryProducts: (categoryId: string) => ['homepage', 'category-products', categoryId] as const,
   categoryMapping: (categoryId: string) => ['homepage', 'category-mapping', categoryId] as const,
@@ -87,8 +95,10 @@ function filterProductsByCategory(
  *
  * @param categoryId - 可选的分类 ID，用于前端筛选商品
  *
- * 当 categoryId 存在时，会额外查询 product_categories 表获取该分类下的商品ID，
- * 然后在前端过滤 feed 中的商品列表。
+ * [v4] 修复死锁：
+ * - 无分类时：直接调用 fetchHomeFeedData，并同步写入 homeFeedBase 缓存
+ * - 有分类时：从 homeFeedBase 缓存读取或 fetchQuery 获取基础数据，
+ *   然后在前端过滤商品列表
  */
 export function useHomeFeed(categoryId?: string) {
   const queryClient = useQueryClient();
@@ -96,17 +106,24 @@ export function useHomeFeed(categoryId?: string) {
   return useQuery<HomeFeedResponse>({
     queryKey: homepageQueryKeys.homeFeed(categoryId),
     queryFn: async () => {
-      const cachedBaseFeed = queryClient.getQueryData<HomeFeedResponse>(
-        homepageQueryKeys.homeFeedBase(),
-      );
+      let feedData: HomeFeedResponse;
 
-      const feedData = categoryId && cachedBaseFeed
-        ? cachedBaseFeed
-        : await queryClient.fetchQuery({
-            queryKey: homepageQueryKeys.homeFeedBase(),
-            queryFn: fetchHomeFeedData,
-            staleTime: staleTimes.list,
-          });
+      if (!categoryId) {
+        // [v4] 无分类时直接调用 API，不再嵌套 fetchQuery 避免死锁
+        feedData = await fetchHomeFeedData();
+        // 同步写入 homeFeedBase 缓存，供后续分类查询使用
+        queryClient.setQueryData(homepageQueryKeys.homeFeedBase(), feedData);
+      } else {
+        // 有分类时，优先从缓存读取基础数据
+        const cachedBaseFeed = queryClient.getQueryData<HomeFeedResponse>(
+          homepageQueryKeys.homeFeedBase(),
+        );
+        feedData = cachedBaseFeed || await queryClient.fetchQuery({
+          queryKey: homepageQueryKeys.homeFeedBase(),
+          queryFn: fetchHomeFeedData,
+          staleTime: staleTimes.list,
+        });
+      }
 
       // 如果有分类筛选，只额外查询分类映射并在前端过滤
       let filteredProducts = feedData.products;
@@ -153,6 +170,8 @@ export function useCategoryProducts(categoryId: string) {
       // 缓存未命中时才发起网络请求
       if (!baseFeed) {
         baseFeed = await fetchHomeFeedData();
+        // 写入缓存供后续使用
+        queryClient.setQueryData(homepageQueryKeys.homeFeedBase(), baseFeed);
       }
 
       // 获取分类映射（独立缓存）
