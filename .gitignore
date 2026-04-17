@@ -56,3 +56,4 @@ database_recovery/
 server/
 prisma/
 drizzle/
+.pnpm-store/
