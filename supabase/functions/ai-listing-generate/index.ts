@@ -3,11 +3,12 @@
  *
  * 核心后端逻辑，串联 4 个外部 API 调用，通过 SSE 流式返回进度和结果。
  *
- * 执行链路：
- *   Step A: 图片理解 (qwen-vl-max)       → 分析商品图片，提取特征
- *   Step B: 三语文案生成 (qwen3.5-plus)      → 生成俄/中/塔吉克语电商文案
- *   Step C: 商品分割 (SegmentCommodity)   → 去除背景，输出 RGBA PNG
- *   Step D: 背景生成 (wanx-background-generation-v2) × 3 → 生成 3 种风格背景图
+ * 执行链路 (v2.0)：
+ *   Step A: 图片理解 (qwen3-vl-max)        → 分析商品图片，提取特征
+ *   Step B: 三语文案生成 (qwen3-max)       → 生成俄/中/塔吉克语电商文案
+ *   Step C: 商品分割 (SegmentCommodity)    → 去除背景，输出 RGBA PNG
+ *   Step D: 营销海报规划 (qwen3-max)       → 生成 5-8 组 (场景 prompt + 俄文营销文案 + 主题/排版)
+ *   Step E: 写入单图任务表 ai_image_tasks  → 由 ai-listing-image-processor (cron 触发) 逐张串行生成并合成俄文海报
  *
  * 认证：x-admin-session-token → verify_admin_session RPC
  * 响应：SSE (text/event-stream)
@@ -163,7 +164,7 @@ function buildLocalizedAIUnderstanding(params: {
     semantic_facts: params.semanticFacts,
     generated_at: new Date().toISOString(),
     generated_by: "ai-listing-generate",
-    model_used: "qwen-vl-max -> qwen3.5-plus(tg) -> qwen3.5-plus(ru) -> qwen3.5-plus(zh)",
+    model_used: "qwen3-vl-max -> qwen3-max(tg) -> qwen3-max(ru) -> qwen3-max(zh)",
     generation_mode: "semantic_facts_to_tg_ru_then_translate_zh",
     primary_market_language: "tg",
     display_priority: ["tg", "ru", "zh"] as LanguageCode[],
@@ -295,7 +296,7 @@ async function generateDirectUnderstandingByLanguage(params: {
   return normalizeSingleLanguageUnderstanding(
     await callQwenJson(
       params.apiKey,
-      "qwen3.5-plus",
+      "qwen3-max",
       buildDirectUnderstandingPrompt(params),
       0.45
     )
@@ -336,7 +337,7 @@ ${JSON.stringify(params.ruUnderstanding, null, 2)}
 4. 只输出 JSON，不要附加说明。`;
 
   return normalizeSingleLanguageUnderstanding(
-    await callQwenJson(params.apiKey, "qwen3.5-plus", prompt, 0.2)
+    await callQwenJson(params.apiKey, "qwen3-max", prompt, 0.2)
   );
 }
 
@@ -506,7 +507,7 @@ async function callQwenVL(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "qwen-vl-max",
+        model: "qwen3-vl-max",
         messages: [{ role: "user", content }],
         temperature: 0.3,
       }),
@@ -515,20 +516,20 @@ async function callQwenVL(
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`qwen-vl-max 调用失败 (HTTP ${response.status}): ${errText}`);
+    throw new Error(`qwen3-vl-max 调用失败 (HTTP ${response.status}): ${errText}`);
   }
 
   const result = await response.json();
   const rawContent = result.choices?.[0]?.message?.content;
   if (!rawContent) {
-    throw new Error("qwen-vl-max 返回内容为空");
+    throw new Error("qwen3-vl-max 返回内容为空");
   }
 
   return parseAIJson(rawContent);
 }
 
 // ============================================================
-// Step B: 三语文案生成 (qwen3.5-plus)
+// Step B: 三语文案生成 (qwen3-max)
 // ============================================================
 
 async function callQwenPlus(
@@ -594,7 +595,7 @@ async function callQwenPlus(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "qwen3.5-plus",
+        model: "qwen3-max",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.5,
       }),
@@ -603,13 +604,13 @@ async function callQwenPlus(
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`qwen3.5-plus 调用失败 (HTTP ${response.status}): ${errText}`);
+    throw new Error(`qwen3-max 调用失败 (HTTP ${response.status}): ${errText}`);
   }
 
   const result = await response.json();
   const rawContent = result.choices?.[0]?.message?.content;
   if (!rawContent) {
-    throw new Error("qwen3.5-plus 返回内容为空");
+    throw new Error("qwen3-max 返回内容为空");
   }
 
   return parseAIJson(rawContent);
@@ -902,18 +903,138 @@ async function callSegmentCommodity(
 }
 
 // ============================================================
-// Step D: 背景生成 (wanx-background-generation-v2)
+// Step D: 营销海报规划 (qwen3-max)
+//   - 为每个商品生成 5-8 组 { 场景 prompt(英文), 俄文营销文案, 主题(浅/深字), 排版(top/center/bottom) }
+//   - 英文 prompt 用于万相背景生成；俄文文案由 processor 通过 Satori 精准合成到图片上
 // ============================================================
 
-/** 3 种背景风格的 prompt */
-const BACKGROUND_PROMPTS = [
-  // 纯净展示
-  "Professional e-commerce product photo, clean studio lighting, soft gradient background, high quality, commercial photography, minimalist",
-  // 生活场景
-  "Product placed in a cozy home environment, natural sunlight from window, soft shadows, lifestyle photography, aesthetic, 4k resolution",
-  // 高级质感
-  "Premium product shot, placed on a marble podium, dramatic lighting, dark background with subtle spotlight, luxurious feel, 8k",
-];
+export type MarketingPosterPlan = {
+  ref_prompt: string;       // 英文场景 prompt
+  ru_caption: string;       // 俄文营销文案 (一句话, 2-7 词, 最多 ~40 字符, 无乱码)
+  text_theme: "light" | "dark";  // light=白字配深色遮罩; dark=黑字配浅色遮罩
+  caption_position: "top" | "center" | "bottom"; // 文案在画面中的位置
+};
+
+/**
+ * 过滤、规范化并强校验营销海报计划。
+ * - 丢弃空文案/超长文案
+ * - 只保留允许的枚举值
+ * - 限制输出数量 5-8 条
+ * - 过滤掉包含西里尔外可疑字符的 caption (防乱码)
+ */
+function sanitizeMarketingPlans(arr: any): MarketingPosterPlan[] {
+  if (!Array.isArray(arr)) {return [];}
+  const THEMES = new Set(["light", "dark"]);
+  const POSITIONS = new Set(["top", "center", "bottom"]);
+  const out: MarketingPosterPlan[] = [];
+  const seen = new Set<string>();
+
+  // 合法 Cyrillic + 常见标点 + 空格 + 可选少量拉丁/数字 (例如: 5 кг, iPhone)
+  // 禁止 CJK / emoji / 其他脚本以避免乱码
+  const SAFE_RE = /^[A-Za-zА-Яа-яЁё0-9\s\-!?.,:;«»"'()%№+×\u2010-\u2027\u20A0-\u20CF]+$/u;
+
+  for (const raw of arr) {
+    if (!raw || typeof raw !== "object") {continue;}
+    const ref_prompt = cleanAIText(raw.ref_prompt);
+    const ru_caption = cleanAIText(raw.ru_caption);
+    const text_theme = cleanAIText(raw.text_theme).toLowerCase();
+    const caption_position = cleanAIText(raw.caption_position).toLowerCase();
+
+    if (!ref_prompt || !ru_caption) {continue;}
+    if (ru_caption.length > 80) {continue;}
+    if (!SAFE_RE.test(ru_caption)) {continue;}
+    if (!THEMES.has(text_theme)) {continue;}
+    if (!POSITIONS.has(caption_position)) {continue;}
+
+    const key = ru_caption.toLowerCase().replace(/\s+/g, " ");
+    if (seen.has(key)) {continue;}
+    seen.add(key);
+
+    out.push({
+      ref_prompt,
+      ru_caption,
+      text_theme: text_theme as "light" | "dark",
+      caption_position: caption_position as "top" | "center" | "bottom",
+    });
+    if (out.length >= 8) {break;}
+  }
+  return out;
+}
+
+async function callQwenMarketingPlanner(
+  apiKey: string,
+  analysisJson: any,
+  copywriting: any,
+  productName: string,
+  price: number
+): Promise<MarketingPosterPlan[]> {
+  const prompt = `You are a senior e-commerce creative director for Tajikistan cross-border shop. For ONE product, plan exactly 6 high-quality marketing posters (product photos with overlay copy in Russian).
+
+Your plan must be returned as strict JSON, each item containing:
+  - "ref_prompt": an English scene prompt (max 40 words) that will be sent to a background-generation model to create a BEAUTIFUL photorealistic lifestyle/studio scene for this product. Focus on camera, lighting, surface, color palette, mood, resolution. NEVER mention any text, letters, logo, watermark, labels, captions, words, or typography — the image must be completely text-free. Backgrounds must be beautiful, premium, varied (studio hero shot, cozy home lifestyle, natural outdoor, luxurious marble, seasonal festive, minimalist pastel, etc.) and NOT ugly/generic.
+  - "ru_caption": ONE short Russian marketing headline (2 to 7 words, <= 40 characters). It must be perfectly spelled Russian (Cyrillic only, NO Chinese/English/emoji, NO transliteration), grammatically correct, natural for Tajik/Russian-speaking shoppers, and describe a single selling point, feature, or product story (e.g. \"Тёплая куртка на зиму\", \"Мягкая и лёгкая ткань\", \"Подарок для всей семьи\", \"Цена всего 199 сомони\"). Do NOT use brand names you are not sure about. Do NOT promise medical effects. Prefer concrete benefits.
+  - "text_theme": "light" if the caption should be WHITE text on a dark gradient overlay (use when the planned background is light/bright/pastel so white text needs a dark scrim), or "dark" if the caption should be BLACK text on a light gradient overlay (use when background is dark/moody). Choose consistently with your ref_prompt background.
+  - "caption_position": "top" | "center" | "bottom" — where the caption is placed so it does NOT cover the product itself.
+
+Rules:
+1. Return exactly 6 items, each covering a DIFFERENT selling angle (function, target audience, scenario, material/quality, price/value, emotional/gift).
+2. All 6 ref_prompts must clearly describe DIFFERENT beautiful scenes; never repeat the same background.
+3. ru_caption must be 100% Cyrillic Russian, with correct spelling. If you are not sure of a spelling, choose a simpler word.
+4. Output ONLY valid JSON, no prose, no markdown, no trailing comma.
+
+Product analysis: ${JSON.stringify(analysisJson).slice(0, 4000)}
+Russian title (for reference, do not copy verbatim): ${copywriting?.title_ru || ""}
+Russian selling bullets (for reference): ${JSON.stringify(copywriting?.bullets_ru || [])}
+Product name: ${productName}
+Price: ${price} сомони
+
+JSON schema to output:
+{
+  "posters": [
+    { "ref_prompt": "...", "ru_caption": "...", "text_theme": "light|dark", "caption_position": "top|center|bottom" }
+  ]
+}`;
+
+  const response = await fetch(
+    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "qwen3-max",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.6,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`qwen3-max(marketing-planner) 调用失败 (HTTP ${response.status}): ${errText}`);
+  }
+
+  const result = await response.json();
+  const rawContent = result.choices?.[0]?.message?.content;
+  if (!rawContent) {
+    throw new Error("qwen3-max(marketing-planner) 返回内容为空");
+  }
+
+  const parsed = parseAIJson(rawContent);
+  const plans = sanitizeMarketingPlans(parsed?.posters || parsed);
+  if (plans.length < 5) {
+    throw new Error(
+      `营销海报规划产出不足 5 条 (实际: ${plans.length})，请求会被重试`
+    );
+  }
+  return plans;
+}
+
+// ============================================================
+// Step E (legacy submit/poll 保留给其他调用者或回滚；新链路改由 ai-listing-image-processor 处理)
+// ============================================================
 
 /**
  * 提交万相背景生成任务
@@ -1374,101 +1495,79 @@ serve(async (req) => {
           }
         }
 
-        // ---- Step D: 背景生成 ----
-        let backgroundImages: string[] = [];
-
+        // ---- Step D: 营销海报规划 (不直接生图, 只出经过校验的 plans) ----
+        let plans: MarketingPosterPlan[] = [];
+        let planFailed = false;
         if (segmentedUrl) {
-          // 有分割结果 → 生成背景图
           await sendSSE({
             status: "processing",
             progress: 55,
-            stage: "正在生成商品背景图...",
+            stage: "正在规划俄文营销海报方案...",
           });
-
-          // 串行提交 3 个任务（间隔 500ms，避免触发 2QPS 限制）
-          const taskIds: string[] = [];
-          for (let i = 0; i < BACKGROUND_PROMPTS.length; i++) {
-            try {
-              const taskId = await withRetry(
-                () =>
-                  submitWanxTask(
-                    dashscopeApiKey,
-                    segmentedUrl!,
-                    BACKGROUND_PROMPTS[i]
-                  ),
-                3,
-                2000 // 万相限流场景使用更长的退避基数
-              );
-              taskIds.push(taskId);
-              console.log(
-                `[Step D] 背景任务 ${i + 1}/3 已提交: ${taskId}`
-              );
-            } catch (error) {
-              const errMsg = error instanceof Error ? error.message : String(error);
-              console.error(
-                `[Step D] 背景任务 ${i + 1}/3 提交失败:`,
-                errMsg
-              );
-            }
-
-            // 每次提交间隔 500ms
-            if (i < BACKGROUND_PROMPTS.length - 1) {
-              await new Promise((r) => setTimeout(r, 500));
-            }
-          }
-
-          // 并行轮询所有已提交的任务
-          if (taskIds.length > 0) {
-            const bgResults = await Promise.allSettled(
-              taskIds.map(async (taskId, i) => {
-                const tempUrl = await pollWanxResult(
-                  dashscopeApiKey,
-                  taskId
-                );
-
-                await sendSSE({
-                  status: "processing",
-                  progress: 55 + (i + 1) * 12,
-                  stage: `背景图 ${i + 1}/${taskIds.length} 完成`,
-                });
-
-                // 下载临时 URL 并上传到 Storage
-                const permanentUrl = await downloadAndUploadToStorage(
-                  tempUrl,
-                  supabase
-                );
-                console.log(
-                  `[Step D] 背景图 ${i + 1} 已保存: ${permanentUrl}`
-                );
-                return permanentUrl;
-              })
+          try {
+            plans = await withRetry(
+              () => callQwenMarketingPlanner(
+                dashscopeApiKey,
+                analysisResult,
+                copywriting,
+                product_name,
+                price
+              ),
+              3,
+              1200
             );
-
-            // 收集成功的图片
-            backgroundImages = bgResults
-              .filter(
-                (r): r is PromiseFulfilledResult<string> =>
-                  r.status === "fulfilled"
-              )
-              .map((r) => r.value);
-
-            // 记录失败的任务
-            bgResults.forEach((r, i) => {
-              if (r.status === "rejected") {
-                console.error(
-                  `[Step D] 背景图 ${i + 1} 失败:`,
-                  r.reason
-                );
-              }
+            console.log(`[Step D] 海报规划完成: ${plans.length} 条`);
+          } catch (error) {
+            planFailed = true;
+            const errMsg = error instanceof Error ? error.message : String(error);
+            console.error("[Step D] 海报规划失败（降级）:", errMsg);
+            await sendSSE({
+              status: "processing",
+              progress: 60,
+              stage: "海报规划失败，将仅返回文案结果...",
+              error: errMsg,
             });
+          }
+        }
+
+        // ---- Step E: 写入单图任务表 ai_image_tasks (由 ai-listing-image-processor 后台处理) ----
+        let parentTaskId: string | null = null;
+        let enqueuedCount = 0;
+        if (segmentedUrl && plans.length > 0 && !planFailed) {
+          await sendSSE({
+            status: "processing",
+            progress: 70,
+            stage: `正在将 ${plans.length} 张营销海报加入后台队列...`,
+          });
+          parentTaskId = crypto.randomUUID();
+          const rows = plans.map((p, idx) => ({
+            parent_task_id: parentTaskId!,
+            admin_user_id: String(adminId),
+            base_image_url: segmentedUrl!,
+            ref_prompt: p.ref_prompt,
+            ru_caption: p.ru_caption,
+            text_theme: p.text_theme,
+            caption_position: p.caption_position,
+            display_order: idx,
+            status: "pending",
+          }));
+          const { error: insErr } = await supabase
+            .from("ai_image_tasks")
+            .insert(rows);
+          if (insErr) {
+            console.error("[Step E] 任务入队失败:", insErr.message);
+            // 入队失败也降级：返回文案 + 抠图，不阻断用户
+            planFailed = true;
+          } else {
+            enqueuedCount = rows.length;
+            console.log(
+              `[Step E] 已写入 ${enqueuedCount} 条单图任务，parent_task_id=${parentTaskId}`
+            );
           }
         }
 
         // ---- 汇总结果 ----
         const duration = Date.now() - startTime;
-
-        // 判断结果状态
-        const hasImages = backgroundImages.length > 0;
         const hasCopywriting =
           copywriting.title_ru && copywriting.description_ru;
 
@@ -1479,20 +1578,17 @@ serve(async (req) => {
             progress: 100,
             error: "文案生成结果不完整",
           });
-        } else if (segmentFailed && !hasImages) {
-          // 分割失败且无背景图 → partial（仅文案）
-          await sendSSE({
-            status: "processing",
-            progress: 95,
-            stage: "正在保存生成结果...",
-          });
-
+        } else if (segmentFailed) {
+          // 分割失败 → 仅文案
           await sendSSE({
             status: "partial",
             progress: 100,
             result: {
               ...copywriting,
               background_images: [],
+              marketing_images: [],
+              parent_task_id: null,
+              enqueued_images: 0,
               original_images: image_urls,
               material_guess: analysisResult.material_guess || null,
               analysis: analysisResult,
@@ -1500,20 +1596,39 @@ serve(async (req) => {
             message: "抠图失败，可使用原始图片上架",
             duration_ms: duration,
           });
-        } else {
-          // 完全成功或部分背景图成功
+        } else if (planFailed || !parentTaskId) {
+          // 规划/入队失败 → 返回文案 + 抠图原图
           await sendSSE({
-            status: "processing",
-            progress: 95,
-            stage: "正在保存生成结果...",
-          });
-
-          await sendSSE({
-            status: "done",
+            status: "partial",
             progress: 100,
             result: {
               ...copywriting,
-              background_images: backgroundImages,
+              background_images: segmentedUrl ? [segmentedUrl] : [],
+              marketing_images: [],
+              parent_task_id: null,
+              enqueued_images: 0,
+              segmented_image: segmentedUrl,
+              original_images: image_urls,
+              material_guess: analysisResult.material_guess || null,
+              analysis: analysisResult,
+            },
+            message: "海报规划或入队失败，仅返回文案和抠图原图",
+            duration_ms: duration,
+          });
+        } else {
+          // 正常分叉：SSE 立即返回，后台任务由 pg_cron/processor 逐张完成
+          await sendSSE({
+            status: "processing_images",
+            progress: 100,
+            stage: `文案已完成，${enqueuedCount} 张营销海报已加入后台队列，请等待实时推送…`,
+            result: {
+              ...copywriting,
+              // 兼容字段：先给出抠图原图，然后 Realtime 会将生成完成的海报陆续推入
+              background_images: [],
+              marketing_images: [],
+              parent_task_id: parentTaskId,
+              enqueued_images: enqueuedCount,
+              segmented_image: segmentedUrl,
               original_images: image_urls,
               material_guess: analysisResult.material_guess || null,
               analysis: analysisResult,
@@ -1523,7 +1638,7 @@ serve(async (req) => {
         }
 
         console.log(
-          `[AI Listing] 完成，耗时 ${duration}ms，背景图 ${backgroundImages.length} 张`
+          `[AI Listing] 主函数完成，耗时 ${duration}ms，规划海报 ${plans.length} 条，入队 ${enqueuedCount} 条`
         );
       } catch (error) {
         // 致命错误（Step A 或 Step B 失败）
