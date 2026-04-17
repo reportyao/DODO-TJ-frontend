@@ -16,10 +16,56 @@ import i18n from '../i18n/config'
  * 当前语言的错误提示。如果没有 error_code 或翻译缺失，
  * 则回退到 error/message 字段的原始文本。
  * 
+ * 会话过期自动登出：
+ * 当检测到 ERR_SESSION_EXPIRED / ERR_INVALID_SESSION / ERR_MISSING_SESSION
+ * 或 HTTP 401 状态码时，自动清除本地 session 并重定向到登录页。
+ * 
  * 使用方式：
  * 将 `if (error) throw error` 替换为：
  * `if (error) throw new Error(await extractEdgeFunctionError(error))`
  */
+
+// 会话相关错误码集合
+const SESSION_ERROR_CODES = new Set([
+  'ERR_SESSION_EXPIRED',
+  'ERR_INVALID_SESSION',
+  'ERR_MISSING_SESSION',
+  'ERR_MISSING_TOKEN',
+  'ERR_INVALID_TOKEN',
+])
+
+// 防止短时间内多次触发 force logout（避免并发请求同时过期时重复跳转）
+let _isForceLoggingOut = false
+
+/**
+ * 强制登出：清除本地 session 并重定向到登录页
+ * 使用防抖机制避免并发请求同时触发多次登出
+ */
+function forceLogout() {
+  if (_isForceLoggingOut) {return}
+  _isForceLoggingOut = true
+
+  console.warn('[Session] Force logout triggered: session expired or invalid')
+
+  // 清除本地存储的 session 数据
+  localStorage.removeItem('custom_session_token')
+  localStorage.removeItem('custom_user')
+  localStorage.removeItem('cached_wallets')
+
+  // 通知 UserContext 更新状态（通过自定义事件）
+  window.dispatchEvent(new CustomEvent('force-logout'))
+
+  // 延迟重定向，给 UserContext 时间处理状态更新
+  setTimeout(() => {
+    const currentPath = window.location.pathname + window.location.search
+    // 避免在登录页循环重定向
+    if (!currentPath.startsWith('/login')) {
+      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}&reason=session_expired`
+    }
+    // 重置防抖标记（延迟较长以确保页面跳转完成）
+    setTimeout(() => { _isForceLoggingOut = false }, 3000)
+  }, 100)
+}
 
 /**
  * 将 error_code 翻译为当前语言的错误提示
@@ -97,6 +143,18 @@ export async function extractEdgeFunctionError(error: unknown): Promise<string> 
     if (translated) {
       errorMessage = translated
     }
+  }
+
+  // ========================================
+  // 全局 Session 过期拦截：自动强制登出
+  // ========================================
+  // 条件1: error_code 属于会话相关错误
+  // 条件2: HTTP 状态码为 401（未授权）
+  const isSessionError = SESSION_ERROR_CODES.has(errorCode)
+  const is401 = statusCode === 401
+
+  if (isSessionError || is401) {
+    forceLogout()
   }
 
   // 自动上报到错误监控系统（异步，不阻塞业务流程）

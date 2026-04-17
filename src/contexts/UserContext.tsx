@@ -233,6 +233,23 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     checkSession();
   }, [checkSession]);
 
+  // 监听全局 force-logout 事件（由 edgeFunctionHelper 在检测到 session 过期时触发）
+  useEffect(() => {
+    const handleForceLogout = () => {
+      console.warn('[UserContext] Received force-logout event, clearing session state');
+      setUser(null);
+      setProfile(null);
+      setWallets([]);
+      setSessionToken(null);
+      // localStorage 已由 edgeFunctionHelper 清除，无需重复操作
+    };
+
+    window.addEventListener('force-logout', handleForceLogout);
+    return () => {
+      window.removeEventListener('force-logout', handleForceLogout);
+    };
+  }, []);
+
   const refreshWallets = useCallback(async () => {
     if (user) {
       await fetchWallets(user.id);

@@ -55,7 +55,10 @@
     "freeShippingAmount": "0 TJS",
     "close": "Закрыть",
     "name": "Имя",
-    "noData": "Нет данных"
+    "noData": "Нет данных",
+    "category": "Категория",
+    "items": "товаров",
+    "viewAll": "Смотреть все"
   },
   "nav": {
     "home": "Главная",
@@ -637,6 +640,7 @@
     "pleaseLogin": "Пожалуйста, войдите в систему",
     "loginSuccess": "Вход выполнен!",
     "loggedOut": "Вы вышли из системы",
+    "sessionExpired": "Ваша сессия истекла, пожалуйста, войдите снова",
     "loginFailed": "Ошибка входа",
     "phoneNumber": "Номер телефона",
     "backToLogin": "Вернуться к входу",

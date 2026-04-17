@@ -21,6 +21,14 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
+  // 如果是因会话过期被强制登出，显示提示
+  React.useEffect(() => {
+    const reason = searchParams.get('reason')
+    if (reason === 'session_expired') {
+      toast.error(t('auth.sessionExpired'))
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
 

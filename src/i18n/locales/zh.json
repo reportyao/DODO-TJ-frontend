@@ -55,7 +55,10 @@
     "freeShippingAmount": "0 TJS",
     "close": "关闭",
     "name": "姓名",
-    "noData": "暂无数据"
+    "noData": "暂无数据",
+    "category": "分类",
+    "items": "件商品",
+    "viewAll": "查看全部"
   },
   "nav": {
     "home": "首页",
@@ -637,6 +640,7 @@
     "pleaseLogin": "请登录后访问此应用",
     "loginSuccess": "登录成功！",
     "loggedOut": "已退出登录",
+    "sessionExpired": "您的登录已过期，请重新登录",
     "loginFailed": "登录失败",
     "phoneNumber": "手机号",
     "backToLogin": "返回登录",
