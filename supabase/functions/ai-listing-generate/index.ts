@@ -3,12 +3,14 @@
  *
  * 核心后端逻辑，串联 4 个外部 API 调用，通过 SSE 流式返回进度和结果。
  *
- * 执行链路 (v2.0)：
- *   Step A: 图片理解 (qwen3-vl-max)        → 分析商品图片，提取特征
- *   Step B: 三语文案生成 (qwen3-max)       → 生成俄/中/塔吉克语电商文案
+ * 执行链路 (v2.1)：
+ *   Step A: 图片理解 (VISION_MODELS 降级链: qwen3.6-plus → qwen-vl-max)
+ *   Step B: 三语文案生成 (TEXT_MODELS 降级链: qwen3.6-plus → qwen3-max → qwen-max)
  *   Step C: 商品分割 (SegmentCommodity)    → 去除背景，输出 RGBA PNG
- *   Step D: 营销海报规划 (qwen3-max)       → 生成 5-8 组 (场景 prompt + 俄文营销文案 + 主题/排版)
+ *   Step D: 营销海报规划 (TEXT_MODELS 降级链)
  *   Step E: 写入单图任务表 ai_image_tasks  → 由 ai-listing-image-processor (cron 触发) 逐张串行生成并合成俄文海报
+ *
+ * 模型降级逻辑：首选 qwen3.6-plus，额度用完/模型不可用时自动降级到备用模型
  *
  * 认证：x-admin-session-token → verify_admin_session RPC
  * 响应：SSE (text/event-stream)
@@ -25,6 +27,122 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-admin-session-token",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+// ============================================================
+// 模型配置：首选 → 降级链
+// ============================================================
+
+/**
+ * 视觉理解模型（支持图片输入）降级链：
+ *   qwen3.6-plus（最新全能旗舰）→ qwen-vl-max（Qwen2.5-VL 稳定版）
+ *
+ * 文本生成模型降级链：
+ *   qwen3.6-plus（最新全能旗舰）→ qwen3-max（Qwen3 旗舰文本）→ qwen-max（Qwen2.5 稳定版）
+ */
+const VISION_MODELS = ["qwen3.6-plus", "qwen-vl-max"] as const;
+const TEXT_MODELS   = ["qwen3.6-plus", "qwen3-max", "qwen-max"] as const;
+
+/** 运行时记录每个步骤实际使用的模型，用于写入 model_used 元数据 */
+const modelTrace: Record<string, string> = {};
+
+/**
+ * 判断错误是否属于"额度耗尽 / 模型不可用"，应触发降级
+ * - HTTP 429: 限流或额度用完
+ * - HTTP 404: 模型不存在或无权限
+ * - HTTP 403: 访问被拒
+ * - 包含 quota / rate_limit / insufficient 等关键词
+ */
+function isQuotaOrModelError(errMsg: string): boolean {
+  const lower = errMsg.toLowerCase();
+  return (
+    lower.includes("429") ||
+    lower.includes("404") ||
+    lower.includes("403") ||
+    lower.includes("quota") ||
+    lower.includes("rate_limit") ||
+    lower.includes("rate limit") ||
+    lower.includes("insufficient") ||
+    lower.includes("does not exist") ||
+    lower.includes("model_not_found") ||
+    lower.includes("access denied") ||
+    lower.includes("billing")
+  );
+}
+
+/**
+ * 带模型降级的 DashScope 文本调用
+ * 按 models 列表顺序尝试，遇到额度/模型错误自动降级到下一个
+ */
+async function callDashScopeWithFallback(
+  apiKey: string,
+  models: readonly string[],
+  messages: any[],
+  temperature: number,
+  stepName: string
+): Promise<{ content: string; modelUsed: string }> {
+  let lastError: Error | null = null;
+
+  for (const model of models) {
+    try {
+      console.log(`[${stepName}] 尝试模型: ${model}`);
+      const response = await fetch(
+        "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ model, messages, temperature }),
+        }
+      );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        const errMsg = `${model} 调用失败 (HTTP ${response.status}): ${errText}`;
+        console.warn(`[${stepName}] ${errMsg}`);
+
+        if (isQuotaOrModelError(errMsg)) {
+          lastError = new Error(errMsg);
+          console.log(`[${stepName}] 检测到额度/模型错误，降级到下一个模型...`);
+          continue; // 尝试下一个模型
+        }
+        // 非额度错误（如 500 服务端错误），直接抛出让 withRetry 处理
+        throw new Error(errMsg);
+      }
+
+      const result = await response.json();
+      const rawContent = result.choices?.[0]?.message?.content;
+      if (!rawContent) {
+        throw new Error(`${model} 返回内容为空`);
+      }
+
+      console.log(`[${stepName}] 模型 ${model} 调用成功`);
+      modelTrace[stepName] = model;
+      return { content: rawContent, modelUsed: model };
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      if (isQuotaOrModelError(errMsg)) {
+        lastError = error instanceof Error ? error : new Error(errMsg);
+        console.log(`[${stepName}] 模型 ${model} 不可用，尝试降级...`);
+        continue;
+      }
+      throw error; // 非降级错误，直接抛出
+    }
+  }
+
+  // 所有模型都失败了
+  throw lastError || new Error(`[${stepName}] 所有模型均不可用: ${models.join(", ")}`);
+}
+
+/** 构建 model_used 元数据字符串，反映实际使用的模型链 */
+function buildModelUsedTrace(): string {
+  const steps = ["StepA", "Understanding-tg", "Understanding-ru", "Understanding-zh"];
+  const parts = steps
+    .filter((s) => modelTrace[s])
+    .map((s) => `${modelTrace[s]}(${s})`);
+  return parts.join(" -> ") || "unknown";
+}
 
 // ============================================================
 // 工具函数：重试 + SSE 发送
@@ -164,7 +282,7 @@ function buildLocalizedAIUnderstanding(params: {
     semantic_facts: params.semanticFacts,
     generated_at: new Date().toISOString(),
     generated_by: "ai-listing-generate",
-    model_used: "qwen3-vl-max -> qwen3-max(tg) -> qwen3-max(ru) -> qwen3-max(zh)",
+    model_used: buildModelUsedTrace(),
     generation_mode: "semantic_facts_to_tg_ru_then_translate_zh",
     primary_market_language: "tg",
     display_priority: ["tg", "ru", "zh"] as LanguageCode[],
@@ -174,38 +292,19 @@ function buildLocalizedAIUnderstanding(params: {
 
 async function callQwenJson(
   apiKey: string,
-  model: string,
+  _model: string, // 已废弃，改用 TEXT_MODELS 降级链
   prompt: string,
-  temperature: number
+  temperature: number,
+  stepName: string = "TextGen"
 ): Promise<any> {
-  const response = await fetch(
-    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        temperature,
-      }),
-    }
+  const { content } = await callDashScopeWithFallback(
+    apiKey,
+    TEXT_MODELS,
+    [{ role: "user", content: prompt }],
+    temperature,
+    stepName
   );
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`${model} 调用失败 (HTTP ${response.status}): ${errText}`);
-  }
-
-  const result = await response.json();
-  const rawContent = result.choices?.[0]?.message?.content;
-  if (!rawContent) {
-    throw new Error(`${model} 返回内容为空`);
-  }
-
-  return parseAIJson(rawContent);
+  return parseAIJson(content);
 }
 
 function buildSemanticFactsPrompt(params: {
@@ -296,9 +395,10 @@ async function generateDirectUnderstandingByLanguage(params: {
   return normalizeSingleLanguageUnderstanding(
     await callQwenJson(
       params.apiKey,
-      "qwen3-max",
+      "_",
       buildDirectUnderstandingPrompt(params),
-      0.45
+      0.45,
+      `Understanding-${params.language}`
     )
   );
 }
@@ -337,7 +437,7 @@ ${JSON.stringify(params.ruUnderstanding, null, 2)}
 4. 只输出 JSON，不要附加说明。`;
 
   return normalizeSingleLanguageUnderstanding(
-    await callQwenJson(params.apiKey, "qwen3-max", prompt, 0.2)
+    await callQwenJson(params.apiKey, "_", prompt, 0.2, "Understanding-zh")
   );
 }
 
@@ -433,7 +533,7 @@ async function ensureLocalizedAIUnderstanding(params: {
 }
 
 // ============================================================
-// Step A: 图片理解 (qwen-vl-max)
+// Step A: 图片理解 (使用 VISION_MODELS 降级链)
 // ============================================================
 
 async function callQwenVL(
@@ -463,7 +563,7 @@ async function callQwenVL(
   "main_color": "主色调",
   "material_guess": "材质推测（如无法判断填null）",
   "key_features": ["特征1", "特征2", "特征3"],
-  "use_scenes": ["使用场景1", "使用场景2"],
+  "use_scenes": ["使用场暯1", "使用场暯2"],
   "selling_points": [
     {"zh": "中文卖点1", "detail": "补充细节"},
     {"zh": "中文卖点2", "detail": "补充细节"},
@@ -477,7 +577,7 @@ async function callQwenVL(
     "primary_pain_points": ["解决的问题1", "问题2"],
     "usage_steps": ["使用步骤或动作1", "步骤2"],
     "usage_tips": ["使用提醒或技巧1", "技巧2"],
-    "usage_scenarios": ["典型场景1", "典型场景2"],
+    "usage_scenarios": ["典型场暯1", "典型场暯2"],
     "parameter_highlights": ["用户需要知道的参数亮点1", "亮点2"],
     "local_context_signals": ["与塔吉克本地生活的真实连接点1", "连接点2"],
     "trust_signals": ["提升信任感的事实1", "事实2"],
@@ -498,38 +598,20 @@ async function callQwenVL(
 4. 请只输出 JSON，不要添加任何其他文字说明。`,
   });
 
-  const response = await fetch(
-    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "qwen3-vl-max",
-        messages: [{ role: "user", content }],
-        temperature: 0.3,
-      }),
-    }
+  // 使用 VISION_MODELS 降级链调用
+  const { content: rawContent } = await callDashScopeWithFallback(
+    apiKey,
+    VISION_MODELS,
+    [{ role: "user", content }],
+    0.3,
+    "StepA"
   );
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`qwen3-vl-max 调用失败 (HTTP ${response.status}): ${errText}`);
-  }
-
-  const result = await response.json();
-  const rawContent = result.choices?.[0]?.message?.content;
-  if (!rawContent) {
-    throw new Error("qwen3-vl-max 返回内容为空");
-  }
 
   return parseAIJson(rawContent);
 }
 
 // ============================================================
-// Step B: 三语文案生成 (qwen3-max)
+// Step B: 三语文案生成 (使用 TEXT_MODELS 降级链)
 // ============================================================
 
 async function callQwenPlus(
@@ -586,32 +668,14 @@ async function callQwenPlus(
 商品分析：${JSON.stringify(analysisJson)}
 售价：${price} сомони`;
 
-  const response = await fetch(
-    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "qwen3-max",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.5,
-      }),
-    }
+  // 使用 TEXT_MODELS 降级链调用
+  const { content: rawContent } = await callDashScopeWithFallback(
+    apiKey,
+    TEXT_MODELS,
+    [{ role: "user", content: prompt }],
+    0.5,
+    "StepB"
   );
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`qwen3-max 调用失败 (HTTP ${response.status}): ${errText}`);
-  }
-
-  const result = await response.json();
-  const rawContent = result.choices?.[0]?.message?.content;
-  if (!rawContent) {
-    throw new Error("qwen3-max 返回内容为空");
-  }
 
   return parseAIJson(rawContent);
 }
@@ -903,7 +967,7 @@ async function callSegmentCommodity(
 }
 
 // ============================================================
-// Step D: 营销海报规划 (qwen3-max)
+// Step D: 营销海报规划 (使用 TEXT_MODELS 降级链)
 //   - 为每个商品生成 5-8 组 { 场景 prompt(英文), 俄文营销文案, 主题(浅/深字), 排版(top/center/bottom) }
 //   - 英文 prompt 用于万相背景生成；俄文文案由 processor 通过 Satori 精准合成到图片上
 // ============================================================
@@ -995,32 +1059,14 @@ JSON schema to output:
   ]
 }`;
 
-  const response = await fetch(
-    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "qwen3-max",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.6,
-      }),
-    }
+  // 使用 TEXT_MODELS 降级链调用
+  const { content: rawContent } = await callDashScopeWithFallback(
+    apiKey,
+    TEXT_MODELS,
+    [{ role: "user", content: prompt }],
+    0.6,
+    "StepD"
   );
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`qwen3-max(marketing-planner) 调用失败 (HTTP ${response.status}): ${errText}`);
-  }
-
-  const result = await response.json();
-  const rawContent = result.choices?.[0]?.message?.content;
-  if (!rawContent) {
-    throw new Error("qwen3-max(marketing-planner) 返回内容为空");
-  }
 
   const parsed = parseAIJson(rawContent);
   const plans = sanitizeMarketingPlans(parsed?.posters || parsed);
