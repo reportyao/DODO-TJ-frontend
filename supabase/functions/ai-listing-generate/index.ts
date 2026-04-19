@@ -81,8 +81,12 @@ async function callDashScopeWithFallback(
   stepName: string
 ): Promise<{ content: string; modelUsed: string }> {
   let lastError: Error | null = null;
+  const requestTimeoutMs = 90000;
 
   for (const model of models) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+
     try {
       console.log(`[${stepName}] 尝试模型: ${model}`);
       const response = await fetch(
@@ -94,8 +98,10 @@ async function callDashScopeWithFallback(
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ model, messages, temperature }),
+          signal: controller.signal,
         }
       );
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errText = await response.text();
@@ -121,13 +127,19 @@ async function callDashScopeWithFallback(
       modelTrace[stepName] = model;
       return { content: rawContent, modelUsed: model };
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
+      clearTimeout(timeoutId);
+      const errMsg = error instanceof Error
+        ? (error.name === "AbortError"
+            ? `${stepName} 调用超时 (${requestTimeoutMs / 1000}s)`
+            : error.message)
+        : String(error);
+
       if (isQuotaOrModelError(errMsg)) {
         lastError = error instanceof Error ? error : new Error(errMsg);
         console.log(`[${stepName}] 模型 ${model} 不可用，尝试降级...`);
         continue;
       }
-      throw error; // 非降级错误，直接抛出
+      throw new Error(errMsg); // 非降级错误，直接抛出
     }
   }
 
@@ -1421,7 +1433,19 @@ serve(async (req) => {
     const writer = writable.getWriter();
     const encoder = new TextEncoder();
 
+    let lastProgress = 0;
+    let lastStage = "初始化中...";
+
     const sendSSE = async (data: any) => {
+      if (data?.status === "processing") {
+        if (typeof data.progress === "number") {
+          lastProgress = data.progress;
+        }
+        if (typeof data.stage === "string" && data.stage.trim()) {
+          lastStage = data.stage;
+        }
+      }
+
       try {
         await writer.write(
           encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
@@ -1431,16 +1455,57 @@ serve(async (req) => {
       }
     };
 
+    const heartbeatTimer = setInterval(() => {
+      void sendSSE({
+        status: "processing",
+        progress: lastProgress,
+        stage: lastStage,
+        heartbeat: true,
+      });
+    }, 15000);
+
+    let listingTaskId: string | null = null;
+    const updateListingTask = async (
+      status: "processing" | "processing_images" | "done" | "partial" | "error",
+      payload: Record<string, any> = {}
+    ) => {
+      if (!listingTaskId) return;
+      try {
+        await supabase
+          .from("ai_listing_generation_tasks")
+          .update({ status, ...payload })
+          .eq("id", listingTaskId);
+      } catch (persistError) {
+        console.error("[AI Listing] 持久化任务状态失败:", persistError);
+      }
+    };
+
     // 7. 异步执行 AI 链路
     (async () => {
       const startTime = Date.now();
 
       try {
+        const { data: listingTaskRow, error: listingTaskError } = await supabase
+          .from("ai_listing_generation_tasks")
+          .insert({
+            status: "processing",
+            request_payload: reqBody,
+            created_by: String(adminId),
+          })
+          .select("id")
+          .single();
+
+        listingTaskId = listingTaskRow?.id || null;
+        if (listingTaskError) {
+          console.error("[AI Listing] 创建持久化任务失败:", listingTaskError);
+        }
+
         // ---- Step A: 图片理解 ----
         await sendSSE({
           status: "processing",
           progress: 10,
           stage: "正在分析商品图片...",
+          task_id: listingTaskId,
         });
 
         const analysis = await withRetry(() =>
@@ -1499,6 +1564,7 @@ serve(async (req) => {
             status: "processing",
             progress: 45,
             stage: "正在抠除商品背景...",
+            task_id: listingTaskId,
           });
 
           try {
@@ -1549,6 +1615,7 @@ serve(async (req) => {
             status: "processing",
             progress: 55,
             stage: "正在规划俄文营销海报方案...",
+            task_id: listingTaskId,
           });
           try {
             plans = await withRetry(
@@ -1584,6 +1651,7 @@ serve(async (req) => {
             status: "processing",
             progress: 70,
             stage: `正在将 ${plans.length} 张营销海报加入后台队列...`,
+            task_id: listingTaskId,
           });
           parentTaskId = crypto.randomUUID();
           const rows = plans.map((p, idx) => ({
@@ -1619,67 +1687,91 @@ serve(async (req) => {
 
         if (!hasCopywriting) {
           // 文案缺失（不应该发生，因为 Step B 失败会抛异常）
+          await updateListingTask("error", {
+            error_message: "文案生成结果不完整",
+            completed_at: new Date().toISOString(),
+          });
           await sendSSE({
             status: "error",
             progress: 100,
             error: "文案生成结果不完整",
+            task_id: listingTaskId,
           });
         } else if (segmentFailed) {
           // 分割失败 → 仅文案
+          const partialResult = {
+            ...copywriting,
+            background_images: [],
+            marketing_images: [],
+            parent_task_id: null,
+            enqueued_images: 0,
+            original_images: image_urls,
+            material_guess: analysisResult.material_guess || null,
+            analysis: analysisResult,
+          };
+          await updateListingTask("partial", {
+            result_payload: partialResult,
+            completed_at: new Date().toISOString(),
+          });
           await sendSSE({
             status: "partial",
             progress: 100,
-            result: {
-              ...copywriting,
-              background_images: [],
-              marketing_images: [],
-              parent_task_id: null,
-              enqueued_images: 0,
-              original_images: image_urls,
-              material_guess: analysisResult.material_guess || null,
-              analysis: analysisResult,
-            },
+            result: partialResult,
             message: "抠图失败，可使用原始图片上架",
             duration_ms: duration,
+            task_id: listingTaskId,
           });
         } else if (planFailed || !parentTaskId) {
           // 规划/入队失败 → 返回文案 + 抠图原图
+          const partialResult = {
+            ...copywriting,
+            background_images: segmentedUrl ? [segmentedUrl] : [],
+            marketing_images: [],
+            parent_task_id: null,
+            enqueued_images: 0,
+            segmented_image: segmentedUrl,
+            original_images: image_urls,
+            material_guess: analysisResult.material_guess || null,
+            analysis: analysisResult,
+          };
+          await updateListingTask("partial", {
+            result_payload: partialResult,
+            completed_at: new Date().toISOString(),
+          });
           await sendSSE({
             status: "partial",
             progress: 100,
-            result: {
-              ...copywriting,
-              background_images: segmentedUrl ? [segmentedUrl] : [],
-              marketing_images: [],
-              parent_task_id: null,
-              enqueued_images: 0,
-              segmented_image: segmentedUrl,
-              original_images: image_urls,
-              material_guess: analysisResult.material_guess || null,
-              analysis: analysisResult,
-            },
+            result: partialResult,
             message: "海报规划或入队失败，仅返回文案和抠图原图",
             duration_ms: duration,
+            task_id: listingTaskId,
           });
         } else {
           // 正常分叉：SSE 立即返回，后台任务由 pg_cron/processor 逐张完成
+          const processingImagesResult = {
+            ...copywriting,
+            // 兼容字段：先给出抠图原图，然后 Realtime 会将生成完成的海报陆续推入
+            background_images: [],
+            marketing_images: [],
+            parent_task_id: parentTaskId,
+            enqueued_images: enqueuedCount,
+            segmented_image: segmentedUrl,
+            original_images: image_urls,
+            material_guess: analysisResult.material_guess || null,
+            analysis: analysisResult,
+          };
+          await updateListingTask("processing_images", {
+            result_payload: processingImagesResult,
+            error_message: null,
+            completed_at: null,
+          });
           await sendSSE({
             status: "processing_images",
             progress: 100,
             stage: `文案已完成，${enqueuedCount} 张营销海报已加入后台队列，请等待实时推送…`,
-            result: {
-              ...copywriting,
-              // 兼容字段：先给出抠图原图，然后 Realtime 会将生成完成的海报陆续推入
-              background_images: [],
-              marketing_images: [],
-              parent_task_id: parentTaskId,
-              enqueued_images: enqueuedCount,
-              segmented_image: segmentedUrl,
-              original_images: image_urls,
-              material_guess: analysisResult.material_guess || null,
-              analysis: analysisResult,
-            },
+            result: processingImagesResult,
             duration_ms: duration,
+            task_id: listingTaskId,
           });
         }
 
@@ -1687,15 +1779,21 @@ serve(async (req) => {
           `[AI Listing] 主函数完成，耗时 ${duration}ms，规划海报 ${plans.length} 条，入队 ${enqueuedCount} 条`
         );
       } catch (error) {
-        // 致命错误（Step A 或 Step B 失败）
+        // 致命错误（Step A / Step B / 任意未预期分支失败）
         const errMsg = error instanceof Error ? error.message : String(error);
         console.error("[AI Listing] 致命错误:", errMsg);
+        await updateListingTask("error", {
+          error_message: errMsg,
+          completed_at: new Date().toISOString(),
+        });
         await sendSSE({
           status: "error",
           progress: 0,
           error: errMsg,
+          task_id: listingTaskId,
         });
       } finally {
+        clearInterval(heartbeatTimer);
         try {
           await writer.close();
         } catch {
@@ -1709,8 +1807,9 @@ serve(async (req) => {
       headers: {
         ...corsHeaders,
         "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
+        "Cache-Control": "no-cache, no-transform",
         "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
       },
     });
   } catch (error) {
