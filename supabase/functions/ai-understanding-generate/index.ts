@@ -6,9 +6,8 @@
  *
  * 新版链路：
  *   1. 先基于图片/文本生成语言无关的结构化商品事实 semantic_facts
- *   2. 再分别基于 semantic_facts 直接生成塔吉克语与俄语用户文案
- *   3. 最后仅为后台运营补充中文辅助翻译
- *   4. 以多语言嵌套结构 + 事实层元数据保存到数据库
+ *   2. 一次性生成塔吉克语、俄语和中文三套文案（统一调用，减少 API 次数）
+ *   3. 以多语言嵌套结构 + 事实层元数据保存到数据库
  *
  * 请求体：
  *   {
@@ -67,7 +66,7 @@ type LocalizedAIUnderstanding = Record<AIUnderstandingField, LocalizedValue> & {
   generated_at: string;
   generated_by: string;
   model_used: string;
-  generation_mode: "semantic_facts_to_tg_ru_then_translate_zh";
+  generation_mode: "semantic_facts_to_unified_tg_ru_zh" | "semantic_facts_to_tg_ru_then_translate_zh";
   primary_market_language: "tg";
   display_priority: LanguageCode[];
   source_language: "multi";
@@ -198,7 +197,7 @@ function buildLocalizedUnderstanding(params: {
     generated_at: new Date().toISOString(),
     generated_by,
     model_used,
-    generation_mode: "semantic_facts_to_tg_ru_then_translate_zh",
+    generation_mode: "semantic_facts_to_unified_tg_ru_zh",
     primary_market_language: "tg",
     display_priority: ["tg", "ru", "zh"],
     source_language: "multi",
@@ -235,7 +234,7 @@ async function callDashscope(apiKey: string, model: string, messages: any[], tem
     const result = await response.json();
     const rawContent = result.choices?.[0]?.message?.content;
     if (!rawContent) {
-      throw new Error(`${model} 返回内容为空`);
+      throw new Error(`${model} 返回内容为空。原始响应: ${JSON.stringify(result).slice(0, 500)}`);
     }
 
     return parseAIJson(rawContent);
@@ -315,71 +314,6 @@ async function generateSemanticFacts(params: {
 
   return normalizeSemanticFacts(
     await callDashscope(apiKey, "qwen3.5-plus", [{ role: "user", content: prompt }], 0.3)
-  );
-}
-
-function buildDirectUnderstandingPrompt(params: {
-  language: "tg" | "ru";
-  semanticFacts: SemanticFacts;
-  name: string;
-  desc: string;
-  specs: string;
-  material: string;
-  price: number;
-}) {
-  const { language, semanticFacts, name, desc, specs, material, price } = params;
-  const languageName = language === "tg" ? "塔吉克语" : "俄语";
-  const extraRules = language === "tg"
-    ? `
-5. 请直接输出自然、地道、面向塔吉克普通消费者的塔吉克语，不要夹杂中文，也尽量避免俄语硬翻译腔。
-6. 语言要像本地熟人推荐商品一样易懂，不要写成官方说明书。`
-    : `
-5. 请直接输出自然、可信、适合塔吉克斯坦电商用户阅读的俄语，不要写成官样宣传稿。
-6. 语言要有人味，像懂商品的人在认真推荐。`;
-
-  return `你是一名服务于塔吉克斯坦电商平台的本地化商品文案专家。现在请基于同一份结构化商品事实，直接生成面向普通用户的${languageName}商品理解文案。
-
-【商品信息】
-- 名称：${name}
-- 描述：${desc || "未提供"}
-- 规格：${specs || "未提供"}
-- 材质：${material || "未提供"}
-- 价格：${price} сомони
-
-【结构化商品事实】
-${JSON.stringify(semanticFacts, null, 2)}
-
-请只输出以下 JSON：
-{
-  "target_people": "最适合的人群描述，要写出生活状态和使用动机",
-  "selling_angle": "像熟人推荐一样解释为什么这个东西对他好用",
-  "how_to_use": "给小白看的使用理解，可自然带出参数、场景或使用方法",
-  "best_scene": "一个最具体、最自然的使用画面",
-  "local_life_connection": "与塔吉克本地生活的真实连接点",
-  "recommended_badge": "2-4个词的短角标"
-}
-
-要求：
-1. target_people、selling_angle、how_to_use 都必须直接面向普通用户，不要写分析术语。
-2. how_to_use 不能空泛，至少自然包含一种使用步骤、参数亮点或场景细节，重点帮助第一次接触这类商品的人快速理解怎么用。
-3. best_scene 必须是具体画面，不要抽象概括。
-4. recommended_badge 要短、顺口、适合做商品角标。${extraRules}
-7. 只输出 JSON，不要附加任何说明。`;
-}
-
-async function generateDirectUnderstandingByLanguage(params: {
-  apiKey: string;
-  language: "tg" | "ru";
-  semanticFacts: SemanticFacts;
-  name: string;
-  desc: string;
-  specs: string;
-  material: string;
-  price: number;
-}) {
-  const prompt = buildDirectUnderstandingPrompt(params);
-  return normalizeSingleLanguageUnderstanding(
-    await callDashscope(params.apiKey, "qwen3.5-plus", [{ role: "user", content: prompt }], 0.45)
   );
 }
 

@@ -63,7 +63,7 @@ type LocalizedAIUnderstanding = Record<AIUnderstandingField, LocalizedValue> & {
   generated_at: string;
   generated_by: string;
   model_used: string;
-  generation_mode: "semantic_facts_to_tg_ru_then_translate_zh";
+  generation_mode: "semantic_facts_to_unified_tg_ru_zh" | "semantic_facts_to_tg_ru_then_translate_zh";
   primary_market_language: "tg";
   display_priority: LanguageCode[];
   source_language: "multi";
@@ -157,7 +157,7 @@ function buildLocalizedUnderstanding(params: {
     generated_at: new Date().toISOString(),
     generated_by,
     model_used,
-    generation_mode: "semantic_facts_to_tg_ru_then_translate_zh",
+    generation_mode: "semantic_facts_to_unified_tg_ru_zh",
     primary_market_language: "tg",
     display_priority: ["tg", "ru", "zh"],
     source_language: "multi",
@@ -230,7 +230,7 @@ async function callDashscope(apiKey: string, model: string, messages: any[], tem
     const result = await response.json();
     const rawContent = result.choices?.[0]?.message?.content;
     if (!rawContent) {
-      throw new Error(`${model} 返回内容为空`);
+      throw new Error(`${model} 返回内容为空。原始响应: ${JSON.stringify(result).slice(0, 500)}`);
     }
 
     return parseAIJson(rawContent);
