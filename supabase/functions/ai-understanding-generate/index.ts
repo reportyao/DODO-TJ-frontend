@@ -29,8 +29,11 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const DASHSCOPE_REQUEST_TIMEOUT_MS = 15000;
-const DASHSCOPE_MAX_RETRIES = 2;
+// [修复] 超时从 15s 提升到 90s，与项目中 ai-topic-generate / ai-listing-generate 保持一致
+// qwen-vl-max 处理图片 + 长 prompt、qwen3.5-plus 生成多语言长文本（含 thinking）都需要较长响应时间
+const DASHSCOPE_REQUEST_TIMEOUT_MS = 90000;
+// [修复] 重试次数从 2 提升到 3，提高可靠性
+const DASHSCOPE_MAX_RETRIES = 3;
 
 const AI_UNDERSTANDING_FIELDS = [
   "target_people",
@@ -81,6 +84,14 @@ function parseAIJson(text: string): any {
     cleaned = cleaned.slice(0, -3);
   }
   cleaned = cleaned.trim();
+
+  // [修复] 防御性处理 qwen3.5-plus thinking 模式可能返回的 <think>...</think> 标签
+  // 与 ai-understanding-batch 的 parseAIJson 保持一致
+  const thinkEnd = cleaned.indexOf("</think>");
+  if (thinkEnd !== -1) {
+    cleaned = cleaned.slice(thinkEnd + 8).trim();
+  }
+
   return JSON.parse(cleaned);
 }
 
@@ -91,8 +102,13 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = DASHSCOPE_MAX_RET
       return await fn();
     } catch (error) {
       lastError = error;
+      // [修复] 添加重试日志，便于排查间歇性失败
+      console.warn(
+        `[withRetry] 第 ${attempt + 1} 次失败，${attempt < maxRetries - 1 ? `${800 * (attempt + 1)}ms 后重试` : "已达最大重试次数"}:`,
+        error instanceof Error ? error.message : String(error)
+      );
       if (attempt < maxRetries - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+        await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
       }
     }
   }
@@ -203,6 +219,9 @@ async function callDashscope(apiKey: string, model: string, messages: any[], tem
           model,
           messages,
           temperature,
+          // 保留 thinking 模式（不设置 enable_thinking，默认为 true）
+          // qwen3.5-plus 的 thinking 模式有助于提升多语言文案的生成质量
+          // 与项目中 ai-topic-generate / ai-listing-generate 保持一致做法
         }),
       },
       DASHSCOPE_REQUEST_TIMEOUT_MS,
@@ -231,7 +250,7 @@ function buildSemanticFactsPrompt(params: {
   price: number;
 }) {
   const { name, desc, specs, material, price } = params;
-  return `你是一名面向塔吉克斯坦电商业务的商品理解专家。你的任务不是直接写营销文案，而是先抽取一份“语言无关、可复用、可审计”的结构化商品事实，为后续分别生成塔吉克语和俄语用户文案提供统一依据。
+  return `你是一名面向塔吉克斯坦电商业务的商品理解专家。你的任务不是直接写营销文案，而是先抽取一份"语言无关、可复用、可审计"的结构化商品事实，为后续分别生成塔吉克语和俄语用户文案提供统一依据。
 
 【商品信息】
 - 名称：${name}
@@ -260,8 +279,8 @@ function buildSemanticFactsPrompt(params: {
 要求：
 1. 只输出 JSON，不要附加任何说明。
 2. 这是一份中间事实层，不要写成长营销文案，不要写多语言内容。
-3. usage_steps、usage_tips、parameter_highlights 必须尽量具体，帮助第一次接触这类商品的人理解“怎么用”。
-4. local_context_signals 必须贴近塔吉克斯坦真实生活，而不是泛泛写“适合本地”。
+3. usage_steps、usage_tips、parameter_highlights 必须尽量具体，帮助第一次接触这类商品的人理解"怎么用"。
+4. local_context_signals 必须贴近塔吉克斯坦真实生活，而不是泛泛写"适合本地"。
 5. 如果信息不足，请基于图片与已有商品信息做谨慎推断，避免明显夸大。`;
 }
 
@@ -522,6 +541,8 @@ serve(async (req: Request) => {
     const price = product.original_price || 0;
     const imageUrls: string[] = product.image_urls || (product.image_url ? [product.image_url] : []);
 
+    console.log(`[ai-understanding-generate] 开始生成: ${name} (${product_id}), 图片数: ${imageUrls.length}`);
+
     const semanticFacts = await generateSemanticFacts({
       apiKey: dashscopeApiKey,
       imageUrls,
@@ -531,6 +552,8 @@ serve(async (req: Request) => {
       material,
       price,
     });
+
+    console.log(`[ai-understanding-generate] semantic_facts 生成完成，开始生成三语文案`);
 
     // [可靠性修复] 将三语文案生成从 3 次模型调用简化为 1 次，显著缩短总耗时并降低 546 网关超时风险
     const localizedUnderstanding = await generateUnifiedLocalizedUnderstanding({
@@ -542,6 +565,8 @@ serve(async (req: Request) => {
       material,
       price,
     });
+
+    console.log(`[ai-understanding-generate] 三语文案生成完成，保存到数据库`);
 
     const understandingData = buildLocalizedUnderstanding({
       tg: localizedUnderstanding.tg,
@@ -567,6 +592,8 @@ serve(async (req: Request) => {
       .from("lotteries")
       .update({ ai_understanding: understandingData })
       .eq("inventory_product_id", product_id);
+
+    console.log(`[ai-understanding-generate] 完成: ${name} (${product_id})`);
 
     return new Response(
       JSON.stringify({
