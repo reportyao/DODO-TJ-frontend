@@ -29,6 +29,9 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const DASHSCOPE_REQUEST_TIMEOUT_MS = 15000;
+const DASHSCOPE_MAX_RETRIES = 2;
+
 const AI_UNDERSTANDING_FIELDS = [
   "target_people",
   "selling_angle",
@@ -79,6 +82,36 @@ function parseAIJson(text: string): any {
   }
   cleaned = cleaned.trim();
   return JSON.parse(cleaned);
+}
+
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = DASHSCOPE_MAX_RETRIES): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`DashScope 调用超时 (${Math.round(timeoutMs / 1000)}s)`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function cleanText(value: unknown): string {
@@ -157,34 +190,37 @@ function buildLocalizedUnderstanding(params: {
 }
 
 async function callDashscope(apiKey: string, model: string, messages: any[], temperature: number) {
-  const response = await fetch(
-    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+  return await withRetry(async () => {
+    const response = await fetchWithTimeout(
+      "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature,
+        }),
       },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature,
-      }),
+      DASHSCOPE_REQUEST_TIMEOUT_MS,
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`${model} 调用失败 (HTTP ${response.status}): ${errText}`);
     }
-  );
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`${model} 调用失败 (HTTP ${response.status}): ${errText}`);
-  }
+    const result = await response.json();
+    const rawContent = result.choices?.[0]?.message?.content;
+    if (!rawContent) {
+      throw new Error(`${model} 返回内容为空`);
+    }
 
-  const result = await response.json();
-  const rawContent = result.choices?.[0]?.message?.content;
-  if (!rawContent) {
-    throw new Error(`${model} 返回内容为空`);
-  }
-
-  return parseAIJson(rawContent);
+    return parseAIJson(rawContent);
+  });
 }
 
 function buildSemanticFactsPrompt(params: {
@@ -328,42 +364,72 @@ async function generateDirectUnderstandingByLanguage(params: {
   );
 }
 
-async function generateChineseBackofficeUnderstanding(params: {
+async function generateUnifiedLocalizedUnderstanding(params: {
   apiKey: string;
   semanticFacts: SemanticFacts;
-  tgUnderstanding: Record<AIUnderstandingField, string>;
-  ruUnderstanding: Record<AIUnderstandingField, string>;
+  name: string;
+  desc: string;
+  specs: string;
+  material: string;
+  price: number;
 }) {
-  const prompt = `你是一名电商后台运营辅助翻译编辑。下面给你一份结构化商品事实，以及已经定稿的塔吉克语和俄语用户文案。请你输出一份中文版本，目标是帮助后台运营快速理解商品，不追求最强营销感，但必须忠实、清晰、可审核。
+  const prompt = `你是一名服务于塔吉克斯坦电商平台的本地化商品文案专家。现在请基于同一份结构化商品事实，一次性输出塔吉克语、俄语和中文三套商品理解文案。塔吉克语和俄语直接面向用户，中文仅用于后台运营辅助理解。
+
+【商品信息】
+- 名称：${params.name}
+- 描述：${params.desc || "未提供"}
+- 规格：${params.specs || "未提供"}
+- 材质：${params.material || "未提供"}
+- 价格：${params.price} сомони
 
 【结构化商品事实】
 ${JSON.stringify(params.semanticFacts, null, 2)}
 
-【塔吉克语用户文案】
-${JSON.stringify(params.tgUnderstanding, null, 2)}
-
-【俄语用户文案】
-${JSON.stringify(params.ruUnderstanding, null, 2)}
-
 请只输出以下 JSON：
 {
-  "target_people": "",
-  "selling_angle": "",
-  "how_to_use": "",
-  "best_scene": "",
-  "local_life_connection": "",
-  "recommended_badge": ""
+  "tg": {
+    "target_people": "",
+    "selling_angle": "",
+    "how_to_use": "",
+    "best_scene": "",
+    "local_life_connection": "",
+    "recommended_badge": ""
+  },
+  "ru": {
+    "target_people": "",
+    "selling_angle": "",
+    "how_to_use": "",
+    "best_scene": "",
+    "local_life_connection": "",
+    "recommended_badge": ""
+  },
+  "zh": {
+    "target_people": "",
+    "selling_angle": "",
+    "how_to_use": "",
+    "best_scene": "",
+    "local_life_connection": "",
+    "recommended_badge": ""
+  }
 }
 
 要求：
-1. 中文用于后台辅助理解，重在准确、通顺、易审核。
-2. how_to_use 需要保留“给小白看的使用理解”这个定位，可包含参数、场景和简单使用方法。
-3. recommended_badge 保持短小精炼。
-4. 只输出 JSON，不要附加说明。`;
+1. tg 必须是自然、地道、面向塔吉克普通消费者的塔吉克语，不要夹杂中文，也尽量避免俄语硬翻译腔。
+2. ru 必须是自然、可信、适合塔吉克斯坦电商用户阅读的俄语，不要写成官样宣传稿。
+3. zh 仅用于后台辅助理解，重在准确、通顺、易审核。
+4. target_people、selling_angle、how_to_use 都必须直接面向普通用户，不要写分析术语。
+5. how_to_use 不能空泛，至少自然包含一种使用步骤、参数亮点或场景细节，帮助第一次接触这类商品的人快速理解怎么用。
+6. best_scene 必须是具体画面，不要抽象概括。
+7. recommended_badge 要短、顺口、适合做商品角标。
+8. 只输出 JSON，不要附加说明。`;
 
-  return normalizeSingleLanguageUnderstanding(
-    await callDashscope(params.apiKey, "qwen3.5-plus", [{ role: "user", content: prompt }], 0.2)
-  );
+  const payload = await callDashscope(params.apiKey, "qwen3.5-plus", [{ role: "user", content: prompt }], 0.35);
+
+  return {
+    tg: normalizeSingleLanguageUnderstanding(payload?.tg),
+    ru: normalizeSingleLanguageUnderstanding(payload?.ru),
+    zh: normalizeSingleLanguageUnderstanding(payload?.zh),
+  };
 }
 
 serve(async (req: Request) => {
@@ -466,46 +532,26 @@ serve(async (req: Request) => {
       price,
     });
 
-    // 并行生成塔吉克语和俄语文案以减少总耗时
-    const [tgUnderstanding, ruUnderstanding] = await Promise.all([
-      generateDirectUnderstandingByLanguage({
-        apiKey: dashscopeApiKey,
-        language: "tg",
-        semanticFacts,
-        name,
-        desc,
-        specs,
-        material,
-        price,
-      }),
-      generateDirectUnderstandingByLanguage({
-        apiKey: dashscopeApiKey,
-        language: "ru",
-        semanticFacts,
-        name,
-        desc,
-        specs,
-        material,
-        price,
-      }),
-    ]);
-
-    const zhUnderstanding = await generateChineseBackofficeUnderstanding({
+    // [可靠性修复] 将三语文案生成从 3 次模型调用简化为 1 次，显著缩短总耗时并降低 546 网关超时风险
+    const localizedUnderstanding = await generateUnifiedLocalizedUnderstanding({
       apiKey: dashscopeApiKey,
       semanticFacts,
-      tgUnderstanding,
-      ruUnderstanding,
+      name,
+      desc,
+      specs,
+      material,
+      price,
     });
 
     const understandingData = buildLocalizedUnderstanding({
-      tg: tgUnderstanding,
-      ru: ruUnderstanding,
-      zh: zhUnderstanding,
+      tg: localizedUnderstanding.tg,
+      ru: localizedUnderstanding.ru,
+      zh: localizedUnderstanding.zh,
       semanticFacts,
       generated_by: "ai-understanding-generate",
       model_used: imageUrls.length > 0
-        ? "qwen-vl-max -> qwen3.5-plus(tg) -> qwen3.5-plus(ru) -> qwen3.5-plus(zh)"
-        : "qwen3.5-plus -> qwen3.5-plus(tg) -> qwen3.5-plus(ru) -> qwen3.5-plus(zh)",
+        ? "qwen-vl-max -> qwen3.5-plus(tg/ru/zh unified)"
+        : "qwen3.5-plus -> qwen3.5-plus(tg/ru/zh unified)",
     });
 
     const { error: updateError } = await supabase
