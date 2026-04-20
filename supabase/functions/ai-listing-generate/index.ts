@@ -1496,8 +1496,10 @@ serve(async (req) => {
           .single();
 
         listingTaskId = listingTaskRow?.id || null;
-        if (listingTaskError) {
-          console.error("[AI Listing] 创建持久化任务失败:", listingTaskError);
+        if (listingTaskError || !listingTaskId) {
+          throw new Error(
+            `创建 AI 上架持久化任务失败: ${listingTaskError?.message || "未返回任务 ID"}`
+          );
         }
 
         // ---- Step A: 图片理解 ----
@@ -1653,7 +1655,9 @@ serve(async (req) => {
             stage: `正在将 ${plans.length} 张营销海报加入后台队列...`,
             task_id: listingTaskId,
           });
-          parentTaskId = crypto.randomUUID();
+          // 直接复用主任务 ID 作为 parent_task_id，避免前台与后台维护两套任务主键。
+          // 这样图片处理器可以天然回写 ai_listing_generation_tasks，前端也只需轮询一张主表。
+          parentTaskId = listingTaskId;
           const rows = plans.map((p, idx) => ({
             parent_task_id: parentTaskId!,
             admin_user_id: String(adminId),

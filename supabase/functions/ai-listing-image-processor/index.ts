@@ -96,6 +96,85 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+async function syncParentListingTask(supabase: any, parentTaskId: string): Promise<void> {
+  const { data: parentTask, error: parentErr } = await supabase
+    .from("ai_listing_generation_tasks")
+    .select("id, result_payload, error_message")
+    .eq("id", parentTaskId)
+    .maybeSingle();
+
+  if (parentErr) {
+    console.error(`[processor] 读取主任务失败 ${parentTaskId}:`, parentErr.message);
+    return;
+  }
+  if (!parentTask) {
+    // 兼容旧数据：早期 parent_task_id 不是主任务 id，此时跳过聚合回写。
+    return;
+  }
+
+  const { data: childTasks, error: childErr } = await supabase
+    .from("ai_image_tasks")
+    .select("id, marketing_image_url, ru_caption, display_order, status, error_message")
+    .eq("parent_task_id", parentTaskId)
+    .order("display_order", { ascending: true });
+
+  if (childErr) {
+    console.error(`[processor] 读取子任务失败 ${parentTaskId}:`, childErr.message);
+    return;
+  }
+
+  const marketingImages = (childTasks || []).map((row: any) => ({
+    id: row.id,
+    url: row.marketing_image_url || "",
+    ru_caption: row.ru_caption || undefined,
+    display_order: row.display_order ?? 0,
+    status: row.status,
+  }));
+
+  const totalCount = marketingImages.length;
+  const completedCount = marketingImages.filter((img: any) => img.status === "completed").length;
+  const failedCount = marketingImages.filter((img: any) => img.status === "failed").length;
+  const terminalCount = marketingImages.filter(
+    (img: any) => img.status === "completed" || img.status === "failed"
+  ).length;
+  const allDone = totalCount > 0 && terminalCount >= totalCount;
+
+  const nextStatus = allDone
+    ? (completedCount > 0 ? "done" : "partial")
+    : "processing_images";
+
+  const nextResultPayload = {
+    ...(parentTask.result_payload || {}),
+    parent_task_id: parentTaskId,
+    enqueued_images: totalCount,
+    marketing_images,
+  };
+
+  const nextErrorMessage = allDone
+    ? (completedCount > 0
+        ? (failedCount > 0 ? `其中 ${failedCount} 张营销海报生成失败` : null)
+        : ((childTasks || [])
+            .map((row: any) => row.error_message)
+            .filter(Boolean)
+            .join("；")
+            .slice(0, 500) || "营销海报全部生成失败"))
+    : null;
+
+  const { error: updErr } = await supabase
+    .from("ai_listing_generation_tasks")
+    .update({
+      status: nextStatus,
+      result_payload: nextResultPayload,
+      error_message: nextErrorMessage,
+      completed_at: allDone ? new Date().toISOString() : null,
+    })
+    .eq("id", parentTaskId);
+
+  if (updErr) {
+    console.error(`[processor] 回写主任务失败 ${parentTaskId}:`, updErr.message);
+  }
+}
+
 // ============================================================
 // Step 1: 原子认领一行 pending 任务
 //   使用 CTE + SKIP LOCKED 保证并发安全
@@ -497,6 +576,8 @@ async function processOne(supabase: any, dashApiKey: string): Promise<{
       })
       .eq("id", task.id);
 
+    await syncParentListingTask(supabase, task.parent_task_id);
+
     console.log(
       `[processor] 任务 ${task.id} 完成，耗时 ${Date.now() - t0}ms`
     );
@@ -512,6 +593,7 @@ async function processOne(supabase: any, dashApiKey: string): Promise<{
         error_message: errMsg.slice(0, 500),
       })
       .eq("id", task.id);
+    await syncParentListingTask(supabase, task.parent_task_id);
     return { processed: true, task_id: task.id, error: errMsg };
   }
 }
