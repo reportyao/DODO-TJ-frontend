@@ -77,7 +77,7 @@ const MarketCreatePage: React.FC = () => {
         ticket_numbers: prize.winning_code || '',
         purchase_price: prize.lottery?.ticket_price || prize.prize_value || 0,
         currency: 'TJS',
-        draw_time: prize.lottery?.end_time || new Date().toISOString(),
+        draw_time: prize.lottery?.draw_time || new Date().toISOString(),
         status: 'ACTIVE',
       }));
 

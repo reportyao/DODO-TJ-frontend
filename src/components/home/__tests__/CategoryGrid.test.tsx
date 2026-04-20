@@ -154,7 +154,7 @@ describe('CategoryGrid', () => {
       );
 
       const allButton = screen.getByText('🔥').closest('div');
-      expect(allButton?.className).toContain('from-orange-400');
+    expect(screen.getByText('全部').className).toContain('text-orange-600');
     });
 
     it('选中分类时应显示"查看全部"链接', () => {

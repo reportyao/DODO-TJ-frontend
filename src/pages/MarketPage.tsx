@@ -82,7 +82,7 @@ interface MarketListing {
         currency: 'TJS',
         discount_percentage: item.original_price > 0 ? Math.round((1 - item.resale_price / item.original_price) * 100) : 0,
         status: item.status === 'ACTIVE' ? 'AVAILABLE' : item.status === 'SOLD' ? 'SOLD' : 'CANCELLED',
-        draw_time: item.lotteries?.end_time || item.lotteries?.draw_time || new Date().toISOString(),
+        draw_time: item.lotteries?.draw_time || new Date().toISOString(),
         created_at: item.created_at,
       }));
 

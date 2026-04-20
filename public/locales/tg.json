@@ -55,7 +55,10 @@
     "freeShippingAmount": "0 TJS",
     "close": "Пӯшидан",
     "name": "Ном",
-    "noData": "Маълумот нест"
+    "noData": "Маълумот нест",
+    "category": "Гурӯҳ",
+    "items": "молҳо",
+    "viewAll": "Ҳамаро дидан"
   },
   "nav": {
     "home": "Асосӣ",
@@ -248,6 +251,7 @@
     "statusSoldOut": "Фурӯхта шуд",
     "statusDrawn": "Қуръа кашида шуд",
     "statusCancelled": "Бекор карда шуд",
+    "statusExpired": "Мӯҳлат гузашт",
     "ticketUnit": "дона",
     "unknownProduct": "Маҳсулоти номаълум",
     "howToPlay": "Қоидаҳои фаъолият",
@@ -636,6 +640,7 @@
     "pleaseLogin": "Лутфан, ба система ворид шавед",
     "loginSuccess": "Воридшавӣ муваффақ!",
     "loggedOut": "Шумо аз система баромадед",
+    "sessionExpired": "Вақти сессияи шумо гузашт, лутфан дубора ворид шавед",
     "loginFailed": "Хатои вуруд",
     "phoneNumber": "Рақами телефон",
     "backToLogin": "Бозгашт ба вуруд",
@@ -1311,7 +1316,7 @@
     "pickupVerifiedTitle": "Маҳсулот гирифта шуд",
     "pickupVerifiedContent": "{{product}} бо муваффақият гирифта шуд",
     "lotteryWinTitle": "🎉 Шумо ғолиб шудед!",
-    "lotteryWinPrizeContent": "Табрик! Шумо дар лотерея {{product}}-ро бурдед!"
+    "lotteryWinPrizeContent": "Табрик! Шумо дар товаря {{product}}-ро бурдед!"
   },
   "cities": {
     "dushanbe": "Душанбе",

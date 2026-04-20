@@ -41,7 +41,7 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
   className
 }) => {
 	  const { t, i18n } = useTranslation()
-  // 卖罄后显示处理倒计时，否则仅在 end_time 存在时显示活动倒计时
+  // 卖罄后显示处理倒计时，否则不显示活动倒计时
   const [timeRemaining, setTimeRemaining] = useState(() => getTimeRemaining(getLotteryCountdownTarget(lottery)));
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [lottery.end_time, lottery.draw_time, lottery.status]);
+  }, [lottery.draw_time, lottery.status]);
 
   const progress = ((lottery.sold_tickets || 0) / (lottery.total_tickets || 1)) * 100
   const isActive = isLotteryPurchasable(lottery)

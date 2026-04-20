@@ -601,7 +601,6 @@ export type Database = {
       banners: {
         Row: {
           created_at: string | null
-          end_time: string | null
           id: string
           image_url: string
           image_url_ru: string | null
@@ -619,7 +618,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          end_time?: string | null
           id?: string
           image_url: string
           image_url_ru?: string | null
@@ -637,7 +635,6 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
-          end_time?: string | null
           id?: string
           image_url?: string
           image_url_ru?: string | null
@@ -2215,7 +2212,6 @@ export type Database = {
           created_at: string | null
           current_participants: number | null
           drawn_at: string | null
-          end_time: string | null
           expires_at: string | null
           group_size: number | null
           id: string
@@ -2236,7 +2232,6 @@ export type Database = {
           created_at?: string | null
           current_participants?: number | null
           drawn_at?: string | null
-          end_time?: string | null
           expires_at?: string | null
           group_size?: number | null
           id?: string
@@ -2257,7 +2252,6 @@ export type Database = {
           created_at?: string | null
           current_participants?: number | null
           drawn_at?: string | null
-          end_time?: string | null
           expires_at?: string | null
           group_size?: number | null
           id?: string
@@ -2288,7 +2282,6 @@ export type Database = {
           created_at: string | null
           current_participants: number | null
           drawn_at: string | null
-          end_time: string | null
           id: string
           product_id: string | null
           start_time: string | null
@@ -2299,7 +2292,6 @@ export type Database = {
           created_at?: string | null
           current_participants?: number | null
           drawn_at?: string | null
-          end_time?: string | null
           id: string
           product_id?: string | null
           start_time?: string | null
@@ -2310,7 +2302,6 @@ export type Database = {
           created_at?: string | null
           current_participants?: number | null
           drawn_at?: string | null
-          end_time?: string | null
           id?: string
           product_id?: string | null
           start_time?: string | null
@@ -2404,7 +2395,6 @@ export type Database = {
           cover_image_zh: string | null
           created_at: string
           created_by: string | null
-          end_time: string | null
           id: string
           intro_i18n: Json | null
           is_active: boolean
@@ -2431,7 +2421,6 @@ export type Database = {
           cover_image_zh?: string | null
           created_at?: string
           created_by?: string | null
-          end_time?: string | null
           id?: string
           intro_i18n?: Json | null
           is_active?: boolean
@@ -2458,7 +2447,6 @@ export type Database = {
           cover_image_zh?: string | null
           created_at?: string
           created_by?: string | null
-          end_time?: string | null
           id?: string
           intro_i18n?: Json | null
           is_active?: boolean
@@ -2753,7 +2741,6 @@ export type Database = {
           draw_algorithm_data: Json | null
           draw_time: string | null
           drawn_at: string | null
-          end_time: string | null
           full_purchase_enabled: boolean | null
           full_purchase_price: number | null
           id: string
@@ -2796,7 +2783,6 @@ export type Database = {
           draw_algorithm_data?: Json | null
           draw_time?: string | null
           drawn_at?: string | null
-          end_time?: string | null
           full_purchase_enabled?: boolean | null
           full_purchase_price?: number | null
           id?: string
@@ -2839,7 +2825,6 @@ export type Database = {
           draw_algorithm_data?: Json | null
           draw_time?: string | null
           drawn_at?: string | null
-          end_time?: string | null
           full_purchase_enabled?: boolean | null
           full_purchase_price?: number | null
           id?: string
@@ -5313,7 +5298,6 @@ export type Database = {
           cover_image_tg: string | null
           cover_image_zh: string | null
           created_at: string
-          end_time: string | null
           feed_position: number
           id: string
           is_active: boolean
@@ -5332,7 +5316,6 @@ export type Database = {
           cover_image_tg?: string | null
           cover_image_zh?: string | null
           created_at?: string
-          end_time?: string | null
           feed_position?: number
           id?: string
           is_active?: boolean
@@ -5351,7 +5334,6 @@ export type Database = {
           cover_image_tg?: string | null
           cover_image_zh?: string | null
           created_at?: string
-          end_time?: string | null
           feed_position?: number
           id?: string
           is_active?: boolean

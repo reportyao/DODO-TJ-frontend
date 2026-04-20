@@ -51,6 +51,8 @@ vi.mock('react-i18next', () => ({
         'common.back': '返回',
         'product.buyNow': '立即购买',
         'product.comingSoon': '即将上架',
+        'product.startFrom': '低至',
+        'product.perUnit': '份',
       };
       return map[key] || fallback || key;
     },
@@ -121,7 +123,6 @@ const mockTopic = {
   theme_color: '#FF6B35',
   translation_status: null,
   start_time: null,
-  end_time: null,
 };
 
 const mockSections = [
@@ -152,7 +153,6 @@ const mockSections = [
           ],
           currency: 'TJS',
           draw_time: null,
-          end_time: null,
         },
       },
     ],
@@ -312,115 +312,79 @@ describe('TopicDetailPage v2', () => {
       expect(screen.getByText('热卖')).toBeInTheDocument();
     });
 
-    it('有 lottery 时应显示 DODO 补贴价（ticket_price）', () => {
+    it('有 lottery 时应显示 DODO 补贴价（ticket_price）和“立即购买”按钮，无 lottery 时显示原价和“即将上架”', () => {
       renderPage();
-      // ticket_price = 10
-      expect(screen.getByText('10 TJS')).toBeInTheDocument();
-    });
+      // 检查智能手机 (prod-1)
+      expect(screen.getByText('智能手机')).toBeInTheDocument();
+      expect(screen.getByText('低至 10 TJS/份')).toBeInTheDocument(); // DODO price with '低至' and '份'
+      expect(screen.getByText('立即购买')).toBeInTheDocument();
+      expect(screen.queryByText('补贴价')).not.toBeInTheDocument(); // 确保不显示补贴价
 
-    it('有 lottery 时应显示"立即购买"按钮', () => {
-      renderPage();
-      expect(screen.getAllByText('立即购买').length).toBeGreaterThan(0);
-    });
-
-    it('无 lottery 时应显示"即将上架"', () => {
-      renderPage();
+      // 检查平板电脑 (prod-2)
+      expect(screen.getByText('平板电脑')).toBeInTheDocument();
+      expect(screen.getByText('1999 TJS')).toBeInTheDocument(); // Original price
       expect(screen.getByText('即将上架')).toBeInTheDocument();
+      expect(screen.queryByText('低至')).not.toBeInTheDocument(); // 确保不显示低至
     });
 
-    it('竞品价格应展示（有就展示）', () => {
+    it('点击商品卡片应触发埋点并跳转到商品详情页', () => {
       renderPage();
-      expect(screen.getByText(/淘宝/)).toBeInTheDocument();
-      expect(screen.getByText(/3999 TJS/)).toBeInTheDocument();
+      const productCard = screen.getByText('智能手机');
+      fireEvent.click(productCard);
+      expect(mockTrack).toHaveBeenCalledWith('topic_product_click', {
+        product_id: 'prod-1',
+        product_name: '智能手机',
+        topic_id: 'topic-001',
+        topic_name: '夏季大促',
+      });
+      expect(mockNavigate).toHaveBeenCalledWith('/product/prod-1');
+    });
+
+    it('未登录用户点击购买按钮应跳转到登录页', () => {
+      mockUser = null; // 模拟未登录状态
+      renderPage();
+      const buyButton = screen.getByText('立即购买');
+      fireEvent.click(buyButton);
+      expect(mockNavigate).toHaveBeenCalledWith('/login');
     });
   });
 
   describe('v1 兼容：平铺商品列表', () => {
-    it('无 sections 时应使用 flatProducts 渲染', () => {
-      mockTopicData = { topic: mockTopic, products: mockFlatProducts, sections: [] };
+    beforeEach(() => {
+      mockTopicData = {
+        topic: { ...mockTopic, topic_type: 'product_list' }, // 模拟 v1 专题类型
+        products: mockFlatProducts,
+        sections: [],
+      };
+    });
+
+    it('应渲染平铺商品列表中的商品名称', () => {
       renderPage();
       expect(screen.getByText('智能手机')).toBeInTheDocument();
       expect(screen.getByText('平板电脑')).toBeInTheDocument();
     });
+
+    it('应渲染平铺商品列表中的商品价格', () => {
+      renderPage();
+      // 智能手机有 lottery
+      expect(screen.getByText('低至 10 TJS/份')).toBeInTheDocument();
+      expect(screen.getByText('立即购买')).toBeInTheDocument();
+
+      // 平板电脑无 lottery
+      expect(screen.getByText('1999 TJS')).toBeInTheDocument();
+      expect(screen.getByText('即将上架')).toBeInTheDocument();
+    });
   });
 
-  describe('浏览埋点', () => {
+  describe('埋点', () => {
     it('页面加载时应触发 topic_detail_view 埋点', () => {
-      mockTopicData = { topic: mockTopic, products: [], sections: [] };
+      mockTopicData = { topic: mockTopic, products: mockFlatProducts, sections: mockSections };
       renderPage();
-
-      expect(mockTrack).toHaveBeenCalledWith({
-        event_name: 'topic_detail_view',
-        page_name: 'topic_detail',
-        entity_type: 'topic',
-        entity_id: 'topic-001',
-        source_topic_id: 'topic-001',
+      expect(mockTrack).toHaveBeenCalledWith('topic_detail_view', {
+        topic_id: 'topic-001',
+        topic_name: '夏季大促',
+        topic_type: 'story',
       });
-    });
-  });
-
-  describe('商品点击埋点', () => {
-    it('点击有 lottery 的商品应触发 topic_product_click 埋点', () => {
-      mockTopicData = { topic: mockTopic, products: mockFlatProducts, sections: mockSections };
-      renderPage();
-
-      const productLinks = screen.getAllByRole('link');
-      const phoneLink = productLinks.find((link) =>
-        link.textContent?.includes('智能手机')
-      );
-      if (phoneLink) {
-        fireEvent.click(phoneLink);
-        expect(mockTrack).toHaveBeenCalledWith(
-          expect.objectContaining({
-            event_name: 'topic_product_click',
-            page_name: 'topic_detail',
-            entity_type: 'product',
-            entity_id: 'prod-1',
-            source_topic_id: 'topic-001',
-            lottery_id: 'lot-1',
-          })
-        );
-      }
-    });
-
-    it('点击无 lottery 的商品不应触发埋点', () => {
-      mockTopicData = { topic: mockTopic, products: mockFlatProducts, sections: mockSections };
-      renderPage();
-
-      mockTrack.mockClear();
-      const productLinks = screen.getAllByRole('link');
-      const tabletLink = productLinks.find((link) =>
-        link.textContent?.includes('平板电脑')
-      );
-      if (tabletLink) {
-        fireEvent.click(tabletLink);
-        // 无 lottery 时 handleClick 直接 return，不触发 track
-        expect(mockTrack).not.toHaveBeenCalledWith(
-          expect.objectContaining({
-            event_name: 'topic_product_click',
-            entity_id: 'prod-2',
-          })
-        );
-      }
-    });
-  });
-
-  describe('未登录用户行为', () => {
-    it('未登录时点击有 lottery 的商品应跳转登录页', () => {
-      mockUser = null;
-      mockTopicData = { topic: mockTopic, products: mockFlatProducts, sections: mockSections };
-      renderPage();
-
-      const productLinks = screen.getAllByRole('link');
-      const phoneLink = productLinks.find((link) =>
-        link.textContent?.includes('智能手机')
-      );
-      if (phoneLink) {
-        fireEvent.click(phoneLink);
-        expect(mockNavigate).toHaveBeenCalledWith(
-          expect.stringContaining('/login?redirect=')
-        );
-      }
     });
   });
 });

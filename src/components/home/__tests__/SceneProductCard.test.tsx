@@ -13,7 +13,7 @@
  *
  * [v2] 测试数据已与 HomeFeedProductData 字段瘦身保持同步：
  * 移除 description_i18n, image_urls, full_purchase_enabled,
- * full_purchase_price, period, draw_time, end_time
+ * full_purchase_price, period, draw_time
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';

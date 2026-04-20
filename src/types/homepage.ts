@@ -172,7 +172,6 @@ export interface DbHomepageTopicRow {
   source_type: TopicSourceType;
   translation_status: TranslationStatus | null;
   start_time: string | null;
-  end_time: string | null;
   is_active: boolean;
   created_by: string | null;
   updated_by: string | null;
@@ -201,7 +200,6 @@ export interface DbHomepageTopicInsert {
   source_type?: TopicSourceType;
   translation_status?: TranslationStatus | null;
   start_time?: string | null;
-  end_time?: string | null;
   is_active?: boolean;
   created_by?: string | null;
   updated_by?: string | null;
@@ -227,7 +225,6 @@ export interface DbHomepageTopicUpdate {
   source_type?: TopicSourceType;
   translation_status?: TranslationStatus | null;
   start_time?: string | null;
-  end_time?: string | null;
   is_active?: boolean;
   updated_by?: string | null;
 }
@@ -281,8 +278,6 @@ export interface DbTopicPlacementRow {
   feed_position: number;
   sort_order: number;
   is_active: boolean;
-  start_time: string | null;
-  end_time: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -301,7 +296,6 @@ export interface DbTopicPlacementInsert {
   sort_order?: number;
   is_active?: boolean;
   start_time?: string | null;
-  end_time?: string | null;
 }
 
 export interface DbTopicPlacementUpdate {
@@ -317,7 +311,6 @@ export interface DbTopicPlacementUpdate {
   sort_order?: number;
   is_active?: boolean;
   start_time?: string | null;
-  end_time?: string | null;
 }
 
 // ============================================================================
@@ -501,7 +494,7 @@ export interface HomeFeedItem {
 /**
  * [v2] Product 类型：首屏字段瘦身
  * 移除：description_i18n, image_urls, full_purchase_enabled,
- *       full_purchase_price, period, draw_time, end_time
+ *       full_purchase_price, period, draw_time
  * 这些字段仅在详情页使用，首屏卡片不需要
  */
 export interface HomeFeedProductData {
@@ -571,7 +564,7 @@ export interface TopicDetail {
   card_style: string | null;
   translation_status: TranslationStatus | null;
   start_time: string | null;
-  end_time: string | null;
+
 }
 
 export interface TopicProductItem {
@@ -598,8 +591,8 @@ export interface TopicProductItem {
     full_purchase_price: number | null;
     price_comparisons: PriceComparison[];
     currency: string;
-    draw_time: string | null;
-    end_time: string | null;
+   
+  
   } | null;
 }
 

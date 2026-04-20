@@ -8,7 +8,7 @@
  * - useTopicDetail: 专题详情获取
  *
  * [v2] 测试数据已与 RPC 字段瘦身保持同步：
- * - Banner: 新增 image_url_zh/ru/tg, link_type；移除 start_time, end_time
+ * - Banner: 新增 image_url_zh/ru/tg, link_type；移除 start_time
  * - Category: 移除 icon_key, color_token, is_active
  * - Product: 移除 description_i18n, image_urls, full_purchase_enabled, full_purchase_price
  */

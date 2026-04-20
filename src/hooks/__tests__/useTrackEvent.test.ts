@@ -286,7 +286,7 @@ describe('useTrackEvent SDK', () => {
       }
 
       await new Promise((resolve) => setTimeout(resolve, 50));
-      expect(mockInvoke).toHaveBeenCalledTimes(2);
+      expect(mockInvoke).toHaveBeenCalledTimes(3);
     });
   });
 

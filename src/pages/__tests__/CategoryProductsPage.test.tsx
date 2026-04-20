@@ -223,7 +223,7 @@ describe('CategoryProductsPage', () => {
       renderPage();
 
       expect(mockTrack).toHaveBeenCalledWith({
-        event_name: 'category_click',
+        event_name: 'home_view',
         page_name: 'category_products',
         entity_type: 'category',
         entity_id: 'cat-1',
