@@ -91,6 +91,7 @@
     "lotteryProducts": "商城商品",
     "freeShippingLine1": "中国直邮",
     "freeShippingLine2": "全场0运费",
+    "freeShippingShort": "中国直发 · 0运费",
     "topic": "专题",
     "viewDetails": "查看详情",
     "goSee": "去看看"
@@ -1869,10 +1870,12 @@
     "slow": "当前网络较慢，加载可能需要更长时间"
   },
   "product": {
-    "startFrom": "福气购买，最低",
-    "perUnit": "TJS可以购买",
-    "luckyBuy": "福气购买",
-    "minPrice": "最低1TJS可以购买"
+    "startFrom": "低至",
+    "perUnit": "份",
+    "luckyBuy": "幸运购",
+    "luckyBuyCompact": "幸运购",
+    "fromPriceShort": "起",
+    "minPrice": "1元起购"
   },
   "seo": {
     "title": "DODO - 充值送50%TJS",

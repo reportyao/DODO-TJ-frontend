@@ -1,17 +1,19 @@
 /**
  * 场景化商品卡片
  *
- * 在首页 Feed 流中展示单个商品，带曝光追踪。
- * 复用现有 ProductList 的卡片视觉样式（上图下文、双列网格），
- * 但增加了曝光埋点和来源追踪能力。
- *
- * [v2 修复]
- * - 移除对 description_i18n 的回退引用（字段已从首页 feed 瘦身移除）
- * - 补充 product_card_click 点击埋点
- * - 修复未登录用户点击商品时 navigate 的 redirect 参数编码
+ * 优化目标：
+ * - 标题拥有更高优先级，适应俄语/塔吉克语长文案
+ * - 价格仍清晰，但不再压过商品识别信息
+ * - 辅助信息更轻、更结构化，降低双列卡片噪音
  */
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useUser } from '../../contexts/UserContext';
+import { getLocalizedText } from '../../lib/utils';
+import { LazyImage } from '../LazyImage';
+import { useExposureTracker, useTrackEvent } from '../../hooks/useTrackEvent';
+import type { HomeFeedProductData } from '../../types/homepage';
 
 let lotteryDetailPagePreloadPromise: Promise<unknown> | null = null;
 
@@ -29,12 +31,21 @@ function preloadLotteryDetailPage() {
   });
 }
 
-import { useTranslation } from 'react-i18next';
-import { useUser } from '../../contexts/UserContext';
-import { formatCurrency, getLocalizedText } from '../../lib/utils';
-import { LazyImage } from '../LazyImage';
-import { useExposureTracker, useTrackEvent } from '../../hooks/useTrackEvent';
-import type { HomeFeedProductData } from '../../types/homepage';
+function getLocale(language: string): string {
+  if (language.startsWith('ru')) {return 'ru-RU';}
+  if (language.startsWith('tg')) {return 'tg-TJ';}
+  return 'zh-CN';
+}
+
+function formatCompactAmount(amount: number | undefined | null, language: string): string {
+  const safeAmount = typeof amount === 'number' ? amount : 0;
+  const hasFraction = Math.abs(safeAmount % 1) > 0.001;
+
+  return new Intl.NumberFormat(getLocale(language), {
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: hasFraction ? 2 : 0,
+  }).format(safeAmount);
+}
 
 interface SceneProductCardProps {
   product: HomeFeedProductData;
@@ -52,17 +63,11 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = React.memo(({
   const navigate = useNavigate();
   const { track } = useTrackEvent();
 
-  /**
-   * [v2 修复] 标题获取
-   * 原实现回退到 description_i18n，但该字段已从首页 feed 瘦身移除。
-   * 现在只使用 title_i18n，避免 undefined 回退导致空标题。
-   */
   const title = getLocalizedText(
     product.title_i18n as Record<string, string>,
     i18n.language
   ) || '';
 
-  // 曝光追踪
   const exposureRef = useExposureTracker({
     event_name: 'product_card_expose',
     page_name: 'home',
@@ -74,16 +79,14 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = React.memo(({
     source_category_id: sourceCategoryId,
   });
 
-  // 竞品最高价
   const competitorPrice = product.price_comparisons?.length
     ? Math.max(...(product.price_comparisons as { price: number }[]).map((pc) => pc.price))
     : null;
-  const savingsPercent =
-    competitorPrice && competitorPrice > product.original_price
-      ? Math.round((1 - product.original_price / competitorPrice) * 100)
-      : 0;
+  const competitorPlatform = (product.price_comparisons as { platform?: string }[] | undefined)?.[0]?.platform || '';
+  const savingsPercent = competitorPrice && competitorPrice > product.original_price
+    ? Math.round((1 - product.original_price / competitorPrice) * 100)
+    : 0;
 
-  // 构建带归因参数的链接
   const buildLotteryLink = () => {
     const params = new URLSearchParams();
     params.set('src_page', 'home');
@@ -99,7 +102,6 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = React.memo(({
   const handleClick = (e: React.MouseEvent) => {
     handlePrefetch();
 
-    // 上报点击事件
     track({
       event_name: 'product_card_click',
       page_name: 'home',
@@ -119,6 +121,13 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = React.memo(({
 
   const imageUrl = product.image_url || '';
   const imagePriority = position < 4 ? 'high' : 'low';
+  const currency = product.currency || 'TJS';
+  const originalPriceText = formatCompactAmount(product.original_price, i18n.language);
+  const competitorPriceText = competitorPrice ? formatCompactAmount(competitorPrice, i18n.language) : '';
+  const ticketPriceText = formatCompactAmount(product.ticket_price, i18n.language);
+  const progressPercent = product.total_tickets > 0
+    ? Math.min((product.sold_tickets / product.total_tickets) * 100, 100)
+    : 0;
 
   return (
     <div ref={exposureRef}>
@@ -128,21 +137,19 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = React.memo(({
         onMouseEnter={handlePrefetch}
         onTouchStart={handlePrefetch}
         onFocus={handlePrefetch}
-        className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow relative block"
+        className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow relative block"
       >
-        {/* 节省百分比角标 */}
         {savingsPercent > 0 && (
-          <div className="absolute top-2 left-2 z-10 bg-gradient-to-r from-red-500 to-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+          <div className="absolute top-2 left-2 z-10 bg-gradient-to-r from-rose-500 to-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
             -{savingsPercent}%
           </div>
         )}
 
-        {/* 商品图片 - 1:1 比例容器 */}
         <div
           style={{
             paddingBottom: '100%',
             position: 'relative',
-            backgroundColor: '#f3f4f6',
+            backgroundColor: '#f5f5f4',
             overflow: 'hidden',
           }}
         >
@@ -161,61 +168,57 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = React.memo(({
           />
         </div>
 
-        {/* 商品信息 */}
-        <div className="p-3">
-          <h3
-            className="text-sm font-medium text-gray-800 line-clamp-2 leading-tight mb-2"
-            style={{ minHeight: '2.5rem' }}
-          >
+        <div className="p-3.5">
+          <h3 className="text-[15px] font-semibold text-slate-800 line-clamp-3 leading-snug min-h-[3.9rem]">
             {title}
           </h3>
 
-          {/* 价格区域 */}
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-lg font-bold text-red-500">
-              {formatCurrency(product.currency || 'TJS', product.original_price)}
-            </span>
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-50 text-red-500 border border-red-100 whitespace-nowrap">
-              {t('subsidyPool.subsidyPrice')}
+          <div className="mt-2 flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex items-end gap-1.5 leading-none">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  {currency}
+                </span>
+                <span className="text-[22px] font-bold text-slate-900 tracking-tight">
+                  {originalPriceText}
+                </span>
+              </div>
+
+              {competitorPrice && competitorPrice > product.original_price && (
+                <div className="mt-1 flex items-center gap-1.5 min-w-0 text-[11px] text-slate-400">
+                  <span className="line-through whitespace-nowrap">
+                    {currency} {competitorPriceText}
+                  </span>
+                  {competitorPlatform && <span className="truncate">· {competitorPlatform}</span>}
+                </div>
+              )}
+            </div>
+
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-600 border border-rose-100 whitespace-nowrap flex-shrink-0">
+              {t('subsidyPool.subsidyTag')}
             </span>
           </div>
 
-          {/* 竞品价格划线对比 */}
-          {competitorPrice && competitorPrice > product.original_price && (
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="text-[11px] text-gray-400 line-through">
-                {formatCurrency(product.currency || 'TJS', competitorPrice)}
-              </span>
-              <span className="text-[10px] text-gray-400">
-                {(product.price_comparisons as { platform?: string }[])?.[0]?.platform || ''}
-              </span>
-            </div>
-          )}
-
-          {/* 单份价格提示 */}
           {product.ticket_price > 0 && (
-            <div className="flex items-center mt-1">
-              <span className="text-[11px] text-orange-500 font-medium">
-                {t('product.startFrom')} {formatCurrency(product.currency || 'TJS', product.ticket_price)}/{t('product.perUnit')}
+            <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
+              <span className="text-slate-500 truncate">
+                {t('product.luckyBuyCompact')} · {t('product.fromPriceShort')} {currency} {ticketPriceText}
               </span>
-            </div>
-          )}
-
-          {/* 进度条 */}
-          {product.total_tickets > 0 && (
-            <div className="mt-2">
-              <div className="w-full bg-gray-100 rounded-full h-1.5">
-                <div
-                  className="bg-gradient-to-r from-orange-400 to-red-500 h-1.5 rounded-full transition-all"
-                  style={{
-                    width: `${Math.min((product.sold_tickets / product.total_tickets) * 100, 100)}%`,
-                  }}
-                />
-              </div>
-              <div className="flex justify-between mt-0.5">
-                <span className="text-[10px] text-gray-400">
+              {product.total_tickets > 0 && (
+                <span className="text-slate-400 flex-shrink-0">
                   {product.sold_tickets}/{product.total_tickets}
                 </span>
+              )}
+            </div>
+          )}
+
+          {product.total_tickets > 0 && (
+            <div className="mt-2.5">
+              <div className="w-full bg-slate-100 rounded-full h-1">
+                <div
+                  className="bg-gradient-to-r from-amber-400 to-orange-500 h-1 rounded-full transition-all"
+                  style={{ width: `${progressPercent}%` }}
+                />
               </div>
             </div>
           )}

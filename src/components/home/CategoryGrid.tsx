@@ -1,19 +1,11 @@
 /**
- * 金刚区 · 一级分类网格
+ * 金刚区 · 一级分类入口
  *
- * 横向滚动的分类入口，支持选中高亮。
- * 设计：纯图标 + 分类名称，单行横滑。
- * 选中态：文字变为主题色 + 底部下划线（无背景圆圈变化）。
- *
- * 多语言优化：
- * - 去掉 truncate / max-width 限制，允许文字自然换行（最多2行）
- * - 使用 text-center + min-w 保证布局稳定
- *
- * 交互逻辑：
- * - 点击分类：在首页内筛选该分类的商品
- * - 选中状态下显示"查看全部 >"链接，点击进入独立的分类商品列表页
- *
- * 与现有 ProductList 保持一致的 px-4 外边距和 Tailwind 样式规范。
+ * 首页采用横向轻卡片分类条，兼顾俄语、塔吉克语等长文案场景：
+ * - 每个分类入口使用固定宽度，避免因文案长短造成布局抖动
+ * - 对俄语/塔吉克语的常见分类使用更短的导航标签
+ * - 标签允许最多两行，避免长词强制单行导致单屏可见项过少
+ * - 选中态采用浅色背景 + 边框高亮，而非仅靠下划线
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
@@ -29,6 +21,26 @@ interface CategoryGridProps {
   isLoading?: boolean;
 }
 
+const CATEGORY_SHORT_LABELS: Record<string, Partial<Record<'ru' | 'tg', string>>> = {
+  daily_goods: { ru: 'Дом', tg: 'Рӯзгор' },
+  home_appliance: { ru: 'Техника', tg: 'Техника' },
+  food_kitchen: { ru: 'Кухня', tg: 'Ошхона' },
+  personal_care: { ru: 'Уход', tg: 'Нигоҳубин' },
+  clothing_bags: { ru: 'Одежда', tg: 'Либос' },
+  digital_tech: { ru: 'Гаджеты', tg: 'Рақамӣ' },
+  mother_baby: { ru: 'Мама и малыш', tg: 'Модару кӯдак' },
+  sports_outdoor: { ru: 'Спорт', tg: 'Варзиш' },
+};
+
+function getCategoryDisplayName(code: string, fallbackName: string, language: string): string {
+  const normalized = language.startsWith('ru') ? 'ru' : language.startsWith('tg') ? 'tg' : undefined;
+  if (!normalized) {
+    return fallbackName;
+  }
+
+  return CATEGORY_SHORT_LABELS[code]?.[normalized] || fallbackName;
+}
+
 export const CategoryGrid: React.FC<CategoryGridProps> = ({
   categories,
   selectedId,
@@ -37,7 +49,6 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
 }) => {
   const { i18n, t } = useTranslation();
 
-  // 获取当前选中分类的信息（用于"查看全部"链接）
   const selectedCategory = selectedId
     ? categories.find((c) => c.id === selectedId)
     : undefined;
@@ -45,12 +56,12 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
   if (isLoading) {
     return (
       <div className="px-4 mt-3">
-        <div className="flex space-x-4 overflow-x-auto scrollbar-hide py-2">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="flex flex-col items-center space-y-1.5 flex-shrink-0 animate-pulse">
-              <div className="w-10 h-10 rounded-full bg-gray-200" />
-              <div className="w-10 h-3 bg-gray-200 rounded" />
-            </div>
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="w-[76px] h-[78px] rounded-2xl border border-gray-100 bg-white animate-pulse flex-shrink-0"
+            />
           ))}
         </div>
       </div>
@@ -61,52 +72,57 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
 
   return (
     <div className="px-4 mt-3">
-      <div className="flex space-x-4 overflow-x-auto scrollbar-hide py-2 -mx-1 px-1">
-        {/* "全部" 按钮 */}
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
         <button
           onClick={() => onSelect(undefined)}
-          className="flex flex-col items-center flex-shrink-0 group"
-          style={{ minWidth: 48 }}
+          className={`w-[76px] min-h-[78px] rounded-2xl border px-2.5 py-2.5 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 shadow-sm ${
+            !selectedId
+              ? 'bg-amber-50 border-amber-200 shadow-amber-100/70'
+              : 'bg-white border-gray-100 hover:border-amber-100 hover:bg-amber-50/40'
+          }`}
         >
-          {/* 图标 - 无背景圆，仅显示 emoji */}
-          <div className="w-10 h-10 flex items-center justify-center text-2xl transition-transform duration-200 group-hover:scale-110">
+          <div
+            className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition-transform duration-200 ${
+              !selectedId ? 'bg-white text-orange-500' : 'bg-gray-50 text-gray-700'
+            }`}
+          >
             🔥
           </div>
-          {/* 文字 + 下划线 */}
           <span
-            className={`text-[11px] font-medium text-center leading-tight mt-1 transition-colors pb-1 ${
-              !selectedId
-                ? 'text-orange-600 border-b-2 border-orange-500'
-                : 'text-gray-500 border-b-2 border-transparent'
+            className={`mt-1.5 text-[11px] font-medium text-center leading-tight line-clamp-2 min-h-[2rem] ${
+              !selectedId ? 'text-orange-600' : 'text-gray-600'
             }`}
           >
             {t('common.all') || '全部'}
           </span>
         </button>
 
-        {/* 分类按钮 */}
         {categories.map((cat) => {
           const isSelected = selectedId === cat.id;
           const icon = getCategoryIcon(cat.code);
-          const name = getLocalizedText(cat.name_i18n as Record<string, string>, i18n.language);
+          const localizedName = getLocalizedText(cat.name_i18n as Record<string, string>, i18n.language);
+          const name = getCategoryDisplayName(cat.code, localizedName, i18n.language);
 
           return (
             <button
               key={cat.id}
               onClick={() => onSelect(isSelected ? undefined : cat.id)}
-              className="flex flex-col items-center flex-shrink-0 group"
-              style={{ minWidth: 48 }}
+              className={`w-[76px] min-h-[78px] rounded-2xl border px-2.5 py-2.5 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 shadow-sm ${
+                isSelected
+                  ? 'bg-amber-50 border-amber-200 shadow-amber-100/70'
+                  : 'bg-white border-gray-100 hover:border-amber-100 hover:bg-amber-50/40'
+              }`}
             >
-              {/* 图标 - 无背景圆，仅显示 emoji */}
-              <div className="w-10 h-10 flex items-center justify-center text-2xl transition-transform duration-200 group-hover:scale-110">
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition-transform duration-200 ${
+                  isSelected ? 'bg-white text-orange-500' : 'bg-gray-50 text-gray-700'
+                }`}
+              >
                 {icon}
               </div>
-              {/* 文字 - 允许自然显示，不截断；选中时显示下划线 */}
               <span
-                className={`text-[11px] font-medium text-center leading-tight mt-1 transition-colors whitespace-nowrap pb-1 ${
-                  isSelected
-                    ? 'text-orange-600 border-b-2 border-orange-500'
-                    : 'text-gray-500 border-b-2 border-transparent'
+                className={`mt-1.5 text-[11px] font-medium text-center leading-tight line-clamp-2 min-h-[2rem] ${
+                  isSelected ? 'text-orange-600' : 'text-gray-600'
                 }`}
               >
                 {name}
@@ -116,16 +132,16 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
         })}
       </div>
 
-      {/* 选中分类时显示"查看全部"入口，链接到独立的分类商品列表页 */}
       {selectedCategory && (
-        <div className="flex justify-end mt-1 mb-1">
+        <div className="flex justify-end mt-2 mb-1">
           <Link
             to={`/category/${selectedCategory.id}?code=${selectedCategory.code}&name=${encodeURIComponent(
               getLocalizedText(selectedCategory.name_i18n as Record<string, string>, i18n.language)
             )}`}
-            className="text-xs text-orange-500 font-medium hover:text-orange-600 transition-colors"
+            className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] text-orange-600 font-medium border border-orange-100 shadow-sm hover:bg-orange-50 transition-colors"
           >
-            {t('common.viewAll') || '查看全部'} →
+            {t('common.viewAll') || '查看全部'}
+            <span aria-hidden="true">→</span>
           </Link>
         </div>
       )}

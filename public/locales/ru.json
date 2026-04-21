@@ -91,6 +91,7 @@
     "lotteryProducts": "Товары магазина",
     "freeShippingLine1": "Из Китая",
     "freeShippingLine2": "0 сомони за доставку!",
+    "freeShippingShort": "Из Китая · 0 сомони",
     "topic": "Тема",
     "viewDetails": "Подробнее",
     "goSee": "Посмотреть"
@@ -1872,6 +1873,8 @@
     "startFrom": "Удачная покупка, от",
     "perUnit": "сомони",
     "luckyBuy": "Удачная покупка",
+    "luckyBuyCompact": "Удача",
+    "fromPriceShort": "от",
     "minPrice": "Можно купить от 1 сомони"
   },
   "seo": {

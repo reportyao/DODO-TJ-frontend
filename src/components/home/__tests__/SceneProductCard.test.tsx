@@ -50,9 +50,9 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const map: Record<string, string> = {
-        'subsidyPool.subsidyPrice': '补贴价',
-        'product.startFrom': '低至',
-        'product.perUnit': '份',
+        'subsidyPool.subsidyTag': '补贴',
+        'product.luckyBuyCompact': '幸运购',
+        'product.fromPriceShort': '起',
       };
       return map[key] || key;
     },
@@ -61,7 +61,6 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('../../../lib/utils', () => ({
-  formatCurrency: (_currency: string, amount: number) => `${amount} TJS`,
   getLocalizedText: (i18n: Record<string, string>, lang: string) => i18n?.[lang] || i18n?.zh || '',
 }));
 
@@ -119,10 +118,11 @@ describe('SceneProductCard', () => {
       expect(screen.getByText('智能手机')).toBeInTheDocument();
     });
 
-    it('应渲染商品价格和补贴价标签', () => {
+    it('应渲染商品价格和补贴标签', () => {
       renderWithRouter(<SceneProductCard product={baseProduct} position={0} />);
-      expect(screen.getByText('2999 TJS')).toBeInTheDocument();
-      expect(screen.getByText('补贴价')).toBeInTheDocument();
+      expect(screen.getByText((_, node) => node?.textContent === '2,999')).toBeInTheDocument();
+      expect(screen.getAllByText('TJS').length).toBeGreaterThan(0);
+      expect(screen.getByText('补贴')).toBeInTheDocument();
     });
 
     it('应渲染商品图片', () => {
@@ -131,10 +131,10 @@ describe('SceneProductCard', () => {
       expect(img).toHaveAttribute('src', 'https://cdn.example.com/phone.jpg');
     });
 
-    it('应渲染单份价格提示', () => {
+    it('应渲染紧凑的单份价格提示', () => {
       renderWithRouter(<SceneProductCard product={baseProduct} position={0} />);
-      expect(screen.getByText(/低至/)).toBeInTheDocument();
-      expect(screen.getByText(/10 TJS/)).toBeInTheDocument();
+      expect(screen.getByText(/幸运购/)).toBeInTheDocument();
+      expect(screen.getByText(/TJS 10/)).toBeInTheDocument();
     });
   });
 
@@ -148,7 +148,7 @@ describe('SceneProductCard', () => {
       const { container } = renderWithRouter(
         <SceneProductCard product={baseProduct} position={0} />
       );
-      const progressBar = container.querySelector('.bg-gradient-to-r.from-orange-400');
+      const progressBar = container.querySelector('.bg-gradient-to-r.from-amber-400');
       expect(progressBar).toHaveStyle({ width: '50%' });
     });
 
@@ -157,7 +157,7 @@ describe('SceneProductCard', () => {
       const { container } = renderWithRouter(
         <SceneProductCard product={soldOutProduct} position={0} />
       );
-      const progressBar = container.querySelector('.bg-gradient-to-r.from-orange-400');
+      const progressBar = container.querySelector('.bg-gradient-to-r.from-amber-400');
       expect(progressBar).toHaveStyle({ width: '100%' });
     });
 
@@ -181,7 +181,7 @@ describe('SceneProductCard', () => {
       renderWithRouter(
         <SceneProductCard product={productWithComparison} position={0} />
       );
-      expect(screen.getByText('4999 TJS')).toBeInTheDocument();
+      expect(screen.getByText((_, node) => node?.textContent === 'TJS 4,999')).toBeInTheDocument();
     });
 
     it('竞品价格低于原价时不应显示角标', () => {
@@ -273,7 +273,7 @@ describe('SceneProductCard', () => {
     it('ticket_price 为 0 时不应显示单份价格', () => {
       const freeTicket = { ...baseProduct, ticket_price: 0 };
       renderWithRouter(<SceneProductCard product={freeTicket} position={0} />);
-      expect(screen.queryByText(/低至/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/幸运购/)).not.toBeInTheDocument();
     });
   });
 

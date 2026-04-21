@@ -56,8 +56,8 @@ export const BottomNavigation: React.FC = () => {
         className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-50"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="max-w-md mx-auto px-4 py-2">
-          <div className="flex items-center justify-around">
+        <div className="max-w-md mx-auto px-3 py-1.5">
+          <div className="grid grid-cols-4 gap-1">
             {navigation.map((item) => {
               const isActive = location.pathname === item.path
               const Icon = isActive ? item.activeIcon : item.icon
@@ -93,7 +93,7 @@ export const BottomNavigation: React.FC = () => {
                   key={item.name}
                   onClick={handleClick}
                   className={cn(
-                    "flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 active:scale-95",
+                    "flex min-w-0 flex-col items-center py-1.5 px-2 rounded-xl transition-all duration-200 active:scale-95",
                     isActive 
                       ? "text-primary bg-amber-50" 
                       : "text-gray-600 hover:text-gray-900"
@@ -108,7 +108,7 @@ export const BottomNavigation: React.FC = () => {
                   </div>
                   
                   <span className={cn(
-                    "text-xs font-medium mt-1",
+                    "mt-1 text-[11px] leading-none font-medium truncate max-w-full",
                     isActive ? "text-primary" : "text-gray-600"
                   )}>
                     {item.name}

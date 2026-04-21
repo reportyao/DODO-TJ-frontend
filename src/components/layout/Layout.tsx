@@ -177,33 +177,31 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* 弱网/离线状态提示横幅 */}
       <OfflineBanner />
       {showHeader && (
-        <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
-          <div className="max-w-md mx-auto px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
+        <header className="bg-white/90 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
+          <div className="max-w-md mx-auto px-4 py-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <picture>
                   <source srcSet="/dodo-logo.webp" type="image/webp" />
                   <img 
                     src="/dodo-logo.png" 
                     alt="DODO Logo"
-                    style={{ width: '40px', height: '40px', objectFit: 'contain', maxWidth: 'none' }}
+                    style={{ width: '36px', height: '36px', objectFit: 'contain', maxWidth: 'none' }}
                   />
                 </picture>
-                <div>
-                  <h1 className="text-lg font-bold text-gray-900">DODO</h1>
-                  <p className="text-xs text-gray-500">{t('home.tagline')}</p>
+                <div className="min-w-0">
+                  <h1 className="text-base font-bold tracking-tight text-gray-900 leading-none">DODO</h1>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-xs font-semibold text-accent">{t('home.freeShippingLine1')}</p>
-                  <p className="text-xs font-bold text-red-500">{t('home.freeShippingLine2')}</p>
+              <div className="flex items-center gap-2.5 flex-shrink-0">
+                <div className="px-2.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 text-[11px] font-semibold text-emerald-700 leading-none whitespace-nowrap shadow-sm">
+                  {t('home.freeShippingShort')}
                 </div>
                 {user?.avatar_url && (
                   <img 
                     src={user.avatar_url} 
                     alt="Avatar"
-                    style={{ width: '40px', height: '40px', borderRadius: '9999px', objectFit: 'cover', maxWidth: 'none' }}
+                    style={{ width: '34px', height: '34px', borderRadius: '9999px', objectFit: 'cover', maxWidth: 'none' }}
                   />
                 )}
               </div>

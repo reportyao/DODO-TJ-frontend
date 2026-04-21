@@ -178,7 +178,7 @@ const SceneHomePage: React.FC = () => {
   };
 
   return (
-    <div className="pb-20 bg-gray-50">
+    <div className="pb-20 bg-stone-50">
       {/* Banner 广告位 - 数据来自 feed，不再独立请求 */}
       <div className="px-4 pt-4">
         <BannerCarousel banners={feedData?.banners} />
@@ -197,11 +197,11 @@ const SceneHomePage: React.FC = () => {
 
       {/* Feed 混合流 */}
       <div className="px-4 mt-4">
-        <h2 className="text-lg font-bold text-gray-800 mb-3">{t('home.lotteryProducts')}</h2>
+        <h2 className="text-lg font-bold tracking-tight text-gray-900 mb-3.5">{t('home.lotteryProducts')}</h2>
 
         {isLoading ? (
           /* 骨架屏 - 双列网格 */
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3.5">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
@@ -219,7 +219,7 @@ const SceneHomePage: React.FC = () => {
             ))}
           </div>
         ) : mixedFeed.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3.5">
             {mixedFeed.map((item, index) => renderFeedItem(item, index))}
           </div>
         ) : (

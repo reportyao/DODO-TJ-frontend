@@ -108,6 +108,7 @@ export interface LotteryStatusLike {
   status?: string | null;
   sold_tickets?: number | null;
   total_tickets?: number | null;
+  draw_time?: string | null;
 }
 
 // 统一商品是否可继续购买的判定逻辑

@@ -91,6 +91,7 @@
     "lotteryProducts": "Молҳои мағоза",
     "freeShippingLine1": "Мустақим аз Чин!",
     "freeShippingLine2": "0 сомонӣ!",
+    "freeShippingShort": "Аз Чин · 0 сомонӣ",
     "topic": "Мавзӯъ",
     "viewDetails": "Муфассалтар",
     "goSee": "Дидан"
@@ -1872,6 +1873,8 @@
     "startFrom": "Харидори бахтовар, аз",
     "perUnit": "сомонӣ харидан мумкин",
     "luckyBuy": "Харидори бахтовар",
+    "luckyBuyCompact": "Бахт",
+    "fromPriceShort": "аз",
     "minPrice": "Аз 1 сомонӣ харидан мумкин"
   },
   "seo": {
