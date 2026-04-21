@@ -242,7 +242,7 @@ export const LotteryCard: React.FC<LotteryCardProps> = ({
             <div className="text-center">
               <p className="text-xs text-gray-500 mb-1 truncate">{t("lottery.purchaseLimit")}</p>
               <p className="text-sm font-semibold text-gray-900">
-                {lottery.total_tickets}
+                {lottery.max_per_user ?? lottery.total_tickets}
               </p>
             </div>
           </div>

@@ -556,11 +556,12 @@ serve(async (req) => {
             .select('id, stock, status')
             .eq('id', lottery.inventory_product_id)
             .single(),
+          // 统计 ACTIVE + SOLD_OUT 的 lottery 数量，判断是否还有库存创建新一轮
           supabaseClient
             .from('lotteries')
             .select('id', { count: 'exact', head: true })
             .eq('inventory_product_id', lottery.inventory_product_id)
-            .eq('status', 'ACTIVE'),
+            .in('status', ['ACTIVE', 'SOLD_OUT']),
         ]);
 
         if (latestInventoryError || !latestInventory) {
@@ -648,11 +649,12 @@ serve(async (req) => {
       }
 
       if (lottery.inventory_product_id) {
+        // 统计 ACTIVE + SOLD_OUT 的 lottery 数量（SOLD_OUT 尚未开奖，仍需预留库存）
         const { count: finalActiveLotteryCount, error: finalActiveLotteryCountError } = await supabaseClient
           .from('lotteries')
           .select('id', { count: 'exact', head: true })
           .eq('inventory_product_id', lottery.inventory_product_id)
-          .eq('status', 'ACTIVE');
+          .in('status', ['ACTIVE', 'SOLD_OUT']);
 
         if (finalActiveLotteryCountError) {
           throw finalActiveLotteryCountError;

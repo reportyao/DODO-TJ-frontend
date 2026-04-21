@@ -206,12 +206,13 @@ serve(async (req) => {
             .eq('id', pickup_point_id)
             .single()
         : Promise.resolve({ data: null, error: null }),
+      // 统计 ACTIVE + SOLD_OUT 的 lottery 数量（SOLD_OUT 尚未开奖，仍占用库存）
       lottery.inventory_product_id
         ? supabase
             .from('lotteries')
             .select('id', { count: 'exact', head: true })
             .eq('inventory_product_id', lottery.inventory_product_id)
-            .eq('status', 'ACTIVE')
+            .in('status', ['ACTIVE', 'SOLD_OUT'])
         : Promise.resolve({ count: 0, error: null }),
     ])
 
