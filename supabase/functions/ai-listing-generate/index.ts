@@ -3,12 +3,20 @@
  *
  * 核心后端逻辑，串联 4 个外部 API 调用，通过 SSE 流式返回进度和结果。
  *
- * 执行链路 (v2.1)：
- *   Step A: 图片理解 (VISION_MODELS 降级链: qwen3.6-plus → qwen-vl-max)
- *   Step B: 三语文案生成 (TEXT_MODELS 降级链: qwen3.6-plus → qwen3-max → qwen-max)
- *   Step C: 商品分割 (SegmentCommodity)    → 去除背景，输出 RGBA PNG
- *   Step D: 营销海报规划 (TEXT_MODELS 降级链)
- *   Step E: 写入单图任务表 ai_image_tasks  → 由 ai-listing-image-processor (cron 触发) 逐张串行生成并合成俄文海报
+ * 执行链路 (v3.0 — 并行优化版)：
+ *   Step A: 图片理解 + 本地化理解 (VISION_MODELS 降级链; tg/ru 并行生成)
+ *   Step B+C+D 并行：
+ *     B: 三语文案生成 (TEXT_MODELS 降级链)
+ *     C: 商品分割 (SegmentCommodity) → 去除背景，输出 RGBA PNG
+ *     D: 营销海报规划 (TEXT_MODELS 降级链)
+ *   Step E: 写入单图任务表 ai_image_tasks → 由 ai-listing-image-processor (cron) 后台生成
+ *
+ * v3.0 优化：
+ *   - tg/ru 理解并行生成（节省 ~15-30s）
+ *   - Step B/C/D 并行执行（节省 ~30-60s）
+ *   - DashScope 超时从 90s 降到 50s
+ *   - 重试次数从 3 降到 2
+ *   - 确保在 Supabase 150s 硬性限制内完成
  *
  * 模型降级逻辑：首选 qwen3.6-plus，额度用完/模型不可用时自动降级到备用模型
  *
@@ -81,7 +89,7 @@ async function callDashScopeWithFallback(
   stepName: string
 ): Promise<{ content: string; modelUsed: string }> {
   let lastError: Error | null = null;
-  const requestTimeoutMs = 90000;
+  const requestTimeoutMs = 50000; // 50s per model attempt (was 90s; reduced to fit 150s Edge Function limit)
 
   for (const model of models) {
     const controller = new AbortController();
@@ -163,13 +171,13 @@ function buildModelUsedTrace(): string {
 /**
  * 带指数退避的重试包装器
  * @param fn 要执行的异步函数
- * @param maxRetries 最大重试次数（默认 3）
- * @param baseDelay 基础延迟毫秒数（默认 1000）
+ * @param maxRetries 最大重试次数（默认 2，v3.0 从 3 降为 2）
+ * @param baseDelay 基础延迟毫秒数（默认 800，v3.0 从 1000 降为 800）
  */
 async function withRetry<T>(
   fn: () => Promise<T>,
-  maxRetries: number = 3,
-  baseDelay: number = 1000
+  maxRetries: number = 2,
+  baseDelay: number = 800
 ): Promise<T> {
   for (let i = 0; i < maxRetries; i++) {
     try {
@@ -460,20 +468,24 @@ async function enrichAnalysisWithLocalizedUnderstanding(params: {
   price: number;
 }) {
   const semanticFacts = normalizeSemanticFacts(params.analysis?.semantic_facts);
-  const tgUnderstanding = await generateDirectUnderstandingByLanguage({
-    apiKey: params.apiKey,
-    language: "tg",
-    semanticFacts,
-    productName: params.productName,
-    price: params.price,
-  });
-  const ruUnderstanding = await generateDirectUnderstandingByLanguage({
-    apiKey: params.apiKey,
-    language: "ru",
-    semanticFacts,
-    productName: params.productName,
-    price: params.price,
-  });
+  // v3.0: 并行生成 tg 和 ru 理解（节省 ~15-30s）
+  const [tgUnderstanding, ruUnderstanding] = await Promise.all([
+    generateDirectUnderstandingByLanguage({
+      apiKey: params.apiKey,
+      language: "tg",
+      semanticFacts,
+      productName: params.productName,
+      price: params.price,
+    }),
+    generateDirectUnderstandingByLanguage({
+      apiKey: params.apiKey,
+      language: "ru",
+      semanticFacts,
+      productName: params.productName,
+      price: params.price,
+    }),
+  ]);
+  // zh 依赖 tg/ru 结果，必须串行
   const zhUnderstanding = await generateChineseBackofficeUnderstanding({
     apiKey: params.apiKey,
     semanticFacts,
@@ -1040,7 +1052,7 @@ function sanitizeMarketingPlans(arr: any): MarketingPosterPlan[] {
 async function callQwenMarketingPlanner(
   apiKey: string,
   analysisJson: any,
-  copywriting: any,
+  copywriting: any | null, // v3.0: copywriting is optional since we run in parallel
   productName: string,
   price: number
 ): Promise<MarketingPosterPlan[]> {
@@ -1048,7 +1060,7 @@ async function callQwenMarketingPlanner(
 
 Your plan must be returned as strict JSON, each item containing:
   - "ref_prompt": an English scene prompt (max 40 words) that will be sent to a background-generation model to create a BEAUTIFUL photorealistic lifestyle/studio scene for this product. Focus on camera, lighting, surface, color palette, mood, resolution. NEVER mention any text, letters, logo, watermark, labels, captions, words, or typography — the image must be completely text-free. Backgrounds must be beautiful, premium, varied (studio hero shot, cozy home lifestyle, natural outdoor, luxurious marble, seasonal festive, minimalist pastel, etc.) and NOT ugly/generic.
-  - "ru_caption": ONE short Russian marketing headline (2 to 7 words, <= 40 characters). It must be perfectly spelled Russian (Cyrillic only, NO Chinese/English/emoji, NO transliteration), grammatically correct, natural for Tajik/Russian-speaking shoppers, and describe a single selling point, feature, or product story (e.g. \"Тёплая куртка на зиму\", \"Мягкая и лёгкая ткань\", \"Подарок для всей семьи\", \"Цена всего 199 сомони\"). Do NOT use brand names you are not sure about. Do NOT promise medical effects. Prefer concrete benefits.
+  - "ru_caption": ONE short Russian marketing headline (2 to 7 words, <= 40 characters). It must be perfectly spelled Russian (Cyrillic only, NO Chinese/English/emoji, NO transliteration), grammatically correct, natural for Tajik/Russian-speaking shoppers, and describe a single selling point, feature, or product story (e.g. "Тёплая куртка на зиму", "Мягкая и лёгкая ткань", "Подарок для всей семьи", "Цена всего 199 сомони"). Do NOT use brand names you are not sure about. Do NOT promise medical effects. Prefer concrete benefits.
   - "text_theme": "light" if the caption should be WHITE text on a dark gradient overlay (use when the planned background is light/bright/pastel so white text needs a dark scrim), or "dark" if the caption should be BLACK text on a light gradient overlay (use when background is dark/moody). Choose consistently with your ref_prompt background.
   - "caption_position": "top" | "center" | "bottom" — where the caption is placed so it does NOT cover the product itself.
 
@@ -1058,9 +1070,9 @@ Rules:
 3. ru_caption must be 100% Cyrillic Russian, with correct spelling. If you are not sure of a spelling, choose a simpler word.
 4. Output ONLY valid JSON, no prose, no markdown, no trailing comma.
 
-Product analysis: ${JSON.stringify(analysisJson).slice(0, 4000)}
+Product analysis: ${JSON.stringify(analysisJson).slice(0, 4000)}${copywriting ? `
 Russian title (for reference, do not copy verbatim): ${copywriting?.title_ru || ""}
-Russian selling bullets (for reference): ${JSON.stringify(copywriting?.bullets_ru || [])}
+Russian selling bullets (for reference): ${JSON.stringify(copywriting?.bullets_ru || [])}` : ""}
 Product name: ${productName}
 Price: ${price} сомони
 
@@ -1462,7 +1474,7 @@ serve(async (req) => {
         stage: lastStage,
         heartbeat: true,
       });
-    }, 15000);
+    }, 10000); // v3.0: 10s heartbeat (was 15s) to keep SSE alive through proxies
 
     let listingTaskId: string | null = null;
     const updateListingTask = async (
@@ -1541,108 +1553,110 @@ serve(async (req) => {
 
         const analysisResult = normalizedAnalysis;
 
-        // ---- Step B: 三语文案生成 ----
+        // ---- v3.0: 并行执行 Step B（文案）+ Step C（抠图）+ Step D（海报规划）----
+        // Step B 和 Step C 互不依赖，可以并行
+        // Step D 只需要 analysisResult，不需要 segmentedUrl，也可以并行
         await sendSSE({
           status: "processing",
           progress: 30,
-          stage: "正在生成三语文案...",
+          stage: "正在并行生成文案、抠图和海报规划...",
         });
-
-        const copywriting = await withRetry(() =>
-          callQwenPlus(dashscopeApiKey, analysisResult, price)
-        );
-
-        console.log("[Step B] 文案生成完成");
-
-        // ---- Step C: 商品分割（通过抠图代理服务） ----
-        let segmentedUrl: string | null = null;
-        let segmentFailed = false;
 
         const segmentProxyUrl = Deno.env.get("SEGMENT_PROXY_URL") || "https://tezbarakat.com/api/segment";
         const segmentProxyKey = Deno.env.get("SEGMENT_PROXY_KEY") || "dodo-segment-2024";
 
-        {
+        // 并行启动 Step B + Step C + Step D
+        const [copywritingResult, segmentResult, planResult] = await Promise.allSettled([
+          // Step B: 三语文案
+          withRetry(() => callQwenPlus(dashscopeApiKey, analysisResult, price)),
+          // Step C: 抠图
+          (async () => {
+            const segController = new AbortController();
+            const segTimeout = setTimeout(() => segController.abort(), 60000); // 60s (was 90s)
+            try {
+              const segResp = await fetch(segmentProxyUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  image_url: image_urls[0],
+                  api_key: segmentProxyKey,
+                }),
+                signal: segController.signal,
+              });
+              clearTimeout(segTimeout);
+              const segData = await segResp.json();
+              if (!segResp.ok || segData.error) {
+                throw new Error(segData.error || `抠图代理返回错误 (HTTP ${segResp.status})`);
+              }
+              console.log(`[Step C] 商品分割完成 (耗时 ${segData.duration_ms}ms):`, segData.segmented_url);
+              return segData.segmented_url as string;
+            } catch (e) {
+              clearTimeout(segTimeout);
+              throw e;
+            }
+          })(),
+          // Step D: 海报规划（只需要 analysisResult，不需要 segmentedUrl）
+          withRetry(
+            () => callQwenMarketingPlanner(
+              dashscopeApiKey,
+              analysisResult,
+              null, // copywriting not yet available, planner uses analysisResult directly
+              product_name,
+              price
+            ),
+            2,
+            1000
+          ),
+        ]);
+
+        // 解析并行结果
+        // Step B: 文案（必须成功）
+        if (copywritingResult.status === "rejected") {
+          throw new Error(`文案生成失败: ${copywritingResult.reason?.message || copywritingResult.reason}`);
+        }
+        const copywriting = copywritingResult.value;
+        console.log("[Step B] 文案生成完成");
+
+        // Step C: 抠图（可降级）
+        let segmentedUrl: string | null = null;
+        let segmentFailed = false;
+        if (segmentResult.status === "fulfilled") {
+          segmentedUrl = segmentResult.value;
+        } else {
+          segmentFailed = true;
+          const errMsg = segmentResult.reason instanceof Error
+            ? (segmentResult.reason.name === 'AbortError' ? '抠图超时 (60s)' : segmentResult.reason.message)
+            : String(segmentResult.reason);
+          console.error("[Step C] 商品分割失败（降级处理）:", errMsg);
           await sendSSE({
             status: "processing",
-            progress: 45,
-            stage: "正在抠除商品背景...",
-            task_id: listingTaskId,
+            progress: 50,
+            stage: "抠图失败，将使用原始图片继续...",
+            error: errMsg,
           });
-
-          try {
-            // 调用生产服务器上的抠图代理服务（内置图片压缩 + OSS 中转 + SegmentCommodity）
-            const segController = new AbortController();
-            const segTimeout = setTimeout(() => segController.abort(), 90000); // 90秒超时
-
-            const segResp = await fetch(segmentProxyUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                image_url: image_urls[0],
-                api_key: segmentProxyKey,
-              }),
-              signal: segController.signal,
-            });
-            clearTimeout(segTimeout);
-
-            const segResult = await segResp.json();
-
-            if (!segResp.ok || segResult.error) {
-              throw new Error(segResult.error || `抠图代理返回错误 (HTTP ${segResp.status})`);
-            }
-
-            segmentedUrl = segResult.segmented_url;
-            console.log(`[Step C] 商品分割完成 (耗时 ${segResult.duration_ms}ms):`, segmentedUrl);
-          } catch (error) {
-            // 降级处理：分割失败不终止流程
-            segmentFailed = true;
-            const errMsg = error instanceof Error
-              ? (error.name === 'AbortError' ? '抠图超时 (90s)' : error.message)
-              : String(error);
-            console.error("[Step C] 商品分割失败（降级处理）:", errMsg);
-            await sendSSE({
-              status: "processing",
-              progress: 50,
-              stage: "抠图失败，将使用原始图片继续...",
-              error: errMsg,
-            });
-          }
         }
 
-        // ---- Step D: 营销海报规划 (不直接生图, 只出经过校验的 plans) ----
+        // Step D: 海报规划（可降级，但需要抠图成功才有意义）
         let plans: MarketingPosterPlan[] = [];
         let planFailed = false;
-        if (segmentedUrl) {
+        if (segmentedUrl && planResult.status === "fulfilled") {
+          plans = planResult.value;
+          console.log(`[Step D] 海报规划完成: ${plans.length} 条`);
+        } else if (!segmentedUrl) {
+          planFailed = true;
+          console.log("[Step D] 抠图失败，跳过海报规划");
+        } else {
+          planFailed = true;
+          const errMsg = planResult.status === "rejected"
+            ? (planResult.reason instanceof Error ? planResult.reason.message : String(planResult.reason))
+            : "未知错误";
+          console.error("[Step D] 海报规划失败（降级）:", errMsg);
           await sendSSE({
             status: "processing",
-            progress: 55,
-            stage: "正在规划俄文营销海报方案...",
-            task_id: listingTaskId,
+            progress: 60,
+            stage: "海报规划失败，将仅返回文案结果...",
+            error: errMsg,
           });
-          try {
-            plans = await withRetry(
-              () => callQwenMarketingPlanner(
-                dashscopeApiKey,
-                analysisResult,
-                copywriting,
-                product_name,
-                price
-              ),
-              3,
-              1200
-            );
-            console.log(`[Step D] 海报规划完成: ${plans.length} 条`);
-          } catch (error) {
-            planFailed = true;
-            const errMsg = error instanceof Error ? error.message : String(error);
-            console.error("[Step D] 海报规划失败（降级）:", errMsg);
-            await sendSSE({
-              status: "processing",
-              progress: 60,
-              stage: "海报规划失败，将仅返回文案结果...",
-              error: errMsg,
-            });
-          }
         }
 
         // ---- Step E: 写入单图任务表 ai_image_tasks (由 ai-listing-image-processor 后台处理) ----
