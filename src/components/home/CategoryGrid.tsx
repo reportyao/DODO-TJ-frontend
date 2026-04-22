@@ -55,15 +55,15 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
 
   if (isLoading) {
     return (
-      <div className="px-4 mt-3">
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
+      <div className="px-3.5 mt-2.5">
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide py-1">
           {[1, 2, 3, 4, 5].map((i) => (
             <div
               key={i}
-              className="w-[68px] h-[58px] flex-shrink-0 animate-pulse"
+              className="w-[62px] h-[54px] flex-shrink-0 animate-pulse"
             >
-              <div className="mx-auto h-8 w-8 rounded-full bg-gray-100" />
-              <div className="mx-auto mt-2 h-2.5 w-10 rounded-full bg-gray-100" />
+              <div className="mx-auto h-7 w-7 rounded-full bg-gray-100" />
+              <div className="mx-auto mt-1.5 h-2 w-9 rounded-full bg-gray-100" />
             </div>
           ))}
         </div>
@@ -74,29 +74,29 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
   if (categories.length === 0) {return null;}
 
   return (
-    <div className="px-4 mt-3">
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
+    <div className="px-3.5 mt-2.5">
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide py-0.5 -mx-1 px-1">
         <button
           onClick={() => onSelect(undefined)}
-          className="w-[68px] min-h-[60px] px-1 py-1 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 bg-transparent"
+          className="w-[62px] min-h-[54px] px-0.5 py-0.5 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 bg-transparent"
         >
           <div
-            className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition-all duration-200 ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-[18px] transition-all duration-200 ${
               !selectedId ? 'bg-amber-50 text-orange-500' : 'bg-transparent text-gray-700'
             }`}
           >
             🔥
           </div>
           <span
-            className={`mt-1.5 text-[11px] font-medium text-center leading-tight line-clamp-2 min-h-[2rem] ${
+            className={`mt-1 text-[10px] font-medium text-center leading-tight line-clamp-2 min-h-[1.7rem] ${
               !selectedId ? 'text-orange-600' : 'text-gray-600'
             }`}
           >
             {t('common.all') || '全部'}
           </span>
           <span
-            className={`mt-1 h-0.5 rounded-full transition-all duration-200 ${
-              !selectedId ? 'w-6 bg-orange-500' : 'w-4 bg-transparent'
+            className={`mt-0.5 h-0.5 rounded-full transition-all duration-200 ${
+              !selectedId ? 'w-5 bg-orange-500' : 'w-3 bg-transparent'
             }`}
             aria-hidden="true"
           />
@@ -112,25 +112,25 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
             <button
               key={cat.id}
               onClick={() => onSelect(isSelected ? undefined : cat.id)}
-              className="w-[68px] min-h-[60px] px-1 py-1 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 bg-transparent"
+              className="w-[62px] min-h-[54px] px-0.5 py-0.5 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 bg-transparent"
             >
               <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition-all duration-200 ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-[18px] transition-all duration-200 ${
                   isSelected ? 'bg-amber-50 text-orange-500' : 'bg-transparent text-gray-700'
                 }`}
               >
                 {icon}
               </div>
               <span
-                className={`mt-1.5 text-[11px] font-medium text-center leading-tight line-clamp-2 min-h-[2rem] ${
+                className={`mt-1 text-[10px] font-medium text-center leading-tight line-clamp-2 min-h-[1.7rem] ${
                   isSelected ? 'text-orange-600' : 'text-gray-600'
                 }`}
               >
                 {name}
               </span>
               <span
-                className={`mt-1 h-0.5 rounded-full transition-all duration-200 ${
-                  isSelected ? 'w-6 bg-orange-500' : 'w-4 bg-transparent'
+                className={`mt-0.5 h-0.5 rounded-full transition-all duration-200 ${
+                  isSelected ? 'w-5 bg-orange-500' : 'w-3 bg-transparent'
                 }`}
                 aria-hidden="true"
               />
