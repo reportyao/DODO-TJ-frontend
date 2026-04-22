@@ -3,19 +3,21 @@
  *
  * 核心后端逻辑，串联 4 个外部 API 调用，通过 SSE 流式返回进度和结果。
  *
- * 执行链路 (v3.0 — 并行优化版)：
- *   Step A: 图片理解 + 本地化理解 (VISION_MODELS 降级链; tg/ru 并行生成)
+ * 执行链路 (v3.1 — 性能极致优化版)：
+ *   Step A: 图片理解 (首图, VISION_MODELS 降级链, enable_thinking=false)
+ *   Step A2: 三语本地化理解 (合并为一次 API 调用, TEXT_MODELS 降级链)
  *   Step B+C+D 并行：
- *     B: 三语文案生成 (TEXT_MODELS 降级链)
+ *     B: 三语文案生成 (TEXT_MODELS 降级链, enable_thinking=false)
  *     C: 商品分割 (SegmentCommodity) → 去除背景，输出 RGBA PNG
- *     D: 营销海报规划 (TEXT_MODELS 降级链)
+ *     D: 营销海报规划 (TEXT_MODELS 降级链, enable_thinking=false)
  *   Step E: 写入单图任务表 ai_image_tasks → 由 ai-listing-image-processor (cron) 后台生成
  *
- * v3.0 优化：
- *   - tg/ru 理解并行生成（节省 ~15-30s）
- *   - Step B/C/D 并行执行（节省 ~30-60s）
- *   - DashScope 超时从 90s 降到 50s
- *   - 重试次数从 3 降到 2
+ * v3.1 优化 (基于 ai-understanding-generate 已验证方案)：
+ *   - 所有 DashScope 调用添加 enable_thinking: false（提速 50%+）
+ *   - 只用首图（多图收益边际递减，但耗时线性增长）
+ *   - 三语理解合并为一次 API 调用（从 3 次降为 1 次）
+ *   - parseAIJson 增加 <think> 标签防御和 JSON 提取容错
+ *   - 所有步骤添加 max_tokens 限制
  *   - 确保在 Supabase 150s 硬性限制内完成
  *
  * 模型降级逻辑：首选 qwen3.6-plus，额度用完/模型不可用时自动降级到备用模型
@@ -86,10 +88,13 @@ async function callDashScopeWithFallback(
   models: readonly string[],
   messages: any[],
   temperature: number,
-  stepName: string
+  stepName: string,
+  options?: { enableThinking?: boolean; maxTokens?: number }
 ): Promise<{ content: string; modelUsed: string }> {
   let lastError: Error | null = null;
-  const requestTimeoutMs = 50000; // 50s per model attempt (was 90s; reduced to fit 150s Edge Function limit)
+  const requestTimeoutMs = 50000; // 50s per model attempt
+  const enableThinking = options?.enableThinking ?? false; // v3.1: 默认关闭 thinking，提速 50%+
+  const maxTokens = options?.maxTokens;
 
   for (const model of models) {
     const controller = new AbortController();
@@ -105,7 +110,13 @@ async function callDashScopeWithFallback(
             Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ model, messages, temperature }),
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature,
+            enable_thinking: enableThinking, // v3.1: 关闭推理过程，大幅缩短响应时间
+            ...(maxTokens ? { max_tokens: maxTokens } : {}),
+          }),
           signal: controller.signal,
         }
       );
@@ -157,7 +168,8 @@ async function callDashScopeWithFallback(
 
 /** 构建 model_used 元数据字符串，反映实际使用的模型链 */
 function buildModelUsedTrace(): string {
-  const steps = ["StepA", "Understanding-tg", "Understanding-ru", "Understanding-zh"];
+  // v3.1: 更新步骤名称反映三语合并调用
+  const steps = ["StepA", "Understanding-3lang", "StepB", "StepD"];
   const parts = steps
     .filter((s) => modelTrace[s])
     .map((s) => `${modelTrace[s]}(${s})`);
@@ -200,6 +212,11 @@ async function withRetry<T>(
  */
 function parseAIJson(text: string): any {
   let cleaned = text.trim();
+  // v3.1: 防御性处理 thinking 模式可能残留的 <think>...</think>
+  const thinkEnd = cleaned.indexOf("</think>");
+  if (thinkEnd !== -1) {
+    cleaned = cleaned.slice(thinkEnd + 8).trim();
+  }
   // 移除 markdown 代码块包裹
   if (cleaned.startsWith("```json")) {
     cleaned = cleaned.slice(7);
@@ -210,6 +227,12 @@ function parseAIJson(text: string): any {
     cleaned = cleaned.slice(0, -3);
   }
   cleaned = cleaned.trim();
+  // v3.1: 兼容模型偶尔在 JSON 之前/之后追加散文
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+  }
   return JSON.parse(cleaned);
 }
 
@@ -468,30 +491,66 @@ async function enrichAnalysisWithLocalizedUnderstanding(params: {
   price: number;
 }) {
   const semanticFacts = normalizeSemanticFacts(params.analysis?.semantic_facts);
-  // v3.0: 并行生成 tg 和 ru 理解（节省 ~15-30s）
-  const [tgUnderstanding, ruUnderstanding] = await Promise.all([
-    generateDirectUnderstandingByLanguage({
-      apiKey: params.apiKey,
-      language: "tg",
-      semanticFacts,
-      productName: params.productName,
-      price: params.price,
-    }),
-    generateDirectUnderstandingByLanguage({
-      apiKey: params.apiKey,
-      language: "ru",
-      semanticFacts,
-      productName: params.productName,
-      price: params.price,
-    }),
-  ]);
-  // zh 依赖 tg/ru 结果，必须串行
-  const zhUnderstanding = await generateChineseBackofficeUnderstanding({
-    apiKey: params.apiKey,
-    semanticFacts,
-    tgUnderstanding,
-    ruUnderstanding,
-  });
+
+  // v3.1: 三语合并为一次 API 调用，节省 ~30-60s
+  const mergedPrompt = `你是一名服务于塔吉克斯坦电商平台的本地化商品文案专家。现在请基于结构化商品事实，同时生成塔吉克语、俄语和中文三种语言的商品理解文案。
+
+商品名称：${params.productName}
+商品价格：${params.price} сомони
+结构化商品事实：${JSON.stringify(semanticFacts)}
+
+请只输出以下 JSON：
+{
+  "tg": {
+    "target_people": "塔吉克语 - 最适合的人群描述，要写出生活状态和使用动机",
+    "selling_angle": "塔吉克语 - 像熟人推荐一样解释为什么这个东西对他好用",
+    "how_to_use": "塔吉克语 - 给小白看的使用理解",
+    "best_scene": "塔吉克语 - 一个最具体、最自然的使用画面",
+    "local_life_connection": "塔吉克语 - 与塔吉克本地生活的真实连接点",
+    "recommended_badge": "塔吉克语 - 2-4个词的短角标"
+  },
+  "ru": {
+    "target_people": "俄语 - 同上",
+    "selling_angle": "俄语 - 同上",
+    "how_to_use": "俄语 - 同上",
+    "best_scene": "俄语 - 同上",
+    "local_life_connection": "俄语 - 同上",
+    "recommended_badge": "俄语 - 同上"
+  },
+  "zh": {
+    "target_people": "中文 - 同上（后台辅助理解）",
+    "selling_angle": "中文 - 同上",
+    "how_to_use": "中文 - 同上",
+    "best_scene": "中文 - 同上",
+    "local_life_connection": "中文 - 同上",
+    "recommended_badge": "中文 - 同上"
+  }
+}
+
+要求：
+1. 塔吉克语必须自然、地道，像本地熟人推荐商品。
+2. 俄语必须可信、适合塔吉克斯坦用户阅读。
+3. 中文用于后台辅助理解，准确清楚即可。
+4. 三种语言基于同一事实，但必须分别写出符合该语言用户阅读习惯的自然表达，不能互相直译。
+5. how_to_use 不能空泛，至少包含一种使用步骤、参数亮点或场景细节。
+6. best_scene 必须是具体画面，不要抽象概括。
+7. 只输出 JSON，不要附加任何说明。`;
+
+  const { content: rawContent } = await callDashScopeWithFallback(
+    params.apiKey,
+    TEXT_MODELS,
+    [{ role: "user", content: mergedPrompt }],
+    0.4,
+    "Understanding-3lang",
+    { enableThinking: false, maxTokens: 3000 }
+  );
+
+  const parsed = parseAIJson(rawContent);
+
+  // 从合并结果中提取三种语言
+  const tgUnderstanding = normalizeSingleLanguageUnderstanding(parsed?.tg || {});
+  const ruUnderstanding = normalizeSingleLanguageUnderstanding(parsed?.ru || {});
+  const zhUnderstanding = normalizeSingleLanguageUnderstanding(parsed?.zh || {});
 
   return {
     ...params.analysis,
@@ -568,8 +627,8 @@ async function callQwenVL(
   specs: string,
   notes: string
 ): Promise<any> {
-  // 取前 3 张图片
-  const images = imageUrls.slice(0, 3);
+  // v3.1: 只用首图（多图收益边际递减，但耗时与 token 几乎线性增长，容易超时）
+  const images = imageUrls.slice(0, 1);
 
   // 构建 messages content：图片 + 文本 prompt
   const content: any[] = images.map((url) => ({
@@ -622,13 +681,14 @@ async function callQwenVL(
 4. 请只输出 JSON，不要添加任何其他文字说明。`,
   });
 
-  // 使用 VISION_MODELS 降级链调用
+  // 使用 VISION_MODELS 降级链调用，v3.1: 关闭 thinking + 限制 max_tokens
   const { content: rawContent } = await callDashScopeWithFallback(
     apiKey,
     VISION_MODELS,
     [{ role: "user", content }],
     0.3,
-    "StepA"
+    "StepA",
+    { enableThinking: false, maxTokens: 2000 }
   );
 
   return parseAIJson(rawContent);
@@ -692,13 +752,14 @@ async function callQwenPlus(
 商品分析：${JSON.stringify(analysisJson)}
 售价：${price} сомони`;
 
-  // 使用 TEXT_MODELS 降级链调用
+  // 使用 TEXT_MODELS 降级链调用，v3.1: 关闭 thinking + 限制 max_tokens
   const { content: rawContent } = await callDashScopeWithFallback(
     apiKey,
     TEXT_MODELS,
     [{ role: "user", content: prompt }],
     0.5,
-    "StepB"
+    "StepB",
+    { enableThinking: false, maxTokens: 4000 }
   );
 
   return parseAIJson(rawContent);
@@ -1083,13 +1144,14 @@ JSON schema to output:
   ]
 }`;
 
-  // 使用 TEXT_MODELS 降级链调用
+  // 使用 TEXT_MODELS 降级链调用，v3.1: 关闭 thinking + 限制 max_tokens
   const { content: rawContent } = await callDashScopeWithFallback(
     apiKey,
     TEXT_MODELS,
     [{ role: "user", content: prompt }],
     0.6,
-    "StepD"
+    "StepD",
+    { enableThinking: false, maxTokens: 3000 }
   );
 
   const parsed = parseAIJson(rawContent);
