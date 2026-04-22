@@ -72,6 +72,18 @@ function shuffleArray<T>(items: T[]): T[] {
   return copied;
 }
 
+function isLikelyLocalDisplayName(name: string): boolean {
+  if (!name) {
+    return false;
+  }
+
+  if (/test|bonus|admin|user|demo|final/i.test(name)) {
+    return false;
+  }
+
+  return /^[А-Яа-яЁёӢӣҚқҒғҲҳҶҷӮӯЪъЬь\s'.-]+$/.test(name);
+}
+
 function normalizeItem(item: Partial<MarqueeItem> | null | undefined): MarqueeItem | null {
   if (!item) {return null;}
 
@@ -86,12 +98,17 @@ function normalizeItem(item: Partial<MarqueeItem> | null | undefined): MarqueeIt
     return null;
   }
 
+  const normalizedSource = item.source === 'real' ? 'real' : 'synthetic';
+  if (normalizedSource === 'real' && !isLikelyLocalDisplayName(cleanName)) {
+    return null;
+  }
+
   return {
     name: cleanName,
     phone: cleanPhone,
     amount,
     bonus: Math.round(amount * 0.5),
-    source: item.source === 'real' ? 'real' : 'synthetic',
+    source: normalizedSource,
   };
 }
 
