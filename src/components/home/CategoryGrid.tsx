@@ -5,7 +5,7 @@
  * - 每个分类入口使用固定宽度，避免因文案长短造成布局抖动
  * - 对俄语/塔吉克语的常见分类使用更短的导航标签
  * - 标签允许最多两行，避免长词强制单行导致单屏可见项过少
- * - 选中态采用浅色背景 + 边框高亮，而非仅靠下划线
+ * - 选中态使用强调色文字与轻量下划线，去掉大面积方框背景以节省空间
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
@@ -60,8 +60,11 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
           {[1, 2, 3, 4, 5].map((i) => (
             <div
               key={i}
-              className="w-[76px] h-[78px] rounded-2xl border border-gray-100 bg-white animate-pulse flex-shrink-0"
-            />
+              className="w-[68px] h-[58px] flex-shrink-0 animate-pulse"
+            >
+              <div className="mx-auto h-8 w-8 rounded-full bg-gray-100" />
+              <div className="mx-auto mt-2 h-2.5 w-10 rounded-full bg-gray-100" />
+            </div>
           ))}
         </div>
       </div>
@@ -75,15 +78,11 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
       <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
         <button
           onClick={() => onSelect(undefined)}
-          className={`w-[76px] min-h-[78px] rounded-2xl border px-2.5 py-2.5 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 shadow-sm ${
-            !selectedId
-              ? 'bg-amber-50 border-amber-200 shadow-amber-100/70'
-              : 'bg-white border-gray-100 hover:border-amber-100 hover:bg-amber-50/40'
-          }`}
+          className="w-[68px] min-h-[60px] px-1 py-1 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 bg-transparent"
         >
           <div
-            className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition-transform duration-200 ${
-              !selectedId ? 'bg-white text-orange-500' : 'bg-gray-50 text-gray-700'
+            className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition-all duration-200 ${
+              !selectedId ? 'bg-amber-50 text-orange-500' : 'bg-transparent text-gray-700'
             }`}
           >
             🔥
@@ -95,6 +94,12 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
           >
             {t('common.all') || '全部'}
           </span>
+          <span
+            className={`mt-1 h-0.5 rounded-full transition-all duration-200 ${
+              !selectedId ? 'w-6 bg-orange-500' : 'w-4 bg-transparent'
+            }`}
+            aria-hidden="true"
+          />
         </button>
 
         {categories.map((cat) => {
@@ -107,15 +112,11 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
             <button
               key={cat.id}
               onClick={() => onSelect(isSelected ? undefined : cat.id)}
-              className={`w-[76px] min-h-[78px] rounded-2xl border px-2.5 py-2.5 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 shadow-sm ${
-                isSelected
-                  ? 'bg-amber-50 border-amber-200 shadow-amber-100/70'
-                  : 'bg-white border-gray-100 hover:border-amber-100 hover:bg-amber-50/40'
-              }`}
+              className="w-[68px] min-h-[60px] px-1 py-1 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 bg-transparent"
             >
               <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition-transform duration-200 ${
-                  isSelected ? 'bg-white text-orange-500' : 'bg-gray-50 text-gray-700'
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition-all duration-200 ${
+                  isSelected ? 'bg-amber-50 text-orange-500' : 'bg-transparent text-gray-700'
                 }`}
               >
                 {icon}
@@ -127,6 +128,12 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
               >
                 {name}
               </span>
+              <span
+                className={`mt-1 h-0.5 rounded-full transition-all duration-200 ${
+                  isSelected ? 'w-6 bg-orange-500' : 'w-4 bg-transparent'
+                }`}
+                aria-hidden="true"
+              />
             </button>
           );
         })}

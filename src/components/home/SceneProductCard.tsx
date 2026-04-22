@@ -176,10 +176,10 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = React.memo(({
           <div className="mt-2 flex items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="flex items-end gap-1.5 leading-none">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-rose-500/90">
                   {currency}
                 </span>
-                <span className="text-[22px] font-bold text-slate-900 tracking-tight">
+                <span className="text-[22px] font-bold text-rose-500 tracking-tight">
                   {originalPriceText}
                 </span>
               </div>
