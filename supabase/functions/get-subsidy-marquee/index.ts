@@ -39,23 +39,35 @@ function sanitizeName(name: string | null | undefined): string {
     .slice(0, 24);
 }
 
-function buildDisplayName(user: DepositRow['user']): string {
+function isLikelyLocalName(name: string): boolean {
+  if (!name) {
+    return false;
+  }
+
+  if (/test|bonus|admin|user|demo|final/i.test(name)) {
+    return false;
+  }
+
+  return /^[А-Яа-яЁёӢӣҚқҒғҲҳҶҷӮӯЪъЬь\s'.-]+$/.test(name);
+}
+
+function buildDisplayName(user: DepositRow['user']): string | null {
   const firstName = sanitizeName(user?.first_name);
   const lastName = sanitizeName(user?.last_name);
 
-  if (firstName && lastName) {
+  if (firstName && lastName && isLikelyLocalName(firstName) && isLikelyLocalName(lastName)) {
     return `${firstName} ${lastName.slice(0, 1)}.`;
   }
 
-  if (firstName) {
+  if (firstName && isLikelyLocalName(firstName)) {
     return firstName;
   }
 
-  if (lastName) {
+  if (lastName && isLikelyLocalName(lastName)) {
     return lastName;
   }
 
-  return 'Пользователь';
+  return null;
 }
 
 function maskPhone(phone: string | null | undefined): string {
@@ -139,6 +151,10 @@ serve(async (req: Request) => {
         }
 
         const name = buildDisplayName(row.user);
+        if (!name) {
+          return null;
+        }
+
         const phone = maskPhone(row.user?.phone_number);
         const dedupeKey = `${name}_${phone}_${amount}`;
         if (seen.has(dedupeKey)) {
