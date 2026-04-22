@@ -28,6 +28,7 @@ const ALLOWED_BUCKETS = [
   "avatars",
   "product-images",
   "topics",  // v2: 专题封面图上传
+  "inventory-products",  // v3: 库存商品图片上传
 ];
 const ALLOWED_MIME_TYPES = [
   "image/jpeg",
