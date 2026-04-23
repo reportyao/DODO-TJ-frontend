@@ -230,6 +230,63 @@ async function claimNextTask(supabase: any): Promise<TaskRow | null> {
 }
 
 // ============================================================
+// Step 1.5: 持久化 base_image_url（解决阿里云抠图临时签名URL过期问题）
+//   阿里云 SegmentCommodity 返回的 OSS 签名 URL 有效期很短（通常 1 小时），
+//   当 pg_cron 触发后台处理时，URL 往往已过期，万相 API 无法访问。
+//   解决方案：在提交万相前，先下载图片并上传到 Supabase Storage 获取永久 URL。
+// ============================================================
+async function persistBaseImage(
+  supabase: any,
+  originalImageUrl: string,
+  parentTaskId: string,
+  taskId: string
+): Promise<string> {
+  // 如果已经是 Supabase Storage 的 URL，无需再次持久化
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  if (originalImageUrl.includes(supabaseUrl) || originalImageUrl.includes("supabase.co/storage")) {
+    console.log(`[processor] base_image_url 已是永久 URL，跳过持久化`);
+    return originalImageUrl;
+  }
+
+  console.log(`[processor] 开始持久化临时 base_image_url...`);
+  const response = await fetch(originalImageUrl);
+  if (!response.ok) {
+    throw new Error(
+      `下载原始抠图失败 (HTTP ${response.status}): URL 可能已过期。` +
+      `原始 URL: ${originalImageUrl.slice(0, 120)}...`
+    );
+  }
+  const imageBuffer = new Uint8Array(await response.arrayBuffer());
+  const contentType = response.headers.get("content-type") || "image/png";
+  const ext = contentType.includes("png") ? "png" : contentType.includes("jpeg") || contentType.includes("jpg") ? "jpg" : "png";
+
+  const path = `ai-base-images/${parentTaskId}/${taskId}-segmented.${ext}`;
+  const { error } = await supabase.storage
+    .from("product-images")
+    .upload(path, imageBuffer, {
+      cacheControl: "31536000",
+      upsert: true,
+      contentType,
+    });
+
+  if (error) {
+    throw new Error(`上传抠图到 Storage 失败: ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+  const permanentUrl = data.publicUrl;
+  console.log(`[processor] 抠图已持久化: ${permanentUrl.slice(0, 80)}...`);
+
+  // 同步更新 ai_image_tasks 表中的 base_image_url 为永久 URL，方便后续重试
+  await supabase
+    .from("ai_image_tasks")
+    .update({ base_image_url: permanentUrl })
+    .eq("id", taskId);
+
+  return permanentUrl;
+}
+
+// ============================================================
 // Step 2: 万相背景生成（提交 + 轮询）
 // ============================================================
 async function submitWanxTask(
@@ -526,10 +583,18 @@ async function processOne(supabase: any, dashApiKey: string): Promise<{
   try {
     console.log(`[processor] 认领任务 ${task.id} (parent=${task.parent_task_id})`);
 
-    // 1) 万相生图
+    // 0) 持久化 base_image_url（解决阿里云临时签名URL过期问题）
+    const permanentBaseImageUrl = await persistBaseImage(
+      supabase,
+      task.base_image_url,
+      task.parent_task_id,
+      task.id
+    );
+
+    // 1) 万相生图（使用持久化后的永久URL）
     const wanxTaskId = await submitWanxTask(
       dashApiKey,
-      task.base_image_url,
+      permanentBaseImageUrl,
       task.ref_prompt
     );
     await supabase
