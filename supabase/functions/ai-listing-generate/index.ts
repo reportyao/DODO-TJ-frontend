@@ -1106,7 +1106,7 @@ function sanitizeMarketingPlans(arr: any): MarketingPosterPlan[] {
       text_theme: text_theme as "light" | "dark",
       caption_position: caption_position as "top" | "center" | "bottom",
     });
-    if (out.length >= 8) {break;}
+    if (out.length >= 3) {break;}
   }
   return out;
 }
@@ -1118,18 +1118,9 @@ async function callQwenMarketingPlanner(
   productName: string,
   price: number
 ): Promise<MarketingPosterPlan[]> {
-  // v4.0: 根据卖点丰富度动态决定海报数量 (3-6张)
-  const sellingPoints = analysisJson?.selling_points || [];
-  const keyFeatures = analysisJson?.key_features || [];
-  const useScenes = analysisJson?.use_scenes || [];
-  const richness = new Set([
-    ...sellingPoints.map((sp: any) => typeof sp === 'object' ? sp.zh : sp).filter(Boolean),
-    ...keyFeatures.filter(Boolean),
-    ...useScenes.filter(Boolean),
-  ]).size;
-  // richness <= 3 → 3张, 4-5 → 4张, 6-7 → 5张, >=8 → 6张
-  const posterCount = richness <= 3 ? 3 : richness <= 5 ? 4 : richness <= 7 ? 5 : 6;
-  console.log(`[Step D] 卖点丰富度=${richness}, 规划海报数量=${posterCount}`);
+  // v5.0: 海报数量统一固定为 3 张（按运营要求, 2026-04-24）
+  const posterCount = 3;
+  console.log(`[Step D] 规划海报数量=${posterCount}（固定）`);
   const prompt = `You are a senior e-commerce creative director for Tajikistan cross-border shop. For ONE product, plan exactly ${posterCount} high-quality marketing posters (product photos with overlay copy in Russian).
 
 Your plan must be returned as strict JSON, each item containing:
@@ -1169,7 +1160,7 @@ JSON schema to output:
 
   const parsed = parseAIJson(rawContent);
   const plans = sanitizeMarketingPlans(parsed?.posters || parsed);
-  const minRequired = Math.max(posterCount - 1, 2); // 允许比目标少1张，但至少2张
+  const minRequired = posterCount; // v5.0: 必须凑齐 3 张海报
   if (plans.length < minRequired) {
     throw new Error(
       `营销海报规划产出不足 ${minRequired} 条 (目标: ${posterCount}, 实际: ${plans.length})，请求会被重试`
@@ -1453,10 +1444,23 @@ serve(async (req) => {
       specs,
       price,
       notes,
+      mode,
+      existing_task_id,
     } = reqBody;
+    const generateMode: 'full' | 'regenerate_images' | 'regenerate_copy' =
+      (mode === 'regenerate_images' || mode === 'regenerate_copy') ? mode : 'full';
+    // 参数校验（仅 full 模式需要严格校验前端表单参数；
+    // regenerate_* 模式以 existing_task_id 为入参，原始数据从主任务表加载）
+    if (generateMode !== 'full') {
+      if (!existing_task_id || typeof existing_task_id !== 'string') {
+        return new Response(
+          JSON.stringify({ error: "regenerate 模式必须提供 existing_task_id" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
-    // 参数校验
-    if (!image_urls || !Array.isArray(image_urls) || image_urls.length === 0) {
+    if (generateMode === 'full' && (!image_urls || !Array.isArray(image_urls) || image_urls.length === 0)) {
       return new Response(
         JSON.stringify({ error: "至少需要提供一张商品图片 URL" }),
         {
@@ -1466,10 +1470,10 @@ serve(async (req) => {
       );
     }
 
-    // 校验每个元素是否为有效的 URL 字符串
-    const invalidUrls = image_urls.filter(
+    // 校验每个元素是否为有效的 URL 字符串（仅 full 模式）
+    const invalidUrls = generateMode === 'full' ? image_urls.filter(
       (u: any) => typeof u !== 'string' || !u.startsWith('http')
-    );
+    ) : [];
     if (invalidUrls.length > 0) {
       return new Response(
         JSON.stringify({ error: `图片 URL 格式无效，必须为 http/https 开头的字符串` }),
@@ -1480,7 +1484,7 @@ serve(async (req) => {
       );
     }
 
-    if (!product_name) {
+    if (generateMode === 'full' && !product_name) {
       return new Response(
         JSON.stringify({ error: "商品名称不能为空" }),
         {
@@ -1490,7 +1494,7 @@ serve(async (req) => {
       );
     }
 
-    if (typeof price !== 'number' || !isFinite(price) || price <= 0) {
+    if (generateMode === 'full' && (typeof price !== 'number' || !isFinite(price) || price <= 0)) {
       return new Response(
         JSON.stringify({ error: "售价必须为大于 0 的数字" }),
         {
@@ -1573,6 +1577,163 @@ serve(async (req) => {
       const startTime = Date.now();
 
       try {
+        // ============== regenerate 模式：复用现有主任务 ==============
+        if (generateMode !== 'full') {
+          listingTaskId = existing_task_id as string;
+          // 读取主任务以获取原 request_payload + result_payload
+          const { data: parentRow, error: parentReadErr } = await supabase
+            .from('ai_listing_generation_tasks')
+            .select('id, request_payload, result_payload, created_by')
+            .eq('id', listingTaskId)
+            .maybeSingle();
+          if (parentReadErr || !parentRow) {
+            throw new Error(`未找到主任务 ${listingTaskId}: ${parentReadErr?.message || '不存在'}`);
+          }
+          // 校验当前管理员能否操作（必须是本人创建的任务）
+          if (parentRow.created_by && String(parentRow.created_by) !== String(adminId)) {
+            throw new Error('无权操作他人创建的任务');
+          }
+          const origReq = parentRow.request_payload || {};
+          const origResult = parentRow.result_payload || {};
+          const reqImageUrls: string[] = Array.isArray(origReq.image_urls) ? origReq.image_urls : [];
+          const reqProductName: string = origReq.product_name || '';
+          const reqPrice: number = typeof origReq.price === 'number' ? origReq.price : 0;
+          const reqCategory: string = origReq.category || '';
+          const reqSpecs: string = origReq.specs || '';
+          const reqNotes: string = origReq.notes || '';
+
+          if (generateMode === 'regenerate_copy') {
+            // 仅重新生成文案：复用 analysis（如有），否则重新做 Step A
+            await sendSSE({ status: 'processing', progress: 10, stage: '正在重新生成文案...', task_id: listingTaskId });
+            await updateListingTask('processing', { error_message: null });
+            let analysisResult = origResult.analysis;
+            if (!analysisResult) {
+              const analysis = await withRetry(() => callQwenVL(
+                dashscopeApiKey, reqImageUrls, reqCategory, reqProductName, reqSpecs, reqNotes
+              ));
+              analysisResult = await withRetry(() => ensureLocalizedAIUnderstanding({
+                apiKey: dashscopeApiKey, analysis, productName: reqProductName, price: reqPrice,
+              }));
+            }
+            const copywriting = await withRetry(() => callQwenPlus(dashscopeApiKey, analysisResult, reqPrice));
+            // 合并新文案 + 保留旧的图片相关字段
+            const merged = {
+              ...origResult,
+              ...copywriting,
+              analysis: analysisResult,
+            };
+            // 保持原状态（done/partial/processing_images）；若主任务已是终态则维持
+            const prevStatus = (await supabase
+              .from('ai_listing_generation_tasks')
+              .select('status')
+              .eq('id', listingTaskId)
+              .maybeSingle()).data?.status || 'done';
+            const keepStatus = (prevStatus === 'processing_images') ? 'processing_images' : (prevStatus === 'partial' ? 'partial' : 'done');
+            await updateListingTask(keepStatus as any, {
+              result_payload: merged,
+              error_message: null,
+              completed_at: keepStatus === 'processing_images' ? null : new Date().toISOString(),
+            });
+            await sendSSE({
+              status: keepStatus === 'processing_images' ? 'processing_images' : (keepStatus === 'partial' ? 'partial' : 'done'),
+              progress: 100,
+              result: merged,
+              message: '文案已重新生成',
+              duration_ms: Date.now() - startTime,
+              task_id: listingTaskId,
+            });
+            return;
+          }
+
+          // ===== regenerate_images: 重新规划+入队海报 =====
+          await sendSSE({ status: 'processing', progress: 10, stage: '正在重新规划营销海报...', task_id: listingTaskId });
+          await updateListingTask('processing', { error_message: null });
+
+          // 1) analysis 必须存在（否则需要先重新文案）
+          let analysisResult = origResult.analysis;
+          if (!analysisResult) {
+            const analysis = await withRetry(() => callQwenVL(
+              dashscopeApiKey, reqImageUrls, reqCategory, reqProductName, reqSpecs, reqNotes
+            ));
+            analysisResult = await withRetry(() => ensureLocalizedAIUnderstanding({
+              apiKey: dashscopeApiKey, analysis, productName: reqProductName, price: reqPrice,
+            }));
+          }
+
+          // 2) 抠图：优先复用 segmented_image；否则重新抠
+          let segmentedUrl: string | null = origResult.segmented_image || null;
+          if (!segmentedUrl) {
+            const segmentProxyUrl = Deno.env.get('SEGMENT_PROXY_URL') || 'https://tezbarakat.com/api/segment';
+            const segmentProxyKey = Deno.env.get('SEGMENT_PROXY_KEY') || 'dodo-segment-2024';
+            try {
+              const segResp = await fetch(segmentProxyUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_url: reqImageUrls[0], api_key: segmentProxyKey }),
+              });
+              const segData = await segResp.json();
+              if (!segResp.ok || segData.error) throw new Error(segData.error || `抠图代理 HTTP ${segResp.status}`);
+              segmentedUrl = segData.segmented_url as string;
+            } catch (e) {
+              throw new Error(`抠图失败，无法重新生成海报: ${e instanceof Error ? e.message : String(e)}`);
+            }
+          }
+
+          // 3) 重新规划海报
+          const plans: MarketingPosterPlan[] = await withRetry(
+            () => callQwenMarketingPlanner(
+              dashscopeApiKey, analysisResult,
+              { title_ru: origResult.title_ru, bullets_ru: origResult.bullets_ru },
+              reqProductName, reqPrice
+            ), 2, 1000
+          );
+          if (!plans.length) throw new Error('海报规划返回空');
+
+          // 4) 删除旧的 ai_image_tasks 子任务
+          await supabase.from('ai_image_tasks').delete().eq('parent_task_id', listingTaskId);
+
+          // 5) 写入新的子任务（统一为 3 张）
+          const rows = plans.map((p, idx) => ({
+            parent_task_id: listingTaskId!,
+            admin_user_id: String(adminId),
+            base_image_url: segmentedUrl!,
+            ref_prompt: p.ref_prompt,
+            ru_caption: p.ru_caption,
+            text_theme: p.text_theme,
+            caption_position: p.caption_position,
+            display_order: idx,
+            status: 'pending',
+          }));
+          const { error: insErr } = await supabase.from('ai_image_tasks').insert(rows);
+          if (insErr) throw new Error(`重新入队失败: ${insErr.message}`);
+
+          // 6) 重置 result_payload 中的图片相关字段为"等待中"
+          const resetResult = {
+            ...origResult,
+            background_images: [],
+            marketing_images: [],
+            parent_task_id: listingTaskId,
+            enqueued_images: rows.length,
+            segmented_image: segmentedUrl,
+            analysis: analysisResult,
+          };
+          await updateListingTask('processing_images', {
+            result_payload: resetResult,
+            error_message: null,
+            completed_at: null,
+          });
+          await sendSSE({
+            status: 'processing_images',
+            progress: 100,
+            stage: `${rows.length} 张营销海报已重新加入后台队列，请等待实时推送…`,
+            result: resetResult,
+            duration_ms: Date.now() - startTime,
+            task_id: listingTaskId,
+          });
+          return;
+        }
+
+        // ============== full 模式（原逻辑） ==============
         const { data: listingTaskRow, error: listingTaskError } = await supabase
           .from("ai_listing_generation_tasks")
           .insert({
