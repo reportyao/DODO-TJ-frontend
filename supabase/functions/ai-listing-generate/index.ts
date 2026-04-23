@@ -721,9 +721,9 @@ async function callQwenPlus(
 
 以JSON格式输出：
 {
-  "title_ru": "商品俄语标题（25-40字，清晰、可信、带核心关键词）",
-  "title_zh": "商品中文标题（15-25字，后台辅助理解即可）",
-  "title_tg": "商品塔吉克语标题（25-40字，自然、接地气、便于普通用户快速看懂）",
+  "title_ru": "商品俄语标题（15-25字，简洁精炼，保留核心卖点和商品类型，不堆砌信息）",
+  "title_zh": "商品中文标题（10-20字，后台辅助理解即可）",
+  "title_tg": "商品塔吉克语标题（15-25字，简洁自然，保留核心内容，便于普通用户快速看懂）",
   "bullets_ru": [
     "俄语卖点1（15-28字，突出真实好处或实用价值）",
     "俄语卖点2（15-28字，结合场景、耐用性或家庭使用）",
@@ -744,7 +744,8 @@ async function callQwenPlus(
 - 塔吉克语文案质量必须最高，优先保证其自然度、理解门槛低和贴近本地生活。
 - 俄语文案同样要高质量，但语气应服务于本地电商用户，而不是俄区大站模板腔。
 - 中文仅作为后台辅助，不要为了中文牺牲塔吉克语表达质量。
-- 标题不要堆砌关键词；卖点要讲人话；描述要帮助用户快速完成“这是不是适合我”的判断。
+- 标题必须简短精炼，俄语和塔吉克语标题控制在15-25字以内，只保留核心商品类型+最大卖点，不要堆砌多个关键词或参数。
+- 卖点要讲人话；描述要帮助用户快速完成“这是不是适合我”的判断。
 - 如果商品是新手也能买的类型，请主动降低理解门槛，让文案更容易懂。
 
 请只输出JSON，不要添加任何其他文字说明。
@@ -1117,7 +1118,19 @@ async function callQwenMarketingPlanner(
   productName: string,
   price: number
 ): Promise<MarketingPosterPlan[]> {
-  const prompt = `You are a senior e-commerce creative director for Tajikistan cross-border shop. For ONE product, plan exactly 6 high-quality marketing posters (product photos with overlay copy in Russian).
+  // v4.0: 根据卖点丰富度动态决定海报数量 (3-6张)
+  const sellingPoints = analysisJson?.selling_points || [];
+  const keyFeatures = analysisJson?.key_features || [];
+  const useScenes = analysisJson?.use_scenes || [];
+  const richness = new Set([
+    ...sellingPoints.map((sp: any) => typeof sp === 'object' ? sp.zh : sp).filter(Boolean),
+    ...keyFeatures.filter(Boolean),
+    ...useScenes.filter(Boolean),
+  ]).size;
+  // richness <= 3 → 3张, 4-5 → 4张, 6-7 → 5张, >=8 → 6张
+  const posterCount = richness <= 3 ? 3 : richness <= 5 ? 4 : richness <= 7 ? 5 : 6;
+  console.log(`[Step D] 卖点丰富度=${richness}, 规划海报数量=${posterCount}`);
+  const prompt = `You are a senior e-commerce creative director for Tajikistan cross-border shop. For ONE product, plan exactly ${posterCount} high-quality marketing posters (product photos with overlay copy in Russian).
 
 Your plan must be returned as strict JSON, each item containing:
   - "ref_prompt": an English scene prompt (max 40 words) that will be sent to a background-generation model to create a BEAUTIFUL photorealistic lifestyle/studio scene for this product. Focus on camera, lighting, surface, color palette, mood, resolution. NEVER mention any text, letters, logo, watermark, labels, captions, words, or typography — the image must be completely text-free. Backgrounds must be beautiful, premium, varied (studio hero shot, cozy home lifestyle, natural outdoor, luxurious marble, seasonal festive, minimalist pastel, etc.) and NOT ugly/generic.
@@ -1126,8 +1139,8 @@ Your plan must be returned as strict JSON, each item containing:
   - "caption_position": "top" | "center" | "bottom" — where the caption is placed so it does NOT cover the product itself.
 
 Rules:
-1. Return exactly 6 items, each covering a DIFFERENT selling angle (function, target audience, scenario, material/quality, price/value, emotional/gift).
-2. All 6 ref_prompts must clearly describe DIFFERENT beautiful scenes; never repeat the same background.
+1. Return exactly ${posterCount} items, each covering a DIFFERENT selling angle. Pick the ${posterCount} most impactful angles from: function, target audience, scenario, material/quality, price/value, emotional/gift.
+2. All ${posterCount} ref_prompts must clearly describe DIFFERENT beautiful scenes; never repeat the same background.
 3. ru_caption must be 100% Cyrillic Russian, with correct spelling. If you are not sure of a spelling, choose a simpler word.
 4. Output ONLY valid JSON, no prose, no markdown, no trailing comma.
 
@@ -1156,9 +1169,10 @@ JSON schema to output:
 
   const parsed = parseAIJson(rawContent);
   const plans = sanitizeMarketingPlans(parsed?.posters || parsed);
-  if (plans.length < 5) {
+  const minRequired = Math.max(posterCount - 1, 2); // 允许比目标少1张，但至少2张
+  if (plans.length < minRequired) {
     throw new Error(
-      `营销海报规划产出不足 5 条 (实际: ${plans.length})，请求会被重试`
+      `营销海报规划产出不足 ${minRequired} 条 (目标: ${posterCount}, 实际: ${plans.length})，请求会被重试`
     );
   }
   return plans;
