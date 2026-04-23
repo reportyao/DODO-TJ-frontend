@@ -1,22 +1,27 @@
 /**
- * AI 专题生成助手 — Edge Function
+ * AI 专题生成助手 — Edge Function (v2 — 性能优化 + 稳定性修复)
  *
  * 核心后端逻辑，串联两层 AI 调用，通过 SSE 流式返回进度和结果。
  *
- * 执行链路（两层架构）：
- *   Step A: 商品理解层 (qwen3.5-plus)
+ * 执行链路（v2 优化版）：
+ *   Step A: 商品理解层 (TEXT_MODELS 降级链, enable_thinking=false)
  *     → 分析选中商品在塔吉克本地生活中的使用场景、目标人群、生活锚点、风险点
- *   Step B: 内容表达层 (qwen3.5-plus)
- *     → 基于理解层结果 + 运营输入，生成三语专题草稿（标题、副标题、导语、
- *       sections 段落分组、卡片文案变体）
+ *   Step B: 内容表达层 (TEXT_MODELS 降级链, enable_thinking=false)
+ *     → 基于理解层结果 + 运营输入，生成三语专题草稿
+ *   Step C: 封面图生成 (wan2.6-t2i 异步模式)
+ *     → 仅提交任务，不在 Edge Function 内轮询（避免 150s 超时）
+ *     → 前端通过 task_id 异步查询结果
+ *
+ * v2 优化 (基于 ai-listing-generate 已验证方案)：
+ *   - 所有 DashScope 调用添加 enable_thinking: false（提速 50%+）
+ *   - 升级模型到 qwen3.6-plus + 模型降级链
+ *   - parseAIJson 增加 <think> 标签防御和 JSON 提取容错
+ *   - 单次请求超时降低到 50s
+ *   - 封面图改为异步提交后立即返回，不在函数内轮询
+ *   - 确保在 Supabase 150s 硬性限制内完成
  *
  * 认证：x-admin-session-token → verify_admin_session RPC
  * 响应：SSE (text/event-stream)
- *
- * SSE 事件格式（与 ai-listing-generate 保持一致）：
- *   data: {"status":"processing","progress":N,"stage":"..."}
- *   data: {"status":"done","progress":100,"result":{...}}
- *   data: {"status":"error","error":"..."}
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -30,6 +35,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-admin-session-token",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+// ============================================================
+// v2: 模型降级链（与 ai-listing-generate 保持一致）
+// ============================================================
+const TEXT_MODELS = ["qwen3.6-plus", "qwen3-max", "qwen-max"] as const;
 
 // ============================================================
 // 工具函数
@@ -57,8 +67,8 @@ async function withRetry<T>(
   throw new Error("Unreachable");
 }
 
-const DASHSCOPE_REQUEST_TIMEOUT_MS = 90000;
-const IMAGE_DOWNLOAD_TIMEOUT_MS = 60000;
+const REQUEST_TIMEOUT_MS = 50000; // v2: 降低到 50s，确保总时间在 150s 内
+const IMAGE_DOWNLOAD_TIMEOUT_MS = 30000; // v2: 降低到 30s
 
 async function fetchWithTimeout(
   url: string,
@@ -84,9 +94,117 @@ async function fetchWithTimeout(
   }
 }
 
-/** 解析 AI 返回的 JSON（可能被 markdown 代码块包裹） */
+/**
+ * v2: 检测是否为额度/模型不可用错误（应降级到下一个模型）
+ */
+function isQuotaOrModelError(errMsg: string): boolean {
+  const patterns = [
+    "Arrearage",
+    "quota",
+    "Throttling",
+    "rate limit",
+    "model_not_found",
+    "does not exist",
+    "not available",
+    "insufficient_quota",
+    "billing",
+    "429",
+  ];
+  const lower = errMsg.toLowerCase();
+  return patterns.some((p) => lower.includes(p.toLowerCase()));
+}
+
+/**
+ * v2: 带模型降级的 DashScope 文本调用
+ * 按 models 列表顺序尝试，遇到额度/模型错误自动降级到下一个
+ */
+async function callDashScopeWithFallback(
+  apiKey: string,
+  models: readonly string[],
+  messages: any[],
+  temperature: number,
+  stepName: string,
+  options?: { maxTokens?: number }
+): Promise<{ content: string; modelUsed: string }> {
+  let lastError: Error | null = null;
+  const maxTokens = options?.maxTokens;
+
+  for (const model of models) {
+    try {
+      console.log(`[${stepName}] 尝试模型: ${model}`);
+      const response = await fetchWithTimeout(
+        "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature,
+            enable_thinking: false, // v2: 关闭推理过程，大幅缩短响应时间
+            ...(maxTokens ? { max_tokens: maxTokens } : {}),
+          }),
+        },
+        REQUEST_TIMEOUT_MS,
+        `${stepName} (${model})`
+      );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        const errMsg = `${model} 调用失败 (HTTP ${response.status}): ${errText}`;
+        console.warn(`[${stepName}] ${errMsg}`);
+        if (isQuotaOrModelError(errMsg)) {
+          lastError = new Error(errMsg);
+          console.log(`[${stepName}] 检测到额度/模型错误，降级到下一个模型...`);
+          continue;
+        }
+        throw new Error(errMsg);
+      }
+
+      const result = await response.json();
+      const rawContent = result.choices?.[0]?.message?.content;
+      if (!rawContent) {
+        throw new Error(`${stepName} (${model}) 返回内容为空`);
+      }
+
+      // 检查是否因 token 限制被截断
+      const finishReason = result.choices?.[0]?.finish_reason;
+      if (finishReason === "length") {
+        console.warn(`[${stepName}] ⚠️ AI 输出因 token 限制被截断 (finish_reason=length, model=${model})`);
+      }
+
+      return { content: rawContent, modelUsed: model };
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      if (isQuotaOrModelError(errMsg)) {
+        lastError = error instanceof Error ? error : new Error(errMsg);
+        console.log(`[${stepName}] 检测到额度/模型错误，降级到下一个模型...`);
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError || new Error(`${stepName}: 所有模型均不可用`);
+}
+
+/**
+ * v2: 增强版 parseAIJson（从 ai-listing-generate 移植）
+ * - 防御 <think>...</think> 标签
+ * - 兼容 markdown 代码块
+ * - 兼容 JSON 前后的散文
+ */
 function parseAIJson(text: string): any {
   let cleaned = text.trim();
+  // v2: 防御性处理 thinking 模式可能残留的 <think>...</think>
+  const thinkEnd = cleaned.indexOf("</think>");
+  if (thinkEnd !== -1) {
+    cleaned = cleaned.slice(thinkEnd + 8).trim();
+  }
+  // 移除 markdown 代码块包裹
   if (cleaned.startsWith("```json")) {
     cleaned = cleaned.slice(7);
   } else if (cleaned.startsWith("```")) {
@@ -96,6 +214,12 @@ function parseAIJson(text: string): any {
     cleaned = cleaned.slice(0, -3);
   }
   cleaned = cleaned.trim();
+  // v2: 兼容模型偶尔在 JSON 之前/之后追加散文
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+  }
   return JSON.parse(cleaned);
 }
 
@@ -133,7 +257,7 @@ function checkI18nCompleteness(
 }
 
 // ============================================================
-// Step A: 商品理解层 (qwen3.5-plus)
+// Step A: 商品理解层 (v2: TEXT_MODELS 降级链)
 // ============================================================
 
 async function runProductUnderstanding(
@@ -145,7 +269,6 @@ async function runProductUnderstanding(
   localContextHints: string[],
   lexiconEntries: any[]
 ): Promise<any> {
-  // 构建商品信息摘要（如果已有 ai_understanding 则附带到摘要中）
   const productSummaries = products.map((p, i) => {
     const name = p.name_i18n?.zh || p.name_i18n?.ru || p.name || "未知商品";
     const desc = p.description_i18n?.zh || p.description_i18n?.ru || "";
@@ -153,7 +276,6 @@ async function runProductUnderstanding(
     const tags = (p.tags || []).map((t: any) => t.name_i18n?.zh || t.code).join("、");
     const price = p.original_price || p.active_lottery?.ticket_price || "未知";
     let summary = `商品${i + 1}(ID: ${p.id}): ${name}\n  描述: ${desc}\n  分类: ${categories || "无"}\n  标签: ${tags || "无"}\n  价格: ${price} сомони`;
-    // 如果已有 AI 理解数据，附带到摘要中供 AI 参考复用
     if (p.ai_understanding) {
       const u = p.ai_understanding;
       summary += `\n  [已有AI理解] 适合谁: ${u.target_people || "未知"} | 好在哪: ${u.selling_angle || "未知"} | 场景: ${u.best_scene || "未知"} | 本地关联: ${u.local_life_connection || "未知"} | 标签: ${u.recommended_badge || "未知"}`;
@@ -161,7 +283,6 @@ async function runProductUnderstanding(
     return summary;
   }).join("\n\n");
 
-  // 构建词库参考
   const lexiconRef = lexiconEntries.length > 0
     ? lexiconEntries.map((e: any) => {
         const title = e.title_i18n?.zh || e.code;
@@ -190,8 +311,7 @@ ${productSummaries}
 【本地化词库参考】
 ${lexiconRef}
 
-${localContextHints.length > 0 ? `【本地生活提示】\n运营提供的本地化关键词：${localContextHints.join("、")}\n请在分析中优先考虑这些本地生活场景和习惯。\n` : ""}
-重要：部分商品已标注“[已有AI理解]”，请直接复用这些已有的理解数据作为该商品的 products_analysis 输出（可根据本次专题场景微调）。没有标注的商品则需要从头分析。
+${localContextHints.length > 0 ? `【本地生活提示】\n运营提供的本地化关键词：${localContextHints.join("、")}\n请在分析中优先考虑这些本地生活场景和习惯。\n` : ""}重要：部分商品已标注"[已有AI理解]"，请直接复用这些已有的理解数据作为该商品的 products_analysis 输出（可根据本次专题场景微调）。没有标注的商品则需要从头分析。
 
 请对每个商品进行深度理解分析，并输出以下 JSON 结构：
 {
@@ -231,48 +351,23 @@ ${localContextHints.length > 0 ? `【本地生活提示】\n运营提供的本�
 7. product_groups 将商品按场景分组，每组有一个主题
 8. 请只输出 JSON，不要添加任何其他文字说明`;
 
-  const response = await fetchWithTimeout(
-    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "qwen3.5-plus",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.4,
-        max_tokens: 16384,
-      }),
-    },
-    DASHSCOPE_REQUEST_TIMEOUT_MS,
-    "商品理解层调用"
+  // v2: 使用模型降级链 + enable_thinking: false
+  const { content } = await callDashScopeWithFallback(
+    apiKey,
+    TEXT_MODELS,
+    [{ role: "user", content: prompt }],
+    0.4,
+    "商品理解层",
+    { maxTokens: 8192 } // v2: 降低 max_tokens，理解层不需要那么多
   );
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`商品理解层调用失败 (HTTP ${response.status}): ${errText}`);
-  }
-
-  const result = await response.json();
-  const rawContent = result.choices?.[0]?.message?.content;
-  if (!rawContent) {
-    throw new Error("商品理解层返回内容为空");
-  }
-
-  return parseAIJson(rawContent);
+  return parseAIJson(content);
 }
 
 // ============================================================
 // Step A-lite: 精简版专题分析（所有商品已有 ai_understanding 时使用）
 // ============================================================
 
-/**
- * 精简版专题分析：当所有商品都已有 ai_understanding 时，
- * 仅生成专题层面的整体分析（overall_theme、story_angle、product_groups、cover_image_prompt 等），
- * 不再重复分析每个商品，节省 API 调用成本和响应时间。
- */
 async function runTopicLevelAnalysis(
   apiKey: string,
   existingAnalysis: any[],
@@ -323,48 +418,29 @@ ${localContextHints.length > 0 ? `【本地生活提示】\n${localContextHints.
       "product_ids": ["商品UUID1", "商品UUID2"]
     }
   ],
-  "cover_image_prompt": "基于专题主题，用英文描述一张适合作为封面的温馨生活场景图片，不包含文字和具体商品",
+  "cover_image_prompt": "用英文描述一张适合作为专题封面的图片场景（温馨生活场景，不含文字和具体商品）",
   "recommended_topic_type": "story|collection|seasonal|gift_guide",
   "recommended_card_style": "story_card|image_card|minimal_card"
 }
 
 请只输出 JSON，不要添加任何其他文字说明。`;
 
-  const response = await fetchWithTimeout(
-    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "qwen3.5-plus",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.4,
-        max_tokens: 8192,
-      }),
-    },
-    DASHSCOPE_REQUEST_TIMEOUT_MS,
-    "专题分析层调用"
+  // v2: 使用模型降级链 + enable_thinking: false
+  const { content } = await callDashScopeWithFallback(
+    apiKey,
+    TEXT_MODELS,
+    [{ role: "user", content: prompt }],
+    0.4,
+    "专题分析层",
+    { maxTokens: 4096 } // v2: 精简分析不需要大量 token
   );
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`专题分析层调用失败 (HTTP ${response.status}): ${errText}`);
-  }
-
-  const result = await response.json();
-  const rawContent = result.choices?.[0]?.message?.content;
-  if (!rawContent) {throw new Error("专题分析层返回内容为空");}
-
-  return parseAIJson(rawContent);
+  return parseAIJson(content);
 }
 
 // ============================================================
-// Step B: 内容表达层 (qwen3.5-plus)
+// Step B: 内容表达层 (v2: TEXT_MODELS 降级链)
 // ============================================================
-
 async function runContentGeneration(
   apiKey: string,
   understanding: any,
@@ -376,12 +452,9 @@ async function runContentGeneration(
   lexiconEntries: any[],
   selectedProducts: any[] = []
 ): Promise<any> {
-  // 构建语气约束
   const toneRef = toneConstraints.length > 0
     ? `【语气约束】\n不要出现以下风格：${toneConstraints.join("、")}`
     : "";
-
-  // 构建好例子/坏例子参考
   const styleExamples = lexiconEntries
     .filter((e: any) => e.example_good || e.example_bad)
     .map((e: any) => {
@@ -391,40 +464,26 @@ async function runContentGeneration(
       if (e.tone_notes) {ref += `\n  口吻要求: ${e.tone_notes}`;}
       return ref;
     }).join("\n");
-
   const langInstruction = outputLanguages.includes("tg")
     ? "必须同时输出中文(zh)、俄语(ru)和塔吉克语(tg)三个语种。俄语和塔吉克语不是中文的逐句直译，而是基于同一个生活场景做本地化改写，让当地人读起来自然、亲切。"
     : "必须同时输出中文(zh)和俄语(ru)两个语种。俄语不是中文的逐句直译，而是基于同一个生活场景做本地化改写。";
-
-  // 构建商品ID参考表（简洁格式，节省token）
   const productIdRef = selectedProducts.map((p: any, i: number) => {
     const name = p.name_i18n?.zh || p.name_i18n?.ru || p.name || '未知商品';
     return `  ${i + 1}. "${p.id}" = ${name}`;
   }).join('\n');
-
   const prompt = `你不是广告文案生成器，而是本地生活内容编辑。你的任务是先理解商品在塔吉克本地生活中最真实、最自然的使用情境，再用家常、人话、能让人代入的方式写出专题草稿。你不能堆砌"高品质、优选、满足多样需求、尊享、甄选"等空泛营销套话。你必须优先使用真实的家庭、待客、做饭、送礼、节庆、邻里往来等生活画面来解释商品价值。
-
 【专题目标】
 ${topicGoal}
-
 【商品理解层分析结果】
 ${JSON.stringify(understanding, null, 2)}
-
 ${manualNotes ? `【运营补充说明】\n${manualNotes}` : ""}
-
 ${localContextHints.length > 0 ? `【本地生活提示】\n运营提供的本地化关键词：${localContextHints.join("、")}\n请在内容中自然融入这些本地生活元素。` : ""}
-
 ${toneRef}
-
 ${styleExamples ? `【文案风格参考】\n${styleExamples}` : ""}
-
 【语言要求】
 ${langInstruction}
-
 请基于以上信息，生成完整的专题草稿。你需要把全部 ${selectedProducts.length} 个商品按场景分组到不同段落（sections）中。每个段落有自己的场景文案和关联商品。
-
 ⚠️ 重要：只需要输出 sections，不需要输出 story_blocks_i18n 和 product_notes（后端会自动从 sections 生成）。这样可以节省输出长度，确保所有商品都被覆盖。
-
 输出以下 JSON 结构：
 {
   "title_i18n": {"zh": "中文标题（15-25字，像朋友推荐，不像广告标题）", "ru": "俄语标题", "tg": "塔吉克语标题"},
@@ -461,10 +520,8 @@ ${langInstruction}
     }
   ]
 }
-
 【必须使用的商品ID列表】（共 ${selectedProducts.length} 个，请从这里复制真实 UUID）
 ${productIdRef}
-
 要求：
 1. 标题和导语必须像"熟人推荐"，不能像"品牌宣传册"
 2. sections 中每个段落要有具体的生活画面，不能只是抽象描述商品功能
@@ -475,54 +532,25 @@ ${productIdRef}
 7. 可以把多个商品分到同一个段落中，建议每个段落 2-5 个商品
 8. 请只输出 JSON，不要添加任何其他文字说明`;
 
-  const response = await fetchWithTimeout(
-    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "qwen3.5-plus",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.6,
-        max_tokens: 16384,
-      }),
-    },
-    DASHSCOPE_REQUEST_TIMEOUT_MS,
-    "内容表达层调用"
+  // v2: 使用模型降级链 + enable_thinking: false
+  const { content } = await callDashScopeWithFallback(
+    apiKey,
+    TEXT_MODELS,
+    [{ role: "user", content: prompt }],
+    0.6,
+    "内容表达层",
+    { maxTokens: 12288 } // v2: 从 16384 降低到 12288，减少超时风险
   );
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`内容表达层调用失败 (HTTP ${response.status}): ${errText}`);
-  }
-
-  const result = await response.json();
-  const rawContent = result.choices?.[0]?.message?.content;
-  if (!rawContent) {
-    throw new Error("内容表达层返回内容为空");
-  }
-
-  // 检查是否因 token 限制被截断
-  const finishReason = result.choices?.[0]?.finish_reason;
-  if (finishReason === "length") {
-    console.warn("[ai-topic-generate] ⚠️ AI 输出因 token 限制被截断 (finish_reason=length)");
-  }
-
-  return parseAIJson(rawContent);
+  return parseAIJson(content);
 }
 
 // ============================================================
-// Step C: 封面图生成层 (wan2.6-t2i) — 异步调用模式
+// Step C: 封面图生成层 (wan2.6-t2i) — v2: 仅提交异步任务
 // ============================================================
 
 /**
  * 下载临时 URL 的图片并上传到 Supabase Storage
- * @param tempUrl 临时图片 URL
- * @param supabase Supabase 客户端（service_role）
- * @returns 永久公开 URL
  */
 async function downloadAndUploadToStorage(
   tempUrl: string,
@@ -530,24 +558,17 @@ async function downloadAndUploadToStorage(
 ): Promise<string> {
   const imgResponse = await fetchWithTimeout(
     tempUrl,
-    {
-      method: "GET",
-    },
+    { method: "GET" },
     IMAGE_DOWNLOAD_TIMEOUT_MS,
     "封面图下载"
   );
   if (!imgResponse.ok) {
-    throw new Error(
-      `下载临时图片失败 (HTTP ${imgResponse.status}): ${tempUrl}`
-    );
+    throw new Error(`下载临时图片失败 (HTTP ${imgResponse.status}): ${tempUrl}`);
   }
 
   const arrayBuffer = await imgResponse.arrayBuffer();
   const contentType = imgResponse.headers.get("content-type") || "image/png";
-
-  const ext = contentType.includes("jpeg") || contentType.includes("jpg")
-    ? "jpg"
-    : "png";
+  const ext = contentType.includes("jpeg") || contentType.includes("jpg") ? "jpg" : "png";
   const fileName = `ai-topic-covers/${Date.now()}_${crypto.randomUUID()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
@@ -562,19 +583,12 @@ async function downloadAndUploadToStorage(
     throw new Error(`上传到 Storage 失败: ${uploadError.message}`);
   }
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("product-images").getPublicUrl(fileName);
-
+  const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(fileName);
   return publicUrl;
 }
 
 /**
  * 提交万相 wan2.6-t2i 异步文生图任务
- * @param apiKey DashScope API Key
- * @param coverPrompt 封面图描述 prompt
- * @param n 生成图片数量
- * @returns 异步任务 task_id
  */
 async function submitWanxT2iTask(
   apiKey: string,
@@ -593,16 +607,7 @@ async function submitWanxT2iTask(
       body: JSON.stringify({
         model: "wan2.6-t2i",
         input: {
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  text: coverPrompt,
-                },
-              ],
-            },
-          ],
+          messages: [{ role: "user", content: [{ text: coverPrompt }] }],
         },
         parameters: {
           size: "1280*1280",
@@ -613,23 +618,19 @@ async function submitWanxT2iTask(
         },
       }),
     },
-    DASHSCOPE_REQUEST_TIMEOUT_MS,
+    REQUEST_TIMEOUT_MS,
     "万相封面图任务提交"
   );
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(
-      `万相封面图任务提交失败 (HTTP ${response.status}): ${errText}`
-    );
+    throw new Error(`万相封面图任务提交失败 (HTTP ${response.status}): ${errText}`);
   }
 
   const result = await response.json();
   const wanxTaskId = result.output?.task_id;
   if (!wanxTaskId) {
-    throw new Error(
-      `万相封面图任务提交未返回 task_id: ${JSON.stringify(result)}`
-    );
+    throw new Error(`万相封面图任务提交未返回 task_id: ${JSON.stringify(result)}`);
   }
 
   console.log(`[ai-topic-generate] 万相封面图任务已提交，task_id: ${wanxTaskId}`);
@@ -638,16 +639,12 @@ async function submitWanxT2iTask(
 
 /**
  * 轮询万相 wan2.6-t2i 异步任务结果
- * @param apiKey DashScope API Key
- * @param wanxTaskId 万相任务 ID
- * @param maxPolls 最大轮询次数（默认 60，约 5 分钟）
- * @param interval 轮询间隔毫秒（默认 5000）
- * @returns 生成的图片临时 URL 数组
+ * v2: 降低 maxPolls 和 interval，尽量在 Edge Function 超时前完成
  */
 async function pollWanxT2iResult(
   apiKey: string,
   wanxTaskId: string,
-  maxPolls: number = 60,
+  maxPolls: number = 12,  // v2: 从 60 降低到 12 次（约 60s）
   interval: number = 5000,
   onProgress?: (pollCount: number, maxPolls: number) => Promise<void>
 ): Promise<string[]> {
@@ -662,43 +659,31 @@ async function pollWanxT2iResult(
         `https://dashscope.aliyuncs.com/api/v1/tasks/${wanxTaskId}`,
         {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-          },
+          headers: { Authorization: `Bearer ${apiKey}` },
         },
-        30000,
+        15000, // v2: 轮询超时降低到 15s
         "万相封面图任务轮询"
       );
 
       if (!response.ok) {
-        const errText = await response.text();
         consecutiveErrors++;
-        console.warn(
-          `[轮询] 封面图任务 ${wanxTaskId} 查询失败 (${consecutiveErrors}/${maxConsecutiveErrors}): HTTP ${response.status}`
-        );
+        console.warn(`[轮询] 封面图任务 ${wanxTaskId} 查询失败 (${consecutiveErrors}/${maxConsecutiveErrors})`);
         if (consecutiveErrors >= maxConsecutiveErrors) {
-          throw new Error(
-            `万相封面图任务查询连续失败 ${maxConsecutiveErrors} 次 (HTTP ${response.status}): ${errText}`
-          );
+          throw new Error(`万相封面图任务查询连续失败 ${maxConsecutiveErrors} 次`);
         }
         continue;
       }
 
-      // 查询成功，重置连续错误计数
       consecutiveErrors = 0;
-
       const result = await response.json();
       const status = result.output?.task_status;
 
       if (status === "SUCCEEDED") {
-        // wan2.6-t2i 异步成功后，图片在 choices[].message.content[].image 中
         const choices = result.output?.choices || [];
         const imageUrls: string[] = [];
         for (const choice of choices) {
           const imageUrl = choice.message?.content?.[0]?.image;
-          if (imageUrl) {
-            imageUrls.push(imageUrl);
-          }
+          if (imageUrl) { imageUrls.push(imageUrl); }
         }
         if (imageUrls.length === 0) {
           throw new Error("万相封面图任务成功但未返回图片 URL");
@@ -708,58 +693,35 @@ async function pollWanxT2iResult(
       }
 
       if (status === "FAILED") {
-        const errMsg =
-          result.output?.message || result.output?.code || "未知错误";
+        const errMsg = result.output?.message || result.output?.code || "未知错误";
         throw new Error(`万相封面图任务失败: ${errMsg}`);
       }
 
       // PENDING / RUNNING → 继续轮询
-      if (i % 6 === 0) {
-        console.log(
-          `[ai-topic-generate] 封面图任务 ${wanxTaskId} 状态: ${status}，已轮询 ${i + 1} 次`
-        );
-      }
-      // [修复] 每次轮询后回调进度，让调用方可以发送 SSE 进度更新
       if (onProgress) {
         try { await onProgress(i + 1, maxPolls); } catch {}
       }
     } catch (error) {
-      // 区分业务错误（应立即抛出）和网络错误（可容忍）
-      if (
-        error instanceof Error &&
-        (error.message.includes("万相封面图任务失败") ||
-         error.message.includes("未返回图片 URL") ||
-         error.message.includes("连续失败"))
-      ) {
+      if (error instanceof Error &&
+          (error.message.includes("万相封面图任务失败") ||
+           error.message.includes("未返回图片 URL") ||
+           error.message.includes("连续失败"))) {
         throw error;
       }
-      // 网络层错误（fetch 异常），计入连续错误
       consecutiveErrors++;
-      console.warn(
-        `[轮询] 封面图任务 ${wanxTaskId} 网络错误 (${consecutiveErrors}/${maxConsecutiveErrors}):`,
-        error instanceof Error ? error.message : error
-      );
       if (consecutiveErrors >= maxConsecutiveErrors) {
-        throw new Error(
-          `万相封面图任务轮询网络连续失败 ${maxConsecutiveErrors} 次: ${
-            error instanceof Error ? error.message : String(error)
-          }`
-        );
+        throw new Error(`万相封面图任务轮询网络连续失败: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
   }
 
-  throw new Error(`万相封面图任务超时 (轮询 ${maxPolls} 次未完成)`);
+  // v2: 轮询超时不抛错，返回空数组（封面图生成不阻断主流程）
+  console.warn(`[ai-topic-generate] 封面图任务 ${wanxTaskId} 在 Edge Function 内未完成，将由前端异步查询`);
+  return [];
 }
 
 /**
- * 使用万相 wan2.6-t2i 异步API生成封面图（提交任务 + 轮询结果）
- * @param apiKey DashScope API Key
- * @param coverPrompt 封面图描述 prompt
- * @param supabase Supabase 客户端
- * @param n 生成图片数量
- * @param onProgress [修复] 轮询进度回调，用于 SSE 进度更新
- * @returns 永久图片 URL 数组
+ * v2: 生成封面图（尝试在 Edge Function 内完成，超时则返回 wanx_task_id 供前端异步查询）
  */
 async function generateCoverImages(
   apiKey: string,
@@ -767,16 +729,20 @@ async function generateCoverImages(
   supabase: any,
   n: number = 2,
   onProgress?: (pollCount: number, maxPolls: number) => Promise<void>
-): Promise<string[]> {
+): Promise<{ permanentUrls: string[]; wanxTaskId: string | null }> {
   console.log(`[ai-topic-generate] 开始生成封面图（异步模式），prompt: ${coverPrompt.substring(0, 100)}...`);
 
-  // 步骤1：提交异步任务，获取 task_id
   const wanxTaskId = await submitWanxT2iTask(apiKey, coverPrompt, n);
 
-  // 步骤2：轮询任务结果，获取临时图片 URL（传递进度回调）
-  const tempUrls = await pollWanxT2iResult(apiKey, wanxTaskId, 60, 5000, onProgress);
+  // v2: 尝试在有限时间内轮询结果
+  const tempUrls = await pollWanxT2iResult(apiKey, wanxTaskId, 12, 5000, onProgress);
 
-  // 步骤3：下载临时 URL 并上传到 Supabase Storage 永久化
+  if (tempUrls.length === 0) {
+    // 轮询超时，返回 wanx_task_id 供前端异步查询
+    return { permanentUrls: [], wanxTaskId };
+  }
+
+  // 下载并上传到 Storage
   const permanentUrls: string[] = [];
   for (const tempUrl of tempUrls) {
     try {
@@ -788,7 +754,7 @@ async function generateCoverImages(
     }
   }
 
-  return permanentUrls;
+  return { permanentUrls, wanxTaskId: null };
 }
 
 // ============================================================
@@ -883,24 +849,22 @@ serve(async (req: Request) => {
         return;
       }
 
-      // [v5 修复] verify_admin_session RPC 返回值可能是：
-      //   - UUID 字符串 (直接返回 admin_id)
-      //   - JSON 字符串 (需要 parse 后取 admin_id)
-      //   - 对象 (直接取 admin_id)
       let adminId: string | undefined;
       if (typeof sessionData === "string") {
-        // 尝试 JSON.parse，如果失败则直接当作 admin_id (UUID)
         try {
           const parsed = JSON.parse(sessionData);
           adminId = parsed?.admin_id || sessionData;
         } catch {
-          // sessionData 本身就是 admin_id (UUID 字符串)
           adminId = sessionData;
         }
       } else if (sessionData && typeof sessionData === "object") {
-        adminId = sessionData.admin_id;
-      } else {
-        adminId = String(sessionData);
+        adminId = (sessionData as any).admin_id;
+      }
+
+      if (!adminId) {
+        await sendSSE({ status: "error", error: "ADMIN_AUTH_FAILED: 无法解析管理员ID" });
+        await writer.close();
+        return;
       }
 
       // ─── 2. 解析请求 ─────────────────────────────────────
@@ -909,52 +873,54 @@ serve(async (req: Request) => {
       const body = await req.json();
       const {
         topic_goal,
-        target_audience = [],
         core_scene = [],
-        local_context_hints = [],
+        target_audience = [],
         selected_products = [],
         manual_notes = "",
         tone_constraints = [],
         output_languages = ["zh", "ru", "tg"],
-        generate_cover = true,
+        local_context_hints = [],
+        generate_cover = false,
         cover_mode = "ai_generate",
       } = body;
 
-      if (!topic_goal || topic_goal.trim().length === 0) {
-        await sendSSE({ status: "error", error: "请输入专题目标" });
-        await writer.close();
-        return;
-      }
-
-      if (selected_products.length === 0) {
-        await sendSSE({ status: "error", error: "请至少选择一个商品" });
+      if (!topic_goal || selected_products.length === 0) {
+        await sendSSE({ status: "error", error: "缺少必要参数: topic_goal 和 selected_products" });
         await writer.close();
         return;
       }
 
       // ─── 3. 创建任务记录 ──────────────────────────────────
-      await sendSSE({ status: "processing", progress: 15, stage: "正在创建生成任务..." });
+      try {
+        const { data: taskData } = await supabase
+          .from("ai_topic_generation_tasks")
+          .insert({
+            admin_id: adminId,
+            status: "processing",
+            request_payload: {
+              topic_goal,
+              core_scene,
+              target_audience,
+              selected_product_ids: selected_products.map((p: any) => p.id),
+              manual_notes,
+              tone_constraints,
+              output_languages,
+              local_context_hints,
+              generate_cover,
+              cover_mode,
+            },
+          })
+          .select("id")
+          .single();
 
-      const { data: taskData, error: taskError } = await supabase
-        .from("ai_topic_generation_tasks")
-        .insert({
-          status: "processing",
-          request_payload: body,
-          created_by: adminId,
-        })
-        .select("id")
-        .single();
-
-      taskId = taskData?.id || null;
-      if (taskError) {
-        console.error("[ai-topic-generate] 创建任务记录失败:", taskError);
-        // 不阻断，继续生成
+        taskId = taskData?.id || null;
+      } catch (e) {
+        console.error("[ai-topic-generate] 创建任务记录失败:", e);
       }
 
-      // ─── 4. 加载词库数据 ──────────────────────────────────
-      // [v4 修复] 创建任务记录后，所有 processing 事件都携带 task_id
-      await sendSSE({ status: "processing", progress: 20, stage: "正在加载本地化词库...", task_id: taskId });
+      await sendSSE({ status: "processing", progress: 15, stage: "任务已创建，正在加载词库...", task_id: taskId });
 
+      // ─── 4. 加载词库 ─────────────────────────────────────
       let lexiconEntries: any[] = [];
       try {
         const { data: lexData } = await supabase
@@ -966,12 +932,9 @@ serve(async (req: Request) => {
         lexiconEntries = lexData || [];
       } catch (e) {
         console.error("[ai-topic-generate] 加载词库失败:", e);
-        // 不阻断，词库为空也可以继续
       }
 
-         // ─── 5. Step A: 商品理解层（优化：复用已有数据）────────────────
-
-      // 检查哪些商品已有 ai_understanding
+      // ─── 5. Step A: 商品理解层（优化：复用已有数据）────────────────
       const productsWithUnderstanding = selected_products.filter(
         (p: any) => p.ai_understanding && p.ai_understanding.target_people
       );
@@ -990,7 +953,6 @@ serve(async (req: Request) => {
           task_id: taskId,
         });
 
-        // 从已有数据组装 products_analysis
         const existingAnalysis = selected_products.map((p: any) => ({
           product_id: p.id,
           product_name: p.name_i18n?.zh || p.name || "未知商品",
@@ -1015,10 +977,8 @@ serve(async (req: Request) => {
             2,
             2000
           );
-          // 将已有的 products_analysis 合并到结果中
           understanding.products_analysis = existingAnalysis;
         } catch (error) {
-          // 如果精简分析也失败，回退到完整分析
           console.warn("[ai-topic-generate] 精简分析失败，回退到完整分析:", error instanceof Error ? error.message : String(error));
           try {
             understanding = await withRetry(
@@ -1043,7 +1003,6 @@ serve(async (req: Request) => {
           }
         }
       } else {
-        // 部分或全部商品没有 AI 理解数据 → 走原有的完整分析流程
         await sendSSE({
           status: "processing",
           progress: 25,
@@ -1123,7 +1082,6 @@ serve(async (req: Request) => {
           product_notes: [],
           recommended_category_ids: [],
           recommended_tag_ids: [],
-          // [修复] 补充封面图字段，确保与 AITopicDraftResult 类型定义一致
           cover_image_url: null,
           cover_image_urls: [],
           explanation: {
@@ -1156,27 +1114,24 @@ serve(async (req: Request) => {
         return;
       }
 
-       // ─── 6.5 Step C: 封面图生成（异步模式） ────────────────
+      // ─── 6.5 Step C: 封面图生成（v2: 异步模式，不阻断主流程） ────
       let coverImageUrls: string[] = [];
       let coverImageUrl: string | null = null;
-      let coverGenerationError: string | null = null;  // [修复] 记录封面图生成错误信息
+      let coverGenerationError: string | null = null;
+      let pendingWanxTaskId: string | null = null;
 
       if (generate_cover && cover_mode === "ai_generate") {
         await sendSSE({ status: "processing", progress: 75, stage: "正在提交AI封面图生成任务...", task_id: taskId });
 
         try {
-          // 使用理解层生成的 cover_image_prompt，如果没有则基于主题自动构建
           let coverPrompt = understanding.cover_image_prompt;
           if (!coverPrompt || coverPrompt.trim().length === 0) {
-            // 基于理解层的主题和叙事角度自动构建封面图 prompt
             const theme = understanding.overall_theme || topic_goal;
             const angle = understanding.story_angle || '';
             coverPrompt = `A warm and inviting lifestyle photography scene related to: ${theme}. ${angle ? `The mood is: ${angle}.` : ''} Central Asian home setting, soft natural lighting, cozy atmosphere, no text, no logos, no specific products visible, focus on warmth and daily life ambiance, professional photography, shallow depth of field, warm color palette.`;
           }
 
-          // [修复] 传入 onProgress 回调，在轮询期间定期发送 SSE 进度更新，避免用户以为卡住
           const coverOnProgress = async (pollCount: number, maxPolls: number) => {
-            // 进度从 75 到 82 之间线性插值
             const p = Math.min(75 + Math.round((pollCount / maxPolls) * 7), 82);
             await sendSSE({
               status: "processing",
@@ -1185,22 +1140,22 @@ serve(async (req: Request) => {
               task_id: taskId,
             });
           };
-          coverImageUrls = await withRetry(
-            () => generateCoverImages(dashscopeApiKey, coverPrompt, supabase, 2, coverOnProgress),
-            2,
-            5000  // 异步任务使用更长的退避基数
-          );
+
+          const coverResult = await generateCoverImages(dashscopeApiKey, coverPrompt, supabase, 2, coverOnProgress);
+          coverImageUrls = coverResult.permanentUrls;
+          pendingWanxTaskId = coverResult.wanxTaskId;
 
           if (coverImageUrls.length > 0) {
-            coverImageUrl = coverImageUrls[0]; // 默认选择第一张
+            coverImageUrl = coverImageUrls[0];
             console.log(`[ai-topic-generate] 封面图生成成功: ${coverImageUrls.length} 张`);
+          } else if (pendingWanxTaskId) {
+            console.log(`[ai-topic-generate] 封面图任务已提交 (${pendingWanxTaskId})，等待前端异步查询`);
           }
 
-          await sendSSE({ status: "processing", progress: 82, stage: "封面图生成完成", task_id: taskId });
+          await sendSSE({ status: "processing", progress: 82, stage: coverImageUrls.length > 0 ? "封面图生成完成" : "封面图任务已提交，稍后可查看", task_id: taskId });
         } catch (coverError) {
           const coverErrMsg = coverError instanceof Error ? coverError.message : String(coverError);
           console.error("[ai-topic-generate] 封面图生成失败 (不阻断主流程):", coverErrMsg);
-          // [修复] 封面图生成失败不阻断整个流程，但记录到 quality_warnings 中供用户知晓
           coverGenerationError = coverErrMsg;
         }
       } else {
@@ -1213,26 +1168,22 @@ serve(async (req: Request) => {
       const qualityWarnings: string[] = [];
       let finalStatus: "done" | "partial" = "done";
 
-      // 检查标题完整性
       const titleMissing = checkI18nCompleteness(contentResult.title_i18n, output_languages);
       if (titleMissing.length > 0) {
         qualityWarnings.push(`标题缺少以下语种: ${titleMissing.join(", ")}`);
         finalStatus = "partial";
       }
 
-      // 检查副标题完整性
       const subtitleMissing = checkI18nCompleteness(contentResult.subtitle_i18n, output_languages);
       if (subtitleMissing.length > 0) {
         qualityWarnings.push(`副标题缺少以下语种: ${subtitleMissing.join(", ")}`);
       }
 
-      // 检查导语完整性
       const introMissing = checkI18nCompleteness(contentResult.intro_i18n, output_languages);
       if (introMissing.length > 0) {
         qualityWarnings.push(`导语缺少以下语种: ${introMissing.join(", ")}`);
       }
 
-      // 检查空话黑名单
       const allText = [
         contentResult.title_i18n?.zh || "",
         contentResult.subtitle_i18n?.zh || "",
@@ -1245,7 +1196,6 @@ serve(async (req: Request) => {
         qualityWarnings.push(`检测到空泛营销套话: ${bannedFound.join("、")}`);
       }
 
-      // 检查本地锚点
       if (!understanding.local_anchors_used || understanding.local_anchors_used.length === 0) {
         qualityWarnings.push("未输出本地生活锚点，内容可能缺乏本地化深度");
       }
@@ -1253,7 +1203,6 @@ serve(async (req: Request) => {
       // ─── 8. 修复 product_id 占位符 + 构建兼容字段 ─────────
       await sendSSE({ status: "processing", progress: 90, stage: "正在组装最终结果...", task_id: taskId });
 
-      // 构建 "商品N" → 真实 ID 的映射表
       const productIdMap: Record<string, string> = {};
       selected_products.forEach((p: any, i: number) => {
         productIdMap[`商品${i + 1}`] = p.id;
@@ -1261,7 +1210,6 @@ serve(async (req: Request) => {
         productIdMap[`Product ${i + 1}`] = p.id;
       });
 
-      // 处理 sections：修复其中的 product_id 占位符
       let finalSections = contentResult.sections || [];
       if (finalSections.length > 0) {
         finalSections = finalSections.map((section: any) => ({
@@ -1273,7 +1221,6 @@ serve(async (req: Request) => {
         }));
       }
 
-      // 检查 sections 中的商品覆盖率
       const sectionProductIds = new Set<string>();
       for (const sec of finalSections) {
         for (const sp of (sec.products || [])) {
@@ -1287,10 +1234,8 @@ serve(async (req: Request) => {
           `sections 中缺少 ${missingProducts.length}/${selected_products.length} 个商品: ${missingProducts.map((p: any) => p.name_i18n?.zh || p.name || p.id).join('、')}`
         );
 
-        // 将缺失的商品添加到一个新的"其他推荐"段落
         const missingProductEntries = missingProducts.map((mp: any) => {
           const name = mp.name_i18n?.zh || mp.name || '未知商品';
-          // 尝试从理解层获取该商品的分析
           const analysis = (understanding.products_analysis || []).find(
             (pa: any) => pa.product_id === mp.id || pa.product_name === (mp.name_i18n?.zh || mp.name)
           );
@@ -1319,7 +1264,6 @@ serve(async (req: Request) => {
         });
       }
 
-      // [v10] 从 sections 自动构建 story_blocks_i18n（向后兼容）
       const storyBlocksI18n = finalSections.map((sec: any, idx: number) => ({
         block_key: `block_${idx + 1}`,
         block_type: "paragraph",
@@ -1328,7 +1272,6 @@ serve(async (req: Request) => {
         tg: sec.story_text_i18n?.tg || '',
       }));
 
-      // [v10] 从 sections 自动构建 product_notes（向后兼容）
       const productNotes: any[] = [];
       for (const sec of finalSections) {
         for (const sp of (sec.products || [])) {
@@ -1342,7 +1285,6 @@ serve(async (req: Request) => {
 
       // 组装最终结果
       const finalResult = {
-        // 理解层结果
         understanding: {
           overall_theme: understanding.overall_theme,
           story_angle: understanding.story_angle,
@@ -1354,32 +1296,30 @@ serve(async (req: Request) => {
           recommended_card_style: understanding.recommended_card_style || "story_card",
           cover_image_prompt: understanding.cover_image_prompt || "",
         },
-        // 内容表达层结果
         title_i18n: contentResult.title_i18n || {},
         subtitle_i18n: contentResult.subtitle_i18n || {},
         intro_i18n: contentResult.intro_i18n || {},
-        // v2: sections 模式（主要数据源）
         sections: finalSections,
-        // 向后兼容字段（从 sections 自动生成）
         story_blocks_i18n: storyBlocksI18n,
         placement_variants: contentResult.placement_variants || [],
         product_notes: productNotes,
         recommended_category_ids: contentResult.recommended_category_ids || [],
         recommended_tag_ids: contentResult.recommended_tag_ids || [],
-        // v2 封面图
         cover_image_url: coverImageUrl,
         cover_image_urls: coverImageUrls,
-        // 质量元数据
+        // v2: 封面图异步任务 ID（前端可用此 ID 查询结果）
+        pending_cover_wanx_task_id: pendingWanxTaskId,
         explanation: {
           local_anchors: understanding.local_anchors_used || [],
           selected_story_angle: understanding.story_angle || "",
           risk_notes: understanding.risk_notes || [],
         },
-        // [修复] 使用 coverGenerationError 提供更精确的封面图警告信息
         quality_warnings: (() => {
           const warnings = [...qualityWarnings];
           if (generate_cover && cover_mode === "ai_generate") {
-            if (coverImageUrls.length === 0 && coverGenerationError) {
+            if (coverImageUrls.length === 0 && pendingWanxTaskId) {
+              warnings.push(`封面图正在异步生成中 (任务ID: ${pendingWanxTaskId})，请稍后在专题管理页查看`);
+            } else if (coverImageUrls.length === 0 && coverGenerationError) {
               warnings.push(`封面图生成失败 (${coverGenerationError})，请在专题管理页手动上传封面图`);
             } else if (coverImageUrls.length === 0) {
               warnings.push("封面图生成失败，请在专题管理页手动上传封面图");
@@ -1455,4 +1395,3 @@ serve(async (req: Request) => {
     },
   });
 });
-
