@@ -147,7 +147,7 @@ async function syncParentListingTask(supabase: any, parentTaskId: string): Promi
     ...(parentTask.result_payload || {}),
     parent_task_id: parentTaskId,
     enqueued_images: totalCount,
-    marketing_images,
+    marketing_images: marketingImages,
   };
 
   const nextErrorMessage = allDone

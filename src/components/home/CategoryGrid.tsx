@@ -74,21 +74,21 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
   if (categories.length === 0) {return null;}
 
   return (
-    <div className="px-3.5 mt-2.5">
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide py-0.5 -mx-1 px-1">
+    <div className="px-3.5 mt-1.5">
+      <div className="flex gap-0.5 overflow-x-auto scrollbar-hide py-0.5 -mx-1 px-1">
         <button
           onClick={() => onSelect(undefined)}
-          className="w-[62px] min-h-[54px] px-0.5 py-0.5 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 bg-transparent"
+          className="w-[52px] min-h-[46px] px-0.5 py-0.5 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 bg-transparent"
         >
           <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-[18px] transition-all duration-200 ${
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-[16px] transition-all duration-200 ${
               !selectedId ? 'bg-amber-50 text-orange-500' : 'bg-transparent text-gray-700'
             }`}
           >
             🔥
           </div>
           <span
-            className={`mt-1 text-[10px] font-medium text-center leading-tight line-clamp-2 min-h-[1.7rem] ${
+            className={`mt-0.5 text-[10px] font-medium text-center leading-tight line-clamp-2 min-h-[1.4rem] ${
               !selectedId ? 'text-orange-600' : 'text-gray-600'
             }`}
           >
@@ -96,7 +96,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
           </span>
           <span
             className={`mt-0.5 h-0.5 rounded-full transition-all duration-200 ${
-              !selectedId ? 'w-5 bg-orange-500' : 'w-3 bg-transparent'
+              !selectedId ? 'w-4 bg-orange-500' : 'w-3 bg-transparent'
             }`}
             aria-hidden="true"
           />
@@ -112,17 +112,17 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
             <button
               key={cat.id}
               onClick={() => onSelect(isSelected ? undefined : cat.id)}
-              className="w-[62px] min-h-[54px] px-0.5 py-0.5 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 bg-transparent"
+              className="w-[52px] min-h-[46px] px-0.5 py-0.5 flex flex-col items-center justify-start flex-shrink-0 transition-all duration-200 bg-transparent"
             >
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-[18px] transition-all duration-200 ${
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-[16px] transition-all duration-200 ${
                   isSelected ? 'bg-amber-50 text-orange-500' : 'bg-transparent text-gray-700'
                 }`}
               >
                 {icon}
               </div>
               <span
-                className={`mt-1 text-[10px] font-medium text-center leading-tight line-clamp-2 min-h-[1.7rem] ${
+                className={`mt-0.5 text-[10px] font-medium text-center leading-tight line-clamp-2 min-h-[1.4rem] ${
                   isSelected ? 'text-orange-600' : 'text-gray-600'
                 }`}
               >
@@ -130,7 +130,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
               </span>
               <span
                 className={`mt-0.5 h-0.5 rounded-full transition-all duration-200 ${
-                  isSelected ? 'w-5 bg-orange-500' : 'w-3 bg-transparent'
+                  isSelected ? 'w-4 bg-orange-500' : 'w-3 bg-transparent'
                 }`}
                 aria-hidden="true"
               />

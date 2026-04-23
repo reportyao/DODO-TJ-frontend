@@ -173,30 +173,26 @@ export const SceneProductCard: React.FC<SceneProductCardProps> = React.memo(({
             {title}
           </h3>
 
-          <div className="mt-2 flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="flex items-end gap-1.5 leading-none">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-rose-500/90">
-                  {currency}
-                </span>
-                <span className="text-[22px] font-bold text-rose-500 tracking-tight">
-                  {originalPriceText}
-                </span>
-              </div>
-
-              {competitorPrice && competitorPrice > product.original_price && (
-                <div className="mt-1 flex items-center gap-1.5 min-w-0 text-[11px] text-slate-400">
-                  <span className="line-through whitespace-nowrap">
-                    {currency} {competitorPriceText}
-                  </span>
-                  {competitorPlatform && <span className="truncate">· {competitorPlatform}</span>}
-                </div>
-              )}
+          <div className="mt-2">
+            <div className="flex items-end gap-1.5 leading-none">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-rose-500/90">
+                {currency}
+              </span>
+              <span className="text-[22px] font-bold text-rose-500 tracking-tight">
+                {originalPriceText}
+              </span>
             </div>
 
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-600 border border-rose-100 whitespace-nowrap flex-shrink-0">
-              {t('subsidyPool.subsidyTag')}
-            </span>
+            {competitorPrice && competitorPrice > product.original_price && (
+              <div className="mt-1 flex items-center gap-1 text-[11px] text-slate-400">
+                <span className="line-through whitespace-nowrap">
+                  {currency} {competitorPriceText}
+                </span>
+                {competitorPlatform && (
+                  <span className="whitespace-nowrap">· {competitorPlatform}</span>
+                )}
+              </div>
+            )}
           </div>
 
           {product.ticket_price > 0 && (
