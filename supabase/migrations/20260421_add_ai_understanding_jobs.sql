@@ -83,3 +83,13 @@ CREATE POLICY ai_understanding_jobs_service_role_all
   TO service_role
   USING (true)
   WITH CHECK (true);
+
+-- ============================================================
+-- ⚠️ 重要提醒（给 AI 和开发者）：
+-- 本迁移文件创建了 ai_understanding_jobs 表，但遗漏了将其加入
+-- admin RPC 白名单，已由后续补丁
+-- 20260423000001_fix_ai_image_tasks_admin_whitelist.sql 修复。
+--
+-- 📋 新建表时必须同时更新 admin_query / admin_count / admin_mutate 白名单！
+-- 👉 详见 docs/ADMIN_RPC_WHITELIST_GUIDE.md
+-- ============================================================

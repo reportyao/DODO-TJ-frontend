@@ -139,3 +139,20 @@ SELECT cron.schedule(
   $body$;
   $CRON$
 );
+
+-- ============================================================
+-- ⚠️ 重要提醒（给 AI 和开发者）：
+-- 本迁移文件创建了 ai_image_tasks 表，但遗漏了将其加入 admin RPC 白名单，
+-- 导致管理后台查询该表时报错 FORBIDDEN。已由后续补丁
+-- 20260423000001_fix_ai_image_tasks_admin_whitelist.sql 修复。
+--
+-- 📋 新建表 Checklist（每次创建新表时必须检查）：
+--   1. CREATE TABLE ✅
+--   2. 索引 ✅
+--   3. RLS 策略 ✅
+--   4. Realtime publication ✅
+--   5. pg_cron ✅
+--   6. ❌ admin_query / admin_count / admin_mutate 白名单 ← 遗漏！
+--
+-- 👉 详见 docs/ADMIN_RPC_WHITELIST_GUIDE.md
+-- ============================================================
