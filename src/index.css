@@ -211,8 +211,11 @@
 
 img[style*="absolute"] {
   max-width: none !important;
-  height: auto !important;
-  height: unset !important;
+  /* [修复] 移除 height: auto/unset，改为 height: 100%
+   * 原来的 height: auto 会覆盖 LazyImage 的 inline height: 100%，
+   * 导致图片按原始尺寸渲染，objectFit: contain 失效，图片被裁剪。
+   * 改为 height: 100% 确保图片填充容器，objectFit 正常工作。 */
+  height: 100% !important;
 }
 
 img.object-cover,
