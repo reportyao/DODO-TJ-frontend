@@ -80,6 +80,7 @@ const OrderDetailPage: React.FC = () => {
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedPickupPointId, setSelectedPickupPointId] = useState<string>('');
   const [isUpdatingPickupPoint, setIsUpdatingPickupPoint] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
@@ -89,9 +90,11 @@ const OrderDetailPage: React.FC = () => {
     fetchOrderDetail();
   }, [user, id]);
 
-  const fetchOrderDetail = async () => {
+  const fetchOrderDetail = async (retryCount = 0) => {
+    const MAX_RETRIES = 3;
     try {
       setLoading(true);
+      setFetchError(null);
       
       // 使用 Edge Function 获取订单详情，绕过 RLS 限制
       // 【R17修复】传入 session_token 代替直接传入 user_id
@@ -106,9 +109,37 @@ const OrderDetailPage: React.FC = () => {
       if (error) {throw new Error(await extractEdgeFunctionError(error));}
       if (!data) {throw new Error('Order not found');}
 
-      setOrder(data);
-    } catch (error) {
+      // 数据校验：确保关键字段存在
+      const safeData = {
+        ...data,
+        lotteries: data.lotteries || null,
+        pickup_point: data.pickup_point || null,
+        shipment_batch: data.shipment_batch || null,
+        available_pickup_points: data.available_pickup_points || [],
+        metadata: data.metadata || {},
+      };
+
+      setOrder(safeData);
+    } catch (error: any) {
       console.error('Error fetching order detail:', error);
+      
+      // 对 5xx 临时错误进行自动重试（指数退避）
+      const errorMsg = error?.message || '';
+      const isRetryable = errorMsg.includes('temporarily unavailable') ||
+        errorMsg.includes('503') ||
+        errorMsg.includes('502') ||
+        errorMsg.includes('504') ||
+        errorMsg.includes('Internal server error') ||
+        errorMsg.includes('Failed to fetch');
+      
+      if (isRetryable && retryCount < MAX_RETRIES) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
+        console.log(`[OrderDetail] Retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return fetchOrderDetail(retryCount + 1);
+      }
+      
+      setFetchError(errorMsg || t('orders.loadError'));
       toast.error(t('orders.loadError'));
     } finally {
       setLoading(false);
@@ -307,13 +338,24 @@ const OrderDetailPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-50 flex flex-col items-center justify-center px-4">
         <GiftIcon className="w-16 h-16 text-gray-400 mb-4" />
-        <p className="text-gray-600 mb-4">{t('orders.noOrders')}</p>
-        <button
-          onClick={() => navigate(-1)}
-          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition"
-        >
-          {t('common.back')}
-        </button>
+        <p className="text-gray-600 mb-4">{fetchError || t('orders.noOrders')}</p>
+        <div className="flex gap-3">
+          {fetchError && (
+            <button
+              onClick={() => fetchOrderDetail()}
+              className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition flex items-center gap-2"
+            >
+              <ArrowPathIcon className="w-5 h-5" />
+              {t('common.refresh')}
+            </button>
+          )}
+          <button
+            onClick={() => navigate(-1)}
+            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+          >
+            {t('common.back')}
+          </button>
+        </div>
       </div>
     );
   }

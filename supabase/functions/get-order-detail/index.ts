@@ -193,7 +193,13 @@ serve(async (req) => {
     return new Response(JSON.stringify(result), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'MISS' } })
 
   } catch (error: unknown) {
-    console.error('Error:', error)
-    return new Response(JSON.stringify({ success: false, error: 'Internal server error', error_code: 'ERR_SERVER_ERROR' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error('Error in get-order-detail:', errorMessage, error)
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: 'Internal server error', 
+      error_code: 'ERR_SERVER_ERROR',
+      details: errorMessage 
+    }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 })
