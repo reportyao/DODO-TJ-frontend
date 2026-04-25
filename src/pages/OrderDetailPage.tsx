@@ -507,8 +507,8 @@ const OrderDetailPage: React.FC = () => {
           />
         </motion.div>
 
-        {/* 提货码卡片 */}
-        {order.pickup_code && order.logistics_status === 'READY_FOR_PICKUP' && (
+        {/* 提货码卡片 - 有提货码且订单已完成时显示（包括本地库存场景） */}
+        {order.pickup_code && (order.logistics_status === 'READY_FOR_PICKUP' || order.status === 'COMPLETED') && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

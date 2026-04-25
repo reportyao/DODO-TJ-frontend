@@ -195,7 +195,7 @@ serve(async (req) => {
       lottery.inventory_product_id
         ? supabase
             .from('inventory_products')
-            .select('id, stock, reserved_stock, original_price, status')
+            .select('id, stock, reserved_stock, original_price, status, local_batch_id')
             .eq('id', lottery.inventory_product_id)
             .single()
         : Promise.resolve({ data: null, error: null }),
@@ -454,10 +454,15 @@ serve(async (req) => {
       )
     }
 
+    // 如果商品已有本地批次（local_batch_id），说明商品已在本地仓库，直接设置为可提货
+    const isLocalStock = Boolean(inventoryProduct?.local_batch_id)
     await supabase
       .from('full_purchase_orders')
       .update({
         status: 'COMPLETED',
+        logistics_status: isLocalStock ? 'READY_FOR_PICKUP' : 'PENDING_SHIPMENT',
+        pickup_status: isLocalStock ? 'PENDING_PICKUP' : null,
+        batch_id: isLocalStock ? inventoryProduct!.local_batch_id : null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', orderId)

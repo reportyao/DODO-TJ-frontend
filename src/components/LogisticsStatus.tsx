@@ -190,7 +190,7 @@ export const LogisticsStatus: React.FC<LogisticsStatusProps> = ({
           </div>
         )}
 
-        {pickupCode && status === 'READY_FOR_PICKUP' && (
+        {pickupCode && (status === 'READY_FOR_PICKUP' || status === 'PENDING_SHIPMENT') && (
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-gray-500">
               {t('logistics.pickupCode')}
