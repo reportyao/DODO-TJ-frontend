@@ -1,3 +1,4 @@
+import GiftTreeFloatingEntry from "../features/gift-tree/components/GiftTreeFloatingEntry";
 /**
  * 首页场景化改造 · 主页面
  *
@@ -179,6 +180,8 @@ const SceneHomePage: React.FC = () => {
 
   return (
     <div className="pb-20 bg-stone-50">
+      {/* 希望之树浮动入口 */}
+      <GiftTreeFloatingEntry />
       {/* Banner 广告位 - 数据来自 feed，不再独立请求 */}
       <div className="px-4 pt-4">
         <BannerCarousel banners={feedData?.banners} />

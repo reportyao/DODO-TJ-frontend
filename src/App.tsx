@@ -78,6 +78,11 @@ const NotFoundPage = lazyWithRetry(() => import("./pages/NotFoundPage"))
 // 调试面板：生产环境中通过连续点击5次"我的"触发
 const DebugFloatingButton = lazyWithRetry(() => import("./components/debug/DebugFloatingButton").then(m => ({ default: m.DebugFloatingButton })))
 const DebugPage = lazyWithRetry(() => import("./pages/DebugPage"))
+// 希望之树 (Gift Tree) 页面
+const GiftTreePage = lazyWithRetry(() => import("./features/gift-tree/components/GiftTreePage"))
+const GiftSelector = lazyWithRetry(() => import("./features/gift-tree/components/GiftSelector"))
+const CompletionPage = lazyWithRetry(() => import("./features/gift-tree/components/CompletionPage"))
+const GiftTreeHelpPage = lazyWithRetry(() => import("./features/gift-tree/components/GiftTreeHelpPage"))
 
 
 function App() {
@@ -214,6 +219,11 @@ function App() {
               <Route path="/profile/edit" element={<AuthGuard><ProfileEditPage /></AuthGuard>} />
               <Route path="/pending-pickup" element={<AuthGuard><PendingPickupPage /></AuthGuard>} />
               <Route path="/orders/:id" element={<AuthGuard><OrderDetailPage /></AuthGuard>} />
+              {/* 希望之树 (Gift Tree) 路由 */}
+              <Route path="/gift-tree" element={<AuthGuard><GiftTreePage /></AuthGuard>} />
+              <Route path="/gift-tree/select" element={<AuthGuard><GiftSelector /></AuthGuard>} />
+              <Route path="/gift-tree/complete" element={<AuthGuard><CompletionPage /></AuthGuard>} />
+              <Route path="/gift-tree/help/:ownerId" element={<GiftTreeHelpPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>
