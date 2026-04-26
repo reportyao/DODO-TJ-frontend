@@ -2094,6 +2094,15 @@
     "stageSprout": "发芽",
     "stageYoung": "小树",
     "stageMature": "大树",
-    "stageComplete": "完成"
+    "stageComplete": "完成",
+    "viewAll": "查看全部 →",
+    "checkNetwork": "请检查网络后重试",
+    "taskAlreadyDone": "任务已完成",
+    "unclaimed": "请先领取已完成的礼物",
+    "daysLeft": "天剩余",
+    "expired": "核销码已过期",
+    "copied": "已复制！",
+    "selfHelp": "不能给自己浇水",
+    "helpLimit": "助力次数已达上限"
   }
 }

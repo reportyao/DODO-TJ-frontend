@@ -5,6 +5,8 @@
  * - 不主动发请求，读取 React Query 缓存
  * - 静态展示优先，仅展示树图标和定期抖动动画
  * - 点击进入种树页面时才发起真实网络请求
+ *
+ * 多语言适配：纯图标按钮，无文字，无需适配。
  */
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -41,34 +43,36 @@ const GiftTreeFloatingEntry: React.FC = () => {
   return (
     <button
       onClick={handleClick}
-      className="fixed right-4 bottom-24 z-40 w-14 h-14 rounded-full bg-white shadow-lg border border-primary/20 flex items-center justify-center animate-bounce-slow active:scale-90 transition-transform"
-      style={{ animationDuration: '3s' }}
+      className="fixed right-4 bottom-24 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-[#4CAF50] to-[#2E7D32] shadow-lg shadow-green-900/25 flex items-center justify-center active:scale-90 transition-transform"
       aria-label="Hope Tree"
     >
-      <span className="text-2xl">🌳</span>
+      {/* Pulse ring */}
+      <div className="absolute inset-0 rounded-full bg-green-400/30 animate-ping" style={{ animationDuration: '2.5s' }} />
+
+      {/* Tree SVG icon */}
+      <svg width="28" height="28" viewBox="0 0 32 32" className="relative">
+        <path d="M16 28 Q16 22 15 18" stroke="#8D6E63" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+        <ellipse cx="16" cy="12" rx="10" ry="9" fill="white" opacity="0.95" />
+        <ellipse cx="12" cy="11" rx="6" ry="6" fill="#A5D6A7" opacity="0.9" />
+        <ellipse cx="20" cy="11" rx="6" ry="6" fill="#81C784" opacity="0.9" />
+        <ellipse cx="16" cy="8" rx="7" ry="5" fill="#C8E6C9" opacity="0.8" />
+        {/* Heart */}
+        <path d="M15 14 Q15 12.5 16 13.5 Q17 12.5 17 14 L16 15.5 Z" fill="#E53935" opacity="0.9" />
+      </svg>
+
       {/* Progress badge */}
       {progress !== null && progress > 0 && progress < 100 && (
-        <div className="absolute -top-1 -right-1 bg-accent text-white text-[9px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-          {progress}%
-        </div>
-      )}
-      {/* New indicator for users without tree */}
-      {!hasTree && (
-        <div className="absolute -top-1 -right-1 bg-destructive text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full">
-          NEW
+        <div className="absolute -top-1 -right-1 bg-white text-accent text-[9px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-accent/20 shadow-sm tabular-nums">
+          {progress}
         </div>
       )}
 
-      {/* CSS for slow bounce */}
-      <style>{`
-        @keyframes bounce-slow {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
-        }
-        .animate-bounce-slow {
-          animation: bounce-slow 3s ease-in-out infinite;
-        }
-      `}</style>
+      {/* New indicator for users without tree */}
+      {!hasTree && (
+        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+          NEW
+        </div>
+      )}
     </button>
   );
 };

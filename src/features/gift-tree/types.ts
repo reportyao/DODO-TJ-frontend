@@ -1,5 +1,7 @@
 /**
  * 希望之树 (Gift Tree) - TypeScript 类型定义
+ *
+ * 所有类型严格对齐 Supabase 数据库 schema 和 RPC 函数返回值。
  */
 
 export interface GiftItem {
@@ -13,11 +15,14 @@ export interface GiftItem {
   target_water: number;
   stock: number;
   reserved_stock: number;
+  value_tjs?: number;
   is_active: boolean;
+  sort_order?: number;
 }
 
 export interface GiftTree {
   id: string;
+  user_id: string;
   current_water: number;
   target_water: number;
   status: 'GROWING' | 'COMPLETED' | 'CLAIMED' | 'EXPIRED';
@@ -26,8 +31,17 @@ export interface GiftTree {
   milestone_800_claimed: boolean;
   pickup_code: string | null;
   pickup_code_expires_at: string | null;
+  claimed_at: string | null;
   created_at: string;
-  gift_item: GiftItem | null;
+  gift_item: {
+    id: string;
+    name: string;
+    name_i18n: Record<string, string>;
+    image_url: string;
+    image_urls?: string[];
+    description?: string;
+    description_i18n?: Record<string, string>;
+  } | null;
 }
 
 export interface GiftTreeTask {
@@ -81,6 +95,7 @@ export type TreeStage = 'seed' | 'sprout' | 'young' | 'mature' | 'complete';
 
 /** 根据水滴进度计算树的阶段 */
 export function getTreeStage(water: number, target: number): TreeStage {
+  if (target <= 0) return 'seed';
   const pct = water / target;
   if (pct >= 1) return 'complete';
   if (pct >= 0.8) return 'mature';

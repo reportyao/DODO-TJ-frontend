@@ -27,6 +27,7 @@ export const TASK_ICONS: Record<string, string> = {
   COMPLETE_ORDER: '🛍️',
   STORE_PICKUP: '📍',
   FRIEND_HELP: '🤝',
+  SHARE_APP: '📤',
   RANDOM_TASK: '🎁',
 };
 

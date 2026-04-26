@@ -2,11 +2,18 @@
  * 希望之树 - 单个任务卡片组件
  *
  * 展示任务名称、奖励水滴数、完成状态和操作按钮。
- * 参考 UI 设计图中的 Daily Tasks 卡片样式。
+ * 对标设计图 Daily Tasks 卡片样式。
+ *
+ * 多语言适配策略：
+ * - 标题使用 line-clamp-2 + min-h 保证2行空间
+ * - 按钮使用 min-w + whitespace-nowrap 防止换行
+ * - 奖励数字使用 tabular-nums 保证对齐
+ * - 进度条使用弹性宽度
  */
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { getLocalizedText } from '../../../lib/utils';
 import type { GiftTreeTask, TodayTaskLog } from '../types';
 import { TASK_ICONS } from '../constants';
 
@@ -15,14 +22,6 @@ interface TaskItemProps {
   todayLog?: TodayTaskLog;
   onAction?: (taskCode: string) => void;
   isLoading?: boolean;
-}
-
-function getLocalizedText(
-  i18n: Record<string, string> | undefined,
-  lang: string
-): string {
-  if (!i18n) return '';
-  return i18n[lang] || i18n['zh'] || i18n['en'] || Object.values(i18n)[0] || '';
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({
@@ -58,71 +57,81 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
   return (
     <div
-      className={`relative bg-white rounded-xl p-3.5 shadow-sm border transition-all ${
+      className={`relative bg-white rounded-2xl p-3 shadow-sm border transition-all ${
         isRecommended && !isDone
-          ? 'border-primary/40 bg-gradient-to-r from-primary-light/20 to-white'
-          : 'border-gray-100'
+          ? 'border-amber-300/60 bg-gradient-to-r from-amber-50/50 to-white shadow-amber-100/40'
+          : isDone
+          ? 'border-gray-100/60 opacity-75'
+          : 'border-gray-100/60'
       }`}
     >
       {/* Recommended badge */}
       {isRecommended && !isDone && (
-        <div className="absolute -top-2 right-3 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
+        <div className="absolute -top-2.5 right-3 bg-gradient-to-r from-amber-400 to-orange-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow-sm">
           <span>⭐</span>
           <span>{t('giftTree.recommended', 'Recommended')}</span>
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        {/* Left: icon + info */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-primary-light/30 flex items-center justify-center text-xl flex-shrink-0">
-            {icon}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-foreground text-sm truncate">
-              {title}
-            </div>
-            {hasProgress && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-muted-foreground">
-                  {completedCount}/{task.daily_limit}
-                </span>
-                <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden max-w-[100px]">
-                  <div
-                    className="h-full bg-accent rounded-full transition-all duration-500"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            {isOnetime && isDone && (
-              <span className="text-[10px] text-muted-foreground">
-                {t('giftTree.oneTimeCompleted', 'One-time completed')}
-              </span>
-            )}
-          </div>
+      <div className="flex items-center gap-3">
+        {/* Left: icon */}
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FFF3E0] to-[#FFE0B2] flex items-center justify-center text-xl flex-shrink-0">
+          {icon}
         </div>
 
-        {/* Right: reward + action */}
-        <div className="flex flex-col items-end gap-1 ml-2">
-          <span className="text-accent font-bold text-sm whitespace-nowrap">
+        {/* Middle: title + progress (flex-1, allows wrapping) */}
+        <div className="flex-1 min-w-0 py-0.5">
+          <div className="font-semibold text-foreground text-[13px] leading-tight line-clamp-2">
+            {title}
+          </div>
+          {hasProgress && (
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="text-[11px] text-muted-foreground tabular-nums flex-shrink-0">
+                {completedCount}/{task.daily_limit}
+              </span>
+              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden max-w-[100px]">
+                <div
+                  className="h-full bg-gradient-to-r from-accent to-teal-500 rounded-full transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {isOnetime && isDone && (
+            <span className="text-[10px] text-muted-foreground mt-0.5 block">
+              {t('giftTree.oneTimeCompleted', 'One-time completed')}
+            </span>
+          )}
+        </div>
+
+        {/* Right: reward + action (fixed width area, stacked vertically) */}
+        <div className="flex flex-col items-end gap-1.5 flex-shrink-0 ml-1">
+          <span className="text-accent font-bold text-[13px] tabular-nums whitespace-nowrap">
             +{task.reward_water} {t('giftTree.drops', 'drops')}
           </span>
           {isDone ? (
-            <div className="flex items-center gap-1 bg-success/10 text-success px-2.5 py-1 rounded-full">
-              <span className="text-xs">✓</span>
-              <span className="text-xs font-medium">
-                {t('giftTree.taskDone', 'Checked')}
+            <div className="flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1 rounded-full">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              <span className="text-[11px] font-semibold">
+                {t('giftTree.taskDone', 'Done')}
               </span>
             </div>
           ) : (
             <button
               onClick={handleClick}
               disabled={isLoading}
-              className="bg-accent text-white text-xs font-medium px-3 py-1 rounded-full hover:bg-accent/90 active:scale-95 transition-all disabled:opacity-50 whitespace-nowrap"
+              className="min-w-[52px] bg-gradient-to-r from-accent to-teal-600 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full active:scale-95 transition-all disabled:opacity-50 whitespace-nowrap shadow-sm shadow-accent/15"
             >
-              {isLoading ? '...' : actionLabel || t('giftTree.taskGo', 'Go')}
-              {task.action_route && ' →'}
+              {isLoading ? (
+                <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  {actionLabel || t('giftTree.taskGo', 'Go')}
+                  {task.action_route ? ' →' : ''}
+                </>
+              )}
             </button>
           )}
         </div>
