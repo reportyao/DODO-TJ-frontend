@@ -86,21 +86,11 @@ export const giftTreeService = {
     return parseRpcResult<WaterResult>(data);
   },
 
-  /** 好友助力浇水（p_tree_owner_id 是树主人的 user_id） */
-  async friendHelpWater(
-    treeOwnerId: string,
-    deviceId?: string
-  ): Promise<{ success: boolean; water_added: number; error?: string }> {
-    const { data, error } = await supabase.rpc('rpc_gift_tree_friend_help' as any, {
-      p_session_token: getSessionToken(),
-      p_tree_owner_id: treeOwnerId,
-      p_device_id: deviceId || null,
-    });
-    if (error) await handleRpcError(error, 'Failed to help friend');
-    return parseRpcResult(data);
-  },
-
-  /** 好友助力（useHelpFriend hook 使用的别名） */
+  /**
+   * 好友助力浇水
+   * p_tree_owner_id 是树主人的 user_id
+   * 返回 WaterResult（与 rpc_water_tree 相同格式，因为内部调用 rpc_water_tree_internal）
+   */
   async helpFriend(
     treeOwnerId: string,
     deviceId?: string

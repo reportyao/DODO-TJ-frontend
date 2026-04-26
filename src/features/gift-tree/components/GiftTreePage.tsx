@@ -107,7 +107,7 @@ const GiftTreePage: React.FC = () => {
   const quickTasks = useMemo(() => {
     if (!status?.tasks) return [];
     return status.tasks
-      .filter((t) => t.is_active && t.category !== 'ONETIME')
+      .filter((t) => t.category !== 'ONETIME')
       .slice(0, 5)
       .map((task) => {
         const log = status.today_logs?.find((l) => l.task_code === task.task_code);
