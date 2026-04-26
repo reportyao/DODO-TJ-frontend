@@ -26,6 +26,9 @@ import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
 // ⚠️ Supabase functions deploy 仅打包被静态 import 发现的文件。二进制资源（.ttf 等）会被丢弃。
 // 使用 base64 内嵌的 fonts.ts，完全避开该问题且冗迟几乎为 0。
 import { FONT_BOLD, FONT_REGULAR } from "./fonts.ts";
+// resvg-wasm 二进制同样 base64 内嵌，消除对 cdn.jsdelivr.net 的运行时依赖，
+// 确保 Edge Function 冷启动时不受 CDN 可达性影响。
+import { RESVG_WASM } from "./resvg_wasm.ts";
 
 let resvgReady = false;
 
@@ -36,15 +39,8 @@ function ensureFontsLoaded() {
 
 async function ensureResvgReady() {
   if (resvgReady) {return;}
-  // @resvg/resvg-wasm 2.6.2: initWasm 接受 Promise<Response> 或 ArrayBuffer
-  // 从 jsdelivr 拉取 wasm 二进制并缓存
-  const wasmResp = await fetch(
-    "https://cdn.jsdelivr.net/npm/@resvg/resvg-wasm@2.6.2/index_bg.wasm"
-  );
-  if (!wasmResp.ok) {
-    throw new Error(`加载 resvg-wasm 失败: HTTP ${wasmResp.status}`);
-  }
-  await initWasm(wasmResp);
+  // 使用内嵌的 wasm ArrayBuffer 初始化，零网络依赖
+  await initWasm(RESVG_WASM);
   resvgReady = true;
 }
 
@@ -325,7 +321,7 @@ async function submitWanxTask(
 async function pollWanxResult(
   apiKey: string,
   taskId: string,
-  maxPolls = 40,
+  maxPolls = 30,
   interval = 3000
 ): Promise<string> {
   let consecutiveErrors = 0;

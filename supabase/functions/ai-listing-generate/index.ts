@@ -1689,6 +1689,22 @@ serve(async (req) => {
           );
           if (!plans.length) throw new Error('海报规划返回空');
 
+          // 4-0) 持久化抠图 URL（阿里云 OSS 签名 URL 可能已过期）
+          {
+            const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+            const isAlreadyPermanent = segmentedUrl!.includes(supabaseUrl) || segmentedUrl!.includes("supabase.co/storage");
+            if (!isAlreadyPermanent) {
+              try {
+                console.log("[重生海报] 持久化抠图 URL 到 Supabase Storage...");
+                segmentedUrl = await downloadAndUploadToStorage(segmentedUrl!, supabase);
+                console.log(`[重生海报] 抠图已持久化: ${segmentedUrl.slice(0, 80)}...`);
+              } catch (persistErr) {
+                const errMsg = persistErr instanceof Error ? persistErr.message : String(persistErr);
+                console.error("[重生海报] 抠图持久化失败（降级）:", errMsg);
+              }
+            }
+          }
+
           // 4) 删除旧的 ai_image_tasks 子任务
           await supabase.from('ai_image_tasks').delete().eq('parent_task_id', listingTaskId);
 
@@ -1896,6 +1912,23 @@ serve(async (req) => {
           });
         }
 
+        // ---- Step E-0: 持久化抠图 URL（阿里云 OSS 签名 URL 有效期约 1 小时，
+        //   后台 pg_cron 处理时可能已过期，提前上传到 Supabase Storage 获取永久 URL）----
+        if (segmentedUrl && plans.length > 0 && !planFailed) {
+          const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+          const isAlreadyPermanent = segmentedUrl.includes(supabaseUrl) || segmentedUrl.includes("supabase.co/storage");
+          if (!isAlreadyPermanent) {
+            try {
+              console.log("[Step E-0] 持久化抠图 URL 到 Supabase Storage...");
+              segmentedUrl = await downloadAndUploadToStorage(segmentedUrl, supabase);
+              console.log(`[Step E-0] 抠图已持久化: ${segmentedUrl.slice(0, 80)}...`);
+            } catch (persistErr) {
+              // 持久化失败不阻断：后台 processor 仍有 persistBaseImage 兜底
+              const errMsg = persistErr instanceof Error ? persistErr.message : String(persistErr);
+              console.error("[Step E-0] 抠图持久化失败（降级，后台 processor 会重试）:", errMsg);
+            }
+          }
+        }
         // ---- Step E: 写入单图任务表 ai_image_tasks (由 ai-listing-image-processor 后台处理) ----
         let parentTaskId: string | null = null;
         let enqueuedCount = 0;
