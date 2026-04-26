@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
         user_id: user.id,
         type: 'LUCKY_COIN',
         currency: 'POINTS',
-        balance: 10, // 注册奖励
+        balance: 5, // 注册奖励
         frozen_balance: 0,
         total_deposits: 0,
         total_withdrawals: 0,
@@ -221,9 +221,9 @@ Deno.serve(async (req) => {
         await supabase.from('wallet_transactions').insert({
           wallet_id: luckyWallet.id,
           type: 'NEW_USER_GIFT',
-          amount: 10,
+          amount: 5,
           balance_before: 0,
-          balance_after: 10,
+          balance_after: 5,
           description: '新用户注册奖励',
           status: 'COMPLETED',
           created_at: new Date().toISOString(),
@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
           invitee_id: user.id,
           reward_type: 'new_user_register',
           spin_count_awarded: 1,
-          lucky_coins_awarded: 10,
+          lucky_coins_awarded: 5,
           is_processed: true,
           processed_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
@@ -395,8 +395,8 @@ Deno.serve(async (req) => {
       },
       is_new_user: true,
       new_user_gift: {
-        lucky_coins: 10,
-        message: '恭喜！注册成功，送你 10 积分！'
+        lucky_coins: 5,
+        message: '恭喜！注册成功，送你 5 积分！'
       }
     };
 

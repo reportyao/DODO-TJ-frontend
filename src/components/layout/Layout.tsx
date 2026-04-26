@@ -29,7 +29,7 @@ export const Layout: React.FC<LayoutProps> = ({
   
   // 新人礼物弹窗状态
   const [showNewUserGift, setShowNewUserGift] = useState(false)
-  const [giftAmount, setGiftAmount] = useState(10)
+  const [giftAmount, setGiftAmount] = useState(5)
   
   // 购物次数
   const [spinCount, setSpinCount] = useState(0)
