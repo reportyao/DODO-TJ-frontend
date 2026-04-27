@@ -215,7 +215,7 @@ const GiftSelector: React.FC = () => {
             <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <span>{t('giftTree.pickupTip', 'Pick up at your nearest DODO point within 7 days')}</span>
+          <span>{t('giftTree.pickupTip', 'Pick up at your nearest DODO point within 15 days after completion')}</span>
         </div>
       </div>
 

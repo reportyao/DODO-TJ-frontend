@@ -26,6 +26,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTrackEvent } from '../hooks/useTrackEvent';
 import { useQueryClient } from '@tanstack/react-query';
 import { staleTimes } from '../lib/react-query';
+import { useBrowseTracker } from '../features/gift-tree/hooks/useBrowseTracker';
 
 type Lottery = Tables<'lotteries'>;
 type Showoff = Tables<'showoffs'> & {
@@ -60,6 +61,9 @@ const lotteryRandomShowoffsQueryKey = ['lottery-detail', 'random-showoffs'] as c
 const LotteryDetailPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { supabase } = useSupabase();
+
+  // 希望之树：追踪“浏览商品”任务进度（3 个不同商品×≥3s）
+  useBrowseTracker();
   const { user, wallets, refreshWallets } = useUser();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();

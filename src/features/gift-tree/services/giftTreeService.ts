@@ -29,8 +29,8 @@ function parseRpcResult<T>(data: unknown): T {
   return data as T;
 }
 
-/** 统一错误处理 */
-async function handleRpcError(error: any, fallbackMsg: string): never {
+/** 统一错误处理：始终抛出异常以中断调用链。 */
+async function handleRpcError(error: any, fallbackMsg: string): Promise<never> {
   const msg = await extractEdgeFunctionError(error);
   throw new Error(typeof msg === 'string' ? msg : fallbackMsg);
 }
@@ -45,17 +45,20 @@ export const giftTreeService = {
     return parseRpcResult<GiftTreeStatus>(data);
   },
 
-  /** 获取可选礼物列表（直接查表，只返回有库存且上架的） */
+  /** 获取可选礼物列表（直接查表，只返回有库存且上架的）
+   *  表未在生成的 supabase types 中注册（希望之树是后加模块），
+   *  使用 (supabase as any) 绕过 generated types 严格检查。
+   */
   async getGiftItems(): Promise<GiftItem[]> {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('gift_items')
       .select('*')
       .eq('is_active', true)
       .order('sort_order');
     if (error) throw error;
-    return (data || []).filter(
+    return ((data as any[]) || []).filter(
       (item: any) => (item.stock - item.reserved_stock) > 0
-    );
+    ) as GiftItem[];
   },
 
   /** 开始种树（选择礼物） */

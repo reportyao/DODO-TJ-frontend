@@ -41,6 +41,7 @@ export interface GiftTree {
     image_urls?: string[];
     description?: string;
     description_i18n?: Record<string, string>;
+    value_tjs?: number | null;
   } | null;
 }
 
@@ -54,6 +55,11 @@ export interface GiftTreeTask {
   action_route: string | null;
   action_label_i18n: Record<string, string>;
   sort_order: number;
+  /**
+   * Note: rpc_get_gift_tree_status only returns active tasks (is_active=true),
+   * but the field is included as optional for direct queries / admin views.
+   */
+  is_active?: boolean;
 }
 
 export interface TodayTaskLog {

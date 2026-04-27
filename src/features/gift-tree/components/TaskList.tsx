@@ -38,8 +38,9 @@ const TaskList: React.FC<TaskListProps> = ({
     todayLogs.find((log) => log.task_code === taskCode);
 
   // Sort: active first, then incomplete first, then by sort_order
+  // RPC 已只返回 is_active=true 的任务,但兜底过滤一次以防异常数据
   const sortedTasks = [...tasks]
-    .filter((t) => t.is_active)
+    .filter((t) => t.is_active !== false)
     .sort((a, b) => {
       const aLog = getTaskLog(a.task_code);
       const bLog = getTaskLog(b.task_code);

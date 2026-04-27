@@ -25,7 +25,7 @@ const CompletionPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
 
   const tree = status?.tree;
-  const giftItem = tree?.gift_item || tree?.gift_snapshot;
+  const giftItem = tree?.gift_item;
 
   // Expiry calculation
   const expiryInfo = useMemo(() => {
