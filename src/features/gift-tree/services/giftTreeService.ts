@@ -42,7 +42,15 @@ export const giftTreeService = {
       p_session_token: getSessionToken(),
     });
     if (error) await handleRpcError(error, 'Failed to get tree status');
-    return parseRpcResult<GiftTreeStatus>(data);
+    const result = parseRpcResult<GiftTreeStatus>(data);
+    // Normalize today_logs: RPC returns water_earned, frontend expects total_water
+    if (result.today_logs) {
+      result.today_logs = result.today_logs.map((log: any) => ({
+        ...log,
+        total_water: log.total_water ?? log.water_earned ?? 0,
+      }));
+    }
+    return result;
   },
 
   /** 获取可选礼物列表（直接查表，只返回有库存且上架的）；

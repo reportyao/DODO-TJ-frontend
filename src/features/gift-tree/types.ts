@@ -66,6 +66,7 @@ export interface TodayTaskLog {
   task_code: string;
   count: number;
   total_water: number;
+  water_earned?: number; // RPC returns water_earned, alias for total_water
 }
 
 export interface GiftTreeStatus {

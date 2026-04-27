@@ -129,9 +129,18 @@ export async function extractEdgeFunctionError(error: unknown): Promise<string> 
     }
   } else if (error instanceof Error) {
     errorMessage = error.message
-    // 检查错误消息本身是否是错误码
+    // 检查错误消息本身是否包含错误码（兼容 RPC 格式 "ERR_XXX: description"）
     if (errorMessage.startsWith('ERR_')) {
-      errorCode = errorMessage
+      // 提取纯错误码（冒号前的部分）
+      const colonIdx = errorMessage.indexOf(':')
+      errorCode = colonIdx > 0 ? errorMessage.substring(0, colonIdx).trim() : errorMessage
+    }
+    // 兼容 PostgrestError: 检查 (error as any).code 字段
+    if (!errorCode && (error as any).code) {
+      const pgCode = (error as any).code
+      if (typeof pgCode === 'string' && pgCode.startsWith('ERR_')) {
+        errorCode = pgCode
+      }
     }
   } else {
     errorMessage = String(error)

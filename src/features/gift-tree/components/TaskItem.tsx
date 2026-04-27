@@ -3,6 +3,7 @@
  *
  * 展示任务名称、奖励水滴数、完成状态和操作按钮。
  * 对标设计图 Daily Tasks 卡片样式。
+ * 精美卡片设计，带有渐变图标、进度条和推荐标签。
  *
  * 多语言适配策略：
  * - 标题使用 line-clamp-2 + min-h 保证2行空间
@@ -57,29 +58,29 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
   return (
     <div
-      className={`relative bg-white rounded-2xl p-3 shadow-sm border transition-all ${
+      className={`relative bg-white rounded-2xl p-3.5 shadow-sm transition-all ${
         isRecommended && !isDone
-          ? 'border-amber-300/60 bg-gradient-to-r from-amber-50/50 to-white shadow-amber-100/40'
+          ? 'border-2 border-amber-300/50 bg-gradient-to-r from-amber-50/40 to-white shadow-amber-100/30'
           : isDone
-          ? 'border-gray-100/60 opacity-75'
-          : 'border-gray-100/60'
+          ? 'border border-gray-100/60 opacity-70'
+          : 'border border-gray-100/60 hover:shadow-md'
       }`}
     >
       {/* Recommended badge */}
       {isRecommended && !isDone && (
-        <div className="absolute -top-2.5 right-3 bg-gradient-to-r from-amber-400 to-orange-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow-sm">
+        <div className="absolute -top-2.5 right-3 bg-gradient-to-r from-amber-400 to-orange-400 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-sm">
           <span>⭐</span>
           <span>{t('giftTree.recommended', 'Recommended')}</span>
         </div>
       )}
 
       <div className="flex items-center gap-3">
-        {/* Left: icon */}
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FFF3E0] to-[#FFE0B2] flex items-center justify-center text-xl flex-shrink-0">
+        {/* Left: icon with warm gradient background */}
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#FFF8F0] to-[#FFE0B2] flex items-center justify-center text-xl flex-shrink-0 shadow-sm border border-amber-100/30">
           {icon}
         </div>
 
-        {/* Middle: title + progress (flex-1, allows wrapping) */}
+        {/* Middle: title + progress */}
         <div className="flex-1 min-w-0 py-0.5">
           <div className="font-semibold text-foreground text-[13px] leading-tight line-clamp-2">
             {title}
@@ -89,7 +90,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
               <span className="text-[11px] text-muted-foreground tabular-nums flex-shrink-0">
                 {completedCount}/{task.daily_limit}
               </span>
-              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden max-w-[100px]">
+              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden max-w-[100px]">
                 <div
                   className="h-full bg-gradient-to-r from-accent to-teal-500 rounded-full transition-all duration-500"
                   style={{ width: `${progressPercent}%` }}
@@ -104,13 +105,13 @@ const TaskItem: React.FC<TaskItemProps> = ({
           )}
         </div>
 
-        {/* Right: reward + action (fixed width area, stacked vertically) */}
+        {/* Right: reward + action */}
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0 ml-1">
           <span className="text-accent font-bold text-[13px] tabular-nums whitespace-nowrap">
             +{task.reward_water} {t('giftTree.drops', 'drops')}
           </span>
           {isDone ? (
-            <div className="flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1 rounded-full">
+            <div className="flex items-center gap-1 bg-green-50 text-green-600 px-2.5 py-1.5 rounded-full">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
@@ -122,7 +123,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
             <button
               onClick={handleClick}
               disabled={isLoading}
-              className="min-w-[52px] bg-gradient-to-r from-accent to-teal-600 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full active:scale-95 transition-all disabled:opacity-50 whitespace-nowrap shadow-sm shadow-accent/15"
+              className="min-w-[52px] bg-gradient-to-r from-accent to-teal-600 text-white text-[11px] font-semibold px-3.5 py-1.5 rounded-full active:scale-95 transition-all disabled:opacity-50 whitespace-nowrap shadow-sm shadow-accent/15 hover:shadow-md"
             >
               {isLoading ? (
                 <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />

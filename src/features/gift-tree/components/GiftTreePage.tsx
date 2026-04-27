@@ -4,6 +4,7 @@
  * 展示用户的种树进度、树的视觉、浇水按钮和每日任务列表。
  * 根据用户状态自动路由：无树 → 选礼物，已完成 → 完成页。
  * 对标设计图中的 "Hope Tree" 主页面（底部导航、进度条、树视觉、任务卡片）。
+ * 精美暖色调设计，带有渐变进度条和卡片式任务。
  */
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -43,7 +44,7 @@ const GiftTreePage: React.FC = () => {
     }
   }, [status, isLoading, navigate]);
 
-  // Handle task action (浇水 = 完成任务获得水滴)
+  // Handle task action
   const handleTaskAction = useCallback(
     async (taskCode: string) => {
       if (waterTree.isPending || loadingTask) return;
@@ -56,14 +57,12 @@ const GiftTreePage: React.FC = () => {
             `+${result.water_earned} 💧`,
             { duration: 1500, position: 'top-center' }
           );
-          // Check for milestone rewards
           if (result.milestone_rewards && result.milestone_rewards.length > 0) {
             setTimeout(() => {
               setMilestoneRewards(result.milestone_rewards);
               setShowMilestone(true);
             }, 1200);
           }
-          // If tree completed
           if (result.completed) {
             setTimeout(() => {
               navigate('/gift-tree/complete');
@@ -92,7 +91,7 @@ const GiftTreePage: React.FC = () => {
     [waterTree, loadingTask, triggerAnimation, navigate, t]
   );
 
-  // Handle share for friend help - 使用 user_id 而非 tree.id
+  // Handle share
   const handleShare = useCallback(() => {
     if (!status?.tree?.user_id) return;
     const url = `${window.location.origin}/gift-tree/help/${status.tree.user_id}`;
@@ -103,7 +102,7 @@ const GiftTreePage: React.FC = () => {
     );
   }, [status, t]);
 
-  // 快捷任务卡片数据（底部横向滚动区域）
+  // Quick task cards data
   const quickTasks = useMemo(() => {
     if (!status?.tasks) return [];
     return status.tasks
@@ -123,9 +122,10 @@ const GiftTreePage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#FDF6EC] via-[#FFF8F0] to-[#FFF3E0] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="relative w-12 h-12">
-            <div className="absolute inset-0 border-3 border-accent/20 rounded-full" />
-            <div className="absolute inset-0 border-3 border-accent border-t-transparent rounded-full animate-spin" />
+          <div className="relative w-14 h-14">
+            <div className="absolute inset-0 border-[3px] border-accent/15 rounded-full" />
+            <div className="absolute inset-0 border-[3px] border-accent border-t-transparent rounded-full animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center text-xl">🌳</div>
           </div>
           <span className="text-muted-foreground text-sm">{t('common.loading', 'Loading...')}</span>
         </div>
@@ -136,19 +136,19 @@ const GiftTreePage: React.FC = () => {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#FDF6EC] to-[#FFF3E0] flex flex-col items-center justify-center p-6">
-        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
-          <span className="text-3xl">😔</span>
+      <div className="min-h-screen bg-gradient-to-b from-[#FDF6EC] via-[#FFF8F0] to-[#FFF3E0] flex flex-col items-center justify-center p-6">
+        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center mb-4 shadow-sm">
+          <span className="text-4xl">😔</span>
         </div>
-        <p className="text-foreground font-medium text-center mb-2">
+        <p className="text-foreground font-semibold text-center mb-2">
           {t('common.loadFailed', 'Failed to load')}
         </p>
-        <p className="text-muted-foreground text-xs text-center mb-5">
+        <p className="text-muted-foreground text-xs text-center mb-5 max-w-xs leading-relaxed">
           {t('giftTree.checkNetwork', 'Please check your network and try again')}
         </p>
         <button
           onClick={() => refetch()}
-          className="bg-gradient-to-r from-accent to-teal-600 text-white px-8 py-2.5 rounded-full font-medium active:scale-95 transition-transform shadow-md shadow-accent/20"
+          className="bg-gradient-to-r from-accent to-teal-600 text-white px-8 py-3 rounded-2xl font-semibold active:scale-95 transition-transform shadow-lg shadow-accent/20"
         >
           {t('common.retry', 'Retry')}
         </button>
@@ -159,19 +159,19 @@ const GiftTreePage: React.FC = () => {
   // Cooldown state
   if (status?.cooldown_active && !status.has_tree) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#FDF6EC] to-[#FFF3E0] flex flex-col items-center justify-center p-6">
-        <div className="w-20 h-20 rounded-full bg-amber-50 flex items-center justify-center mb-4">
+      <div className="min-h-screen bg-gradient-to-b from-[#FDF6EC] via-[#FFF8F0] to-[#FFF3E0] flex flex-col items-center justify-center p-6">
+        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center mb-4 shadow-sm">
           <span className="text-4xl">⏳</span>
         </div>
         <h2 className="text-lg font-bold text-foreground mb-2">
           {t('giftTree.cooldownTitle', 'Cooldown Period')}
         </h2>
-        <p className="text-muted-foreground text-sm text-center max-w-xs">
+        <p className="text-muted-foreground text-sm text-center max-w-xs leading-relaxed">
           {t('giftTree.cooldownDesc', 'Please wait before starting a new tree.')}
         </p>
         <button
           onClick={() => navigate('/')}
-          className="mt-6 bg-gradient-to-r from-accent to-teal-600 text-white px-8 py-2.5 rounded-full font-medium active:scale-95 transition-transform shadow-md shadow-accent/20"
+          className="mt-6 bg-gradient-to-r from-accent to-teal-600 text-white px-8 py-3 rounded-2xl font-semibold active:scale-95 transition-transform shadow-lg shadow-accent/20"
         >
           {t('common.backToHome', 'Back to Home')}
         </button>
@@ -190,42 +190,44 @@ const GiftTreePage: React.FC = () => {
       {isAnimating && <WaterDropAnimation />}
 
       {/* ===== Top Section: Progress Bar ===== */}
-      <div className="sticky top-0 z-20 bg-[#FDF6EC]/95 backdrop-blur-sm border-b border-primary/5">
+      <div className="sticky top-0 z-20 bg-gradient-to-b from-[#FDF6EC] to-[#FDF6EC]/95 backdrop-blur-sm">
         <div className="px-4 pt-3 pb-3">
           {/* Water count */}
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center gap-1.5">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2C12 2 5 10 5 15C5 18.866 8.134 22 12 22C15.866 22 19 18.866 19 15C19 10 12 2 12 2Z" fill="#00897B" opacity="0.9"/>
-                <path d="M12 4C12 4 7 10.5 7 14.5C7 17.538 9.239 20 12 20" fill="#26A69A" opacity="0.5"/>
-              </svg>
-              <span className="text-accent font-bold text-base">{tree.current_water}</span>
+              <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2C12 2 5 10 5 15C5 18.866 8.134 22 12 22C15.866 22 19 18.866 19 15C19 10 12 2 12 2Z" fill="#006B6B" opacity="0.9"/>
+                  <path d="M12 4C12 4 7 10.5 7 14.5C7 17.538 9.239 20 12 20" fill="#26A69A" opacity="0.4"/>
+                </svg>
+              </div>
+              <span className="text-accent font-bold text-base tabular-nums">{tree.current_water}</span>
               <span className="text-muted-foreground text-xs">/{tree.target_water} {t('giftTree.drops', 'drops')}</span>
             </div>
             {/* Share button */}
             <button
               onClick={handleShare}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/60 hover:bg-white active:scale-90 transition-all"
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-white/70 hover:bg-white active:scale-90 transition-all shadow-sm"
               aria-label="Share"
             >
-              <svg className="w-4.5 h-4.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
               </svg>
             </button>
           </div>
 
           {/* Teal gradient progress bar */}
-          <div className="w-full h-7 bg-gray-100 rounded-full overflow-hidden relative shadow-inner">
+          <div className="w-full h-8 bg-gray-100/80 rounded-full overflow-hidden relative shadow-inner">
             <div
               className="h-full rounded-full transition-all duration-1000 ease-out relative"
               style={{
                 width: `${Math.max(progressPct, 6)}%`,
-                background: 'linear-gradient(90deg, #00897B, #26A69A, #4DB6AC)',
+                background: 'linear-gradient(90deg, #006B6B, #00897B, #26A69A)',
               }}
             >
               {/* Shimmer effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" style={{ animation: 'shimmer 2s ease-in-out infinite' }} />
-              <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold drop-shadow-sm">
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent" style={{ animation: 'shimmer 2.5s ease-in-out infinite' }} />
+              <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold drop-shadow-sm tabular-nums">
                 {progressPct}%
               </span>
             </div>
@@ -234,8 +236,8 @@ const GiftTreePage: React.FC = () => {
       </div>
 
       {/* ===== User Info ===== */}
-      <div className="px-4 pt-3 pb-1 flex items-center gap-2.5">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-light/60 to-primary-light/20 flex items-center justify-center text-lg shadow-sm">
+      <div className="px-4 pt-2 pb-1 flex items-center gap-2.5">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FFF3E0] to-[#FFE0B2] flex items-center justify-center text-lg shadow-sm border border-amber-100/50">
           🌱
         </div>
         <span className="font-semibold text-foreground text-sm">
@@ -258,13 +260,13 @@ const GiftTreePage: React.FC = () => {
           className={`w-full py-4 rounded-2xl font-bold text-white text-base flex items-center justify-center gap-2.5 transition-all duration-300 ${
             isAnimating
               ? 'bg-accent/80 scale-[0.97]'
-              : 'bg-gradient-to-r from-[#00897B] to-[#26A69A] shadow-lg shadow-accent/30 active:scale-[0.97] hover:shadow-xl hover:shadow-accent/35'
+              : 'bg-gradient-to-r from-[#006B6B] to-[#26A69A] shadow-lg shadow-accent/25 active:scale-[0.97] hover:shadow-xl hover:shadow-accent/30'
           } disabled:opacity-60`}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
             <path d="M12 2C12 2 5 10 5 15C5 18.866 8.134 22 12 22C15.866 22 19 18.866 19 15C19 10 12 2 12 2Z" fill="white" opacity="0.9"/>
           </svg>
-          <span>{t('giftTree.waterButton', 'Water the Tree')}</span>
+          {t('giftTree.waterTree', 'Water the Tree')}
           {isAnimating && (
             <span className="inline-block animate-bounce text-lg">💧</span>
           )}
@@ -284,24 +286,24 @@ const GiftTreePage: React.FC = () => {
         </button>
       </div>
 
-      {/* ===== Horizontal Quick Task Cards (matching design) ===== */}
+      {/* ===== Horizontal Quick Task Cards ===== */}
       {quickTasks.length > 0 && (
         <div className="px-4 mb-5 overflow-x-auto scrollbar-hide">
           <div className="flex gap-2.5 pb-1">
             {quickTasks.map((task) => (
               <div
                 key={task.task_code}
-                className={`flex-shrink-0 w-[115px] bg-white rounded-2xl p-3 border transition-all shadow-sm ${
-                  task.isDone ? 'border-gray-100 opacity-70' : 'border-primary/10'
+                className={`flex-shrink-0 w-[120px] bg-white rounded-2xl p-3 transition-all shadow-sm ${
+                  task.isDone ? 'border border-gray-100/60 opacity-65' : 'border border-[#FFF3E0] hover:shadow-md'
                 }`}
               >
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#FFF3E0] to-[#FFE0B2] flex items-center justify-center text-lg mb-2">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FFF8F0] to-[#FFE0B2] flex items-center justify-center text-lg mb-2 shadow-sm">
                   {task.icon}
                 </div>
                 <div className="text-[11px] font-semibold text-foreground leading-tight mb-0.5 line-clamp-2 min-h-[2rem]">
                   {task.title}
                 </div>
-                <div className="text-[10px] text-accent font-bold mb-2">
+                <div className="text-[10px] text-accent font-bold mb-2 tabular-nums">
                   +{task.reward_water} {t('giftTree.drops', 'drops')}
                 </div>
                 {task.isDone ? (
@@ -318,7 +320,7 @@ const GiftTreePage: React.FC = () => {
                       }
                     }}
                     disabled={loadingTask === task.task_code}
-                    className="bg-gradient-to-r from-accent to-teal-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-full active:scale-95 transition-all disabled:opacity-50 shadow-sm shadow-accent/20"
+                    className="bg-gradient-to-r from-accent to-teal-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-full active:scale-95 transition-all disabled:opacity-50 shadow-sm shadow-accent/15"
                   >
                     {loadingTask === task.task_code ? '...' : `${t('giftTree.taskGo', 'Go')} ›`}
                   </button>
