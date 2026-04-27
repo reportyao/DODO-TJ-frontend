@@ -506,6 +506,102 @@ export type Database = {
           },
         ]
       }
+      ai_image_tasks: {
+        Row: {
+          admin_user_id: string | null
+          attempt_count: number
+          base_image_url: string
+          caption_position: string
+          clean_bg_url: string | null
+          created_at: string
+          display_order: number
+          error_message: string | null
+          id: string
+          last_attempt_at: string | null
+          marketing_image_url: string | null
+          parent_task_id: string
+          ref_prompt: string
+          ru_caption: string
+          status: string
+          text_theme: string
+          updated_at: string
+          wanx_task_id: string | null
+        }
+        Insert: {
+          admin_user_id?: string | null
+          attempt_count?: number
+          base_image_url: string
+          caption_position?: string
+          clean_bg_url?: string | null
+          created_at?: string
+          display_order?: number
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          marketing_image_url?: string | null
+          parent_task_id: string
+          ref_prompt: string
+          ru_caption: string
+          status?: string
+          text_theme?: string
+          updated_at?: string
+          wanx_task_id?: string | null
+        }
+        Update: {
+          admin_user_id?: string | null
+          attempt_count?: number
+          base_image_url?: string
+          caption_position?: string
+          clean_bg_url?: string | null
+          created_at?: string
+          display_order?: number
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          marketing_image_url?: string | null
+          parent_task_id?: string
+          ref_prompt?: string
+          ru_caption?: string
+          status?: string
+          text_theme?: string
+          updated_at?: string
+          wanx_task_id?: string | null
+        }
+        Relationships: []
+      }
+      ai_listing_generation_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          request_payload: Json | null
+          result_payload: Json | null
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          request_payload?: Json | null
+          result_payload?: Json | null
+          status: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          request_payload?: Json | null
+          result_payload?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
       ai_topic_generation_tasks: {
         Row: {
           completed_at: string | null
@@ -549,6 +645,65 @@ export type Database = {
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "homepage_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_understanding_jobs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          force_regenerate: boolean
+          id: string
+          model_used: string | null
+          product_id: string
+          progress: number
+          result: Json | null
+          stage: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          force_regenerate?: boolean
+          id?: string
+          model_used?: string | null
+          product_id: string
+          progress?: number
+          result?: Json | null
+          stage?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          force_regenerate?: boolean
+          id?: string
+          model_used?: string | null
+          product_id?: string
+          progress?: number
+          result?: Json | null
+          stage?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_understanding_jobs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_products"
             referencedColumns: ["id"]
           },
         ]
@@ -601,6 +756,7 @@ export type Database = {
       banners: {
         Row: {
           created_at: string | null
+          end_time: string | null
           id: string
           image_url: string
           image_url_ru: string | null
@@ -618,6 +774,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          end_time?: string | null
           id?: string
           image_url: string
           image_url_ru?: string | null
@@ -635,6 +792,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          end_time?: string | null
           id?: string
           image_url?: string
           image_url_ru?: string | null
@@ -735,6 +893,142 @@ export type Database = {
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "shipment_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_upload_items: {
+        Row: {
+          ai_result: Json | null
+          ai_understanding: Json | null
+          batch_id: string
+          category_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          image_urls: string[]
+          inventory_product_id: string | null
+          max_retries: number
+          next_retry_at: string | null
+          price: number | null
+          processing_completed_at: string | null
+          processing_started_at: string | null
+          product_name: string | null
+          retry_count: number
+          specs: string | null
+          status: string
+          stock: number | null
+          updated_at: string
+        }
+        Insert: {
+          ai_result?: Json | null
+          ai_understanding?: Json | null
+          batch_id: string
+          category_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          image_urls?: string[]
+          inventory_product_id?: string | null
+          max_retries?: number
+          next_retry_at?: string | null
+          price?: number | null
+          processing_completed_at?: string | null
+          processing_started_at?: string | null
+          product_name?: string | null
+          retry_count?: number
+          specs?: string | null
+          status?: string
+          stock?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ai_result?: Json | null
+          ai_understanding?: Json | null
+          batch_id?: string
+          category_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          image_urls?: string[]
+          inventory_product_id?: string | null
+          max_retries?: number
+          next_retry_at?: string | null
+          price?: number | null
+          processing_completed_at?: string | null
+          processing_started_at?: string | null
+          product_name?: string | null
+          retry_count?: number
+          specs?: string | null
+          status?: string
+          stock?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_upload_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_upload_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_upload_tasks: {
+        Row: {
+          admin_id: string | null
+          batch_name: string
+          created_at: string
+          default_category_id: string | null
+          default_price: number | null
+          default_stock: number | null
+          error_items: number
+          id: string
+          notes: string | null
+          processed_items: number
+          status: string
+          success_items: number
+          total_items: number
+          updated_at: string
+        }
+        Insert: {
+          admin_id?: string | null
+          batch_name?: string
+          created_at?: string
+          default_category_id?: string | null
+          default_price?: number | null
+          default_stock?: number | null
+          error_items?: number
+          id?: string
+          notes?: string | null
+          processed_items?: number
+          status?: string
+          success_items?: number
+          total_items?: number
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string | null
+          batch_name?: string
+          created_at?: string
+          default_category_id?: string | null
+          default_price?: number | null
+          default_stock?: number | null
+          error_items?: number
+          id?: string
+          notes?: string | null
+          processed_items?: number
+          status?: string
+          success_items?: number
+          total_items?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_upload_tasks_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
             referencedColumns: ["id"]
           },
         ]
@@ -1890,6 +2184,307 @@ export type Database = {
           },
         ]
       }
+      gift_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          description_i18n: Json | null
+          id: string
+          image_url: string
+          image_urls: string[] | null
+          is_active: boolean
+          name: string
+          name_i18n: Json | null
+          reserved_stock: number
+          sort_order: number | null
+          stock: number
+          target_water: number
+          updated_at: string
+          value_tjs: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          description_i18n?: Json | null
+          id?: string
+          image_url?: string
+          image_urls?: string[] | null
+          is_active?: boolean
+          name: string
+          name_i18n?: Json | null
+          reserved_stock?: number
+          sort_order?: number | null
+          stock?: number
+          target_water?: number
+          updated_at?: string
+          value_tjs?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          description_i18n?: Json | null
+          id?: string
+          image_url?: string
+          image_urls?: string[] | null
+          is_active?: boolean
+          name?: string
+          name_i18n?: Json | null
+          reserved_stock?: number
+          sort_order?: number | null
+          stock?: number
+          target_water?: number
+          updated_at?: string
+          value_tjs?: number
+        }
+        Relationships: []
+      }
+      gift_tree_help_logs: {
+        Row: {
+          created_at: string
+          helper_device_id: string | null
+          helper_id: string
+          helper_ip_address: unknown
+          id: string
+          tree_id: string
+          tree_owner_id: string
+          water_earned: number
+        }
+        Insert: {
+          created_at?: string
+          helper_device_id?: string | null
+          helper_id: string
+          helper_ip_address?: unknown
+          id?: string
+          tree_id: string
+          tree_owner_id: string
+          water_earned: number
+        }
+        Update: {
+          created_at?: string
+          helper_device_id?: string | null
+          helper_id?: string
+          helper_ip_address?: unknown
+          id?: string
+          tree_id?: string
+          tree_owner_id?: string
+          water_earned?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_tree_help_logs_tree_id_fkey"
+            columns: ["tree_id"]
+            isOneToOne: false
+            referencedRelation: "gift_trees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gift_tree_task_logs: {
+        Row: {
+          created_at: string
+          device_id: string | null
+          id: string
+          ip_address: unknown
+          metadata: Json | null
+          reference_id: string | null
+          task_code: string
+          tree_id: string
+          user_id: string
+          water_earned: number
+        }
+        Insert: {
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          reference_id?: string | null
+          task_code: string
+          tree_id: string
+          user_id: string
+          water_earned: number
+        }
+        Update: {
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          reference_id?: string | null
+          task_code?: string
+          tree_id?: string
+          user_id?: string
+          water_earned?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_tree_task_logs_task_code_fkey"
+            columns: ["task_code"]
+            isOneToOne: false
+            referencedRelation: "gift_tree_tasks"
+            referencedColumns: ["task_code"]
+          },
+          {
+            foreignKeyName: "gift_tree_task_logs_tree_id_fkey"
+            columns: ["tree_id"]
+            isOneToOne: false
+            referencedRelation: "gift_trees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gift_tree_tasks: {
+        Row: {
+          action_label_i18n: Json | null
+          action_route: string | null
+          category: string
+          created_at: string
+          daily_limit: number
+          description_i18n: Json | null
+          is_active: boolean
+          min_amount: number | null
+          require_real_payment: boolean | null
+          reward_water: number
+          sort_order: number | null
+          task_code: string
+          title_i18n: Json
+        }
+        Insert: {
+          action_label_i18n?: Json | null
+          action_route?: string | null
+          category?: string
+          created_at?: string
+          daily_limit?: number
+          description_i18n?: Json | null
+          is_active?: boolean
+          min_amount?: number | null
+          require_real_payment?: boolean | null
+          reward_water: number
+          sort_order?: number | null
+          task_code: string
+          title_i18n?: Json
+        }
+        Update: {
+          action_label_i18n?: Json | null
+          action_route?: string | null
+          category?: string
+          created_at?: string
+          daily_limit?: number
+          description_i18n?: Json | null
+          is_active?: boolean
+          min_amount?: number | null
+          require_real_payment?: boolean | null
+          reward_water?: number
+          sort_order?: number | null
+          task_code?: string
+          title_i18n?: Json
+        }
+        Relationships: []
+      }
+      gift_trees: {
+        Row: {
+          claimed_at: string | null
+          cooldown_until: string | null
+          created_at: string
+          current_water: number
+          gift_item_id: string
+          id: string
+          milestone_200_claimed: boolean
+          milestone_500_claimed: boolean
+          milestone_800_claimed: boolean
+          pickup_code: string | null
+          pickup_code_expires_at: string | null
+          pickup_point_id: string | null
+          status: string
+          target_water: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          cooldown_until?: string | null
+          created_at?: string
+          current_water?: number
+          gift_item_id: string
+          id?: string
+          milestone_200_claimed?: boolean
+          milestone_500_claimed?: boolean
+          milestone_800_claimed?: boolean
+          pickup_code?: string | null
+          pickup_code_expires_at?: string | null
+          pickup_point_id?: string | null
+          status?: string
+          target_water?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string | null
+          cooldown_until?: string | null
+          created_at?: string
+          current_water?: number
+          gift_item_id?: string
+          id?: string
+          milestone_200_claimed?: boolean
+          milestone_500_claimed?: boolean
+          milestone_800_claimed?: boolean
+          pickup_code?: string | null
+          pickup_code_expires_at?: string | null
+          pickup_point_id?: string | null
+          status?: string
+          target_water?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_trees_gift_item_id_fkey"
+            columns: ["gift_item_id"]
+            isOneToOne: false
+            referencedRelation: "gift_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      google_play_purchases: {
+        Row: {
+          coins_amount: number
+          created_at: string | null
+          id: string
+          order_id: string | null
+          product_id: string
+          purchase_token: string
+          status: string
+          updated_at: string | null
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          coins_amount?: number
+          created_at?: string | null
+          id?: string
+          order_id?: string | null
+          product_id: string
+          purchase_token: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          coins_amount?: number
+          created_at?: string | null
+          id?: string
+          order_id?: string | null
+          product_id?: string
+          purchase_token?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       group_buy_orders: {
         Row: {
           amount: number
@@ -2212,6 +2807,7 @@ export type Database = {
           created_at: string | null
           current_participants: number | null
           drawn_at: string | null
+          end_time: string | null
           expires_at: string | null
           group_size: number | null
           id: string
@@ -2232,6 +2828,7 @@ export type Database = {
           created_at?: string | null
           current_participants?: number | null
           drawn_at?: string | null
+          end_time?: string | null
           expires_at?: string | null
           group_size?: number | null
           id?: string
@@ -2252,6 +2849,7 @@ export type Database = {
           created_at?: string | null
           current_participants?: number | null
           drawn_at?: string | null
+          end_time?: string | null
           expires_at?: string | null
           group_size?: number | null
           id?: string
@@ -2282,6 +2880,7 @@ export type Database = {
           created_at: string | null
           current_participants: number | null
           drawn_at: string | null
+          end_time: string | null
           id: string
           product_id: string | null
           start_time: string | null
@@ -2292,6 +2891,7 @@ export type Database = {
           created_at?: string | null
           current_participants?: number | null
           drawn_at?: string | null
+          end_time?: string | null
           id: string
           product_id?: string | null
           start_time?: string | null
@@ -2302,6 +2902,7 @@ export type Database = {
           created_at?: string | null
           current_participants?: number | null
           drawn_at?: string | null
+          end_time?: string | null
           id?: string
           product_id?: string | null
           start_time?: string | null
@@ -2395,6 +2996,7 @@ export type Database = {
           cover_image_zh: string | null
           created_at: string
           created_by: string | null
+          end_time: string | null
           id: string
           intro_i18n: Json | null
           is_active: boolean
@@ -2421,6 +3023,7 @@ export type Database = {
           cover_image_zh?: string | null
           created_at?: string
           created_by?: string | null
+          end_time?: string | null
           id?: string
           intro_i18n?: Json | null
           is_active?: boolean
@@ -2447,6 +3050,7 @@ export type Database = {
           cover_image_zh?: string | null
           created_at?: string
           created_by?: string | null
+          end_time?: string | null
           id?: string
           intro_i18n?: Json | null
           is_active?: boolean
@@ -2479,6 +3083,7 @@ export type Database = {
           id: string
           image_url: string | null
           image_urls: string[] | null
+          local_batch_id: string | null
           material: string | null
           material_i18n: Json | null
           name: string
@@ -2504,6 +3109,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           image_urls?: string[] | null
+          local_batch_id?: string | null
           material?: string | null
           material_i18n?: Json | null
           name: string
@@ -2529,6 +3135,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           image_urls?: string[] | null
+          local_batch_id?: string | null
           material?: string | null
           material_i18n?: Json | null
           name?: string
@@ -2542,7 +3149,22 @@ export type Database = {
           stock?: number | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "inventory_products_local_batch_id_fkey"
+            columns: ["local_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_statistics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_products_local_batch_id_fkey"
+            columns: ["local_batch_id"]
+            isOneToOne: false
+            referencedRelation: "shipment_batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_transactions: {
         Row: {
@@ -2741,6 +3363,7 @@ export type Database = {
           draw_algorithm_data: Json | null
           draw_time: string | null
           drawn_at: string | null
+          end_time: string | null
           full_purchase_enabled: boolean | null
           full_purchase_price: number | null
           id: string
@@ -2783,6 +3406,7 @@ export type Database = {
           draw_algorithm_data?: Json | null
           draw_time?: string | null
           drawn_at?: string | null
+          end_time?: string | null
           full_purchase_enabled?: boolean | null
           full_purchase_price?: number | null
           id?: string
@@ -2825,6 +3449,7 @@ export type Database = {
           draw_algorithm_data?: Json | null
           draw_time?: string | null
           drawn_at?: string | null
+          end_time?: string | null
           full_purchase_enabled?: boolean | null
           full_purchase_price?: number | null
           id?: string
@@ -5298,6 +5923,7 @@ export type Database = {
           cover_image_tg: string | null
           cover_image_zh: string | null
           created_at: string
+          end_time: string | null
           feed_position: number
           id: string
           is_active: boolean
@@ -5316,6 +5942,7 @@ export type Database = {
           cover_image_tg?: string | null
           cover_image_zh?: string | null
           created_at?: string
+          end_time?: string | null
           feed_position?: number
           id?: string
           is_active?: boolean
@@ -5334,6 +5961,7 @@ export type Database = {
           cover_image_tg?: string | null
           cover_image_zh?: string | null
           created_at?: string
+          end_time?: string | null
           feed_position?: number
           id?: string
           is_active?: boolean
@@ -6248,6 +6876,14 @@ export type Database = {
         Args: { p_count?: number; p_source?: string; p_user_id: string }
         Returns: boolean
       }
+      admin_cancel_gift_tree: {
+        Args: { p_session_token: string; p_tree_id: string }
+        Returns: Json
+      }
+      admin_claim_gift_tree: {
+        Args: { p_session_token: string; p_tree_id: string }
+        Returns: Json
+      }
       admin_count: {
         Args: {
           p_filters?: Json
@@ -6259,6 +6895,10 @@ export type Database = {
       }
       admin_create_signed_upload_url: {
         Args: { p_bucket: string; p_file_path: string; p_session_token: string }
+        Returns: Json
+      }
+      admin_expire_gift_tree: {
+        Args: { p_session_token: string; p_tree_id: string }
         Returns: Json
       }
       admin_get_permissions: {
@@ -6310,6 +6950,22 @@ export type Database = {
           ticket_number: number
         }[]
       }
+      apply_google_play_purchase: {
+        Args: {
+          p_coins_amount: number
+          p_order_id: string
+          p_product_id: string
+          p_purchase_token: string
+          p_user_id: string
+        }
+        Returns: {
+          balance_after: number
+          balance_before: number
+          coins_added: number
+          purchase_id: string
+          wallet_id: string
+        }[]
+      }
       approve_deposit_atomic: {
         Args: {
           p_action: string
@@ -6338,6 +6994,7 @@ export type Database = {
         Returns: number
       }
       cleanup_expired_admin_sessions: { Args: never; Returns: number }
+      cleanup_expired_sessions: { Args: never; Returns: undefined }
       confirm_promoter_settlement: {
         Args: {
           p_admin_id?: string
@@ -6640,6 +7297,15 @@ export type Database = {
         Args: { p_lottery_id: string; p_quantity: number }
         Returns: undefined
       }
+      rpc_admin_adjust_water: {
+        Args: {
+          p_adjustment: number
+          p_reason?: string
+          p_session_token: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       rpc_admin_get_category_product_counts: {
         Args: { p_session_token: string }
         Returns: Json
@@ -6661,6 +7327,10 @@ export type Database = {
         Args: { p_items: Json; p_session_token: string; p_topic_id: string }
         Returns: Json
       }
+      rpc_admin_save_topic_sections: {
+        Args: { p_sections: Json; p_session_token: string; p_topic_id: string }
+        Returns: Json
+      }
       rpc_admin_search_topic_products: {
         Args: {
           p_category_ids?: string[]
@@ -6673,12 +7343,41 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_claim_gift_tree: {
+        Args: {
+          p_pickup_code: string
+          p_pickup_point_id?: string
+          p_session_token: string
+        }
+        Returns: Json
+      }
+      rpc_get_gift_tree_status: {
+        Args: { p_session_token: string }
+        Returns: Json
+      }
       rpc_get_home_feed: {
         Args: { p_lang?: string; p_limit?: number }
         Returns: Json
       }
+      rpc_get_subsidy_pool_total: { Args: never; Returns: number }
       rpc_get_topic_detail: {
         Args: { p_lang?: string; p_slug: string }
+        Returns: Json
+      }
+      rpc_get_topic_detail_v2: {
+        Args: { p_lang?: string; p_slug: string }
+        Returns: Json
+      }
+      rpc_gift_tree_friend_help: {
+        Args: {
+          p_device_id?: string
+          p_session_token: string
+          p_tree_owner_id: string
+        }
+        Returns: Json
+      }
+      rpc_start_gift_tree: {
+        Args: { p_gift_item_id: string; p_session_token: string }
         Returns: Json
       }
       rpc_track_behavior_event: {
@@ -6703,11 +7402,33 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_water_tree: {
+        Args: {
+          p_device_id?: string
+          p_metadata?: Json
+          p_reference_id?: string
+          p_session_token: string
+          p_task_code: string
+        }
+        Returns: Json
+      }
+      rpc_water_tree_internal: {
+        Args: {
+          p_device_id: string
+          p_metadata: Json
+          p_reference_id: string
+          p_task_code: string
+          p_tree_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       save_role_permissions: {
         Args: { p_permissions: Json; p_role: string }
         Returns: undefined
       }
       search_user_for_deposit: { Args: { p_query: string }; Returns: Json }
+      to_date_immutable: { Args: { ts: string }; Returns: string }
       update_batch_statistics: {
         Args: { p_batch_id: string }
         Returns: undefined

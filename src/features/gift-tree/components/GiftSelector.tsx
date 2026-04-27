@@ -14,7 +14,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { getLocalizedText, getOptimizedImageUrl } from '../../../lib/utils';
+import { getLocalizedText } from '../../../lib/utils';
+import { LazyImage } from '../../../components/LazyImage';
 import { useGiftItems, useStartTree } from '../hooks/useGiftTree';
 import type { GiftItem } from '../types';
 
@@ -139,10 +140,7 @@ const GiftSelector: React.FC = () => {
             const isFirst = idx === 0;
             const isSelected = selectedId === item.id;
             const isLastOdd = giftItems.length % 2 === 1 && idx === giftItems.length - 1;
-            // Optimize image URL if available
-            const imgSrc = item.image_url
-              ? getOptimizedImageUrl(item.image_url, { width: 200, height: 200 })
-              : null;
+            const imgSrc = item.image_url || null;
 
             return (
               <div
@@ -161,12 +159,22 @@ const GiftSelector: React.FC = () => {
                 {/* Gift image */}
                 <div className="flex justify-center mb-3">
                   {imgSrc ? (
-                    <img
-                      src={imgSrc}
-                      alt={name}
-                      className="w-20 h-20 object-contain rounded-xl"
-                      loading="lazy"
-                    />
+                    <div
+                      style={{
+                        position: 'relative',
+                        width: '5rem',
+                        height: '5rem',
+                        overflow: 'hidden',
+                        borderRadius: '0.75rem',
+                      }}
+                    >
+                      <LazyImage
+                        src={imgSrc}
+                        alt={name}
+                        objectFit="contain"
+                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                      />
+                    </div>
                   ) : (
                     <div className="w-20 h-20 bg-gradient-to-br from-[#FFF3E0] to-[#FFE0B2] rounded-xl flex items-center justify-center text-3xl">
                       🎁

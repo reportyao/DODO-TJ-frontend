@@ -383,7 +383,7 @@ const OrderDetailPage: React.FC = () => {
               <h1 className="text-xl font-bold">{t('order.orderDetails')}</h1>
             </div>
             <button
-              onClick={fetchOrderDetail}
+              onClick={() => { void fetchOrderDetail(); }}
               disabled={loading}
               className="p-2 hover:bg-white/20 rounded-lg transition disabled:opacity-50"
               title={t('common.refresh')}

@@ -45,20 +45,19 @@ export const giftTreeService = {
     return parseRpcResult<GiftTreeStatus>(data);
   },
 
-  /** 获取可选礼物列表（直接查表，只返回有库存且上架的）
-   *  表未在生成的 supabase types 中注册（希望之树是后加模块），
-   *  使用 (supabase as any) 绕过 generated types 严格检查。
+  /** 获取可选礼物列表（直接查表，只返回有库存且上架的）；
+   *  supabase generated types 已含 gift_items，无需绕过。
    */
   async getGiftItems(): Promise<GiftItem[]> {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('gift_items')
       .select('*')
       .eq('is_active', true)
       .order('sort_order');
     if (error) throw error;
-    return ((data as any[]) || []).filter(
-      (item: any) => (item.stock - item.reserved_stock) > 0
-    ) as GiftItem[];
+    return ((data ?? []) as unknown as GiftItem[]).filter(
+      (item) => (item.stock - item.reserved_stock) > 0
+    );
   },
 
   /** 开始种树（选择礼物） */
