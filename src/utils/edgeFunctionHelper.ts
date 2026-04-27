@@ -142,6 +142,21 @@ export async function extractEdgeFunctionError(error: unknown): Promise<string> 
         errorCode = pgCode
       }
     }
+  } else if (
+    // ========================================
+    // 兼容 PostgrestError 普通对象
+    // ========================================
+    // supabase-js v2 的 .rpc() 返回的 error 是普通对象 {code, message, details, hint}，
+    // 不是 Error 实例（instanceof Error === false），需要单独处理。
+    typeof error === 'object' && error !== null && 'message' in error && 'code' in error
+  ) {
+    const pgError = error as { code: string; message: string; details: unknown; hint: unknown }
+    errorMessage = pgError.message || 'Unknown database error'
+    // 从 message 中提取 ERR_ 错误码（格式: "ERR_XXX: description"）
+    if (errorMessage.startsWith('ERR_')) {
+      const colonIdx = errorMessage.indexOf(':')
+      errorCode = colonIdx > 0 ? errorMessage.substring(0, colonIdx).trim() : errorMessage
+    }
   } else {
     errorMessage = String(error)
   }
