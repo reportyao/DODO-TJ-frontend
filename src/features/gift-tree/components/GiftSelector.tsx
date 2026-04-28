@@ -11,13 +11,13 @@
  * - 按钮文字使用 whitespace-nowrap + min-w
  * - 底部提示使用 leading-snug 紧凑行高
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { getLocalizedText } from '../../../lib/utils';
 import { LazyImage } from '../../../components/LazyImage';
-import { useGiftItems, useStartTree } from '../hooks/useGiftTree';
+import { useGiftItems, useGiftTreeStatus, useStartTree } from '../hooks/useGiftTree';
 import type { GiftItem } from '../types';
 
 const GiftSelector: React.FC = () => {
@@ -25,19 +25,41 @@ const GiftSelector: React.FC = () => {
   const navigate = useNavigate();
   const lang = i18n.language || 'zh';
 
+  const { data: status, isLoading: isStatusLoading } = useGiftTreeStatus();
   const { data: giftItems, isLoading, error } = useGiftItems();
   const startTree = useStartTree();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isStatusLoading || !status) {
+      return;
+    }
+
+    if (status.tree?.status === 'COMPLETED' || status.tree?.status === 'CLAIMED') {
+      navigate('/gift-tree/complete', { replace: true });
+      return;
+    }
+
+    if (status.has_tree && status.tree?.status === 'GROWING') {
+      navigate('/gift-tree', { replace: true });
+    }
+  }, [status, isStatusLoading, navigate]);
+
   const handleChoose = async (item: GiftItem) => {
-    if (startTree.isPending) return;
+    if (startTree.isPending) {
+      return;
+    }
     setSelectedId(item.id);
     try {
       await startTree.mutateAsync(item.id);
       toast.success(t('giftTree.treeStarted', 'Your tree has started growing!'));
       navigate('/gift-tree', { replace: true });
-    } catch (err: any) {
-      const msg = err?.message || 'Failed to start tree';
+    } catch (err: unknown) {
+      const msg = err instanceof Error
+        ? err.message
+        : typeof err === 'string'
+          ? err
+          : 'Failed to start tree';
       if (msg.includes('ERR_OUT_OF_STOCK')) {
         toast.error(t('giftTree.outOfStock', 'Out of stock'));
       } else if (msg.includes('ERR_ALREADY_GROWING')) {
@@ -58,7 +80,7 @@ const GiftSelector: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  if (isStatusLoading || isLoading || (status?.has_tree && status.tree?.status === 'GROWING')) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#FDF6EC] via-[#FFF8F0] to-[#FFF3E0] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
