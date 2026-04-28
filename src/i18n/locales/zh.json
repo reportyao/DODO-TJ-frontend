@@ -2103,6 +2103,20 @@
     "expired": "核销码已过期",
     "copied": "已复制！",
     "selfHelp": "不能给自己浇水",
-    "helpLimit": "助力次数已达上限"
+    "helpLimit": "助力次数已达上限",
+    "howToPlayTitle": "玩法说明",
+    "howToPlayShort": "选好礼物后，通过真实任务拿水滴；水滴满了，到店出示核销码领礼物。",
+    "howToPlaySelect": "先选一个想要的礼物。完成真实任务可获得水滴，水滴满后，到 DODO 门店出示核销码领取礼物。",
+    "currentGiftLabel": "你正在种的礼物",
+    "currentGiftHint": "继续拿水滴，种满就能免费带走。",
+    "todayWatered": "今日已浇水",
+    "inviteFriends": "邀请好友",
+    "taskView": "查看",
+    "taskBusinessHint": "请先完成真实业务动作，验证通过后自动加水滴。",
+    "storePickupTaskHint": "门店自提要等提货码核销成功后，才会自动加水滴。",
+    "randomTaskHint": "惊喜任务会在活动开启时出现，暂时不能直接完成。",
+    "friendHelpHint": "请分享给好友，好友真正助力后才会加水滴。",
+    "firstWaterAutoHint": "首次浇水在选择礼物后自动完成。",
+    "popular": "热门"
   }
 }

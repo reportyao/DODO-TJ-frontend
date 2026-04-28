@@ -64,8 +64,18 @@ export function useBrowseTracker() {
       } catch {
         // ignore
       }
+      const ownerId = treeStatus.tree?.user_id || 'unknown';
       waterTree.mutate(
-        { taskCode: 'BROWSE_PRODUCTS' },
+        {
+          taskCode: 'BROWSE_PRODUCTS',
+          referenceId: `browse_products_${ownerId}_${todayKey()}`,
+          metadata: {
+            source: 'browse_tracker',
+            qualified_products: qualifiedCount,
+            required_products: BROWSE_REQUIRED_PRODUCTS,
+            min_duration_ms: BROWSE_DURATION_THRESHOLD_MS,
+          },
+        },
         {
           onError: () => {
             // 失败时回退标记，下次有机会再尝试

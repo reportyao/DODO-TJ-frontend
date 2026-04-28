@@ -430,6 +430,31 @@ async function handleVerify(
     throw createCodedError(ERROR_CODES.ALREADY_VERIFIED, '核销失败：该提货码已被核销或状态已变更')
   }
 
+  // 希望之树：门店自提任务必须在提货码核销成功后才可获得水滴。
+  // 这里使用幂等 reference_id 防止重复核销/重试重复发放；奖励失败不影响核销主流程。
+  if (orderData.target_user_id) {
+    try {
+      const { error: giftTreeError } = await supabaseClient.rpc('rpc_gift_tree_store_pickup_verified', {
+        p_user_id: orderData.target_user_id,
+        p_reference_id: `${orderData.source_type}_${orderData.id}_${pickupCode}`,
+        p_device_id: null,
+        p_metadata: {
+          pickup_code: pickupCode,
+          order_id: orderData.id,
+          source_type: orderData.source_type,
+          verified_by: userId,
+          pickup_point_id: staffInfo.point_id || null,
+        },
+      })
+
+      if (giftTreeError) {
+        console.error('[FrontendVerifyPickup] Gift tree STORE_PICKUP reward error:', giftTreeError)
+      }
+    } catch (giftTreeError) {
+      console.error('[FrontendVerifyPickup] Gift tree STORE_PICKUP reward exception:', giftTreeError)
+    }
+  }
+
   // 写入 pickup_logs
   const { error: logError } = await supabaseClient
     .from('pickup_logs')

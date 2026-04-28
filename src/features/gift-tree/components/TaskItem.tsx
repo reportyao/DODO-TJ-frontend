@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { getLocalizedText } from '../../../lib/utils';
 import type { GiftTreeTask, TodayTaskLog } from '../types';
 import { TASK_ICONS } from '../constants';
+import { getTaskAction, getTaskRoute } from '../taskActions';
 
 interface TaskItemProps {
   task: GiftTreeTask;
@@ -44,14 +45,16 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const title = getLocalizedText(task.title_i18n, lang);
   const actionLabel = getLocalizedText(task.action_label_i18n, lang);
   const icon = TASK_ICONS[task.task_code] || '📋';
+  const actionType = getTaskAction(task);
+  const taskRoute = getTaskRoute(task);
 
   const isRecommended = task.task_code === 'WALLET_DEPOSIT' || task.task_code === 'FIRST_LOTTERY';
 
   const handleClick = () => {
     if (isDone) return;
-    if (task.action_route) {
-      navigate(task.action_route);
-    } else if (onAction) {
+    if (actionType === 'route' && taskRoute) {
+      navigate(taskRoute);
+    } else if ((actionType === 'direct_water' || actionType === 'share' || actionType === 'locked') && onAction) {
       onAction(task.task_code);
     }
   };
@@ -129,8 +132,12 @@ const TaskItem: React.FC<TaskItemProps> = ({
                 <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  {actionLabel || t('giftTree.taskGo', 'Go')}
-                  {task.action_route ? ' →' : ''}
+                  {actionType === 'share'
+                    ? (actionLabel || t('giftTree.inviteFriends', 'Invite'))
+                    : actionType === 'locked'
+                    ? t('giftTree.taskView', 'View')
+                    : (actionLabel || t('giftTree.taskGo', 'Go'))}
+                  {actionType === 'route' ? ' →' : ''}
                 </>
               )}
             </button>
