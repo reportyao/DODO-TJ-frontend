@@ -6,13 +6,15 @@ import {
   HomeIcon, 
   CreditCardIcon, 
   UserIcon,
-  PhotoIcon
+  PhotoIcon,
+  GiftIcon
 } from '@heroicons/react/24/outline'
 import {
   HomeIcon as HomeIconSolid,
   CreditCardIcon as CreditCardIconSolid,
   UserIcon as UserIconSolid,
-  PhotoIcon as PhotoIconSolid
+  PhotoIcon as PhotoIconSolid,
+  GiftIcon as GiftIconSolid
 } from '@heroicons/react/24/solid'
 import { cn } from '../../lib/utils'
 
@@ -37,6 +39,12 @@ export const BottomNavigation: React.FC = () => {
       activeIcon: PhotoIconSolid,
     },
     {
+      name: t('nav.plantTree'),
+      path: '/gift-tree',
+      icon: GiftIcon,
+      activeIcon: GiftIconSolid,
+    },
+    {
       name: t('nav.wallet'),
       path: '/wallet',
       icon: CreditCardIcon,
@@ -57,9 +65,9 @@ export const BottomNavigation: React.FC = () => {
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <div className="max-w-md mx-auto px-3 py-1.5">
-          <div className="grid grid-cols-4 gap-1">
+          <div className="grid grid-cols-5 gap-1">
             {navigation.map((item) => {
-              const isActive = location.pathname === item.path
+              const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(`${item.path}/`))
               const Icon = isActive ? item.activeIcon : item.icon
 
               const handleClick = () => {
@@ -93,7 +101,7 @@ export const BottomNavigation: React.FC = () => {
                   key={item.name}
                   onClick={handleClick}
                   className={cn(
-                    "flex min-w-0 flex-col items-center py-1.5 px-2 rounded-xl transition-all duration-200 active:scale-95",
+                    "flex min-w-0 flex-col items-center py-1.5 px-1 rounded-xl transition-all duration-200 active:scale-95",
                     isActive 
                       ? "text-primary bg-amber-50" 
                       : "text-gray-600 hover:text-gray-900"
