@@ -6,42 +6,83 @@ import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper'
 export type Lottery = Tables<'lotteries'>;
 
 
-// 检查环境变量，优先使用 NEXT_PUBLIC_ (Next.js 风格) 或 VITE_ (Vite 风格)
-let supabaseUrl = import.meta.env.NEXT_PUBLIC_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
-// 重要：必须使用 anon JWT key（不能使用 publishable key）
-// publishable key 格式为 "sb_publishable_..."  不是 JWT，会导致 PostgREST 返回 401
-// supabase-js 将 anonKey 同时作为 apikey 和 Authorization Bearer header 发送
-let supabaseAnonKey = 
-  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
-  import.meta.env.VITE_SUPABASE_ANON_KEY;
+const DEFAULT_SUPABASE_URL = 'https://qcrcgpwlfouqslokwbzl.supabase.co';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_JpgolY81GRsD3WcHxw6NqA_updeRy1c';
+const LEGACY_SUPABASE_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJxY3JjZ3B3bGZvdXFzbG9rd2J6bCIsInJlZiI6InFjcmNncHdsZm91cXNsb2t3YnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzMzMzcsImV4cCI6MjA4OTUwOTMzN30.KFR8C1O0BnGWvR6GSCCq8opP2EljMwwOQrtn8snXqM0';
 
-// 运行时安全检查：确保 anonKey 是 JWT 格式（以 eyJ 开头）
-// 如果部署环境错误地将 publishable key (sb_publishable_...) 设为 ANON_KEY，自动回退
-const FALLBACK_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcmNncHdsZm91cXNsb2t3YnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzMzMzcsImV4cCI6MjA4OTUwOTMzN30.KFR8C1O0BnGWvR6GSCCq8opP2EljMwwOQrtn8snXqM0';
-
-if (supabaseAnonKey && !supabaseAnonKey.startsWith('eyJ')) {
-  console.warn('[Supabase] Detected non-JWT anonKey (possibly publishable key), falling back to JWT key');
-  supabaseAnonKey = FALLBACK_ANON_JWT;
+function normalizeEnvValue(value?: string): string | undefined {
+  const normalized = value?.trim().replace(/^['"]|['"]$/g, '');
+  return normalized || undefined;
 }
 
-// 屏底方案：如果环境变量加载失败，使用硬编码的生产环境配置
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('[Supabase] Environment variables not found, using fallback production config');
-  supabaseUrl = 'https://qcrcgpwlfouqslokwbzl.supabase.co';
-  supabaseAnonKey = FALLBACK_ANON_JWT;
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) {return null;}
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - base64.length % 4) % 4), '=');
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
 }
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase URL or Anon Key. Please check your .env.local file.');
+function isValidSupabaseApiKey(key: string): boolean {
+  if (key.startsWith('sb_publishable_')) {return true;}
+  if (!key.startsWith('eyJ')) {return false;}
+
+  const payload = decodeJwtPayload(key);
+  return payload?.ref === 'qcrcgpwlfouqslokwbzl' &&
+    payload?.role === 'anon' &&
+    typeof payload?.iss === 'string' &&
+    payload.iss !== 'HS256';
 }
 
-// 导出配置供其他模块使用
+// Vite 只会默认暴露 VITE_ 前缀，但生产构建脚本和 Supabase 控制台常使用 NEXT_PUBLIC_ 命名。
+// 这里兼容两套命名，并优先使用 Supabase 新版 publishable key，避免旧 JWT anon key
+// 在项目密钥轮换后造成 PostgREST / Realtime 401 Invalid API key。
+let supabaseUrl = normalizeEnvValue(
+  import.meta.env.VITE_SUPABASE_URL ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_URL
+) || DEFAULT_SUPABASE_URL;
+
+let supabaseApiKey = normalizeEnvValue(
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+) || DEFAULT_SUPABASE_PUBLISHABLE_KEY || LEGACY_SUPABASE_ANON_JWT;
+
+if (!isValidSupabaseApiKey(supabaseApiKey)) {
+  console.warn('[Supabase] Invalid Supabase API key detected, falling back to publishable key');
+  supabaseApiKey = DEFAULT_SUPABASE_PUBLISHABLE_KEY;
+}
+
+if (!supabaseUrl || !supabaseApiKey) {
+  throw new Error('Missing Supabase URL or API key. Please check your environment variables.');
+}
+
+// 导出配置供其他模块使用。
+// SUPABASE_ANON_KEY 保持旧名称以兼容既有手写 fetch 调用；实际值可能是新版 publishable key。
 export const SUPABASE_URL = supabaseUrl;
-export const SUPABASE_ANON_KEY = supabaseAnonKey;
+export const SUPABASE_API_KEY = supabaseApiKey;
+export const SUPABASE_ANON_KEY = supabaseApiKey;
 
-// 创建 Supabase 基础客户端实例
-// 保留一个无额外自定义 header 的基础实例，用于 Edge Functions / Auth 等不需要 x-session-token 的场景。
-const supabaseBaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey);
+const baseAuthOptions = {
+  persistSession: false,
+  autoRefreshToken: false,
+  detectSessionInUrl: false,
+  storageKey: 'dodo-supabase-auth-disabled',
+};
+
+// 创建 Supabase 基础客户端实例。
+// 项目使用自定义 session token，不使用 Supabase Auth 本地会话；禁用持久化可避免旧
+// sb-*-auth-token 覆盖 Authorization header，引发 401 Invalid API key。
+const supabaseBaseClient = createClient<Database>(supabaseUrl, supabaseApiKey, {
+  auth: baseAuthOptions,
+});
 
 type SupabaseClientInstance = ReturnType<typeof createClient<Database>>;
 
@@ -99,17 +140,15 @@ export function getAuthenticatedClient() {
     return _cachedAuthClient;
   }
   _cachedToken = sessionToken;
-  _cachedAuthClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  _cachedAuthClient = createClient<Database>(supabaseUrl, supabaseApiKey, {
     global: {
       headers: {
         'x-session-token': sessionToken
       }
     },
     auth: {
-      // 禁用自动刷新和持久化，避免多实例冲突
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
+      ...baseAuthOptions,
+      storageKey: 'dodo-supabase-db-client',
     }
   });
   return _cachedAuthClient;
