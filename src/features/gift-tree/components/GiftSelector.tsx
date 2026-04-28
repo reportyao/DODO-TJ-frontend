@@ -182,6 +182,18 @@ const GiftSelector: React.FC = () => {
         </p>
       </div>
 
+      {/* Game rules */}
+      <div className="px-4 mb-4 relative z-10">
+        <div className="bg-white/80 rounded-2xl p-3.5 border border-[#FFF3E0] shadow-sm">
+          <div className="text-sm font-bold text-foreground mb-1.5">
+            {t('giftTree.howToPlayTitle', 'How to play')}
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {t('giftTree.howToPlaySelect', 'Choose a gift first. Complete real tasks to collect drops. When the tree is full, show the pickup code at DODO and take the gift.')}
+          </p>
+        </div>
+      </div>
+
       {/* Gift cards grid */}
       <div className="px-4 pb-4 relative z-10">
         <div className="grid grid-cols-2 gap-3">
@@ -206,7 +218,7 @@ const GiftSelector: React.FC = () => {
                 {isFirst && (
                   <div className="absolute -top-0 right-2 z-10">
                     <div className="bg-gradient-to-r from-orange-400 to-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-b-lg shadow-sm">
-                      Popular
+                      {t('giftTree.popular', 'Popular')}
                     </div>
                   </div>
                 )}

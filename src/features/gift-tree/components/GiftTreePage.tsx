@@ -14,6 +14,7 @@ import { getLocalizedText, shareContent } from '../../../lib/utils';
 import { useGiftTreeStatus, useWaterTree } from '../hooks/useGiftTree';
 import { useWaterAnimation } from '../hooks/useWaterAnimation';
 import { TASK_ICONS } from '../constants';
+import { getTaskAction, getTaskRoute, isDirectWaterTask, TASK_INFO_I18N_KEYS } from '../taskActions';
 import TreeCanvas from './TreeCanvas';
 import TaskList from './TaskList';
 import MilestoneModal from './MilestoneModal';
@@ -44,9 +45,44 @@ const GiftTreePage: React.FC = () => {
     }
   }, [status, isLoading, navigate]);
 
-  // Handle task action
+  // Handle share
+  const handleShare = useCallback(() => {
+    if (!status?.tree?.user_id) return;
+    const url = `${window.location.origin}/gift-tree/help/${status.tree.user_id}`;
+    shareContent(
+      t('giftTree.shareText', 'Help me water my Hope Tree on DODO!'),
+      url,
+      t('giftTree.shareTitle', 'DODO Hope Tree')
+    );
+  }, [status, t]);
+
+  const tree = status?.tree;
+  const dailyCheckinLog = status?.today_logs?.find((log) => log.task_code === 'DAILY_CHECKIN');
+  const isDailyCheckinDone = (dailyCheckinLog?.count || 0) >= 1;
+  const selectedGiftName = tree?.gift_item
+    ? (getLocalizedText(tree.gift_item.name_i18n, lang) || tree.gift_item.name)
+    : '';
+
+  // Handle task action. Only DAILY_CHECKIN can be completed directly on this page.
   const handleTaskAction = useCallback(
     async (taskCode: string) => {
+      if (taskCode === 'FRIEND_HELP') {
+        handleShare();
+        toast(t('giftTree.friendHelpHint', 'Share with friends. You get drops after a friend really helps.'), { duration: 1800 });
+        return;
+      }
+
+      if (!isDirectWaterTask(taskCode)) {
+        const key = TASK_INFO_I18N_KEYS[taskCode] || 'giftTree.taskBusinessHint';
+        toast(t(key, 'Finish the real action first. Drops are added automatically after verification.'), { duration: 2000 });
+        return;
+      }
+
+      if (taskCode === 'DAILY_CHECKIN' && isDailyCheckinDone) {
+        toast(t('giftTree.taskAlreadyDone', 'Task already completed'), { duration: 1500 });
+        return;
+      }
+
       if (waterTree.isPending || loadingTask) return;
       setLoadingTask(taskCode);
       try {
@@ -71,7 +107,7 @@ const GiftTreePage: React.FC = () => {
         }
       } catch (err: any) {
         const msg = err?.message || '';
-        if (msg.includes('ERR_DAILY_TASK_LIMIT') || msg.includes('ERR_DAILY_TOTAL_LIMIT')) {
+        if (msg.includes('ERR_DAILY_LIMIT') || msg.includes('ERR_DAILY_TASK_LIMIT') || msg.includes('ERR_DAILY_TOTAL_LIMIT')) {
           toast(t('giftTree.taskLimitReached', 'Daily limit reached'), {
             icon: '⚠️',
             duration: 1500,
@@ -88,19 +124,8 @@ const GiftTreePage: React.FC = () => {
         setLoadingTask(null);
       }
     },
-    [waterTree, loadingTask, triggerAnimation, navigate, t]
+    [waterTree, loadingTask, triggerAnimation, navigate, t, handleShare, isDailyCheckinDone]
   );
-
-  // Handle share
-  const handleShare = useCallback(() => {
-    if (!status?.tree?.user_id) return;
-    const url = `${window.location.origin}/gift-tree/help/${status.tree.user_id}`;
-    shareContent(
-      t('giftTree.shareText', 'Help me water my Hope Tree on DODO!'),
-      url,
-      t('giftTree.shareTitle', 'DODO Hope Tree')
-    );
-  }, [status, t]);
 
   // Quick task cards data
   const quickTasks = useMemo(() => {
@@ -179,7 +204,6 @@ const GiftTreePage: React.FC = () => {
     );
   }
 
-  const tree = status?.tree;
   if (!tree) return null;
 
   const progressPct = Math.min(Math.round((tree.current_water / tree.target_water) * 100), 100);
@@ -245,6 +269,38 @@ const GiftTreePage: React.FC = () => {
         </span>
       </div>
 
+      {/* ===== Selected Gift + Game Rules ===== */}
+      <div className="px-4 mb-3 space-y-2.5">
+        {tree.gift_item && (
+          <div className="bg-white/85 rounded-2xl p-3 flex items-center gap-3 border border-amber-100/70 shadow-sm">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#FFF8F0] to-[#FFE0B2] overflow-hidden flex-shrink-0 flex items-center justify-center">
+              {tree.gift_item.image_url ? (
+                <img src={tree.gift_item.image_url} alt={selectedGiftName} className="w-full h-full object-contain" />
+              ) : (
+                <span className="text-2xl">🎁</span>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] text-amber-700 font-semibold leading-snug">
+                {t('giftTree.currentGiftLabel', 'Your chosen gift')}
+              </div>
+              <div className="text-sm font-bold text-foreground leading-tight line-clamp-2 mt-0.5">
+                {selectedGiftName}
+              </div>
+              <div className="text-[11px] text-muted-foreground leading-snug mt-1">
+                {t('giftTree.currentGiftHint', 'Keep watering to take it home for free.')}
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="bg-white/70 rounded-2xl p-3 border border-[#FFF3E0] shadow-sm">
+          <div className="text-xs font-bold text-foreground mb-1">{t('giftTree.howToPlayTitle', 'How to play')}</div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            {t('giftTree.howToPlayShort', 'Pick a gift, collect drops by completing real tasks, and redeem it when the tree is full.')}
+          </p>
+        </div>
+      </div>
+
       {/* ===== Tree Visual ===== */}
       <TreeCanvas
         currentWater={tree.current_water}
@@ -256,7 +312,7 @@ const GiftTreePage: React.FC = () => {
       <div className="px-5 mb-5">
         <button
           onClick={() => handleTaskAction('DAILY_CHECKIN')}
-          disabled={waterTree.isPending || !!loadingTask}
+          disabled={waterTree.isPending || !!loadingTask || isDailyCheckinDone}
           className={`w-full py-4 rounded-2xl font-bold text-white text-base flex items-center justify-center gap-2.5 transition-all duration-300 ${
             isAnimating
               ? 'bg-accent/80 scale-[0.97]'
@@ -266,7 +322,7 @@ const GiftTreePage: React.FC = () => {
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
             <path d="M12 2C12 2 5 10 5 15C5 18.866 8.134 22 12 22C15.866 22 19 18.866 19 15C19 10 12 2 12 2Z" fill="white" opacity="0.9"/>
           </svg>
-          {t('giftTree.waterTree', 'Water the Tree')}
+          {isDailyCheckinDone ? t('giftTree.todayWatered', 'Watered today') : t('giftTree.waterTree', 'Water the Tree')}
           {isAnimating && (
             <span className="inline-block animate-bounce text-lg">💧</span>
           )}
@@ -313,8 +369,10 @@ const GiftTreePage: React.FC = () => {
                 ) : (
                   <button
                     onClick={() => {
-                      if (task.action_route) {
-                        navigate(task.action_route);
+                      const actionType = getTaskAction(task);
+                      const taskRoute = getTaskRoute(task);
+                      if (actionType === 'route' && taskRoute) {
+                        navigate(taskRoute);
                       } else {
                         handleTaskAction(task.task_code);
                       }
@@ -322,7 +380,13 @@ const GiftTreePage: React.FC = () => {
                     disabled={loadingTask === task.task_code}
                     className="bg-gradient-to-r from-accent to-teal-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-full active:scale-95 transition-all disabled:opacity-50 shadow-sm shadow-accent/15"
                   >
-                    {loadingTask === task.task_code ? '...' : `${t('giftTree.taskGo', 'Go')} ›`}
+                    {loadingTask === task.task_code
+                      ? '...'
+                      : getTaskAction(task) === 'share'
+                      ? t('giftTree.inviteFriends', 'Invite')
+                      : getTaskAction(task) === 'locked'
+                      ? t('giftTree.taskView', 'View')
+                      : `${t('giftTree.taskGo', 'Go')} ›`}
                   </button>
                 )}
               </div>

@@ -46,11 +46,13 @@ export function useWaterTree() {
       taskCode: string;
       deviceId?: string;
       referenceId?: string;
+      metadata?: Record<string, any>;
     }) =>
       giftTreeService.waterTree(
         params.taskCode,
         params.deviceId,
-        params.referenceId
+        params.referenceId,
+        params.metadata
       ),
     onSuccess: (data: WaterResult) => {
       queryClient.invalidateQueries({
