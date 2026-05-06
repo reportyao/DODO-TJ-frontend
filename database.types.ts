@@ -6932,6 +6932,16 @@ export type Database = {
         Args: { p_lang?: string; p_limit?: number; p_category_id?: string }
         Returns: Json
       }
+      /** B2B 商品详情 RPC - 获取单个商品完整信息 + 门店列表 */
+      rpc_get_b2b_product_detail: {
+        Args: { p_product_id: string }
+        Returns: Json
+      }
+      /** B2B 商品搜索 RPC - 支持中文/俄语/塔吉克语多语言搜索 */
+      rpc_b2b_search_products: {
+        Args: { p_query: string; p_limit?: number }
+        Returns: Json
+      }
       rpc_get_home_feed: {
         Args: { p_lang?: string; p_limit?: number }
         Returns: Json

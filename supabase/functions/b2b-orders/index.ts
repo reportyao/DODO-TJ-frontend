@@ -260,13 +260,30 @@ async function handleAdminSetDelivery(adminId: string, orderId: string, estimate
     return jsonResponse({ success: false, error: '订单ID和预计送达时间不能为空', error_code: 'ERR_PARAMS_MISSING' }, 400)
   }
 
+  // 先查询当前订单状态，避免状态跳跃（如从 pending 直接跳到 delivering）
+  const { data: currentOrder, error: queryError } = await supabase
+    .from('b2b_orders')
+    .select('id, status')
+    .eq('id', orderId)
+    .maybeSingle()
+
+  if (queryError || !currentOrder) {
+    return jsonResponse({ success: false, error: '订单不存在', error_code: 'ERR_ORDER_NOT_FOUND' }, 404)
+  }
+
+  // 只在 pending/processing 状态时自动推进到 delivering
+  // 如果已经是 delivering/delivered/paid 状态，只更新送达时间不改状态
+  const updateData: Record<string, unknown> = {
+    estimated_delivery_date: estimatedDate,
+    updated_at: new Date().toISOString(),
+  }
+  if (currentOrder.status === 'pending' || currentOrder.status === 'processing') {
+    updateData.status = 'delivering'
+  }
+
   const { error: updateError } = await supabase
     .from('b2b_orders')
-    .update({
-      estimated_delivery_date: estimatedDate,
-      status: 'delivering',
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq('id', orderId)
 
   if (updateError) {
