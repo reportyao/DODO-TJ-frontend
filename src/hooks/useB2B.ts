@@ -195,7 +195,7 @@ export function useB2BCart() {
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
         method: 'POST',
         body: { action: 'list' },
-        headers: { 'x-session-token': sessionToken },
+        headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (error) throw new Error(await extractEdgeFunctionError(error));
       return data?.items || [];
@@ -225,7 +225,7 @@ export function useB2BCartMutations() {
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
         method: 'POST',
         body: { action: 'upsert', product_id: productId, quantity },
-        headers: { 'x-session-token': sessionToken },
+        headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (error) throw new Error(await extractEdgeFunctionError(error));
       return data;
@@ -239,7 +239,7 @@ export function useB2BCartMutations() {
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
         method: 'POST',
         body: { action: 'remove', product_id: productId },
-        headers: { 'x-session-token': sessionToken },
+        headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (error) throw new Error(await extractEdgeFunctionError(error));
       return data;
@@ -253,7 +253,7 @@ export function useB2BCartMutations() {
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
         method: 'POST',
         body: { action: 'clear' },
-        headers: { 'x-session-token': sessionToken },
+        headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (error) throw new Error(await extractEdgeFunctionError(error));
       return data;

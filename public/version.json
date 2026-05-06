@@ -1,5 +1,5 @@
 {
   "version": "3.0.0",
-  "buildTime": "2026-05-06T17:39:39.003Z",
+  "buildTime": "2026-05-06T17:53:08.277Z",
   "description": "fix: 修复登录后反复加载循环 - 移除错误的服务端session验证，修复ErrorBoundary无限重渲染，禁用CORS错误SSE"
 }
