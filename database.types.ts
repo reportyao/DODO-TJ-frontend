@@ -2482,6 +2482,7 @@ export type Database = {
         Row: {
           ai_understanding: Json | null
           barcode: string | null
+          cost_price: number
           created_at: string | null
           currency: string | null
           description: string | null
@@ -2493,20 +2494,25 @@ export type Database = {
           image_urls: string[] | null
           material: string | null
           material_i18n: Json | null
+          min_order_quantity: number
           name: string
           name_i18n: Json | null
           original_price: number
           reserved_stock: number | null
+          retail_price: number
           sku: string | null
           specifications: string | null
           specifications_i18n: Json | null
           status: string | null
           stock: number | null
+          unit_measure: string
           updated_at: string | null
+          wholesale_price: number
         }
         Insert: {
           ai_understanding?: Json | null
           barcode?: string | null
+          cost_price?: number
           created_at?: string | null
           currency?: string | null
           description?: string | null
@@ -2518,20 +2524,25 @@ export type Database = {
           image_urls?: string[] | null
           material?: string | null
           material_i18n?: Json | null
+          min_order_quantity?: number
           name: string
           name_i18n?: Json | null
           original_price?: number
           reserved_stock?: number | null
+          retail_price?: number
           sku?: string | null
           specifications?: string | null
           specifications_i18n?: Json | null
           status?: string | null
           stock?: number | null
+          unit_measure?: string
           updated_at?: string | null
+          wholesale_price?: number
         }
         Update: {
           ai_understanding?: Json | null
           barcode?: string | null
+          cost_price?: number
           created_at?: string | null
           currency?: string | null
           description?: string | null
@@ -2543,16 +2554,20 @@ export type Database = {
           image_urls?: string[] | null
           material?: string | null
           material_i18n?: Json | null
+          min_order_quantity?: number
           name?: string
           name_i18n?: Json | null
           original_price?: number
           reserved_stock?: number | null
+          retail_price?: number
           sku?: string | null
           specifications?: string | null
           specifications_i18n?: Json | null
           status?: string | null
           stock?: number | null
+          unit_measure?: string
           updated_at?: string | null
+          wholesale_price?: number
         }
         Relationships: []
       }
@@ -6194,6 +6209,227 @@ export type Database = {
           },
         ]
       }
+      /** B2B 批发商认证表 */
+      wholesaler_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          company_name: string | null
+          contact_phone: string | null
+          tax_id: string | null
+          business_address: string | null
+          delivery_address: string | null
+          status: string
+          reject_reason: string | null
+          approved_at: string | null
+          approved_by: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          company_name?: string | null
+          contact_phone?: string | null
+          tax_id?: string | null
+          business_address?: string | null
+          delivery_address?: string | null
+          status?: string
+          reject_reason?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          company_name?: string | null
+          contact_phone?: string | null
+          tax_id?: string | null
+          business_address?: string | null
+          delivery_address?: string | null
+          status?: string
+          reject_reason?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wholesaler_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      /** B2B 购物车表 */
+      shopping_carts: {
+        Row: {
+          id: string
+          user_id: string
+          product_id: string
+          quantity: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          product_id: string
+          quantity?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          product_id?: string
+          quantity?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_carts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_carts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      /** B2B 主订单表 */
+      b2b_orders: {
+        Row: {
+          id: string
+          order_number: string
+          user_id: string
+          total_amount: number
+          item_count: number
+          total_quantity: number
+          status: string
+          payment_method: string
+          payment_status: string
+          estimated_delivery_date: string | null
+          delivery_address: string | null
+          delivery_note: string | null
+          admin_note: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          order_number: string
+          user_id: string
+          total_amount?: number
+          item_count?: number
+          total_quantity?: number
+          status?: string
+          payment_method?: string
+          payment_status?: string
+          estimated_delivery_date?: string | null
+          delivery_address?: string | null
+          delivery_note?: string | null
+          admin_note?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          order_number?: string
+          user_id?: string
+          total_amount?: number
+          item_count?: number
+          total_quantity?: number
+          status?: string
+          payment_method?: string
+          payment_status?: string
+          estimated_delivery_date?: string | null
+          delivery_address?: string | null
+          delivery_note?: string | null
+          admin_note?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "b2b_orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      /** B2B 订单明细表 */
+      b2b_order_items: {
+        Row: {
+          id: string
+          order_id: string
+          product_id: string
+          quantity: number
+          unit_price: number
+          subtotal: number
+          snapshot_data: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          product_id: string
+          quantity: number
+          unit_price: number
+          subtotal: number
+          snapshot_data?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          product_id?: string
+          quantity?: number
+          unit_price?: number
+          subtotal?: number
+          snapshot_data?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "b2b_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "b2b_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "b2b_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       batch_sku_summary: {
@@ -6689,6 +6925,11 @@ export type Database = {
           p_session_token: string
           p_tag_ids?: string[]
         }
+        Returns: Json
+      }
+      /** B2B 首页 Feed 流 RPC - 直接从 inventory_products 获取商品数据 */
+      rpc_get_b2b_home_feed: {
+        Args: { p_lang?: string; p_limit?: number; p_category_id?: string }
         Returns: Json
       }
       rpc_get_home_feed: {
