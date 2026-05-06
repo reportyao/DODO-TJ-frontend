@@ -89,7 +89,7 @@ BEGIN
     INTO v_total_count
     FROM inventory_products ip
     WHERE ip.status = 'ACTIVE'
-      AND (ip.stock IS NULL OR ip.stock > 0)
+      AND ip.stock > 0  -- B2B 模式下只展示有明确库存的商品（stock 不能为 NULL 或 0）
       AND (
           p_category_id IS NULL
           OR EXISTS (
@@ -126,7 +126,7 @@ BEGIN
             ) AS data
         FROM inventory_products ip
         WHERE ip.status = 'ACTIVE'
-          AND (ip.stock IS NULL OR ip.stock > 0)
+          AND ip.stock > 0  -- B2B 模式下只展示有明确库存的商品
           AND (
               p_category_id IS NULL
               OR EXISTS (
@@ -268,7 +268,7 @@ BEGIN
             ip.status
         FROM inventory_products ip
         WHERE ip.status = 'ACTIVE'
-          AND (ip.stock IS NULL OR ip.stock > 0)
+          AND ip.stock > 0  -- B2B 模式下只展示有明确库存的商品
           AND (
               -- 搜索中文名称
               LOWER(ip.name) LIKE v_search_pattern

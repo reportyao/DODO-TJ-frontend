@@ -159,6 +159,17 @@ async function handleAddToCart(userId: string, productId: string, quantity: numb
     return jsonResponse({ success: false, error: '商品已下架', error_code: 'ERR_PRODUCT_NOT_FOUND' }, 400)
   }
 
+  // 校验最小起订量（添加时就提示，避免结算时才报错）
+  const minQty = product.min_order_quantity || 1
+  if (quantity < minQty) {
+    return jsonResponse({
+      success: false,
+      error: `该商品最小起订量为 ${minQty}`,
+      error_code: 'ERR_MIN_ORDER_QUANTITY',
+      min_order_quantity: minQty,
+    }, 400)
+  }
+
   // 检查购物车中是否已存在该商品
   const { data: existing } = await supabase
     .from('shopping_carts')

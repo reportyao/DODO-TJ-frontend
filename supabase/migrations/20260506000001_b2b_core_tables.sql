@@ -243,6 +243,9 @@ BEGIN
     v_date_part := to_char(now(), 'YYYYMMDD');
     
     -- 获取当天的订单序号
+    -- 使用 advisory lock 确保并发安全（基于日期的锁，不同天不会互相阻塞）
+    PERFORM pg_advisory_xact_lock(hashtext('b2b_order_number_' || v_date_part));
+    
     SELECT COALESCE(MAX(
         CASE 
             WHEN order_number LIKE 'B2B-' || v_date_part || '-%'

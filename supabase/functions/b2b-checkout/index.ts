@@ -355,6 +355,15 @@ serve(async (req: Request) => {
       return jsonResponse({ success: false, error: '没有可下单的商品', error_code: 'ERR_CART_EMPTY' }, 400)
     }
 
+    // 校验订单总金额必须大于 0（防止 wholesale_price 未设置导致 0 元订单）
+    if (totalAmount <= 0) {
+      return jsonResponse({
+        success: false,
+        error: '订单金额异常（部分商品批发价未设置），请联系管理员',
+        error_code: 'ERR_AMOUNT_INVALID',
+      }, 400)
+    }
+
     // ========================================================================
     // Step 6: 创建主订单
     // ========================================================================
