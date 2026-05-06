@@ -108,8 +108,8 @@ BEGIN
             ip.id AS item_id,
             json_build_object(
                 'product_id', ip.id,
-                'name_i18n', COALESCE(ip.name_i18n, json_build_object('zh', ip.name)),
-                'description_i18n', COALESCE(ip.description_i18n, '{}'::json),
+                'name_i18n', COALESCE(ip.name_i18n, jsonb_build_object('zh', ip.name)),
+                'description_i18n', COALESCE(ip.description_i18n, '{}'::jsonb),
                 'image_url', ip.image_url,
                 'image_urls', COALESCE(ip.image_urls, ARRAY[]::text[]),
                 'original_price', ip.original_price,
@@ -181,9 +181,9 @@ BEGIN
     SELECT json_build_object(
         'product_id', ip.id,
         'name', ip.name,
-        'name_i18n', COALESCE(ip.name_i18n, json_build_object('zh', ip.name)),
-        'description_i18n', COALESCE(ip.description_i18n, '{}'::json),
-        'details_i18n', COALESCE(ip.details_i18n, '{}'::json),
+        'name_i18n', COALESCE(ip.name_i18n, jsonb_build_object('zh', ip.name)),
+        'description_i18n', COALESCE(ip.description_i18n, '{}'::jsonb),
+        'details_i18n', COALESCE(ip.details_i18n, '{}'::jsonb),
         'specifications_i18n', ip.specifications_i18n,
         'material_i18n', ip.material_i18n,
         'image_url', ip.image_url,

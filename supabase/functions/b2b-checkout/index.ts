@@ -91,13 +91,24 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 
 /**
  * 生成 B2B 订单号
- * 格式: B2B + 时间戳(13位) + 4位随机大写字母数字
- * 示例: B2B1714988400000A3K9
+ * 调用数据库函数 generate_b2b_order_number() 确保格式一致且并发安全
+ * 格式: B2B-YYYYMMDD-XXXXX（如 B2B-20260506-00001）
+ *
+ * 备用方案: 如果数据库函数调用失败，回退到本地生成
  */
-function generateOrderNumber(): string {
-  const timestamp = Date.now()
-  const random = Math.random().toString(36).slice(2, 6).toUpperCase()
-  return `B2B${timestamp}${random}`
+async function generateOrderNumber(): Promise<string> {
+  try {
+    const { data, error } = await supabase.rpc('generate_b2b_order_number')
+    if (!error && data) {
+      return data as string
+    }
+  } catch (e) {
+    console.warn('[B2BCheckout] 数据库订单号生成失败，使用本地生成:', e)
+  }
+  // 备用: 本地生成
+  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+  const random = Math.random().toString(36).slice(2, 7).toUpperCase()
+  return `B2B-${datePart}-${random}`
 }
 
 /**
@@ -347,7 +358,7 @@ serve(async (req: Request) => {
     // ========================================================================
     // Step 6: 创建主订单
     // ========================================================================
-    const orderNumber = generateOrderNumber()
+    const orderNumber = await generateOrderNumber()
 
     const { data: order, error: orderError } = await supabase
       .from('b2b_orders')
@@ -405,27 +416,28 @@ serve(async (req: Request) => {
       const stockAfter = stockBefore - item.quantity
 
       // 使用条件更新实现乐观锁（确保 stock >= quantity）
-      const { error: stockError, count } = await supabase
+      // 注意: B2B 模式下不使用 reserved_stock（那是一元购物预留用的）
+      // 注意: Supabase JS v2 的 update() 默认不返回 count，需通过 .select() 检查是否有返回数据来判断更新是否成功
+      const { data: updatedRows, error: stockError } = await supabase
         .from('inventory_products')
         .update({
           stock: stockAfter,
-          reserved_stock: (product as unknown as { reserved_stock: number | null }).reserved_stock
-            ? ((product as unknown as { reserved_stock: number | null }).reserved_stock ?? 0) + item.quantity
-            : item.quantity,
           updated_at: new Date().toISOString(),
         })
         .eq('id', item.product_id)
         .gte('stock', item.quantity)
+        .select('id')
 
-      if (stockError || count === 0) {
+      if (stockError || !updatedRows || updatedRows.length === 0) {
         stockErrors.push(product.name)
         continue
       }
 
       // 写入库存变动日志
+      // 注意: transaction_type 必须使用数据库 CHECK 约束中定义的值 'B2B_SALE'
       await supabase.from('inventory_transactions').insert({
         inventory_product_id: item.product_id,
-        transaction_type: 'b2b_sale',
+        transaction_type: 'B2B_SALE',
         quantity: -item.quantity,
         stock_before: stockBefore,
         stock_after: stockAfter,
@@ -465,7 +477,7 @@ serve(async (req: Request) => {
     // ========================================================================
     runInBackground(
       enqueueEvent(supabase, {
-        event_type: EventType.NEW_ORDER || 'new_order',
+        event_type: EventType.B2B_NEW_ORDER,
         source: 'b2b-checkout',
         payload: {
           order_id: order.id,

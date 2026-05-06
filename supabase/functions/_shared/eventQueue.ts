@@ -54,6 +54,8 @@ export enum EventType {
   FIRST_GROUP_BUY = 'FIRST_GROUP_BUY',
   /** 中奖通知 - 发送 Telegram/站内通知 */
   NOTIFICATION = 'NOTIFICATION',
+  /** B2B 新订单 - 通知管理后台有新的批发订单 */
+  B2B_NEW_ORDER = 'B2B_NEW_ORDER',
 }
 
 /**
