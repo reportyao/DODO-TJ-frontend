@@ -70,7 +70,8 @@
     "monitoring": "Мониторинг",
     "orders": "Заказы",
     "notifications": "Уведомления",
-    "messages": "Сообщения"
+    "messages": "Сообщения",
+    "b2b": "Оптом"
   },
   "home": {
     "welcome": "Привет",
@@ -2119,5 +2120,38 @@
     "friendHelpHint": "Поделитесь с другом. Капли добавятся, когда друг реально поможет.",
     "firstWaterAutoHint": "Первый полив выполняется автоматически после выбора подарка.",
     "popular": "Популярно"
+  },
+  "b2b": {
+    "title": "B2B Оптовая",
+    "home": "Каталог",
+    "search": "Поиск",
+    "searchPlaceholder": "Поиск по названию/SKU...",
+    "allProducts": "Все товары",
+    "wholesalePrice": "Оптовая цена",
+    "retailPrice": "Рекомендуемая цена",
+    "minOrder": "Мин. заказ",
+    "stock": "Остаток",
+    "unit": "шт",
+    "addToCart": "В корзину",
+    "buyNow": "Купить сейчас",
+    "cart": "Корзина",
+    "cartEmpty": "Корзина пуста",
+    "checkout": "Оформить заказ",
+    "totalAmount": "Итого",
+    "deliveryAddress": "Адрес доставки",
+    "deliveryNote": "Примечание",
+    "orderSuccess": "Заказ оформлен",
+    "myOrders": "Мои заказы",
+    "noProducts": "Нет товаров",
+    "outOfStock": "Нет в наличии",
+    "inStock": "В наличии",
+    "productDetail": "Описание товара",
+    "specifications": "Характеристики",
+    "description": "Описание",
+    "quantity": "Количество",
+    "profitMargin": "Маржа",
+    "applyWholesaler": "Стать оптовиком",
+    "pendingApproval": "На проверке",
+    "rejected": "Отклонено"
   }
 }

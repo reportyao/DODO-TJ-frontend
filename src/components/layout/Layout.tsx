@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom"
 import { useUser } from "../../contexts/UserContext"
 import { cn } from "../../lib/utils"
 import { BottomNavigation } from "../navigation/BottomNavigation"
+import { B2BBottomNavigation } from "../navigation/B2BBottomNavigation"
 import { useTranslation } from 'react-i18next'
 import SpinFloatingButton from "../SpinFloatingButton"
 import NewUserGiftModal from "../NewUserGiftModal"
@@ -176,7 +177,7 @@ export const Layout: React.FC<LayoutProps> = ({
     )}>
       {/* 弱网/离线状态提示横幅 */}
       <OfflineBanner />
-      {showHeader && (
+      {showHeader && !location.pathname.startsWith("/b2b") && (
         <header className="bg-white/90 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
           <div className="max-w-md mx-auto px-4 py-2.5">
             <div className="flex items-center justify-between gap-3">
@@ -217,7 +218,7 @@ export const Layout: React.FC<LayoutProps> = ({
         {children}
       </main>
 
-      {showBottomNav && <BottomNavigation />}
+      {showBottomNav && (location.pathname.startsWith("/b2b") ? <B2BBottomNavigation /> : <BottomNavigation />)}
       
       {/* 推荐浮动入口 - 仅在登录后显示 */}
       {isAuthenticated && <SpinFloatingButton spinCount={spinCount} />}

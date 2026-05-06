@@ -70,7 +70,8 @@
     "monitoring": "Мониторинги система",
     "orders": "Фармоишҳо",
     "notifications": "Огоҳиномаҳо",
-    "messages": "Паёмҳо"
+    "messages": "Паёмҳо",
+    "b2b": "Умдӣ"
   },
   "home": {
     "welcome": "Салом",
@@ -2119,5 +2120,38 @@
     "friendHelpHint": "Ба дӯст фиристед. Қатра вақте илова мешавад, ки дӯст воқеан кӯмак кунад.",
     "firstWaterAutoHint": "Аввалин обдиҳӣ пас аз интихоби тӯҳфа худкор иҷро мешавад.",
     "popular": "Маъмул"
+  },
+  "b2b": {
+    "title": "B2B Яклухт",
+    "home": "Каталог",
+    "search": "Ҷустуҷӯ",
+    "searchPlaceholder": "Ҷустуҷӯи ном/SKU...",
+    "allProducts": "Ҳамаи молҳо",
+    "wholesalePrice": "Нархи яклухт",
+    "retailPrice": "Нархи чакана",
+    "minOrder": "Ҳадди ақал",
+    "stock": "Мавҷудӣ",
+    "unit": "дона",
+    "addToCart": "Ба сабад",
+    "buyNow": "Ҳозир харед",
+    "cart": "Сабад",
+    "cartEmpty": "Сабад холӣ аст",
+    "checkout": "Фармоиш додан",
+    "totalAmount": "Ҷамъ",
+    "deliveryAddress": "Суроғаи тасвилот",
+    "deliveryNote": "Тавзеҳот",
+    "orderSuccess": "Фармоиш қабул шуд",
+    "myOrders": "Фармоишҳои ман",
+    "noProducts": "Молҳо нест",
+    "outOfStock": "Нест",
+    "inStock": "Ҳаст",
+    "productDetail": "Тафсилоти мол",
+    "specifications": "Хусусиятҳо",
+    "description": "Тавсиф",
+    "quantity": "Миқдор",
+    "profitMargin": "Фоида",
+    "applyWholesaler": "Дархост барои яклухтфурӯшӣ",
+    "pendingApproval": "Дар баррасӣ",
+    "rejected": "Рад шуд"
   }
 }

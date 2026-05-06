@@ -70,7 +70,8 @@
     "monitoring": "系统监控",
     "orders": "订单",
     "notifications": "通知",
-    "messages": "消息"
+    "messages": "消息",
+    "b2b": "进货"
   },
   "home": {
     "welcome": "你好",
@@ -2119,5 +2120,38 @@
     "friendHelpHint": "请分享给好友，好友真正助力后才会加水滴。",
     "firstWaterAutoHint": "首次浇水在选择礼物后自动完成。",
     "popular": "热门"
+  },
+  "b2b": {
+    "title": "B2B批发",
+    "home": "进货大厅",
+    "search": "搜索商品",
+    "searchPlaceholder": "搜索商品名称/SKU...",
+    "allProducts": "全部商品",
+    "wholesalePrice": "批发价",
+    "retailPrice": "建议零售价",
+    "minOrder": "起批",
+    "stock": "库存",
+    "unit": "件",
+    "addToCart": "加入进货单",
+    "buyNow": "立即进货",
+    "cart": "进货单",
+    "cartEmpty": "进货单为空",
+    "checkout": "提交订单",
+    "totalAmount": "合计",
+    "deliveryAddress": "收货地址",
+    "deliveryNote": "备注",
+    "orderSuccess": "下单成功",
+    "myOrders": "我的订单",
+    "noProducts": "暂无商品",
+    "outOfStock": "缺货",
+    "inStock": "有货",
+    "productDetail": "商品详情",
+    "specifications": "规格参数",
+    "description": "商品说明",
+    "quantity": "数量",
+    "profitMargin": "利润空间",
+    "applyWholesaler": "申请成为批发商",
+    "pendingApproval": "审核中",
+    "rejected": "审核未通过"
   }
 }

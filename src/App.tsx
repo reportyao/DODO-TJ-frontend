@@ -83,6 +83,11 @@ const GiftTreePage = lazyWithRetry(() => import("./features/gift-tree/components
 const GiftSelector = lazyWithRetry(() => import("./features/gift-tree/components/GiftSelector"))
 const CompletionPage = lazyWithRetry(() => import("./features/gift-tree/components/CompletionPage"))
 const GiftTreeHelpPage = lazyWithRetry(() => import("./features/gift-tree/components/GiftTreeHelpPage"))
+// B2B 批发模块页面
+const B2BHomePage = lazyWithRetry(() => import("./pages/B2BHomePage"))
+const B2BProductDetailPage = lazyWithRetry(() => import("./pages/B2BProductDetailPage"))
+const B2BCartPage = lazyWithRetry(() => import("./pages/B2BCartPage"))
+const B2BOrdersPage = lazyWithRetry(() => import("./pages/B2BOrdersPage"))
 
 
 function App() {
@@ -224,6 +229,11 @@ function App() {
               <Route path="/gift-tree/select" element={<AuthGuard><GiftSelector /></AuthGuard>} />
               <Route path="/gift-tree/complete" element={<AuthGuard><CompletionPage /></AuthGuard>} />
               <Route path="/gift-tree/help/:ownerId" element={<GiftTreeHelpPage />} />
+              {/* B2B 批发模块路由 */}
+              <Route path="/b2b" element={<AuthGuard><B2BHomePage /></AuthGuard>} />
+              <Route path="/b2b/product/:productId" element={<AuthGuard><B2BProductDetailPage /></AuthGuard>} />
+              <Route path="/b2b/cart" element={<AuthGuard><B2BCartPage /></AuthGuard>} />
+              <Route path="/b2b/orders" element={<AuthGuard><B2BOrdersPage /></AuthGuard>} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>

@@ -1,20 +1,23 @@
-import React, { useState, useRef } from 'react'
+import React, { useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useWholesalerProfile } from '../../hooks/useB2B'
 // 调试面板通过事件触发，不需要直接导入
 import { 
   HomeIcon, 
   CreditCardIcon, 
   UserIcon,
   PhotoIcon,
-  GiftIcon
+  GiftIcon,
+  BuildingStorefrontIcon
 } from '@heroicons/react/24/outline'
 import {
   HomeIcon as HomeIconSolid,
   CreditCardIcon as CreditCardIconSolid,
   UserIcon as UserIconSolid,
   PhotoIcon as PhotoIconSolid,
-  GiftIcon as GiftIconSolid
+  GiftIcon as GiftIconSolid,
+  BuildingStorefrontIcon as BuildingStorefrontIconSolid
 } from '@heroicons/react/24/solid'
 import { cn } from '../../lib/utils'
 
@@ -24,8 +27,11 @@ export const BottomNavigation: React.FC = () => {
   const navigate = useNavigate()
   const clickCountRef = useRef(0)
   const clickTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const { data: wholesalerProfile } = useWholesalerProfile()
 
-  const navigation = [
+  const isApprovedWholesaler = wholesalerProfile?.status === 'approved'
+
+  const baseNavigation = [
     {
       name: t('nav.home'),
       path: '/',
@@ -57,6 +63,22 @@ export const BottomNavigation: React.FC = () => {
       activeIcon: UserIconSolid,
     },
   ]
+
+  // If user is an approved wholesaler, replace "种树" with "进货" entry
+  const navigation = isApprovedWholesaler
+    ? [
+        baseNavigation[0], // 首页
+        baseNavigation[1], // 晒单
+        {
+          name: t('nav.b2b'),
+          path: '/b2b',
+          icon: BuildingStorefrontIcon,
+          activeIcon: BuildingStorefrontIconSolid,
+        },
+        baseNavigation[3], // 钱包
+        baseNavigation[4], // 我的
+      ]
+    : baseNavigation
 
   return (
     <>
