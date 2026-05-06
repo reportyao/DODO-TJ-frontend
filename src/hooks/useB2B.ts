@@ -78,6 +78,10 @@ export interface CartItem {
   wholesale_price: number;
   unit_measure: string;
   stock: number;
+  min_order_quantity: number;
+  name_i18n: { zh?: string; ru?: string; tg?: string };
+  subtotal: number;
+  is_available: boolean;
 }
 
 // ============================================================
@@ -120,15 +124,34 @@ export function useB2BHomeFeed(page: number = 0, categoryId?: string) {
     queryFn: async () => {
       // 使用 any 断言绕过 RPC 类型限制
       const { data, error } = await (supabase as any).rpc('rpc_get_b2b_home_feed', {
-        p_page: page,
-        p_page_size: 20,
+        p_lang: 'zh',
+        p_limit: 100,
         p_category_id: categoryId || null,
       });
       if (error) throw new Error(error.message);
       const result = typeof data === 'string' ? JSON.parse(data) : data;
+      // RPC 返回格式: { banners, categories, products: [{type, item_id, data: {...}}], total_count }
+      // 需要将 products 数组中的 data 对象展平为 B2BProduct 格式
+      const rawProducts = result?.products || [];
+      const mappedProducts: B2BProduct[] = rawProducts.map((item: any) => {
+        const d = item.data || item; // 兼容直接返回扁平结构的情况
+        return {
+          id: d.product_id || item.item_id || d.id,
+          name_i18n: d.name_i18n || {},
+          image_url: d.image_url || null,
+          image_urls: d.image_urls || null,
+          wholesale_price: Number(d.wholesale_price) || 0,
+          retail_price: d.retail_price ? Number(d.retail_price) : null,
+          min_order_quantity: d.min_order_quantity || 1,
+          unit_measure: d.unit_measure || '件',
+          stock: d.stock || 0,
+          sku: d.sku || null,
+          category_name: d.category_name || null,
+        };
+      });
       return {
-        products: result?.products || [],
-        total: result?.total || 0,
+        products: mappedProducts,
+        total: result?.total_count || 0,
       };
     },
     staleTime: staleTimes.list,
@@ -151,7 +174,27 @@ export function useB2BProductDetail(productId: string) {
       });
       if (error) throw new Error(error.message);
       const result = typeof data === 'string' ? JSON.parse(data) : data;
-      return result as B2BProductDetail | null;
+      // RPC 返回格式: { product: {product_id, name_i18n, ...}, stores: [...] }
+      const p = result?.product;
+      if (!p) return null;
+      return {
+        id: p.product_id || p.id,
+        name_i18n: p.name_i18n || {},
+        description_i18n: p.description_i18n || {},
+        specifications_i18n: p.specifications_i18n || {},
+        material_i18n: p.material_i18n || {},
+        image_url: p.image_url || null,
+        image_urls: p.image_urls || null,
+        wholesale_price: Number(p.wholesale_price) || 0,
+        retail_price: p.retail_price ? Number(p.retail_price) : null,
+        min_order_quantity: p.min_order_quantity || 1,
+        unit_measure: p.unit_measure || '件',
+        stock: p.stock || 0,
+        sku: p.sku || null,
+        barcode: p.barcode || null,
+        status: p.status || 'ACTIVE',
+        category_name: null,
+      } as B2BProductDetail;
     },
     enabled: !!productId,
     staleTime: staleTimes.detail,
@@ -169,12 +212,26 @@ export function useB2BSearch(keyword: string) {
     queryFn: async () => {
       if (!keyword || keyword.length < 2) return [];
       const { data, error } = await (supabase as any).rpc('rpc_b2b_search_products', {
-        p_keyword: keyword,
+        p_query: keyword,
         p_limit: 30,
       });
       if (error) throw new Error(error.message);
       const result = typeof data === 'string' ? JSON.parse(data) : data;
-      return result || [];
+      // RPC 返回格式: { products: [{product_id, name_i18n, ...}], query }
+      const rawProducts = result?.products || [];
+      return rawProducts.map((d: any) => ({
+        id: d.product_id || d.id,
+        name_i18n: d.name_i18n || {},
+        image_url: d.image_url || null,
+        image_urls: d.image_urls || null,
+        wholesale_price: Number(d.wholesale_price) || 0,
+        retail_price: d.retail_price ? Number(d.retail_price) : null,
+        min_order_quantity: d.min_order_quantity || 1,
+        unit_measure: d.unit_measure || '件',
+        stock: d.stock || 0,
+        sku: d.sku || null,
+        category_name: null,
+      }));
     },
     enabled: keyword.length >= 2,
     staleTime: staleTimes.list,
@@ -194,11 +251,26 @@ export function useB2BCart() {
       if (!user?.id || !sessionToken) return [];
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
         method: 'POST',
-        body: { action: 'list' },
+        body: { action: 'get' },
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (error) throw new Error(await extractEdgeFunctionError(error));
-      return data?.items || [];
+      // Edge Function 返回: { success, cart: [{cart_id, product_id, quantity, subtotal, product: {...}, is_available}], total_amount, item_count }
+      const rawCart = data?.cart || [];
+      return rawCart.map((item: any) => ({
+        id: item.cart_id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        product_name: item.product?.name || '',
+        product_image: item.product?.image_url || null,
+        wholesale_price: Number(item.product?.wholesale_price) || 0,
+        unit_measure: item.product?.unit_measure || '件',
+        stock: item.product?.stock || 0,
+        min_order_quantity: item.product?.min_order_quantity || 1,
+        name_i18n: item.product?.name_i18n || {},
+        subtotal: item.subtotal || 0,
+        is_available: item.is_available ?? true,
+      })) as CartItem[];
     },
     enabled: !!user?.id && !!sessionToken,
     staleTime: staleTimes.realtime,
@@ -224,7 +296,7 @@ export function useB2BCartMutations() {
       if (!sessionToken) throw new Error('未登录');
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
         method: 'POST',
-        body: { action: 'upsert', product_id: productId, quantity },
+        body: { action: 'add', product_id: productId, quantity },
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (error) throw new Error(await extractEdgeFunctionError(error));
