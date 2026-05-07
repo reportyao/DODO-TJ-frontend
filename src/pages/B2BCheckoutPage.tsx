@@ -45,6 +45,7 @@ interface OrderSuccessModalProps {
 }
 
 function OrderSuccessModal({ isOpen, orderNumber, totalAmount, onViewOrder, onContinueShopping }: OrderSuccessModalProps) {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   return (
@@ -59,25 +60,25 @@ function OrderSuccessModal({ isOpen, orderNumber, totalAmount, onViewOrder, onCo
 
         {/* Title */}
         <h2 className="text-lg font-bold text-gray-900 text-center mb-1">
-          下单成功！
+          {t('b2b.orderSuccess') || '下单成功！'}
         </h2>
         <p className="text-sm text-gray-500 text-center mb-4">
-          订单已提交，等待配送
+          {t('b2b.orderSubmittedWaiting') || '订单已提交，等待配送'}
         </p>
 
         {/* Order Info */}
         <div className="bg-gray-50 rounded-xl p-3 mb-5 space-y-1.5">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">订单号</span>
+            <span className="text-gray-500">{t('b2b.orderNumber') || '订单号'}</span>
             <span className="font-mono text-gray-900 text-xs">{orderNumber}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">订单金额</span>
+            <span className="text-gray-500">{t('b2b.orderAmount') || '订单金额'}</span>
             <span className="font-bold text-blue-700">TJS {totalAmount.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">支付方式</span>
-            <span className="text-gray-700">货到付款</span>
+            <span className="text-gray-500">{t('b2b.paymentMethod') || '支付方式'}</span>
+            <span className="text-gray-700">{t('b2b.codPayment') || '货到付款'}</span>
           </div>
         </div>
 
@@ -87,13 +88,13 @@ function OrderSuccessModal({ isOpen, orderNumber, totalAmount, onViewOrder, onCo
             onClick={onViewOrder}
             className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold active:bg-blue-700 transition-colors"
           >
-            查看订单
+            {t('b2b.viewOrder') || '查看订单'}
           </button>
           <button
             onClick={onContinueShopping}
             className="w-full py-3 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium active:bg-gray-50 transition-colors"
           >
-            继续进货
+            {t('b2b.continueShopping') || '继续进货'}
           </button>
         </div>
       </div>
@@ -125,9 +126,14 @@ export default function B2BCheckoutPage() {
   const [successTotalAmount, setSuccessTotalAmount] = useState(0);
 
   // 初始化地址：使用批发商注册的配送地址
+  // 如果没有配送地址，自动开启编辑模式
   useEffect(() => {
-    if (wholesalerProfile?.delivery_address && !deliveryAddress) {
-      setDeliveryAddress(wholesalerProfile.delivery_address);
+    if (wholesalerProfile) {
+      if (wholesalerProfile.delivery_address && !deliveryAddress) {
+        setDeliveryAddress(wholesalerProfile.delivery_address);
+      } else if (!wholesalerProfile.delivery_address) {
+        setAddressEditing(true);
+      }
     }
   }, [wholesalerProfile]);
 
@@ -146,18 +152,18 @@ export default function B2BCheckoutPage() {
   // 提交订单
   const handleSubmitOrder = async () => {
     if (!user || !sessionToken) {
-      toast.error('请先登录');
+      toast.error(t('b2b.pleaseLogin', '请先登录'));
       navigate('/login');
       return;
     }
 
     if (!deliveryAddress.trim()) {
-      toast.error('请填写收货地址');
+      toast.error(t('b2b.pleaseEnterAddress', '请填写收货地址'));
       return;
     }
 
     if (!cartItems || cartItems.length === 0) {
-      toast.error('购物车为空');
+      toast.error(t('b2b.cartEmpty', '购物车为空'));
       return;
     }
 
@@ -182,10 +188,10 @@ export default function B2BCheckoutPage() {
         setSuccessTotalAmount(data.order?.total_amount || summary.totalAmount);
         setOrderSuccess(true);
       } else {
-        throw new Error(data?.error || '下单失败');
+        throw new Error(data?.error || t('b2b.orderFailed', '下单失败'));
       }
     } catch (err: any) {
-      toast.error(err.message || '下单失败，请重试');
+      toast.error(err.message || t('b2b.orderFailed', '下单失败，请重试'));
     } finally {
       setSubmitting(false);
     }
@@ -197,7 +203,7 @@ export default function B2BCheckoutPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">加载订单信息...</p>
+          <p className="text-sm text-gray-500">{t('b2b.loadingOrder', '加载订单信息...')}</p>
         </div>
       </div>
     );
@@ -208,13 +214,13 @@ export default function B2BCheckoutPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6">
         <div className="text-5xl mb-4">🛒</div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">购物车为空</h2>
-        <p className="text-sm text-gray-500 mb-6 text-center">请先添加商品到购物车</p>
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">{t('b2b.cartEmpty', '购物车为空')}</h2>
+        <p className="text-sm text-gray-500 mb-6 text-center">{t('b2b.addProductsFirst', '请先添加商品到购物车')}</p>
         <button
           onClick={() => navigate('/b2b')}
           className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium"
         >
-          去进货
+          {t('b2b.home')}
         </button>
       </div>
     );
@@ -228,7 +234,7 @@ export default function B2BCheckoutPage() {
           <button onClick={() => navigate(-1)} className="p-1 -ml-1">
             <ArrowLeftIcon className="w-5 h-5 text-gray-700" />
           </button>
-          <h1 className="text-base font-semibold text-gray-900">确认订单</h1>
+          <h1 className="text-base font-semibold text-gray-900">{t('b2b.confirmOrder', '确认订单')}</h1>
         </div>
       </div>
 
@@ -239,12 +245,12 @@ export default function B2BCheckoutPage() {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-50">
             <MapPinIcon className="w-4.5 h-4.5 text-blue-600 flex-shrink-0" />
-            <h3 className="text-sm font-semibold text-gray-900">收货地址</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{t('b2b.deliveryAddress', '收货地址')}</h3>
             <button
               onClick={() => setAddressEditing(!addressEditing)}
               className="ml-auto text-xs text-blue-600 font-medium"
             >
-              {addressEditing ? '完成' : '修改'}
+              {addressEditing ? t('b2b.done', '完成') : t('b2b.edit', '修改')}
             </button>
           </div>
           <div className="px-4 py-3">
@@ -254,14 +260,14 @@ export default function B2BCheckoutPage() {
                 onChange={(e) => setDeliveryAddress(e.target.value)}
                 rows={3}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-400 focus:outline-none resize-none"
-                placeholder="请输入详细收货地址..."
+                placeholder={t('b2b.addressPlaceholder', '请输入详细收货地址...')}
               />
             ) : (
               <div className="text-sm text-gray-700">
                 {deliveryAddress || (
                   <span className="text-red-500 flex items-center gap-1">
                     <ExclamationTriangleIcon className="w-4 h-4" />
-                    请填写收货地址
+                    {t('b2b.pleaseEnterAddress', '请填写收货地址')}
                   </span>
                 )}
               </div>
@@ -282,7 +288,7 @@ export default function B2BCheckoutPage() {
           <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-50">
             <DocumentTextIcon className="w-4.5 h-4.5 text-blue-600 flex-shrink-0" />
             <h3 className="text-sm font-semibold text-gray-900">
-              商品清单
+              {t('b2b.productList', '商品清单')}
               <span className="text-xs font-normal text-gray-400 ml-1.5">
                 ({summary.totalItems}种 · {summary.totalQuantity}件)
               </span>
@@ -326,14 +332,14 @@ export default function B2BCheckoutPage() {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-50">
             <TruckIcon className="w-4.5 h-4.5 text-blue-600 flex-shrink-0" />
-            <h3 className="text-sm font-semibold text-gray-900">配送方式</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{t('b2b.deliveryMethod', '配送方式')}</h3>
           </div>
           <div className="px-4 py-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-700">商家配送</span>
-              <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">免运费</span>
+              <span className="text-sm text-gray-700">{t('b2b.merchantDelivery', '商家配送')}</span>
+              <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">{t('b2b.freeShipping', '免运费')}</span>
             </div>
-            <p className="text-xs text-gray-400 mt-1">预计1-3个工作日送达</p>
+            <p className="text-xs text-gray-400 mt-1">{t('b2b.deliveryEstimate', '预计1-3个工作日送达')}</p>
           </div>
         </div>
 
@@ -343,16 +349,16 @@ export default function B2BCheckoutPage() {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-50">
             <BanknotesIcon className="w-4.5 h-4.5 text-blue-600 flex-shrink-0" />
-            <h3 className="text-sm font-semibold text-gray-900">支付方式</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{t('b2b.paymentMethod', '支付方式')}</h3>
           </div>
           <div className="px-4 py-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-700">货到付款（COD）</span>
+              <span className="text-sm text-gray-700">{t('b2b.codPayment', '货到付款（COD）')}</span>
               <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
                 <CheckCircleIcon className="w-4 h-4 text-white" />
               </div>
             </div>
-            <p className="text-xs text-gray-400 mt-1">收货时向配送员支付货款</p>
+            <p className="text-xs text-gray-400 mt-1">{t('b2b.codDescription', '收货时向配送员支付货款')}</p>
           </div>
         </div>
 
@@ -361,13 +367,13 @@ export default function B2BCheckoutPage() {
         {/* ============================================================ */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-4 py-3">
-            <label className="text-sm font-medium text-gray-700 mb-2 block">订单备注（选填）</label>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">{t('b2b.orderNote', '订单备注（选填）')}</label>
             <input
               type="text"
               value={deliveryNote}
               onChange={(e) => setDeliveryNote(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-400 focus:outline-none"
-              placeholder="如有特殊要求请在此备注..."
+              placeholder={t('b2b.notePlaceholder', '如有特殊要求请在此备注...')}
             />
           </div>
         </div>
@@ -406,10 +412,10 @@ export default function B2BCheckoutPage() {
             {submitting ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                提交中...
+                {t('b2b.submitting', '提交中...')}
               </span>
             ) : (
-              `确认下单 · TJS ${summary.totalAmount.toFixed(2)}`
+              `${t('b2b.confirmOrder', '确认下单')} · TJS ${summary.totalAmount.toFixed(2)}`
             )}
           </button>
         </div>

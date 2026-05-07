@@ -7,12 +7,13 @@
  * - 搜索框（调用 rpc_b2b_search_products）
  * - 分页加载
  * - 点击商品跳转详情页
+ * - 非批发商用户隐藏价格信息
  */
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { useB2BHomeFeed, useB2BSearch, B2BProduct } from '../hooks/useB2B';
+import { useB2BHomeFeed, useB2BSearch, useWholesalerProfile, B2BProduct, B2B_PAGE_SIZE } from '../hooks/useB2B';
 import { LazyImage } from '../components/LazyImage';
 import { cn } from '../lib/utils';
 
@@ -32,9 +33,11 @@ const B2BProductCard: React.FC<{
   onClick: () => void;
   lang: string;
   t: (key: string) => string;
-}> = ({ product, onClick, lang, t }) => {
+  showPrice: boolean;
+}> = ({ product, onClick, lang, t, showPrice }) => {
   const isOutOfStock = product.stock <= 0;
-  const profitPercent = product.retail_price && product.wholesale_price
+  // 安全计算利润百分比，防止除以零
+  const profitPercent = product.retail_price && product.wholesale_price && product.wholesale_price > 0
     ? Math.round(((product.retail_price - product.wholesale_price) / product.wholesale_price) * 100)
     : null;
 
@@ -60,7 +63,7 @@ const B2BProductCard: React.FC<{
             </span>
           </div>
         )}
-        {profitPercent && profitPercent > 0 && !isOutOfStock && (
+        {showPrice && profitPercent && profitPercent > 0 && !isOutOfStock && (
           <div className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
             +{profitPercent}%
           </div>
@@ -73,18 +76,24 @@ const B2BProductCard: React.FC<{
           {getLocalizedName(product.name_i18n, lang)}
         </h3>
 
-        {/* Price */}
-        <div className="mt-1.5 flex items-baseline gap-1.5">
-          <span className="text-base font-bold text-blue-700">
-            {Number(product.wholesale_price).toFixed(0)}
-          </span>
-          <span className="text-xs text-gray-400">TJS</span>
-          {product.retail_price && (
-            <span className="text-xs text-gray-400 line-through ml-auto">
-              {Number(product.retail_price).toFixed(0)}
+        {/* Price - 仅批发商可见 */}
+        {showPrice ? (
+          <div className="mt-1.5 flex items-baseline gap-1.5">
+            <span className="text-base font-bold text-blue-700">
+              {Number(product.wholesale_price).toFixed(0)}
             </span>
-          )}
-        </div>
+            <span className="text-xs text-gray-400">TJS</span>
+            {product.retail_price && (
+              <span className="text-xs text-gray-400 line-through ml-auto">
+                {Number(product.retail_price).toFixed(0)}
+              </span>
+            )}
+          </div>
+        ) : (
+          <div className="mt-1.5">
+            <span className="text-xs text-gray-400 italic">{t('b2b.applyWholesaler')}</span>
+          </div>
+        )}
 
         {/* Meta */}
         <div className="mt-1.5 flex items-center justify-between text-[11px] text-gray-500">
@@ -114,7 +123,11 @@ export default function B2BHomePage() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchInput, setSearchInput] = useState('');
 
-  // Data hooks
+  // 批发商权限检查
+  const { data: wholesalerProfile } = useWholesalerProfile();
+  const isApprovedWholesaler = wholesalerProfile?.status === 'approved';
+
+  // Data hooks - page 参数已正确传递给 useB2BHomeFeed
   const { data: feedData, isLoading: feedLoading } = useB2BHomeFeed(page);
   const { data: searchResults, isLoading: searchLoading } = useB2BSearch(searchQuery);
 
@@ -143,7 +156,7 @@ export default function B2BHomePage() {
   const products = isSearching ? (searchResults || []) : (feedData?.products || []);
   const totalProducts = isSearching ? (searchResults?.length || 0) : (feedData?.total || 0);
   const isLoading = isSearching ? searchLoading : feedLoading;
-  const totalPages = Math.ceil(totalProducts / 20);
+  const totalPages = Math.ceil(totalProducts / B2B_PAGE_SIZE);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -204,6 +217,7 @@ export default function B2BHomePage() {
                   onClick={() => handleProductClick(product.id)}
                   lang={lang}
                   t={t}
+                  showPrice={isApprovedWholesaler}
                 />
               ))}
             </div>

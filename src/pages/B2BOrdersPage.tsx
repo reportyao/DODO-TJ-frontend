@@ -4,9 +4,10 @@
  *
  * 功能：
  * - 展示批发商的历史订单
- * - 按状态筛选（全部/待确认/配送中/已送达/已付款）
+ * - 按状态筛选（全部/待确认/处理中/配送中/已送达/已付款/已取消）
  * - 点击展开订单详情（懒加载明细）
  * - 状态映射与 Edge Function 对齐
+ * - 完整 i18n 支持
  *
  * 路由: /b2b/orders
  * 依赖: b2b-orders Edge Function (POST action=list/detail)
@@ -51,6 +52,7 @@ interface B2BOrderDetail extends B2BOrder {
     subtotal: number;
     snapshot_data: {
       name?: string;
+      name_i18n?: { zh?: string; ru?: string; tg?: string };
       image_url?: string;
       unit_measure?: string;
     } | null;
@@ -59,6 +61,7 @@ interface B2BOrderDetail extends B2BOrder {
 
 // ============================================================
 // 状态配置（与 b2b-orders Edge Function 对齐）
+// 数据库定义: pending -> processing -> delivering -> delivered -> paid / cancelled
 // ============================================================
 const STATUS_TABS = ['all', 'pending', 'processing', 'delivering', 'delivered', 'paid', 'cancelled'] as const;
 
@@ -71,27 +74,46 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-700',
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: '待确认',
-  processing: '处理中',
-  delivering: '配送中',
-  delivered: '已送达',
-  paid: '已付款',
-  cancelled: '已取消',
-};
+/**
+ * 获取订单项的本地化商品名称
+ */
+function getItemName(
+  snapshotData: { name?: string; name_i18n?: { zh?: string; ru?: string; tg?: string } } | null,
+  lang: string,
+  productId: string
+): string {
+  if (!snapshotData) return `${productId.slice(0, 8)}`;
+  if (snapshotData.name_i18n) {
+    const i18n = snapshotData.name_i18n;
+    return i18n[lang as keyof typeof i18n] || i18n.ru || i18n.zh || i18n.tg || snapshotData.name || productId.slice(0, 8);
+  }
+  return snapshotData.name || productId.slice(0, 8);
+}
 
 // ============================================================
 // 主组件
 // ============================================================
 export default function B2BOrdersPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { supabase } = useSupabase();
   const { user, sessionToken } = useUser();
+  const lang = i18n.language || 'ru';
   const [activeTab, setActiveTab] = useState<string>('all');
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [orderDetails, setOrderDetails] = useState<Record<string, B2BOrderDetail>>({});
   const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
+
+  // i18n 状态标签映射
+  const STATUS_LABELS: Record<string, string> = {
+    all: t('b2b.orderStatusAll', '全部'),
+    pending: t('b2b.orderStatusPending', '待确认'),
+    processing: t('b2b.orderStatusProcessing', '处理中'),
+    delivering: t('b2b.orderStatusDelivering', '配送中'),
+    delivered: t('b2b.orderStatusDelivered', '已送达'),
+    paid: t('b2b.orderStatusPaid', '已付款'),
+    cancelled: t('b2b.orderStatusCancelled', '已取消'),
+  };
 
   // 获取订单列表（使用 POST + action 模式）
   const { data: orders, isLoading } = useQuery<B2BOrder[]>({
@@ -181,7 +203,7 @@ export default function B2BOrdersPage() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               )}
             >
-              {tab === 'all' ? '全部' : STATUS_LABELS[tab] || tab}
+              {STATUS_LABELS[tab] || tab}
             </button>
           ))}
         </div>
@@ -196,12 +218,12 @@ export default function B2BOrdersPage() {
         ) : !orders || orders.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-4xl mb-3">📋</div>
-            <p className="text-gray-500 text-sm">暂无订单</p>
+            <p className="text-gray-500 text-sm">{t('b2b.noOrders', '暂无订单')}</p>
             <button
               onClick={() => navigate('/b2b')}
               className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium"
             >
-              去进货
+              {t('b2b.home')}
             </button>
           </div>
         ) : (
@@ -227,11 +249,11 @@ export default function B2BOrdersPage() {
                       TJS {Number(order.total_amount).toFixed(2)}
                     </span>
                     <span className="text-xs text-gray-400">
-                      {order.item_count}种 · {order.total_quantity}件
+                      {order.item_count}{t('b2b.orderItemTypes', '种')} · {order.total_quantity}{t('b2b.orderItemPieces', '件')}
                     </span>
                   </div>
                   <div className="text-[10px] text-gray-400 mt-0.5">
-                    {new Date(order.created_at).toLocaleString('zh-CN', {
+                    {new Date(order.created_at).toLocaleString(lang === 'zh' ? 'zh-CN' : 'ru-RU', {
                       month: '2-digit',
                       day: '2-digit',
                       hour: '2-digit',
@@ -239,7 +261,7 @@ export default function B2BOrdersPage() {
                     })}
                     {order.estimated_delivery_date && (
                       <span className="ml-2 text-blue-500">
-                        预计送达: {order.estimated_delivery_date}
+                        {t('b2b.estimatedDelivery', '预计送达')}: {order.estimated_delivery_date}
                       </span>
                     )}
                   </div>
@@ -267,7 +289,7 @@ export default function B2BOrdersPage() {
                         {orderDetails[order.id].items?.map((item) => (
                           <div key={item.id} className="flex items-center justify-between text-xs">
                             <span className="text-gray-700 flex-1 truncate">
-                              {item.snapshot_data?.name || `商品 ${item.product_id.slice(0, 8)}`}
+                              {getItemName(item.snapshot_data, lang, item.product_id)}
                             </span>
                             <span className="text-gray-500 mx-2 flex-shrink-0">
                               x{item.quantity}
@@ -282,7 +304,7 @@ export default function B2BOrdersPage() {
                       <div className="text-xs text-gray-500 border-t border-gray-200 pt-2 space-y-1">
                         <div className="flex items-start gap-1">
                           <span className="flex-shrink-0">📍</span>
-                          <span>{orderDetails[order.id].delivery_address || '未填写地址'}</span>
+                          <span>{orderDetails[order.id].delivery_address || t('b2b.noAddress', '未填写地址')}</span>
                         </div>
                         {orderDetails[order.id].delivery_note && (
                           <div className="flex items-start gap-1">
@@ -293,12 +315,14 @@ export default function B2BOrdersPage() {
                         <div className="flex items-center gap-1">
                           <span className="flex-shrink-0">💰</span>
                           <span>
-                            {orderDetails[order.id].payment_method === 'cod' ? '货到付款' : orderDetails[order.id].payment_method}
+                            {orderDetails[order.id].payment_method === 'cod'
+                              ? t('b2b.paymentCOD', '货到付款')
+                              : orderDetails[order.id].payment_method}
                             {' · '}
                             {orderDetails[order.id].payment_status === 'paid' ? (
-                              <span className="text-green-600 font-medium">已付款</span>
+                              <span className="text-green-600 font-medium">{t('b2b.orderStatusPaid', '已付款')}</span>
                             ) : (
-                              <span className="text-orange-500 font-medium">待付款</span>
+                              <span className="text-orange-500 font-medium">{t('b2b.paymentPending', '待付款')}</span>
                             )}
                           </span>
                         </div>
@@ -306,7 +330,7 @@ export default function B2BOrdersPage() {
                     </>
                   ) : (
                     <div className="text-xs text-gray-400 text-center py-3">
-                      暂无详情
+                      {t('b2b.noDetail', '暂无详情')}
                     </div>
                   )}
                 </div>

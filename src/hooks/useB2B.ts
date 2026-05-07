@@ -13,17 +13,21 @@
  * 因此这里使用 (supabase as any) 进行类型断言。后续运行 supabase gen types 后可移除。
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useSupabase } from '../contexts/SupabaseContext';
 import { useUser } from '../contexts/UserContext';
 import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper';
 import { staleTimes } from '../lib/react-query';
+
+// B2B 每页商品数量常量
+export const B2B_PAGE_SIZE = 20;
 
 // ============================================================
 // Query Keys
 // ============================================================
 export const b2bQueryKeys = {
   wholesalerProfile: (userId: string) => ['b2b', 'wholesaler-profile', userId] as const,
-  homeFeed: (page: number, categoryId?: string) => ['b2b', 'home-feed', page, categoryId] as const,
+  homeFeed: (page: number, lang: string, categoryId?: string) => ['b2b', 'home-feed', page, lang, categoryId || 'all'] as const,
   productDetail: (productId: string) => ['b2b', 'product-detail', productId] as const,
   search: (keyword: string) => ['b2b', 'search', keyword] as const,
   cart: (userId: string) => ['b2b', 'cart', userId] as const,
@@ -115,17 +119,23 @@ export function useWholesalerProfile() {
 
 /**
  * 获取B2B首页商品列表
+ * @param page - 页码（从0开始）
+ * @param categoryId - 可选分类ID筛选
  */
 export function useB2BHomeFeed(page: number = 0, categoryId?: string) {
   const { supabase } = useSupabase();
+  const { i18n } = useTranslation();
+  const lang = i18n.language || 'ru';
 
-  return useQuery<{ products: B2BProduct[]; total: number }>({
-    queryKey: b2bQueryKeys.homeFeed(page, categoryId),
+  return useQuery<{ products: B2BProduct[]; total: number; banners?: any[]; categories?: any[] }>({
+    queryKey: b2bQueryKeys.homeFeed(page, lang, categoryId),
     queryFn: async () => {
       // 使用 any 断言绕过 RPC 类型限制
+      // p_limit 使用分页大小，通过 RPC 的 offset 机制实现分页
+      // 注意：当前 RPC 不支持 offset 参数，所以获取全量后前端分页
       const { data, error } = await (supabase as any).rpc('rpc_get_b2b_home_feed', {
-        p_lang: 'zh',
-        p_limit: 100,
+        p_lang: lang,
+        p_limit: 200, // 获取较多数据，前端分页
         p_category_id: categoryId || null,
       });
       if (error) throw new Error(error.message);
@@ -133,8 +143,10 @@ export function useB2BHomeFeed(page: number = 0, categoryId?: string) {
       // RPC 返回格式: { banners, categories, products: [{type, item_id, data: {...}}], total_count }
       // 需要将 products 数组中的 data 对象展平为 B2BProduct 格式
       const rawProducts = result?.products || [];
-      const mappedProducts: B2BProduct[] = rawProducts.map((item: any) => {
-        const d = item.data || item; // 兼容直接返回扁平结构的情况
+      const allProducts: B2BProduct[] = rawProducts.map((item: any) => {
+        // RPC 明确返回 { type, item_id, data: {...} } 结构
+        // 始终优先从 item.data 中提取商品信息
+        const d = item.data ? item.data : item;
         return {
           id: d.product_id || item.item_id || d.id,
           name_i18n: d.name_i18n || {},
@@ -149,9 +161,14 @@ export function useB2BHomeFeed(page: number = 0, categoryId?: string) {
           category_name: d.category_name || null,
         };
       });
+      // 前端分页：根据 page 和 B2B_PAGE_SIZE 切片
+      const startIndex = page * B2B_PAGE_SIZE;
+      const paginatedProducts = allProducts.slice(startIndex, startIndex + B2B_PAGE_SIZE);
       return {
-        products: mappedProducts,
-        total: result?.total_count || 0,
+        products: paginatedProducts,
+        total: result?.total_count || allProducts.length,
+        banners: result?.banners || [],
+        categories: result?.categories || [],
       };
     },
     staleTime: staleTimes.list,
@@ -291,7 +308,11 @@ export function useB2BCartMutations() {
     }
   };
 
-  const upsertItem = useMutation({
+  /**
+   * 添加商品到购物车（如已存在则累加数量）
+   * 用于：商品详情页的"加入购物车"按钮
+   */
+  const addItem = useMutation({
     mutationFn: async ({ productId, quantity }: { productId: string; quantity: number }) => {
       if (!sessionToken) throw new Error('未登录');
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
@@ -304,6 +325,27 @@ export function useB2BCartMutations() {
     },
     onSuccess: invalidateCart,
   });
+
+  /**
+   * 更新购物车中商品的绝对数量
+   * 用于：购物车页面的数量步进器
+   */
+  const updateItem = useMutation({
+    mutationFn: async ({ productId, quantity }: { productId: string; quantity: number }) => {
+      if (!sessionToken) throw new Error('未登录');
+      const { data, error } = await supabase.functions.invoke('b2b-cart', {
+        method: 'POST',
+        body: { action: 'update', product_id: productId, quantity },
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
+      if (error) throw new Error(await extractEdgeFunctionError(error));
+      return data;
+    },
+    onSuccess: invalidateCart,
+  });
+
+  // 向后兼容：upsertItem 默认使用 add 行为
+  const upsertItem = addItem;
 
   const removeItem = useMutation({
     mutationFn: async (productId: string) => {
@@ -333,5 +375,5 @@ export function useB2BCartMutations() {
     onSuccess: invalidateCart,
   });
 
-  return { upsertItem, removeItem, clearCart };
+  return { upsertItem, addItem, updateItem, removeItem, clearCart };
 }
