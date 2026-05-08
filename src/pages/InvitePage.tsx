@@ -79,8 +79,7 @@ const InvitePage: React.FC = () => {
     if (navigator.share) {
       navigator.share({ title: t("invite.shareTitle"), text, url: inviteLink }).catch(() => {});
     } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text + "
-" + inviteLink)}`, "_blank");
+      window.open(`https://wa.me/?text=${encodeURIComponent(text + "\n" + inviteLink)}`, "_blank");
     }
   };
 
