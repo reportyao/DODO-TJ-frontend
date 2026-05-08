@@ -2218,13 +2218,16 @@
     "paymentPending": "Ожидает оплаты",
     "noDetail": "Нет деталей",
     "orderStatusAll": "Все",
-    "orderStatusPending": "Ожидает",
     "orderStatusProcessing": "В обработке",
     "orderStatusDelivering": "Доставка",
-    "orderStatusDelivered": "Доставлено",
-    "orderStatusPaid": "Оплачено",
-    "orderStatusCancelled": "Отменено",
-    "viewProductDetail": "Подробнее"
+    "orderStatusDelivered": "Доставлен",
+    "orderStatusCancelled": "Отменён",
+    "viewProductDetail": "Подробнее",
+    "cancelOrder": "Отменить",
+    "cancelling": "Отмена...",
+    "orderCancelled": "Заказ отменён",
+    "cancelFailed": "Ошибка отмены",
+    "cannotCancelOrder": "Можно отменить только в обработке"
   },
   "wholesaler": {
     "applyTitle": "Стать оптовиком",

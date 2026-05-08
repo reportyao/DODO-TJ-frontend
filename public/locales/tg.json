@@ -2218,13 +2218,16 @@
     "paymentPending": "Дар интизори пардохт",
     "noDetail": "Тафсилот нест",
     "orderStatusAll": "Ҳама",
-    "orderStatusPending": "Дар интизор",
-    "orderStatusProcessing": "Дар коркард",
+    "orderStatusProcessing": "Коркард",
     "orderStatusDelivering": "Интиқол",
-    "orderStatusDelivered": "Расонида шуд",
-    "orderStatusPaid": "Пардохт шуд",
-    "orderStatusCancelled": "Бекор карда шуд",
-    "viewProductDetail": "Муфассал"
+    "orderStatusDelivered": "Расонда",
+    "orderStatusCancelled": "Бекор",
+    "viewProductDetail": "Муфассал",
+    "cancelOrder": "Бекор кардан",
+    "cancelling": "Бекор...",
+    "orderCancelled": "Фармоиш бекор шуд",
+    "cancelFailed": "Хатои бекор",
+    "cannotCancelOrder": "Танҳо дар коркард бекор мешавад"
   },
   "wholesaler": {
     "applyTitle": "Яклухтфурӯш шавед",

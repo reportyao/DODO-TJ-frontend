@@ -2218,13 +2218,16 @@
     "paymentPending": "待付款",
     "noDetail": "暂无详情",
     "orderStatusAll": "全部",
-    "orderStatusPending": "待确认",
     "orderStatusProcessing": "处理中",
     "orderStatusDelivering": "配送中",
     "orderStatusDelivered": "已送达",
-    "orderStatusPaid": "已付款",
     "orderStatusCancelled": "已取消",
-    "viewProductDetail": "点击查看商品详情"
+    "viewProductDetail": "点击查看商品详情",
+    "cancelOrder": "取消订单",
+    "cancelling": "取消中...",
+    "orderCancelled": "订单已取消",
+    "cancelFailed": "取消失败",
+    "cannotCancelOrder": "只能取消处理中的订单"
   },
   "wholesaler": {
     "applyTitle": "申请批发商",
