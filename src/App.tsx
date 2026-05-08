@@ -88,6 +88,7 @@ const B2BHomePage = lazyWithRetry(() => import("./pages/B2BHomePage"))
 const B2BProductDetailPage = lazyWithRetry(() => import("./pages/B2BProductDetailPage"))
 const B2BCartPage = lazyWithRetry(() => import("./pages/B2BCartPage"))
 const B2BOrdersPage = lazyWithRetry(() => import("./pages/B2BOrdersPage"))
+const WholesalerApplyPage = lazyWithRetry(() => import("./pages/WholesalerApplyPage"))
 const B2BCheckoutPage = lazyWithRetry(() => import("./pages/B2BCheckoutPage"))
 
 
@@ -237,6 +238,7 @@ function App() {
               <Route path="/b2b/cart" element={<AuthGuard><B2BCartPage /></AuthGuard>} />
               <Route path="/b2b/checkout" element={<AuthGuard><B2BCheckoutPage /></AuthGuard>} />
               <Route path="/b2b/orders" element={<AuthGuard><B2BOrdersPage /></AuthGuard>} />
+              <Route path="/wholesaler/apply" element={<AuthGuard><WholesalerApplyPage /></AuthGuard>} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>

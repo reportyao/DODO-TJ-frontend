@@ -74,7 +74,7 @@ function OrderSuccessModal({ isOpen, orderNumber, totalAmount, onViewOrder, onCo
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">{t('b2b.orderAmount') || '订单金额'}</span>
-            <span className="font-bold text-blue-700">TJS {totalAmount.toFixed(2)}</span>
+            <span className="font-bold text-primary">TJS {totalAmount.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">{t('b2b.paymentMethod') || '支付方式'}</span>
@@ -86,7 +86,7 @@ function OrderSuccessModal({ isOpen, orderNumber, totalAmount, onViewOrder, onCo
         <div className="space-y-2.5">
           <button
             onClick={onViewOrder}
-            className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold active:bg-blue-700 transition-colors"
+            className="w-full py-3 bg-primary text-white rounded-xl text-sm font-semibold active:bg-primary-dark transition-colors"
           >
             {t('b2b.viewOrder') || '查看订单'}
           </button>
@@ -204,7 +204,7 @@ export default function B2BCheckoutPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-500">{t('b2b.loadingOrder', '加载订单信息...')}</p>
         </div>
       </div>
@@ -220,7 +220,7 @@ export default function B2BCheckoutPage() {
         <p className="text-sm text-gray-500 mb-6 text-center">{t('b2b.addProductsFirst', '请先添加商品到购物车')}</p>
         <button
           onClick={() => navigate('/b2b')}
-          className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium"
+          className="px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-medium"
         >
           {t('b2b.home')}
         </button>
@@ -246,11 +246,11 @@ export default function B2BCheckoutPage() {
         {/* ============================================================ */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-50">
-            <MapPinIcon className="w-4.5 h-4.5 text-blue-600 flex-shrink-0" />
+            <MapPinIcon className="w-4 h-4 text-primary flex-shrink-0" />
             <h3 className="text-sm font-semibold text-gray-900">{t('b2b.deliveryAddress', '收货地址')}</h3>
             <button
               onClick={() => setAddressEditing(!addressEditing)}
-              className="ml-auto text-xs text-blue-600 font-medium"
+              className="ml-auto text-xs text-primary font-medium"
             >
               {addressEditing ? t('b2b.done', '完成') : t('b2b.edit', '修改')}
             </button>
@@ -261,7 +261,7 @@ export default function B2BCheckoutPage() {
                 value={deliveryAddress}
                 onChange={(e) => setDeliveryAddress(e.target.value)}
                 rows={3}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-400 focus:outline-none resize-none"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none resize-none"
                 placeholder={t('b2b.addressPlaceholder', '请输入详细收货地址...')}
               />
             ) : (
@@ -288,11 +288,11 @@ export default function B2BCheckoutPage() {
         {/* ============================================================ */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-50">
-            <DocumentTextIcon className="w-4.5 h-4.5 text-blue-600 flex-shrink-0" />
+            <DocumentTextIcon className="w-4 h-4 text-primary flex-shrink-0" />
             <h3 className="text-sm font-semibold text-gray-900">
               {t('b2b.productList', '商品清单')}
               <span className="text-xs font-normal text-gray-400 ml-1.5">
-                ({summary.totalItems}种 · {summary.totalQuantity}件)
+                ({summary.totalItems}{t('b2b.orderItemTypes', '种')} · {summary.totalQuantity}{t('b2b.orderItemPieces', '件')})
               </span>
             </h3>
           </div>
@@ -333,7 +333,7 @@ export default function B2BCheckoutPage() {
         {/* ============================================================ */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-50">
-            <TruckIcon className="w-4.5 h-4.5 text-blue-600 flex-shrink-0" />
+            <TruckIcon className="w-4 h-4 text-primary flex-shrink-0" />
             <h3 className="text-sm font-semibold text-gray-900">{t('b2b.deliveryMethod', '配送方式')}</h3>
           </div>
           <div className="px-4 py-3">
@@ -350,13 +350,13 @@ export default function B2BCheckoutPage() {
         {/* ============================================================ */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-50">
-            <BanknotesIcon className="w-4.5 h-4.5 text-blue-600 flex-shrink-0" />
+            <BanknotesIcon className="w-4 h-4 text-primary flex-shrink-0" />
             <h3 className="text-sm font-semibold text-gray-900">{t('b2b.paymentMethod', '支付方式')}</h3>
           </div>
           <div className="px-4 py-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-700">{t('b2b.codPayment', '货到付款（COD）')}</span>
-              <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
+              <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
                 <CheckCircleIcon className="w-4 h-4 text-white" />
               </div>
             </div>
@@ -374,7 +374,7 @@ export default function B2BCheckoutPage() {
               type="text"
               value={deliveryNote}
               onChange={(e) => setDeliveryNote(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-400 focus:outline-none"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
               placeholder={t('b2b.notePlaceholder', '如有特殊要求请在此备注...')}
             />
           </div>
@@ -390,11 +390,11 @@ export default function B2BCheckoutPage() {
           <div className="flex items-center justify-between mb-3">
             <div className="space-y-0.5">
               <div className="text-xs text-gray-500">
-                共 {summary.totalItems} 种商品，{summary.totalQuantity} 件
+                {t('b2b.orderItemTypes', '共')} {summary.totalItems} {t('b2b.orderItemTypes', '种')}，{summary.totalQuantity} {t('b2b.orderItemPieces', '件')}
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-xs text-gray-500">合计:</span>
-                <span className="text-xl font-bold text-blue-700">
+                <span className="text-xs text-gray-500">{t('b2b.totalAmount', '合计')}:</span>
+                <span className="text-xl font-bold text-primary">
                   TJS {summary.totalAmount.toFixed(2)}
                 </span>
               </div>
@@ -408,7 +408,7 @@ export default function B2BCheckoutPage() {
               'w-full py-3.5 rounded-xl text-sm font-semibold transition-all',
               submitting || !deliveryAddress.trim()
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 text-white active:bg-blue-700 shadow-lg shadow-blue-600/20'
+                : 'bg-primary text-white active:bg-primary-dark shadow-lg shadow-primary/20'
             )}
           >
             {submitting ? (

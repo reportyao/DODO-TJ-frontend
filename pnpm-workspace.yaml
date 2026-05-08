@@ -1,3 +1,8 @@
+allowBuilds:
+  esbuild: set this to true or false
+  msw: set this to true or false
+  supabase: set this to true or false
+  unrs-resolver: set this to true or false
 ignoredBuiltDependencies:
   - esbuild
   - msw

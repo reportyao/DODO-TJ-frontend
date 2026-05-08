@@ -4,10 +4,10 @@
  *
  * 功能：
  * - 商品图片轮播
- * - 批发价、建议零售价、利润空间展示
+ * - 批发价展示（已移除建议零售价）
  * - 起批量、库存、规格信息
  * - 数量选择器（步进为 min_order_quantity）
- * - 加入购物车与立即下单（登录用户可用）
+ * - 加入进货单（橘黄色主题，已移除立即进货按钮）
  */
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -37,9 +37,8 @@ export default function B2BProductDetailPage() {
 
   const { data: product, isLoading } = useB2BProductDetail(productId || '');
   const { upsertItem } = useB2BCartMutations();
-  // 批发商资质仅用于展示“已认证批发商”徽章等差异化体验，不再作为加购门槛。
+  // 批发商资质仅用于展示"已认证批发商"徽章等差异化体验，不再作为加购门槛。
   const { data: wholesalerProfile } = useWholesalerProfile();
-  const isApprovedWholesaler = wholesalerProfile?.status === 'approved';
   const [quantity, setQuantity] = useState<number>(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -71,7 +70,7 @@ export default function B2BProductDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -80,20 +79,13 @@ export default function B2BProductDetailPage() {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
         <p className="text-gray-500">{t('b2b.noProducts')}</p>
-        <button onClick={() => navigate('/b2b')} className="text-blue-600 text-sm">
+        <button onClick={() => navigate('/b2b')} className="text-primary text-sm">
           {t('b2b.home')}
         </button>
       </div>
     );
   }
   const isOutOfStock = product.stock <= 0;
-  // 安全计算利润百分比，防止除以零
-  const profitPercent = product.retail_price && product.wholesale_price && product.wholesale_price > 0
-    ? Math.round(((product.retail_price - product.wholesale_price) / product.wholesale_price) * 100)
-    : null;
-  const profitAmount = product.retail_price && product.wholesale_price
-    ? (product.retail_price - product.wholesale_price)
-    : null;
 
   const minQty = product.min_order_quantity || 1;
   const subtotal = quantity * product.wholesale_price;
@@ -136,16 +128,6 @@ export default function B2BProductDetailPage() {
     }
   };
 
-  const handleBuyNow = async () => {
-    if (!validatePurchase()) return;
-    try {
-      await upsertItem.mutateAsync({ productId: product.id, quantity });
-      navigate('/b2b/checkout');
-    } catch (err: any) {
-      toast.error(err.message || t('b2b.orderFailed', '下单失败'));
-    }
-  };
-
   return (
     <div className="min-h-screen bg-white pb-24">
       {/* Top Bar */}
@@ -176,7 +158,7 @@ export default function B2BProductDetailPage() {
                     onClick={() => setCurrentImageIndex(idx)}
                     className={cn(
                       'w-2 h-2 rounded-full transition-all',
-                      idx === currentImageIndex ? 'bg-blue-600 w-4' : 'bg-gray-300'
+                      idx === currentImageIndex ? 'bg-primary w-4' : 'bg-gray-300'
                     )}
                   />
                 ))}
@@ -195,26 +177,14 @@ export default function B2BProductDetailPage() {
           {getLocalized(product.name_i18n, lang)}
         </h2>
 
-        {/* Price Section - 全部登录用户可见价格，批发商额外展示利润空间 */}
-        <div className="mt-3 bg-blue-50 rounded-xl p-3">
+        {/* Price Section - 仅显示批发价，不显示建议零售价 */}
+        <div className="mt-3 bg-amber-50 rounded-xl p-3">
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-blue-700">
+            <span className="text-2xl font-bold text-primary">
               TJS {Number(product.wholesale_price).toFixed(2)}
             </span>
             <span className="text-sm text-gray-500">/{product.unit_measure}</span>
           </div>
-          {product.retail_price && (
-            <div className="flex items-center gap-3 mt-1.5">
-              <span className="text-sm text-gray-500">
-                {t('b2b.retailPrice')}: <span className="line-through">TJS {Number(product.retail_price).toFixed(2)}</span>
-              </span>
-              {isApprovedWholesaler && profitAmount && profitPercent && (
-                <span className="text-sm font-semibold text-green-600">
-                  {t('b2b.profitMargin')}: +{profitPercent}% (TJS {profitAmount.toFixed(2)}/{product.unit_measure})
-                </span>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Meta Info */}
@@ -252,7 +222,6 @@ export default function B2BProductDetailPage() {
           </div>
         )}
 
-
         {/* Material - 使用i18n */}
         {getLocalized(product.material_i18n, lang) && (
           <div className="mt-3">
@@ -270,7 +239,7 @@ export default function B2BProductDetailPage() {
         )}
       </div>
 
-      {/* Bottom Action Bar */}
+      {/* Bottom Action Bar - 仅保留加入进货单按钮，使用橘黄色主题色 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 z-50 safe-area-bottom">
         <div className="flex items-center gap-3">
           {/* Quantity Selector */}
@@ -297,37 +266,23 @@ export default function B2BProductDetailPage() {
           {/* Subtotal */}
           <div className="flex-1 text-right">
             <div className="text-xs text-gray-500">{t('b2b.totalAmount')}</div>
-            <div className="text-base font-bold text-blue-700">TJS {subtotal.toFixed(2)}</div>
+            <div className="text-base font-bold text-primary">TJS {subtotal.toFixed(2)}</div>
           </div>
 
-          {/* Add to Cart / Buy Now Buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleAddToCart}
-              disabled={isOutOfStock || upsertItem.isPending}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all border',
-                isOutOfStock
-                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                  : 'bg-white text-blue-600 border-blue-200 active:bg-blue-50'
-              )}
-            >
-              <ShoppingCartIcon className="w-4 h-4" />
-              {upsertItem.isPending ? '...' : t('b2b.addToCart')}
-            </button>
-            <button
-              onClick={handleBuyNow}
-              disabled={isOutOfStock || upsertItem.isPending}
-              className={cn(
-                'px-4 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap',
-                isOutOfStock
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 text-white active:bg-blue-700 shadow-lg shadow-blue-600/20'
-              )}
-            >
-              {upsertItem.isPending ? '...' : t('b2b.buyNow', '立即下单')}
-            </button>
-          </div>
+          {/* Add to Cart Button - 橘黄色主题色，移除立即进货按钮 */}
+          <button
+            onClick={handleAddToCart}
+            disabled={isOutOfStock || upsertItem.isPending}
+            className={cn(
+              'flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all',
+              isOutOfStock
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-primary text-white active:bg-primary-dark shadow-lg shadow-primary/20'
+            )}
+          >
+            <ShoppingCartIcon className="w-4 h-4" />
+            {upsertItem.isPending ? '...' : t('b2b.addToCart')}
+          </button>
         </div>
       </div>
     </div>

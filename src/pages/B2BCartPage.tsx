@@ -93,7 +93,7 @@ export default function B2BCartPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -118,7 +118,7 @@ export default function B2BCartPage() {
           <p className="text-sm text-gray-400 mb-6 text-center">{t('b2b.goShoppingHint') || '去进货大厅挑选商品吧'}</p>
           <button
             onClick={() => navigate('/b2b')}
-            className="px-8 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium active:bg-blue-700"
+            className="px-8 py-2.5 bg-primary text-white rounded-xl text-sm font-medium active:bg-primary-dark"
           >
             {t('b2b.goShopping') || '去进货'}
           </button>
@@ -172,7 +172,7 @@ export default function B2BCartPage() {
                 {/* Product Info */}
                 <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-medium text-gray-900 line-clamp-1">{getCartItemName(item, lang)}</h4>
-                  <div className="text-sm font-bold text-blue-700 mt-0.5">
+                  <div className="text-sm font-bold text-primary mt-0.5">
                     TJS {Number(item.wholesale_price).toFixed(2)}
                     <span className="text-xs text-gray-400 font-normal ml-1">/{item.unit_measure}</span>
                   </div>
@@ -243,13 +243,13 @@ export default function B2BCartPage() {
             </div>
             <div className="flex items-baseline gap-0.5">
               <span className="text-xs text-gray-500">{t('b2b.totalAmount') || '合计'}</span>
-              <span className="text-lg font-bold text-blue-700">TJS {totalAmount.toFixed(2)}</span>
+              <span className="text-lg font-bold text-primary">TJS {totalAmount.toFixed(2)}</span>
             </div>
           </div>
           {/* Checkout Button - Navigate to dedicated checkout page */}
           <button
             onClick={() => navigate('/b2b/checkout')}
-            className="px-8 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold active:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all"
+            className="px-8 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold active:bg-primary-dark shadow-lg shadow-primary/20 transition-all"
           >
             {t('b2b.checkout') || '去结算'}
           </button>
