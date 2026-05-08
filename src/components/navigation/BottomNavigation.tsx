@@ -99,7 +99,7 @@ export const BottomNavigation: React.FC = () => {
                 className={cn(
                   'flex min-w-0 flex-col items-center py-1.5 px-1 rounded-xl transition-all duration-200 active:scale-95',
                   isActive
-                    ? 'text-blue-600 bg-blue-50'
+                    ? 'text-primary bg-primary/10'
                     : 'text-gray-600 hover:text-gray-900',
                 )}
               >
@@ -111,13 +111,13 @@ export const BottomNavigation: React.FC = () => {
                     </span>
                   )}
                   {isActive && (
-                    <div className="absolute -inset-1 bg-blue-100 rounded-lg -z-10" />
+                    <div className="absolute -inset-1 bg-primary/10 rounded-lg -z-10" />
                   )}
                 </div>
                 <span
                   className={cn(
                     'mt-1 text-[11px] leading-none font-medium truncate max-w-full',
-                    isActive ? 'text-blue-600' : 'text-gray-600',
+                    isActive ? 'text-primary' : 'text-gray-600',
                   )}
                 >
                   {item.name}

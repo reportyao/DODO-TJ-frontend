@@ -343,8 +343,8 @@ const PickupVerifyPage: React.FC = () => {
       },
       PENDING_PICKUP: {
         text: t('pickupVerify.status.pendingPickup'),
-        bg: 'bg-blue-50',
-        textColor: 'text-blue-700',
+        bg: 'bg-primary/5',
+        textColor: 'text-primary-dark',
       },
       READY_FOR_PICKUP: {
         text: t('pickupVerify.status.readyForPickup'),

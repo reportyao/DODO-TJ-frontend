@@ -67,7 +67,7 @@ const STATUS_TABS = ['all', 'pending', 'processing', 'delivering', 'delivered', 
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-700',
-  processing: 'bg-blue-100 text-blue-700',
+  processing: 'bg-primary/10 text-primary-dark',
   delivering: 'bg-purple-100 text-purple-700',
   delivered: 'bg-indigo-100 text-indigo-700',
   paid: 'bg-green-100 text-green-700',
@@ -199,7 +199,7 @@ export default function B2BOrdersPage() {
               className={cn(
                 'px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap',
                 activeTab === tab
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               )}
             >
@@ -213,7 +213,7 @@ export default function B2BOrdersPage() {
       <div className="px-4 pt-3 space-y-3">
         {isLoading ? (
           <div className="flex items-center justify-center h-40">
-            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : !orders || orders.length === 0 ? (
           <div className="text-center py-16">
@@ -221,7 +221,7 @@ export default function B2BOrdersPage() {
             <p className="text-gray-500 text-sm">{t('b2b.noOrders', '暂无订单')}</p>
             <button
               onClick={() => navigate('/b2b')}
-              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium"
+              className="mt-4 px-6 py-2 bg-primary text-white rounded-lg text-sm font-medium"
             >
               {t('b2b.home')}
             </button>
@@ -260,7 +260,7 @@ export default function B2BOrdersPage() {
                       minute: '2-digit',
                     })}
                     {order.estimated_delivery_date && (
-                      <span className="ml-2 text-blue-500">
+                      <span className="ml-2 text-primary">
                         {t('b2b.estimatedDelivery', '预计送达')}: {order.estimated_delivery_date}
                       </span>
                     )}
@@ -280,7 +280,7 @@ export default function B2BOrdersPage() {
                 <div className="border-t border-gray-100 px-4 py-3 bg-gray-50">
                   {loadingDetail === order.id ? (
                     <div className="flex items-center justify-center py-4">
-                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                     </div>
                   ) : orderDetails[order.id] ? (
                     <>

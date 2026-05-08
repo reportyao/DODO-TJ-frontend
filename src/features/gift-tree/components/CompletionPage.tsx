@@ -273,7 +273,7 @@ const CompletionPage: React.FC = () => {
           </h3>
           <div className="space-y-3">
             {[
-              { icon: '📍', text: t('giftTree.step1', 'Go to nearest DODO'), color: 'from-blue-50 to-blue-100/50' },
+              { icon: '📍', text: t('giftTree.step1', 'Go to nearest DODO'), color: 'from-primary/5 to-primary/10' },
               { icon: '📱', text: t('giftTree.step2', 'Show code to staff'), color: 'from-purple-50 to-purple-100/50' },
               { icon: '🎁', text: t('giftTree.step3', 'Get your gift!'), color: 'from-amber-50 to-amber-100/50' },
             ].map((step, i) => (

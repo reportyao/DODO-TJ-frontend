@@ -81,7 +81,7 @@ const B2BProductCard: React.FC<{
         {/* Price - 仅批发商可见 */}
         {showPrice ? (
           <div className="mt-1.5 flex items-baseline gap-1.5">
-            <span className="text-base font-bold text-blue-700">
+            <span className="text-base font-bold text-primary-dark">
               {Number(product.wholesale_price).toFixed(0)}
             </span>
             <span className="text-xs text-gray-400">TJS</span>
@@ -93,7 +93,7 @@ const B2BProductCard: React.FC<{
           </div>
         ) : (
           <div className="mt-1.5">
-            <span className="text-xs text-blue-600 font-medium">{t('b2b.viewProductDetail')}</span>
+            <span className="text-xs text-primary font-medium">{t('b2b.viewProductDetail')}</span>
           </div>
         )}
 
@@ -186,7 +186,7 @@ export default function B2BHomePage() {
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               placeholder={t('b2b.searchPlaceholder')}
-              className="w-full pl-9 pr-3 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="w-full pl-9 pr-3 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
           {isSearching ? (
@@ -199,7 +199,7 @@ export default function B2BHomePage() {
           ) : (
             <button
               onClick={handleSearch}
-              className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg font-medium"
+              className="px-4 py-2 text-sm text-white bg-primary rounded-lg font-medium"
             >
               {t('b2b.search')}
             </button>
@@ -226,7 +226,7 @@ export default function B2BHomePage() {
       <div className="px-3 pt-3">
         {isLoading ? (
           <div className="flex items-center justify-center h-40">
-            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-16">

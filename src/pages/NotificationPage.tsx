@@ -690,7 +690,7 @@ const NotificationPage: React.FC = () => {
       case 'FULL_PURCHASE':
         return <ShoppingBagIcon className={`${iconClass} text-green-600`} />;
       case 'LOGISTICS_UPDATE':
-        return <TruckIcon className={`${iconClass} text-blue-600`} />;
+        return <TruckIcon className={`${iconClass} text-primary`} />;
       case 'PICKUP_CODE_GENERATED':
         return <QrCodeIcon className={`${iconClass} text-orange-600`} />;
       case 'PICKUP_VERIFIED':
@@ -744,7 +744,7 @@ const NotificationPage: React.FC = () => {
       case 'FULL_PURCHASE':
         return 'bg-green-50';
       case 'LOGISTICS_UPDATE':
-        return 'bg-blue-50';
+        return 'bg-primary/5';
       case 'PICKUP_CODE_GENERATED':
         return 'bg-orange-50';
       case 'PICKUP_VERIFIED':
