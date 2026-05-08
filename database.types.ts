@@ -6929,7 +6929,7 @@ export type Database = {
       }
       /** B2B 首页 Feed 流 RPC - 直接从 inventory_products 获取商品数据 */
       rpc_get_b2b_home_feed: {
-        Args: { p_lang?: string; p_limit?: number; p_category_id?: string }
+        Args: { p_lang?: string; p_limit?: number; p_category_id?: string; p_offset?: number }
         Returns: Json
       }
       /** B2B 商品详情 RPC - 获取单个商品完整信息 + 门店列表 */

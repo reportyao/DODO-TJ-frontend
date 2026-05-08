@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { Toaster } from "react-hot-toast"
 import PWAInstallPrompt from "./components/PWAInstallPrompt"
 import PWAUpdateNotification from "./components/PWAUpdateNotification"
-import SceneHomePage from "./pages/SceneHomePage"
+// SceneHomePage 已被 B2B 首页替代，保留为 legacy 路由的懒加载页面。
 
 import { Layout } from "./components/layout/Layout"
 import { RealtimeNotificationsProvider } from "./components/RealtimeNotificationsProvider"
@@ -19,8 +19,9 @@ import { lazyWithRetry, prefetchCorePages, clearChunkReloadFlag } from "./utils/
 // - 支持 .preload() 静默预加载
 // ============================================================
 
-// 首页（用户首次打开必定访问）
+// 旧 ToC 首页（仅 legacy 路由保留，便于回退）
 const HomePage = lazyWithRetry(() => import("./pages/HomePage"))
+const SceneHomePage = lazyWithRetry(() => import("./pages/SceneHomePage"))
 
 // 核心页面（底部导航直达，首屏后静默预加载）
 const LotteryPage = lazyWithRetry(() => import("./pages/LotteryPage"))
@@ -171,9 +172,12 @@ function App() {
               {/* 公开路由（无需登录即可访问）                                  */}
               {/* 首页和商城列表允许未登录用户浏览，提升转化率                  */}
               {/* ============================================================ */}
-              <Route path="/" element={<SceneHomePage />} />
-              {/* 保留旧首页路由，方便回退 */}
+              <Route path="/" element={<B2BHomePage />} />
+              <Route path="/b2b" element={<B2BHomePage />} />
+              <Route path="/b2b/product/:productId" element={<B2BProductDetailPage />} />
+              {/* 保留旧 ToC 首页路由，方便灰度回退 */}
               <Route path="/home-legacy" element={<HomePage />} />
+              <Route path="/scene-home-legacy" element={<SceneHomePage />} />
               <Route path="/lottery" element={<LotteryPage />} />
               <Route path="/lottery/:id" element={<LotteryDetailPage />} />
               <Route path="/lottery/:id/result" element={<LotteryResultPage />} />
@@ -230,9 +234,7 @@ function App() {
               <Route path="/gift-tree/select" element={<AuthGuard><GiftSelector /></AuthGuard>} />
               <Route path="/gift-tree/complete" element={<AuthGuard><CompletionPage /></AuthGuard>} />
               <Route path="/gift-tree/help/:ownerId" element={<GiftTreeHelpPage />} />
-              {/* B2B 批发模块路由 */}
-              <Route path="/b2b" element={<AuthGuard><B2BHomePage /></AuthGuard>} />
-              <Route path="/b2b/product/:productId" element={<AuthGuard><B2BProductDetailPage /></AuthGuard>} />
+              {/* B2B 批发模块交易路由（首页和详情已作为公开路由注册，购物车及订单仍需登录） */}
               <Route path="/b2b/cart" element={<AuthGuard><B2BCartPage /></AuthGuard>} />
               <Route path="/b2b/checkout" element={<AuthGuard><B2BCheckoutPage /></AuthGuard>} />
               <Route path="/b2b/orders" element={<AuthGuard><B2BOrdersPage /></AuthGuard>} />

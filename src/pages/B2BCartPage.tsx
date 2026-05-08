@@ -52,15 +52,20 @@ export default function B2BCartPage() {
   const productCount = cartItems?.length || 0;
 
   // 修改数量（遵守 min_order_quantity 约束）
-  const handleQuantityChange = async (productId: string, newQuantity: number, minOrderQty: number) => {
+  const handleQuantityChange = async (item: CartItem, newQuantity: number) => {
+    const minOrderQty = item.min_order_quantity || 1;
     try {
       if (newQuantity < minOrderQty) {
         // 如果减少到低于最小起批量，则移除商品
-        await removeItem.mutateAsync(productId);
+        await removeItem.mutateAsync(item.product_id);
         toast.success(t('b2b.removed') || '已移除');
-      } else {
-        await updateItem.mutateAsync({ productId, quantity: newQuantity });
+        return;
       }
+      if (newQuantity > item.stock) {
+        toast.error(t('b2b.outOfStock') || '库存不足');
+        return;
+      }
+      await updateItem.mutateAsync({ productId: item.product_id, quantity: newQuantity });
     } catch (err: any) {
       toast.error(err.message || (t('b2b.operationFailed') || '操作失败'));
     }
@@ -177,8 +182,9 @@ export default function B2BCartPage() {
                     {/* Quantity Stepper - 步进为 min_order_quantity */}
                     <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
                       <button
-                        onClick={() => handleQuantityChange(item.product_id, item.quantity - minQty, minQty)}
-                        className="px-2.5 py-1.5 text-gray-500 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                        onClick={() => handleQuantityChange(item, item.quantity - minQty)}
+                        disabled={updateItem.isPending || removeItem.isPending}
+                        className="px-2.5 py-1.5 text-gray-500 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <MinusIcon className="w-3.5 h-3.5" />
                       </button>
@@ -186,8 +192,8 @@ export default function B2BCartPage() {
                         {item.quantity}
                       </span>
                       <button
-                        onClick={() => handleQuantityChange(item.product_id, item.quantity + minQty, minQty)}
-                        disabled={item.quantity + minQty > item.stock}
+                        onClick={() => handleQuantityChange(item, item.quantity + minQty)}
+                        disabled={item.quantity + minQty > item.stock || updateItem.isPending || removeItem.isPending}
                         className="px-2.5 py-1.5 text-gray-500 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <PlusIcon className="w-3.5 h-3.5" />

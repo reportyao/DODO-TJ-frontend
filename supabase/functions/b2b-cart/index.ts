@@ -56,6 +56,15 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   })
 }
 
+function normalizeQuantity(quantity: unknown): number {
+  const parsed = Number(quantity)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 0
+}
+
+function isActiveProduct(status: string | null | undefined): boolean {
+  return String(status || '').toUpperCase() === 'ACTIVE'
+}
+
 // ============================================================================
 // 操作处理函数
 // ============================================================================
@@ -120,8 +129,12 @@ async function handleGetCart(userId: string) {
         status: product.status,
         currency: product.currency ?? 'TJS',
       } : null,
-      // 标记商品是否仍然可购买
-      is_available: product ? product.status === 'ACTIVE' && (product.stock ?? 0) >= item.quantity : false,
+      // 标记商品是否仍然可购买：需要同时满足上架、库存足够、达到最小起订量。
+      is_available: product
+        ? isActiveProduct(product.status)
+          && (product.stock ?? 0) >= item.quantity
+          && item.quantity >= (product.min_order_quantity ?? 1)
+        : false,
     }
   })
 
@@ -137,10 +150,11 @@ async function handleGetCart(userId: string) {
  * 添加商品到购物车
  */
 async function handleAddToCart(userId: string, productId: string, quantity: number) {
+  const requestedQuantity = normalizeQuantity(quantity)
   if (!productId) {
     return jsonResponse({ success: false, error: '商品ID不能为空', error_code: 'ERR_PARAMS_MISSING' }, 400)
   }
-  if (!quantity || quantity < 1) {
+  if (requestedQuantity < 1) {
     return jsonResponse({ success: false, error: '数量必须大于0', error_code: 'ERR_QUANTITY_INVALID' }, 400)
   }
 
@@ -155,19 +169,28 @@ async function handleAddToCart(userId: string, productId: string, quantity: numb
     return jsonResponse({ success: false, error: '商品不存在', error_code: 'ERR_PRODUCT_NOT_FOUND' }, 404)
   }
 
-  if (product.status !== 'ACTIVE') {
+  if (!isActiveProduct(product.status)) {
     return jsonResponse({ success: false, error: '商品已下架', error_code: 'ERR_PRODUCT_NOT_FOUND' }, 400)
   }
 
   // 校验最小起订量（添加时就提示，避免结算时才报错）
   const minQty = product.min_order_quantity || 1
-  if (quantity < minQty) {
+  const availableStock = product.stock ?? 0
+  if (requestedQuantity < minQty) {
     return jsonResponse({
       success: false,
       error: `该商品最小起订量为 ${minQty}`,
       error_code: 'ERR_MIN_ORDER_QUANTITY',
       min_order_quantity: minQty,
     }, 400)
+  }
+  if (requestedQuantity > availableStock) {
+    return jsonResponse({
+      success: false,
+      error: `库存不足，当前库存仅 ${availableStock}`,
+      error_code: 'ERR_OUT_OF_STOCK',
+      stock: availableStock,
+    }, 409)
   }
 
   // 检查购物车中是否已存在该商品
@@ -180,7 +203,16 @@ async function handleAddToCart(userId: string, productId: string, quantity: numb
 
   if (existing) {
     // 已存在，累加数量
-    const newQuantity = existing.quantity + quantity
+    const newQuantity = existing.quantity + requestedQuantity
+    if (newQuantity > availableStock) {
+      return jsonResponse({
+        success: false,
+        error: `库存不足，购物车已有 ${existing.quantity}，当前库存仅 ${availableStock}`,
+        error_code: 'ERR_OUT_OF_STOCK',
+        stock: availableStock,
+        current_quantity: existing.quantity,
+      }, 409)
+    }
     const { data: updated, error: updateError } = await supabase
       .from('shopping_carts')
       .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
@@ -197,7 +229,7 @@ async function handleAddToCart(userId: string, productId: string, quantity: numb
     // 不存在，新增
     const { data: inserted, error: insertError } = await supabase
       .from('shopping_carts')
-      .insert({ user_id: userId, product_id: productId, quantity })
+      .insert({ user_id: userId, product_id: productId, quantity: requestedQuantity })
       .select('id, product_id, quantity')
       .single()
 
@@ -213,16 +245,48 @@ async function handleAddToCart(userId: string, productId: string, quantity: numb
  * 更新购物车商品数量
  */
 async function handleUpdateCart(userId: string, productId: string, quantity: number) {
+  const requestedQuantity = normalizeQuantity(quantity)
   if (!productId) {
     return jsonResponse({ success: false, error: '商品ID不能为空', error_code: 'ERR_PARAMS_MISSING' }, 400)
   }
-  if (!quantity || quantity < 1) {
+  if (requestedQuantity < 1) {
     return jsonResponse({ success: false, error: '数量必须大于0', error_code: 'ERR_QUANTITY_INVALID' }, 400)
+  }
+
+  const { data: product, error: productError } = await supabase
+    .from('inventory_products')
+    .select('id, name, status, stock, min_order_quantity')
+    .eq('id', productId)
+    .maybeSingle()
+
+  if (productError || !product) {
+    return jsonResponse({ success: false, error: '商品不存在', error_code: 'ERR_PRODUCT_NOT_FOUND' }, 404)
+  }
+  if (!isActiveProduct(product.status)) {
+    return jsonResponse({ success: false, error: '商品已下架', error_code: 'ERR_PRODUCT_NOT_FOUND' }, 400)
+  }
+  const minQty = product.min_order_quantity || 1
+  const availableStock = product.stock ?? 0
+  if (requestedQuantity < minQty) {
+    return jsonResponse({
+      success: false,
+      error: `该商品最小起订量为 ${minQty}`,
+      error_code: 'ERR_MIN_ORDER_QUANTITY',
+      min_order_quantity: minQty,
+    }, 400)
+  }
+  if (requestedQuantity > availableStock) {
+    return jsonResponse({
+      success: false,
+      error: `库存不足，当前库存仅 ${availableStock}`,
+      error_code: 'ERR_OUT_OF_STOCK',
+      stock: availableStock,
+    }, 409)
   }
 
   const { data: updated, error: updateError } = await supabase
     .from('shopping_carts')
-    .update({ quantity, updated_at: new Date().toISOString() })
+    .update({ quantity: requestedQuantity, updated_at: new Date().toISOString() })
     .eq('user_id', userId)
     .eq('product_id', productId)
     .select('id, product_id, quantity')

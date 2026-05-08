@@ -130,23 +130,12 @@ export function useB2BHomeFeed(page: number = 0, categoryId?: string) {
   return useQuery<{ products: B2BProduct[]; total: number; banners?: any[]; categories?: any[] }>({
     queryKey: b2bQueryKeys.homeFeed(page, lang, categoryId),
     queryFn: async () => {
-      // 使用 any 断言绕过 RPC 类型限制
-      // p_limit 使用分页大小，通过 RPC 的 offset 机制实现分页
-      // 注意：当前 RPC 不支持 offset 参数，所以获取全量后前端分页
-      const { data, error } = await (supabase as any).rpc('rpc_get_b2b_home_feed', {
-        p_lang: lang,
-        p_limit: 200, // 获取较多数据，前端分页
-        p_category_id: categoryId || null,
-      });
-      if (error) throw new Error(error.message);
-      const result = typeof data === 'string' ? JSON.parse(data) : data;
-      // RPC 返回格式: { banners, categories, products: [{type, item_id, data: {...}}], total_count }
-      // 需要将 products 数组中的 data 对象展平为 B2BProduct 格式
-      const rawProducts = result?.products || [];
-      const allProducts: B2BProduct[] = rawProducts.map((item: any) => {
-        // RPC 明确返回 { type, item_id, data: {...} } 结构
-        // 始终优先从 item.data 中提取商品信息
-        const d = item.data ? item.data : item;
+      const safePage = Math.max(0, Number.isFinite(page) ? Math.floor(page) : 0);
+      const offset = safePage * B2B_PAGE_SIZE;
+
+      const normalizeProducts = (rawProducts: any[]): B2BProduct[] => rawProducts.map((item: any) => {
+        // RPC 返回 { type, item_id, data: {...} }，也兼容旧版直接返回商品对象。
+        const d = item?.data ? item.data : item;
         return {
           id: d.product_id || item.item_id || d.id,
           name_i18n: d.name_i18n || {},
@@ -160,15 +149,47 @@ export function useB2BHomeFeed(page: number = 0, categoryId?: string) {
           sku: d.sku || null,
           category_name: d.category_name || null,
         };
+      }).filter((product: B2BProduct) => Boolean(product.id));
+
+      const parseResult = (payload: any) => typeof payload === 'string' ? JSON.parse(payload) : payload;
+
+      // 新版 RPC 支持 p_offset；旧环境未应用迁移时回退到旧参数并保持最多 200 条兼容展示。
+      const { data, error } = await (supabase as any).rpc('rpc_get_b2b_home_feed', {
+        p_lang: lang,
+        p_limit: B2B_PAGE_SIZE,
+        p_category_id: categoryId || null,
+        p_offset: offset,
       });
-      // 前端分页：根据 page 和 B2B_PAGE_SIZE 切片
-      const startIndex = page * B2B_PAGE_SIZE;
-      const paginatedProducts = allProducts.slice(startIndex, startIndex + B2B_PAGE_SIZE);
+
+      if (!error) {
+        const result = parseResult(data);
+        const products = normalizeProducts(result?.products || []);
+        return {
+          products,
+          total: result?.total_count ?? result?.total ?? products.length,
+          banners: result?.banners || [],
+          categories: result?.categories || [],
+        };
+      }
+
+      const shouldFallback = /p_offset|schema cache|function .*not found|Could not find/i.test(error.message || '');
+      if (!shouldFallback) throw new Error(error.message);
+
+      const fallbackLimit = Math.max(200, (safePage + 1) * B2B_PAGE_SIZE);
+      const { data: fallbackData, error: fallbackError } = await (supabase as any).rpc('rpc_get_b2b_home_feed', {
+        p_lang: lang,
+        p_limit: fallbackLimit,
+        p_category_id: categoryId || null,
+      });
+      if (fallbackError) throw new Error(fallbackError.message);
+
+      const fallbackResult = parseResult(fallbackData);
+      const allProducts = normalizeProducts(fallbackResult?.products || []);
       return {
-        products: paginatedProducts,
-        total: result?.total_count || allProducts.length,
-        banners: result?.banners || [],
-        categories: result?.categories || [],
+        products: allProducts.slice(offset, offset + B2B_PAGE_SIZE),
+        total: fallbackResult?.total_count ?? fallbackResult?.total ?? allProducts.length,
+        banners: fallbackResult?.banners || [],
+        categories: fallbackResult?.categories || [],
       };
     },
     staleTime: staleTimes.list,

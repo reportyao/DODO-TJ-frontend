@@ -20,9 +20,9 @@ import { cn } from '../lib/utils';
 /**
  * 获取商品的本地化名称
  */
-function getLocalizedName(nameI18n: { zh?: string; ru?: string; tg?: string } | null, lang: string): string {
-  if (!nameI18n) return '商品';
-  return nameI18n[lang as keyof typeof nameI18n] || nameI18n.ru || nameI18n.zh || nameI18n.tg || '商品';
+function getLocalizedName(nameI18n: { zh?: string; ru?: string; tg?: string } | null, lang: string, fallback: string = ''): string {
+  if (!nameI18n) return fallback || '—';
+  return nameI18n[lang as keyof typeof nameI18n] || nameI18n.ru || nameI18n.zh || nameI18n.tg || fallback || '—';
 }
 
 /**
@@ -53,7 +53,7 @@ const B2BProductCard: React.FC<{
       <div className="relative aspect-square bg-gray-50">
         <LazyImage
           src={product.image_url || ''}
-          alt={getLocalizedName(product.name_i18n, lang)}
+          alt={getLocalizedName(product.name_i18n, lang, product.sku || '')}
           style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
         />
         {isOutOfStock && (
@@ -73,7 +73,7 @@ const B2BProductCard: React.FC<{
       {/* Info */}
       <div className="p-2.5">
         <h3 className="text-sm font-medium text-gray-900 line-clamp-2 leading-tight min-h-[2.5rem]">
-          {getLocalizedName(product.name_i18n, lang)}
+          {getLocalizedName(product.name_i18n, lang, product.sku || '')}
         </h3>
 
         {/* Price - 仅批发商可见 */}
@@ -156,7 +156,7 @@ export default function B2BHomePage() {
   const products = isSearching ? (searchResults || []) : (feedData?.products || []);
   const totalProducts = isSearching ? (searchResults?.length || 0) : (feedData?.total || 0);
   const isLoading = isSearching ? searchLoading : feedLoading;
-  const totalPages = Math.ceil(totalProducts / B2B_PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(totalProducts / B2B_PAGE_SIZE));
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -227,7 +227,7 @@ export default function B2BHomePage() {
               <div className="flex items-center justify-center gap-3 mt-6 mb-4">
                 <button
                   onClick={() => setPage(p => Math.max(0, p - 1))}
-                  disabled={page === 0}
+                  disabled={page === 0 || feedLoading}
                   className="px-4 py-2 text-sm border rounded-lg disabled:opacity-40"
                 >
                   ←
@@ -237,7 +237,7 @@ export default function B2BHomePage() {
                 </span>
                 <button
                   onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                  disabled={page >= totalPages - 1}
+                  disabled={page >= totalPages - 1 || feedLoading}
                   className="px-4 py-2 text-sm border rounded-lg disabled:opacity-40"
                 >
                   →

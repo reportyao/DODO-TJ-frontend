@@ -22,9 +22,9 @@ import { cn } from '../lib/utils';
 /**
  * 获取商品的本地化文本
  */
-function getLocalized(i18n: { zh?: string; ru?: string; tg?: string } | null | undefined, lang: string): string {
-  if (!i18n) return '';
-  return i18n[lang as keyof typeof i18n] || i18n.ru || i18n.zh || i18n.tg || '';
+function getLocalized(i18n: { zh?: string; ru?: string; tg?: string } | null | undefined, lang: string, fallback: string = ''): string {
+  if (!i18n) return fallback;
+  return i18n[lang as keyof typeof i18n] || i18n.ru || i18n.zh || i18n.tg || fallback;
 }
 
 export default function B2BProductDetailPage() {
@@ -87,18 +87,29 @@ export default function B2BProductDetailPage() {
   };
 
   const handleIncrease = () => {
-    setQuantity(prev => Math.min(product.stock, prev + minQty));
+    setQuantity(prev => {
+      const nextQuantity = prev + minQty;
+      return nextQuantity > product.stock ? prev : nextQuantity;
+    });
   };
 
   const handleAddToCart = async () => {
     if (!user) {
-      toast.error(t('b2b.applyWholesaler'));
+      toast.error(t('b2b.pleaseLogin'));
       navigate('/login');
       return;
     }
     // 检查批发商权限
     if (!isApprovedWholesaler) {
       toast.error(t('b2b.applyWholesaler'));
+      return;
+    }
+    if (quantity < minQty) {
+      toast.error(`${t('b2b.minOrder')} ${minQty}${product.unit_measure}`);
+      return;
+    }
+    if (quantity > product.stock) {
+      toast.error(t('b2b.outOfStock'));
       return;
     }
     try {
@@ -127,7 +138,7 @@ export default function B2BProductDetailPage() {
           <>
             <LazyImage
               src={images[currentImageIndex]}
-              alt={getLocalized(product.name_i18n, lang)}
+              alt={getLocalized(product.name_i18n, lang, product.sku || '')}
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }}
               priority="high"
             />
@@ -257,7 +268,7 @@ export default function B2BProductDetailPage() {
             </span>
             <button
               onClick={handleIncrease}
-              disabled={quantity >= product.stock || !isApprovedWholesaler}
+              disabled={quantity + minQty > product.stock || !isApprovedWholesaler}
               className="px-3 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-30"
             >
               <PlusIcon className="w-4 h-4" />

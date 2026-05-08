@@ -105,10 +105,12 @@ async function generateOrderNumber(): Promise<string> {
   } catch (e) {
     console.warn('[B2BCheckout] 数据库订单号生成失败，使用本地生成:', e)
   }
-  // 备用: 本地生成
+  // 备用: 本地生成。使用时间戳 + crypto 随机值降低并发碰撞概率。
   const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  const random = Math.random().toString(36).slice(2, 7).toUpperCase()
-  return `B2B-${datePart}-${random}`
+  const randomBytes = new Uint8Array(4)
+  crypto.getRandomValues(randomBytes)
+  const random = Array.from(randomBytes).map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase()
+  return `B2B-${datePart}-${Date.now().toString(36).toUpperCase()}-${random}`
 }
 
 /**
@@ -418,6 +420,7 @@ serve(async (req: Request) => {
     // Step 8: 扣减库存 + 写入库存变动日志
     // ========================================================================
     const stockErrors: string[] = []
+    const deductedItems: Array<{ product_id: string; stock_before: number; stock_after: number }> = []
 
     for (const item of orderItems) {
       const product = productMap.get(item.product_id)!
@@ -439,8 +442,10 @@ serve(async (req: Request) => {
 
       if (stockError || !updatedRows || updatedRows.length === 0) {
         stockErrors.push(product.name)
-        continue
+        break
       }
+
+      deductedItems.push({ product_id: item.product_id, stock_before: stockBefore, stock_after: stockAfter })
 
       // 写入库存变动日志
       // 注意: transaction_type 必须使用数据库 CHECK 约束中定义的值 'B2B_SALE'
@@ -455,17 +460,34 @@ serve(async (req: Request) => {
       })
     }
 
-    // 如果有库存扣减失败的情况（并发竞争），记录但不回滚整个订单
-    // 因为订单已创建，管理后台可以人工处理
+    // 如果有库存扣减失败（并发竞争），必须回滚已创建订单和已扣库存，避免生成不可履约订单。
     if (stockErrors.length > 0) {
-      console.warn(`[B2BCheckout] 部分商品库存扣减失败（并发竞争）: ${stockErrors.join(', ')}`)
-      // 在订单上标记需要人工审核
-      await supabase
-        .from('b2b_orders')
-        .update({
-          admin_note: `⚠️ 库存扣减异常，需人工核实: ${stockErrors.join(', ')}`,
-        })
-        .eq('id', order.id)
+      console.warn(`[B2BCheckout] 库存扣减失败，开始回滚订单 ${order.id}: ${stockErrors.join(', ')}`)
+
+      for (const deducted of deductedItems.reverse()) {
+        const { error: rollbackStockError } = await supabase
+          .from('inventory_products')
+          .update({ stock: deducted.stock_before, updated_at: new Date().toISOString() })
+          .eq('id', deducted.product_id)
+          .eq('stock', deducted.stock_after)
+        if (rollbackStockError) {
+          console.error('[B2BCheckout] 回滚库存失败:', deducted.product_id, rollbackStockError)
+        }
+      }
+
+      await supabase.from('inventory_transactions').delete().eq('related_order_id', order.id)
+      await supabase.from('b2b_order_items').delete().eq('order_id', order.id)
+      const { error: rollbackOrderError } = await supabase.from('b2b_orders').delete().eq('id', order.id)
+      if (rollbackOrderError) {
+        console.error('[B2BCheckout] 回滚订单失败:', rollbackOrderError)
+      }
+
+      return jsonResponse({
+        success: false,
+        error: `部分商品库存已变化，请刷新购物车后重试: ${stockErrors.join(', ')}`,
+        error_code: 'ERR_OUT_OF_STOCK',
+        details: stockErrors,
+      }, 409)
     }
 
     // ========================================================================
