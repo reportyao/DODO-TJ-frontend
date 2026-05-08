@@ -29,6 +29,7 @@ const ALLOWED_BUCKETS = [
   "product-images",
   "topics",  // v2: 专题封面图上传
   "inventory-products",  // v3: 库存商品图片上传
+  "wholesaler-stores",   // v4: 批发商门店现场照
 ];
 const ALLOWED_MIME_TYPES = [
   "image/jpeg",

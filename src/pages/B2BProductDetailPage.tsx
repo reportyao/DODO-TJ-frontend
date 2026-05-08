@@ -37,9 +37,11 @@ export default function B2BProductDetailPage() {
 
   const { data: product, isLoading } = useB2BProductDetail(productId || '');
   const { upsertItem } = useB2BCartMutations();
-  // 批发商权限检查
+  // 批发商资质仅用于展示“已认证批发商”徽章等差异化体验，不再作为加购门槛。
   const { data: wholesalerProfile } = useWholesalerProfile();
   const isApprovedWholesaler = wholesalerProfile?.status === 'approved';
+  // 加购仅要求登录即可，让普通用户也能成单；是否应用特殊企业价在管理后台控制。
+  const canPurchase = !!user;
 
   const [quantity, setQuantity] = useState<number>(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -113,12 +115,7 @@ export default function B2BProductDetailPage() {
   const handleAddToCart = async () => {
     if (!user) {
       toast.error(t('b2b.pleaseLogin'));
-      navigate('/login');
-      return;
-    }
-    // 检查批发商权限
-    if (!isApprovedWholesaler) {
-      toast.error(t('b2b.applyWholesaler'));
+      navigate(`/login?redirect=${encodeURIComponent(`/b2b/product/${product.id}`)}`);
       return;
     }
     if (quantity < minQty) {
@@ -186,33 +183,27 @@ export default function B2BProductDetailPage() {
           {getLocalized(product.name_i18n, lang)}
         </h2>
 
-        {/* Price Section - 仅批发商可见 */}
-        {isApprovedWholesaler ? (
-          <div className="mt-3 bg-blue-50 rounded-xl p-3">
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-blue-700">
-                TJS {Number(product.wholesale_price).toFixed(2)}
+        {/* Price Section - 全部登录用户可见价格，批发商额外展示利润空间 */}
+        <div className="mt-3 bg-blue-50 rounded-xl p-3">
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-blue-700">
+              TJS {Number(product.wholesale_price).toFixed(2)}
+            </span>
+            <span className="text-sm text-gray-500">/{product.unit_measure}</span>
+          </div>
+          {product.retail_price && (
+            <div className="flex items-center gap-3 mt-1.5">
+              <span className="text-sm text-gray-500">
+                {t('b2b.retailPrice')}: <span className="line-through">TJS {Number(product.retail_price).toFixed(2)}</span>
               </span>
-              <span className="text-sm text-gray-500">/{product.unit_measure}</span>
-            </div>
-            {product.retail_price && (
-              <div className="flex items-center gap-3 mt-1.5">
-                <span className="text-sm text-gray-500">
-                  {t('b2b.retailPrice')}: <span className="line-through">TJS {Number(product.retail_price).toFixed(2)}</span>
+              {isApprovedWholesaler && profitAmount && profitPercent && (
+                <span className="text-sm font-semibold text-green-600">
+                  {t('b2b.profitMargin')}: +{profitPercent}% (TJS {profitAmount.toFixed(2)}/{product.unit_measure})
                 </span>
-                {profitAmount && profitPercent && (
-                  <span className="text-sm font-semibold text-green-600">
-                    {t('b2b.profitMargin')}: +{profitPercent}% (TJS {profitAmount.toFixed(2)}/{product.unit_measure})
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="mt-3 bg-gray-50 rounded-xl p-3">
-            <p className="text-sm text-gray-500 italic">{t('b2b.applyWholesaler')}</p>
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Meta Info */}
         <div className="mt-4 grid grid-cols-3 gap-3">
@@ -274,7 +265,7 @@ export default function B2BProductDetailPage() {
           <div className="flex items-center border rounded-lg overflow-hidden">
             <button
               onClick={handleDecrease}
-              disabled={quantity <= minQty || !isApprovedWholesaler}
+              disabled={quantity <= minQty}
               className="px-3 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-30"
             >
               <MinusIcon className="w-4 h-4" />
@@ -284,7 +275,7 @@ export default function B2BProductDetailPage() {
             </span>
             <button
               onClick={handleIncrease}
-              disabled={quantity + minQty > product.stock || !isApprovedWholesaler}
+              disabled={quantity + minQty > product.stock}
               className="px-3 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-30"
             >
               <PlusIcon className="w-4 h-4" />
@@ -292,26 +283,24 @@ export default function B2BProductDetailPage() {
           </div>
 
           {/* Subtotal */}
-          {isApprovedWholesaler && (
-            <div className="flex-1 text-right">
-              <div className="text-xs text-gray-500">{t('b2b.totalAmount')}</div>
-              <div className="text-base font-bold text-blue-700">TJS {subtotal.toFixed(2)}</div>
-            </div>
-          )}
+          <div className="flex-1 text-right">
+            <div className="text-xs text-gray-500">{t('b2b.totalAmount')}</div>
+            <div className="text-base font-bold text-blue-700">TJS {subtotal.toFixed(2)}</div>
+          </div>
 
           {/* Add to Cart Button */}
           <button
             onClick={handleAddToCart}
-            disabled={isOutOfStock || upsertItem.isPending || !isApprovedWholesaler}
+            disabled={isOutOfStock || upsertItem.isPending}
             className={cn(
               'flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all',
-              isOutOfStock || !isApprovedWholesaler
+              isOutOfStock
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 : 'bg-blue-600 text-white active:bg-blue-700'
             )}
           >
             <ShoppingCartIcon className="w-4 h-4" />
-            {upsertItem.isPending ? '...' : isApprovedWholesaler ? t('b2b.addToCart') : t('b2b.applyWholesaler')}
+            {upsertItem.isPending ? '...' : t('b2b.addToCart')}
           </button>
         </div>
       </div>

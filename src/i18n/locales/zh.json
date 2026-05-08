@@ -71,7 +71,8 @@
     "orders": "订单",
     "notifications": "通知",
     "messages": "消息",
-    "b2b": "进货"
+    "b2b": "进货",
+    "cart": "购物车"
   },
   "home": {
     "welcome": "你好",

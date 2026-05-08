@@ -363,18 +363,7 @@ serve(async (req: Request) => {
     }
 
     const { userId } = await validateSessionWithUser(supabase, sessionToken)
-
-    // 验证批发商身份
-    const { data: wholesaler } = await supabase
-      .from('wholesaler_profiles')
-      .select('id, status')
-      .eq('user_id', userId)
-      .eq('status', 'approved')
-      .maybeSingle()
-
-    if (!wholesaler) {
-      return jsonResponse({ success: false, error: '您不是已认证的批发商', error_code: 'ERR_NOT_WHOLESALER' }, 403)
-    }
+    // 购物车对所有登录用户开放；批发商资质仅在后台展示与价格策略中区分。
 
     // 解析请求体
     const body = await req.json().catch(() => ({}))

@@ -177,18 +177,31 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
    * 由 loginWithPhone / registerWithPhone 调用
    */
   const setAuthResult = useCallback(async (result: { user: any; session: any; wallets?: any[] }) => {
-    const { user: authUser, session } = result;
-    
-    setUser(authUser as User);
-    
+    const { user: authUser, session, wallets: initialWallets } = result;
+
+    // 先持久化 session token 和用户信息，避免后续依赖该 token 的 RPC 调用遇到未设置的问题。
     if (session && session.token) {
       setSessionToken(session.token);
       localStorage.setItem('custom_session_token', session.token);
       localStorage.setItem('custom_user', JSON.stringify(authUser));
     }
-    
-    if (authUser) {
-      await fetchWallets(authUser.id);
+
+    // 优先将后端返回的 wallets 直接填充进状态，减少首屏空白。
+    if (Array.isArray(initialWallets) && initialWallets.length > 0) {
+      setWallets(initialWallets as Wallet[]);
+      try {
+        localStorage.setItem('cached_wallets', JSON.stringify(initialWallets));
+      } catch {
+        // 忽略存储异常
+      }
+    }
+
+    // 最后才 setUser，这样 isAuthenticated 翻转后路由守卫可立即跳转，不会被 fetchWallets 阻塞。
+    setUser(authUser as User);
+
+    // wallets 刷新放到后台静默进行，不阅阅主流程。
+    if (authUser && (!initialWallets || initialWallets.length === 0)) {
+      void fetchWallets(authUser.id);
     }
   }, [fetchWallets]);
 
@@ -196,17 +209,17 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
    * 手机号+密码登录（PWA 模式）
    */
   const loginWithPhone = useCallback(async (phone: string, password: string) => {
+    // 注意：这里**不要**调用 setIsLoading(true)。
+    // isLoading 是“检查初始 session”的全局状态，AuthGuard / GuestGuard 会据此展示全屏 loading，
+    // 若走登录流程时为 true，LoginPage 在 await 期间会被 GuestGuard 卸载，造成“提示成功但不跳转”的 race。
+    // LoginPage 自己维护了按钮级别的 isLoading，这里只关心调用结果即可。
     try {
-      setIsLoading(true);
-      
       const result = await authService.loginWithPhone(phone, password);
       await setAuthResult(result);
       toast.success(t('auth.loginSuccess'));
     } catch (error: any) {
       console.error('Phone login failed:', error);
       throw error; // 向上抛出让页面处理具体错误消息
-    } finally {
-      setIsLoading(false);
     }
   }, [authService, setAuthResult, t]);
 
@@ -214,17 +227,14 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
    * 手机号+密码注册（PWA 模式）
    */
   const registerWithPhone = useCallback(async (phone: string, password: string, firstName?: string, referralCode?: string) => {
+    // 同 loginWithPhone，不动全局 isLoading，避免 Guard 拦截跳转。
     try {
-      setIsLoading(true);
-      
       const result = await authService.registerWithPhone(phone, password, firstName, undefined, referralCode);
       await setAuthResult(result);
       toast.success(t('auth.registerSuccess'));
     } catch (error: any) {
       console.error('Phone registration failed:', error);
-      throw error; // 向上抛出让页面处理具体错误消息
-    } finally {
-      setIsLoading(false);
+      throw error;
     }
   }, [authService, setAuthResult, t]);
 

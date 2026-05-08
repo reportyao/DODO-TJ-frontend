@@ -3,7 +3,6 @@ import { useLocation } from "react-router-dom"
 import { useUser } from "../../contexts/UserContext"
 import { cn } from "../../lib/utils"
 import { BottomNavigation } from "../navigation/BottomNavigation"
-import { B2BBottomNavigation } from "../navigation/B2BBottomNavigation"
 import { useTranslation } from 'react-i18next'
 import SpinFloatingButton from "../SpinFloatingButton"
 import NewUserGiftModal from "../NewUserGiftModal"
@@ -27,14 +26,19 @@ export const Layout: React.FC<LayoutProps> = ({
   const { t } = useTranslation()
   const location = useLocation()
   const isHomeRoute = location.pathname === '/'
-  const isB2BExperienceRoute =
-    location.pathname === '/' ||
-    location.pathname.startsWith('/b2b') ||
-    location.pathname === '/profile'
-  const shouldShowB2BBottomNav =
-    isB2BExperienceRoute &&
-    !location.pathname.startsWith('/b2b/product/') &&
-    !location.pathname.startsWith('/b2b/checkout')
+  // 不需要底部导航的页面：身份验证/商品详情/结算/错误页等。
+  // 这些页面贴底都有自己的 CTA 按钮，再叠加全局导航会干扰转化。
+  const HIDDEN_NAV_PREFIXES = [
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/reset-password',
+    '/b2b/product/',
+    '/b2b/checkout',
+  ]
+  const isHiddenNavRoute = HIDDEN_NAV_PREFIXES.some((p) =>
+    p.endsWith('/') ? location.pathname.startsWith(p) : location.pathname === p,
+  )
   
   // 新人礼物弹窗状态
   const [showNewUserGift, setShowNewUserGift] = useState(false)
@@ -185,7 +189,7 @@ export const Layout: React.FC<LayoutProps> = ({
     )}>
       {/* 弱网/离线状态提示横幅 */}
       <OfflineBanner />
-      {showHeader && !isB2BExperienceRoute && (
+      {showHeader && false && (
         <header className="bg-white/90 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
           <div className="max-w-md mx-auto px-4 py-2.5">
             <div className="flex items-center justify-between gap-3">
@@ -221,12 +225,12 @@ export const Layout: React.FC<LayoutProps> = ({
       
       <main className={cn(
         "max-w-md mx-auto",
-        showBottomNav && "pb-24"
+        showBottomNav && !isHiddenNavRoute && "pb-24"
       )}>
         {children}
       </main>
 
-      {showBottomNav && (shouldShowB2BBottomNav ? <B2BBottomNavigation /> : <BottomNavigation />)}
+      {showBottomNav && !isHiddenNavRoute && <BottomNavigation />}
       
       {/* 推荐浮动入口 - 仅在登录后显示 */}
       {isAuthenticated && <SpinFloatingButton spinCount={spinCount} />}
