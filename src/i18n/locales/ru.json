@@ -269,7 +269,8 @@
     "ruleStep3": "Счастливчик получает товар бесплатно, остальным — полный возврат купоном",
     "selectShares": "Выберите количество",
     "tryLuckTransition": "Попробуйте удачу за 1 TJS",
-    "remainingShares": "Осталось {{count}} долей"
+    "remainingShares": "Осталось {{count}} долей",
+    "productIntroduction": "Описание товара"
   },
   "fairness": {
     "title": "Почему этот алгоритм честный?",
@@ -588,7 +589,7 @@
     "referralStats": "Статистика рефералов",
     "invitedUsers": "Приглашённые пользователи",
     "totalRewards": "Всего наград",
-    "copyReferralCode": "Скопировано",
+    "copyReferralCode": "Ссылка регистрации скопирована",
     "shareReferralLink": "Поделиться реферальной ссылкой",
     "viewNotifications": "Просмотреть уведомления",
     "myPrizes": "Мои выборы",
@@ -634,7 +635,9 @@
     "confirmNewPassword": "Подтвердите новый пароль",
     "passwordUpdated": "Пароль успешно изменён",
     "savePassword": "Подтвердить изменение пароля",
-    "inviteCodeReadonly": "Код приглашения нельзя изменить"
+    "inviteCodeReadonly": "Код приглашения нельзя изменить",
+    "addToHomeScreen": "Добавить на экран",
+    "addToHomeScreenDesc": "Создать ярлык на экране телефона"
   },
   "auth": {
     "welcome": "Добро пожаловать в DODO",
@@ -1562,7 +1565,10 @@
     "updateDesc": "Доступна новая версия DODO. Обновите для получения новых функций",
     "later": "Позже",
     "updateNow": "Обновить сейчас",
-    "updating": "Обновление..."
+    "updating": "Обновление...",
+    "alreadyInstalled": "Уже добавлено на экран",
+    "installedSuccess": "Добавлено на экран",
+    "manualInstallHint": "Браузер пока не может установить напрямую. Используйте меню браузера: «Добавить на главный экран» или «Установить приложение»."
   },
   "botFollow": {
     "title": "Подпишитесь на нашего бота",

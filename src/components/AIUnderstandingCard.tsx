@@ -137,7 +137,6 @@ export const AIUnderstandingCard: React.FC<AIUnderstandingCardProps> = ({
   const sellingAngle = resolveAIField(aiUnderstanding, ['selling_angle', 'advantages'], i18n.language);
   const howToUse = resolveAIField(aiUnderstanding, ['how_to_use'], i18n.language);
   const bestScene = resolveAIField(aiUnderstanding, ['best_scene', 'usage_scene', 'usage_scenarios', 'local_life_connection'], i18n.language);
-  const recommendedBadge = resolveAIField(aiUnderstanding, ['recommended_badge'], i18n.language);
 
   const sections = [
     {
@@ -193,13 +192,11 @@ export const AIUnderstandingCard: React.FC<AIUnderstandingCardProps> = ({
       'bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 rounded-2xl shadow-sm p-5 space-y-4 border border-amber-100/50',
       className
     )}>
-      {recommendedBadge && (
-        <div className="flex items-center justify-center">
-          <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-medium shadow-sm">
-            {recommendedBadge}
-          </span>
-        </div>
-      )}
+      <div className="flex items-center justify-center">
+        <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-medium shadow-sm">
+          {t('lottery.productIntroduction')}
+        </span>
+      </div>
 
       {sections.map((section) => {
         const colors = colorClasses[section.color];

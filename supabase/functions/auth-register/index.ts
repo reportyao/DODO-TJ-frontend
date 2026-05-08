@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
         user_id: user.id,
         type: 'LUCKY_COIN',
         currency: 'POINTS',
-        balance: 5, // 注册奖励
+        balance: 0
         frozen_balance: 0,
         total_deposits: 0,
         total_withdrawals: 0,
@@ -214,22 +214,7 @@ Deno.serve(async (req) => {
       throw new Error('创建钱包失败，注册已回滚');
     }
 
-    // 记录积分奖励交易
-    if (createdWallets) {
-      const luckyWallet = createdWallets.find((w: any) => w.type === 'LUCKY_COIN');
-      if (luckyWallet) {
-        await supabase.from('wallet_transactions').insert({
-          wallet_id: luckyWallet.id,
-          type: 'NEW_USER_GIFT',
-          amount: 5,
-          balance_before: 0,
-          balance_after: 5,
-          description: '新用户注册奖励',
-          status: 'COMPLETED',
-          created_at: new Date().toISOString(),
-        });
-      }
-    }
+    // 新用户注册不再发放初始积分，也不记录 NEW_USER_GIFT 交易。
 
     // ============================================================
     // 6. 如果有邀请人，发放奖励
@@ -394,10 +379,7 @@ Deno.serve(async (req) => {
         expires_at: session.expires_at
       },
       is_new_user: true,
-      new_user_gift: {
-        lucky_coins: 5,
-        message: '恭喜！注册成功，送你 5 积分！'
-      }
+      new_user_gift: null
     };
 
     return new Response(JSON.stringify({ data: result }), {

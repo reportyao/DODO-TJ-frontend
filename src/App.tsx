@@ -43,7 +43,6 @@ const WithdrawPage = lazyWithRetry(() => import("./pages/WithdrawPage"))
 // 功能页面（按需加载）
 const FullPurchaseConfirmPage = lazyWithRetry(() => import("./pages/FullPurchaseConfirmPage"))
 const InvitePage = lazyWithRetry(() => import("./pages/InvitePage"))
-const SpinLotteryPage = lazyWithRetry(() => import("./pages/SpinLotteryPage"))
 const AIPage = lazyWithRetry(() => import("./pages/AIPage"))
 const ShowoffPage = lazyWithRetry(() => import("./pages/ShowoffPage"))
 const ShowoffCreatePage = lazyWithRetry(() => import("./pages/ShowoffCreatePage"))
@@ -208,7 +207,7 @@ function App() {
               <Route path="/orders" element={<AuthGuard><OrderManagementPage /></AuthGuard>} />
               <Route path="/notifications" element={<AuthGuard><NotificationPage /></AuthGuard>} />
               <Route path="/invite" element={<AuthGuard><InvitePage /></AuthGuard>} />
-              <Route path="/spin" element={<AuthGuard><SpinLotteryPage /></AuthGuard>} />
+              <Route path="/spin" element={<Navigate to="/" replace />} />
               <Route path="/ai" element={<AuthGuard><AIPage /></AuthGuard>} />
               <Route path="/showoff/create" element={<AuthGuard><ShowoffCreatePage /></AuthGuard>} />
               <Route path="/market" element={<AuthGuard><MarketPage /></AuthGuard>} />

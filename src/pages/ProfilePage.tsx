@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../contexts/UserContext'
 import {
   UserCircleIcon,
   CogIcon,
+  DevicePhoneMobileIcon,
   ShoppingBagIcon,
   ClipboardDocumentIcon,
   ClipboardDocumentListIcon,
@@ -20,13 +21,12 @@ import {
   LanguageIcon,
   SparklesIcon,
   MegaphoneIcon,
-  QrCodeIcon,
   TicketIcon
 } from '@heroicons/react/24/outline'
 import { copyToClipboard } from '../lib/utils'
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase'
 import toast from 'react-hot-toast'
-import QRCode from 'qrcode'
+import { triggerInstallPrompt, isInstalled } from '../utils/pwaUtils'
 
 const ProfilePage: React.FC = () => {
   const { t, i18n } = useTranslation()
@@ -35,24 +35,6 @@ const ProfilePage: React.FC = () => {
 
   // ========== 加载状态 ==========
   const [isPageLoading, setIsPageLoading] = useState(true)
-
-  // ========== 用户二维码（供地推人员扫码充值） ==========
-  const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
-  const [showQrModal, setShowQrModal] = useState(false)
-
-  // 生成用户个人二维码
-  useEffect(() => {
-    if (!user?.id) {return}
-    const qrContent = `dodo://user/${user.id}`
-    QRCode.toDataURL(qrContent, {
-      width: 200,
-      margin: 1,
-      color: { dark: '#1e293b', light: '#ffffff' },
-      errorCorrectionLevel: 'M',
-    })
-      .then((url: string) => setQrCodeUrl(url))
-      .catch((err: Error) => console.error('[ProfilePage] QR code generation failed:', err))
-  }, [user?.id])
 
   // 获取用户 ID 的短格式显示（前8位）
   const shortUserId = useMemo(() => {
@@ -139,7 +121,7 @@ const ProfilePage: React.FC = () => {
     if (code) {
       // 【迁移修复】使用 PWA 域名生成分享链接
       const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
-      const inviteLink = `${appDomain}?ref=${code}`;
+      const inviteLink = `${appDomain}/register?ref=${encodeURIComponent(code)}`;
       const success = await copyToClipboard(inviteLink)
       if (success) {
         toast.success(t('profile.copyReferralCode'))
@@ -155,7 +137,7 @@ const ProfilePage: React.FC = () => {
     
     // 使用 PWA 域名生成分享链接
     const appDomain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
-    const inviteLink = `${appDomain}?ref=${code}`;
+    const inviteLink = `${appDomain}/register?ref=${encodeURIComponent(code)}`;
     // 使用 i18n 多语言分享文案
     const shareText = t('invite.shareText', { inviteCode: code, inviteLink });
     
@@ -171,6 +153,21 @@ const ProfilePage: React.FC = () => {
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + '\n' + inviteLink)}`;
       window.open(whatsappUrl, '_blank');
     }
+  }
+
+  const handleAddToHomeScreen = async () => {
+    if (isInstalled()) {
+      toast.success(t('pwa.alreadyInstalled'))
+      return
+    }
+
+    const installed = await triggerInstallPrompt()
+    if (installed) {
+      toast.success(t('pwa.installedSuccess'))
+      return
+    }
+
+    toast(t('pwa.manualInstallHint'), { duration: 5000 })
   }
 
   // 三个功能卡片
@@ -213,6 +210,12 @@ const ProfilePage: React.FC = () => {
       subtitle: t('subsidy.banner'),
       action: () => navigate('/subsidy-plan'),
       highlight: true,
+    },
+    {
+      icon: DevicePhoneMobileIcon,
+      title: t('profile.addToHomeScreen'),
+      subtitle: t('profile.addToHomeScreenDesc'),
+      action: handleAddToHomeScreen,
     },
     {
       icon: LanguageIcon,
@@ -327,18 +330,6 @@ const ProfilePage: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* 用户个人二维码（供地推人员扫码充值） */}
-          {qrCodeUrl && (
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setShowQrModal(true)}
-              className="w-14 h-14 bg-white rounded-lg p-1 shadow-sm flex-shrink-0"
-              title={t('profile.myQrCode')}
-            >
-              <img src={qrCodeUrl} alt="QR Code" className="w-full h-full rounded" />
-            </motion.button>
-          )}
         </div>
       </motion.div>
 
@@ -454,52 +445,6 @@ const ProfilePage: React.FC = () => {
         </motion.button>
       </div>
 
-      {/* 二维码放大弹窗 */}
-      <AnimatePresence>
-        {showQrModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-            onClick={() => setShowQrModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.5, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white rounded-2xl p-6 mx-8 max-w-sm w-full shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="text-center">
-                <h3 className="text-lg font-bold text-gray-900 mb-1">
-                  {t('profile.myQrCode')}
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  {t('profile.qrCodeHint')}
-                </p>
-                {qrCodeUrl && (
-                  <img
-                    src={qrCodeUrl}
-                    alt="QR Code"
-                    className="w-56 h-56 mx-auto mb-4 rounded-lg"
-                  />
-                )}
-                <p className="text-sm font-mono text-gray-600 mb-4">
-                  ID: {user?.id || '------'}
-                </p>
-                <button
-                  onClick={() => setShowQrModal(false)}
-                  className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
-                >
-                  {t('common.close')}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }

@@ -360,17 +360,15 @@ export const authService = {
       invite_code: data.data.user.referral_code
     };
 
-    // 如果是新用户且有礼物，存储到 localStorage 以便弹窗显示
-    if (data.data.is_new_user && data.data.new_user_gift) {
-      localStorage.setItem('new_user_gift_data', JSON.stringify(data.data.new_user_gift));
-    }
+    // 新用户注册不再发放积分或显示赠送弹窗。
+    localStorage.removeItem('new_user_gift_data');
 
     return {
       user,
       session: data.data.session,
       wallets: data.data.wallets || [],
       is_new_user: data.data.is_new_user,
-      new_user_gift: data.data.new_user_gift
+      new_user_gift: null
     };
   },
 

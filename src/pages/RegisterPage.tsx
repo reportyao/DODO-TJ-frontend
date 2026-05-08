@@ -31,13 +31,19 @@ const RegisterPage: React.FC = () => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
 
-  // 从 URL 参数中获取邀请码
+  const urlReferralCode = (
+    searchParams.get('ref') ||
+    searchParams.get('invite_code') ||
+    searchParams.get('referral_code') ||
+    ''
+  ).trim().toUpperCase()
+
+  // 从 URL 参数中获取邀请码，支持复制出的注册链接自动填入。
   useEffect(() => {
-    const ref = searchParams.get('ref')
-    if (ref) {
-      setReferralCode(ref)
+    if (urlReferralCode) {
+      setReferralCode(urlReferralCode)
     }
-  }, [searchParams])
+  }, [urlReferralCode])
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -225,26 +231,26 @@ const RegisterPage: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {t('auth.referralCode')}
-              {!searchParams.get('ref') && (
+              {!urlReferralCode && (
                 <span className="text-gray-400 ml-1 text-xs">({t('common.optional')})</span>
               )}
             </label>
             <div className="relative">
-              <TicketIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${searchParams.get('ref') ? 'text-green-500' : 'text-gray-400'}`} />
+              <TicketIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${urlReferralCode ? 'text-green-500' : 'text-gray-400'}`} />
               <input
                 type="text"
                 value={referralCode}
-                onChange={(e) => !searchParams.get('ref') && setReferralCode(e.target.value.toUpperCase())}
+                onChange={(e) => !urlReferralCode && setReferralCode(e.target.value.toUpperCase())}
                 placeholder={t('auth.referralCodePlaceholder')}
                 className={`w-full pl-10 pr-4 py-3 border rounded-xl transition-all text-gray-900 placeholder-gray-400 uppercase ${
-                  searchParams.get('ref')
+                  urlReferralCode
                     ? 'border-green-300 bg-green-50 text-green-800 cursor-not-allowed'
                     : 'border-gray-200 focus:ring-2 focus:ring-primary focus:border-transparent'
                 }`}
-                readOnly={!!searchParams.get('ref')}
+                readOnly={!!urlReferralCode}
               />
             </div>
-            {searchParams.get('ref') && (
+            {urlReferralCode && (
               <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
                 <span>✓</span>
                 <span>{t('auth.referralCodeApplied')}</span>
