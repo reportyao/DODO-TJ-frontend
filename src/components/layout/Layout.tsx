@@ -25,7 +25,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const location = useLocation()
   const isHomeRoute = location.pathname === '/'
 
-  // 不需要底部导航的页面：身份验证/商品详情/结算/错误页等。
+  // 不需要底部导航的页面：身份验证/商品详情/结算等。
   // 这些页面贴底都有自己的 CTA 按钮，再叠加全局导航会干扰转化。
   const HIDDEN_NAV_PREFIXES = [
     '/login',
@@ -36,7 +36,7 @@ export const Layout: React.FC<LayoutProps> = ({
     '/b2b/checkout',
   ]
   const isHiddenNavRoute = HIDDEN_NAV_PREFIXES.some((p) =>
-    p.endsWith('/') ? location.pathname.startsWith(p) : location.pathname === p,
+    location.pathname === p || location.pathname.startsWith(p + '/'),
   )
   
   // 新人礼物弹窗状态

@@ -128,7 +128,7 @@ export default function B2BCartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-32">
+    <div className="min-h-screen bg-gray-50 pb-44">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -233,8 +233,8 @@ export default function B2BCartPage() {
         })}
       </div>
 
-      {/* Bottom Checkout Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom">
+      {/* Bottom Checkout Bar - 定位在底部导航栏上方 */}
+      <div className="fixed left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-40" style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}>
         <div className="px-4 py-3 flex items-center justify-between">
           {/* Summary */}
           <div>
