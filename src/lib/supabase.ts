@@ -8,7 +8,7 @@ export type Lottery = Tables<'lotteries'>;
 
 const DEFAULT_SUPABASE_URL = 'https://qcrcgpwlfouqslokwbzl.supabase.co';
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_JpgolY81GRsD3WcHxw6NqA_updeRy1c';
-const LEGACY_SUPABASE_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJxY3JjZ3B3bGZvdXFzbG9rd2J6bCIsInJlZiI6InFjcmNncHdsZm91cXNsb2t3YnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzMzMzcsImV4cCI6MjA4OTUwOTMzN30.KFR8C1O0BnGWvR6GSCCq8opP2EljMwwOQrtn8snXqM0';
+const LEGACY_SUPABASE_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcmNncHdsZm91cXNsb2t3YnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzMzMzcsImV4cCI6MjA4OTUwOTMzN30.KFR8C1O0BnGWvR6GSCCq8opP2EljMwwOQrtn8snXqM0';
 
 function normalizeEnvValue(value?: string): string | undefined {
   const normalized = value?.trim().replace(/^['"]|['"]$/g, '');
@@ -32,10 +32,10 @@ function isValidSupabaseApiKey(key: string): boolean {
   if (!key.startsWith('eyJ')) {return false;}
 
   const payload = decodeJwtPayload(key);
-  return payload?.ref === 'qcrcgpwlfouqslokwbzl' &&
-    payload?.role === 'anon' &&
-    typeof payload?.iss === 'string' &&
-    payload.iss !== 'HS256';
+  // 兼容新旧 JWT payload 结构
+  const ref = payload?.ref || (payload?.iss as string)?.split('.')[0];
+  return (ref === 'qcrcgpwlfouqslokwbzl' || (payload?.iss as string)?.includes('qcrcgpwlfouqslokwbzl')) &&
+    payload?.role === 'anon';
 }
 
 // Vite 只会默认暴露 VITE_ 前缀，但生产构建脚本和 Supabase 控制台常使用 NEXT_PUBLIC_ 命名。
