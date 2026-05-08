@@ -197,8 +197,11 @@ export default function B2BOrdersPage() {
 
     setCancellingOrder(order.id);
     try {
+      // 使用类型断言绕过表名类型检查（b2b表未在前端类型定义中生成）
+      const db = supabase as any;
+
       // 1. 获取订单明细以回补库存
-      const { data: items, error: itemsError } = await supabase
+      const { data: items, error: itemsError } = await db
         .from('b2b_order_items')
         .select('product_id, quantity')
         .eq('order_id', order.id);
@@ -207,15 +210,15 @@ export default function B2BOrdersPage() {
 
       // 2. 回补库存
       if (items && items.length > 0) {
-        for (const item of items) {
-          const { data: product } = await supabase
+        for (const item of items as Array<{ product_id: string; quantity: number }>) {
+          const { data: product } = await db
             .from('inventory_products')
             .select('id, stock')
             .eq('id', item.product_id)
             .single();
 
           if (product) {
-            await supabase
+            await db
               .from('inventory_products')
               .update({
                 stock: Number(product.stock || 0) + Number(item.quantity || 0),
@@ -227,7 +230,7 @@ export default function B2BOrdersPage() {
       }
 
       // 3. 更新订单状态为已取消
-      const { error: updateError } = await supabase
+      const { error: updateError } = await db
         .from('b2b_orders')
         .update({
           status: 'cancelled',
