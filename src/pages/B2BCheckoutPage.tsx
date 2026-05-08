@@ -125,17 +125,19 @@ export default function B2BCheckoutPage() {
   const [successOrderNumber, setSuccessOrderNumber] = useState('');
   const [successTotalAmount, setSuccessTotalAmount] = useState(0);
 
-  // 初始化地址：使用批发商注册的配送地址
-  // 如果没有配送地址，自动开启编辑模式
+  // 初始化地址：优先使用批发商注册的配送地址；没有批发商资料时也允许用户手动填写。
   useEffect(() => {
-    if (wholesalerProfile) {
-      if (wholesalerProfile.delivery_address && !deliveryAddress) {
-        setDeliveryAddress(wholesalerProfile.delivery_address);
-      } else if (!wholesalerProfile.delivery_address) {
-        setAddressEditing(true);
-      }
+    if (profileLoading) return;
+
+    if (wholesalerProfile?.delivery_address && !deliveryAddress) {
+      setDeliveryAddress(wholesalerProfile.delivery_address);
+      return;
     }
-  }, [wholesalerProfile]);
+
+    if (!deliveryAddress) {
+      setAddressEditing(true);
+    }
+  }, [wholesalerProfile, profileLoading, deliveryAddress]);
 
   // 计算汇总数据
   const summary = useMemo(() => {
@@ -198,7 +200,7 @@ export default function B2BCheckoutPage() {
   };
 
   // Loading 状态
-  if (cartLoading || profileLoading) {
+  if (cartLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

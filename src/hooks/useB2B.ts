@@ -108,7 +108,7 @@ export function useWholesalerProfile() {
       // 使用 any 断言绕过自动生成类型限制（wholesaler_profiles 表尚未在 types 中注册）
       const { data, error } = await (supabase as any)
         .from('wholesaler_profiles')
-        .select('*')
+        .select('id,user_id,company_name,contact_phone,tax_id,business_address,delivery_address,status,reject_reason,approved_at,notes,created_at')
         .eq('user_id', user.id)
         .maybeSingle();
       if (error) throw new Error(error.message);
@@ -116,6 +116,7 @@ export function useWholesalerProfile() {
     },
     enabled: !!user?.id,
     staleTime: staleTimes.static,
+    gcTime: staleTimes.static * 2,
   });
 }
 

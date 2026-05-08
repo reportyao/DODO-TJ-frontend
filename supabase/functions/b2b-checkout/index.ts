@@ -6,7 +6,7 @@
  * 功能: 批发商从购物车一键下单，创建 B2B 主订单 + 订单明细
  *
  * 业务流程:
- *   1. 验证用户身份（必须是已认证的批发商）
+ *   1. 验证用户身份（登录用户均可下单；批发商资料仅用于默认地址/企业信息）
  *   2. 读取购物车中所有商品
  *   3. 校验每个商品的库存是否充足
  *   4. 创建主订单（b2b_orders）
@@ -183,16 +183,18 @@ serve(async (req: Request) => {
       return jsonResponse({ success: false, error: '未授权：缺少认证令牌', error_code: 'ERR_MISSING_TOKEN' }, 401)
     }
 
-    const { userId } = await validateSessionWithUser(supabase, sessionToken)
+    const { userId, phoneNumber } = await validateSessionWithUser(supabase, sessionToken)
 
     // ========================================================================
-    // Step 2: 验证批发商身份
+    // Step 2: 读取批发商资料（非强制）
     // ========================================================================
+    // 购物车函数已允许所有登录用户操作。这里同步放开下单门槛，避免出现
+    // “能加购物车但结算被 ERR_NOT_WHOLESALER 拦截”的断裂链路。
+    // 如果存在已认证批发商资料，则优先使用其配送地址与企业名称；否则以前端提交地址为准。
     const { data: wholesalerProfile, error: wholesalerError } = await supabase
       .from('wholesaler_profiles')
       .select('id, status, delivery_address, company_name')
       .eq('user_id', userId)
-      .eq('status', 'approved')
       .maybeSingle()
 
     if (wholesalerError) {
@@ -200,19 +202,11 @@ serve(async (req: Request) => {
       return jsonResponse({ success: false, error: '查询批发商信息失败', error_code: 'ERR_SERVER_ERROR' }, 500)
     }
 
-    if (!wholesalerProfile) {
-      return jsonResponse({
-        success: false,
-        error: '您不是已认证的批发商，无法下单',
-        error_code: 'ERR_NOT_WHOLESALER',
-      }, 403)
-    }
-
     // ========================================================================
     // Step 3: 解析请求体
     // ========================================================================
     const body: CheckoutRequest = await req.json().catch(() => ({}))
-    const deliveryAddress = body.delivery_address || wholesalerProfile.delivery_address || ''
+    const deliveryAddress = body.delivery_address || wholesalerProfile?.delivery_address || ''
     const deliveryNote = body.delivery_note || ''
 
     if (!deliveryAddress) {
@@ -514,7 +508,8 @@ serve(async (req: Request) => {
           order_id: order.id,
           order_number: orderNumber,
           user_id: userId,
-          company_name: wholesalerProfile.company_name,
+          company_name: wholesalerProfile?.company_name || phoneNumber || userId,
+          wholesaler_status: wholesalerProfile?.status || null,
           total_amount: totalAmount,
           item_count: orderItems.length,
           total_quantity: totalQuantity,

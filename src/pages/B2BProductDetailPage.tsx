@@ -4,10 +4,10 @@
  *
  * 功能：
  * - 商品图片轮播
- * - 批发价、建议零售价、利润空间展示（仅批发商可见）
+ * - 批发价、建议零售价、利润空间展示
  * - 起批量、库存、规格信息
  * - 数量选择器（步进为 min_order_quantity）
- * - 加入进货单（仅已认证批发商可用）
+ * - 加入购物车与立即下单（登录用户可用）
  */
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -40,9 +40,6 @@ export default function B2BProductDetailPage() {
   // 批发商资质仅用于展示“已认证批发商”徽章等差异化体验，不再作为加购门槛。
   const { data: wholesalerProfile } = useWholesalerProfile();
   const isApprovedWholesaler = wholesalerProfile?.status === 'approved';
-  // 加购仅要求登录即可，让普通用户也能成单；是否应用特殊企业价在管理后台控制。
-  const canPurchase = !!user;
-
   const [quantity, setQuantity] = useState<number>(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -112,25 +109,40 @@ export default function B2BProductDetailPage() {
     });
   };
 
-  const handleAddToCart = async () => {
+  const validatePurchase = () => {
     if (!user) {
       toast.error(t('b2b.pleaseLogin'));
       navigate(`/login?redirect=${encodeURIComponent(`/b2b/product/${product.id}`)}`);
-      return;
+      return false;
     }
     if (quantity < minQty) {
       toast.error(`${t('b2b.minOrder')} ${minQty}${product.unit_measure}`);
-      return;
+      return false;
     }
     if (quantity > product.stock) {
       toast.error(t('b2b.outOfStock'));
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const handleAddToCart = async () => {
+    if (!validatePurchase()) return;
     try {
       await upsertItem.mutateAsync({ productId: product.id, quantity });
       toast.success(t('b2b.addToCart') + ' ✓');
     } catch (err: any) {
       toast.error(err.message || t('b2b.addToCart'));
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!validatePurchase()) return;
+    try {
+      await upsertItem.mutateAsync({ productId: product.id, quantity });
+      navigate('/b2b/checkout');
+    } catch (err: any) {
+      toast.error(err.message || t('b2b.orderFailed', '下单失败'));
     }
   };
 
@@ -288,20 +300,34 @@ export default function B2BProductDetailPage() {
             <div className="text-base font-bold text-blue-700">TJS {subtotal.toFixed(2)}</div>
           </div>
 
-          {/* Add to Cart Button */}
-          <button
-            onClick={handleAddToCart}
-            disabled={isOutOfStock || upsertItem.isPending}
-            className={cn(
-              'flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all',
-              isOutOfStock
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 text-white active:bg-blue-700'
-            )}
-          >
-            <ShoppingCartIcon className="w-4 h-4" />
-            {upsertItem.isPending ? '...' : t('b2b.addToCart')}
-          </button>
+          {/* Add to Cart / Buy Now Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleAddToCart}
+              disabled={isOutOfStock || upsertItem.isPending}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all border',
+                isOutOfStock
+                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                  : 'bg-white text-blue-600 border-blue-200 active:bg-blue-50'
+              )}
+            >
+              <ShoppingCartIcon className="w-4 h-4" />
+              {upsertItem.isPending ? '...' : t('b2b.addToCart')}
+            </button>
+            <button
+              onClick={handleBuyNow}
+              disabled={isOutOfStock || upsertItem.isPending}
+              className={cn(
+                'px-4 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap',
+                isOutOfStock
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 text-white active:bg-blue-700 shadow-lg shadow-blue-600/20'
+              )}
+            >
+              {upsertItem.isPending ? '...' : t('b2b.buyNow', '立即下单')}
+            </button>
+          </div>
         </div>
       </div>
     </div>
