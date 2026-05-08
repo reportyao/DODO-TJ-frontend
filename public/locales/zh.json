@@ -2216,6 +2216,7 @@
     "orderStatusDelivering": "配送中",
     "orderStatusDelivered": "已送达",
     "orderStatusPaid": "已付款",
-    "orderStatusCancelled": "已取消"
+    "orderStatusCancelled": "已取消",
+    "viewProductDetail": "点击查看商品详情"
   }
 }

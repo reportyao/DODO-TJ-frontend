@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeftIcon, ShoppingCartIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useB2BProductDetail, useB2BCartMutations, useWholesalerProfile } from '../hooks/useB2B';
 import { LazyImage } from '../components/LazyImage';
+import { AIUnderstandingCard } from '../components/AIUnderstandingCard';
 import { useUser } from '../contexts/UserContext';
 import toast from 'react-hot-toast';
 import { cn } from '../lib/utils';
@@ -50,6 +51,24 @@ export default function B2BProductDetailPage() {
     }
   }, [product, quantity]);
 
+  React.useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [productId]);
+
+  const images = React.useMemo(() => Array.from(new Set([
+    ...(product?.image_urls?.filter(Boolean) || []),
+    ...(product?.image_url ? [product.image_url] : []),
+  ])), [product?.image_urls, product?.image_url]);
+
+  React.useEffect(() => {
+    if (images.length <= 1) {return;}
+    const timer = window.setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    }, 3500);
+
+    return () => window.clearInterval(timer);
+  }, [images.length]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -68,8 +87,6 @@ export default function B2BProductDetailPage() {
       </div>
     );
   }
-
-  const images = product.image_urls?.length ? product.image_urls : (product.image_url ? [product.image_url] : []);
   const isOutOfStock = product.stock <= 0;
   // 安全计算利润百分比，防止除以零
   const profitPercent = product.retail_price && product.wholesale_price && product.wholesale_price > 0
@@ -218,6 +235,12 @@ export default function B2BProductDetailPage() {
           </div>
         </div>
 
+        {/* AI 商品理解：替换旧商品详情说明，完整展示适合谁用、好在哪、如何使用、使用场景。 */}
+        <AIUnderstandingCard
+          aiUnderstanding={product.ai_understanding}
+          className="mt-4"
+        />
+
         {/* Specifications */}
         {getLocalized(product.specifications_i18n, lang) && (
           <div className="mt-4">
@@ -226,13 +249,6 @@ export default function B2BProductDetailPage() {
           </div>
         )}
 
-        {/* Description */}
-        {getLocalized(product.description_i18n, lang) && (
-          <div className="mt-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-1.5">{t('b2b.description')}</h3>
-            <p className="text-sm text-gray-600 whitespace-pre-line">{getLocalized(product.description_i18n, lang)}</p>
-          </div>
-        )}
 
         {/* Material - 使用i18n */}
         {getLocalized(product.material_i18n, lang) && (

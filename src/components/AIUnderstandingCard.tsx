@@ -2,6 +2,8 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
+type SupportedAITextLang = 'zh' | 'ru' | 'tg';
+
 type LocalizedAIText = {
   zh?: string;
   ru?: string;
@@ -10,47 +12,56 @@ type LocalizedAIText = {
 
 type AITextValue = string | LocalizedAIText | undefined;
 
+type AIUnderstanding = {
+  target_people?: AITextValue;
+  suitable_for?: AITextValue;
+  selling_angle?: AITextValue;
+  advantages?: AITextValue;
+  how_to_use?: AITextValue;
+  best_scene?: AITextValue;
+  usage_scene?: AITextValue;
+  usage_scenarios?: AITextValue;
+  local_life_connection?: AITextValue;
+  recommended_badge?: AITextValue;
+  semantic_facts?: {
+    parameter_highlights?: string[];
+    usage_steps?: string[];
+    usage_scenarios?: string[];
+  };
+  source_language?: 'multi' | SupportedAITextLang;
+  primary_market_language?: SupportedAITextLang;
+  display_priority?: SupportedAITextLang[];
+  zh?: Partial<Record<'target_people' | 'suitable_for' | 'selling_angle' | 'advantages' | 'how_to_use' | 'best_scene' | 'usage_scene' | 'usage_scenarios' | 'local_life_connection' | 'recommended_badge', string>>;
+  ru?: Partial<Record<'target_people' | 'suitable_for' | 'selling_angle' | 'advantages' | 'how_to_use' | 'best_scene' | 'usage_scene' | 'usage_scenarios' | 'local_life_connection' | 'recommended_badge', string>>;
+  tg?: Partial<Record<'target_people' | 'suitable_for' | 'selling_angle' | 'advantages' | 'how_to_use' | 'best_scene' | 'usage_scene' | 'usage_scenarios' | 'local_life_connection' | 'recommended_badge', string>>;
+};
+
 interface AIUnderstandingCardProps {
-  aiUnderstanding: {
-    target_people?: AITextValue;
-    selling_angle?: AITextValue;
-    how_to_use?: AITextValue;
-    best_scene?: AITextValue;
-    local_life_connection?: AITextValue;
-    recommended_badge?: AITextValue;
-    semantic_facts?: {
-      parameter_highlights?: string[];
-      usage_steps?: string[];
-      usage_scenarios?: string[];
-    };
-    source_language?: 'multi' | 'tg' | 'ru' | 'zh';
-    primary_market_language?: 'tg' | 'ru' | 'zh';
-    display_priority?: Array<'tg' | 'ru' | 'zh'>;
-  } | null;
+  aiUnderstanding: AIUnderstanding | null;
   specifications?: string;
   material?: string;
   details?: string;
   className?: string;
 }
 
-const normalizeLanguage = (lang: string): keyof LocalizedAIText => {
-  if (lang === 'zh-CN' || lang === 'zh') {return 'zh';}
-  if (lang === 'ru') {return 'ru';}
-  if (lang === 'tg') {return 'tg';}
+const normalizeLanguage = (lang: string): SupportedAITextLang => {
+  if (lang === 'zh-CN' || lang.startsWith('zh')) {return 'zh';}
+  if (lang.startsWith('ru')) {return 'ru';}
+  if (lang.startsWith('tg')) {return 'tg';}
   return 'zh';
 };
 
 const buildLanguagePriority = (
   lang: string,
-  aiUnderstanding?: AIUnderstandingCardProps['aiUnderstanding']
-): Array<keyof LocalizedAIText> => {
+  aiUnderstanding?: AIUnderstanding | null
+): SupportedAITextLang[] => {
   const current = normalizeLanguage(lang);
   const configured = (aiUnderstanding?.display_priority || []).filter(
-    (item): item is keyof LocalizedAIText => item === 'tg' || item === 'ru' || item === 'zh'
+    (item): item is SupportedAITextLang => item === 'tg' || item === 'ru' || item === 'zh'
   );
   const primary = aiUnderstanding?.primary_market_language;
 
-  return Array.from(new Set<keyof LocalizedAIText>([
+  return Array.from(new Set<SupportedAITextLang>([
     current,
     ...(primary ? [primary] : []),
     ...configured,
@@ -60,13 +71,57 @@ const buildLanguagePriority = (
   ]));
 };
 
-const resolveAIText = (value: AITextValue, lang: string, aiUnderstanding?: AIUnderstandingCardProps['aiUnderstanding']) => {
+const readLanguageRootValue = (
+  aiUnderstanding: AIUnderstanding | null | undefined,
+  fieldNames: string[],
+  lang: string
+): string => {
+  if (!aiUnderstanding) {return '';}
+  const priority = buildLanguagePriority(lang, aiUnderstanding);
+
+  for (const language of priority) {
+    const languageBlock = aiUnderstanding[language];
+    if (!languageBlock || typeof languageBlock !== 'object') {continue;}
+    for (const fieldName of fieldNames) {
+      const value = languageBlock[fieldName as keyof typeof languageBlock];
+      if (typeof value === 'string' && value.trim()) {return value.trim();}
+    }
+  }
+
+  return '';
+};
+
+const resolveAIText = (
+  value: AITextValue,
+  lang: string,
+  aiUnderstanding?: AIUnderstanding | null
+) => {
   if (!value) {return '';}
-  if (typeof value === 'string') {return value;}
+  if (typeof value === 'string') {return value.trim();}
 
   const priority = buildLanguagePriority(lang, aiUnderstanding);
   for (const language of priority) {
-    if (value[language]) {return value[language] || '';}
+    if (value[language]?.trim()) {return value[language]?.trim() || '';}
+  }
+
+  return '';
+};
+
+const resolveAIField = (
+  aiUnderstanding: AIUnderstanding | null | undefined,
+  fieldNames: Array<keyof AIUnderstanding>,
+  lang: string
+): string => {
+  const languageRootValue = readLanguageRootValue(
+    aiUnderstanding,
+    fieldNames.map(String),
+    lang
+  );
+  if (languageRootValue) {return languageRootValue;}
+
+  for (const fieldName of fieldNames) {
+    const value = resolveAIText(aiUnderstanding?.[fieldName] as AITextValue, lang, aiUnderstanding);
+    if (value) {return value;}
   }
 
   return '';
@@ -78,63 +133,88 @@ export const AIUnderstandingCard: React.FC<AIUnderstandingCardProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
 
-  const targetPeople = resolveAIText(aiUnderstanding?.target_people, i18n.language, aiUnderstanding);
-  const sellingAngle = resolveAIText(aiUnderstanding?.selling_angle, i18n.language, aiUnderstanding);
-  const howToUse = resolveAIText(aiUnderstanding?.how_to_use, i18n.language, aiUnderstanding);
-  const recommendedBadge = resolveAIText(aiUnderstanding?.recommended_badge, i18n.language, aiUnderstanding);
+  const targetPeople = resolveAIField(aiUnderstanding, ['target_people', 'suitable_for'], i18n.language);
+  const sellingAngle = resolveAIField(aiUnderstanding, ['selling_angle', 'advantages'], i18n.language);
+  const howToUse = resolveAIField(aiUnderstanding, ['how_to_use'], i18n.language);
+  const bestScene = resolveAIField(aiUnderstanding, ['best_scene', 'usage_scene', 'usage_scenarios', 'local_life_connection'], i18n.language);
+  const recommendedBadge = resolveAIField(aiUnderstanding, ['recommended_badge'], i18n.language);
 
-  if (aiUnderstanding && (targetPeople || sellingAngle || howToUse)) {
-    return (
-      <div className={cn(
-        'bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 rounded-2xl shadow-sm p-5 space-y-4 border border-amber-100/50',
-        className
-      )}>
-        {recommendedBadge && (
-          <div className="flex items-center justify-center">
-              <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-medium shadow-sm">
-                {recommendedBadge}
-              </span>
-          </div>
-        )}
+  const sections = [
+    {
+      key: 'target_people',
+      title: t('lottery.suitableFor'),
+      text: targetPeople,
+      icon: 'user',
+      color: 'amber',
+    },
+    {
+      key: 'selling_angle',
+      title: t('lottery.whyGood'),
+      text: sellingAngle,
+      icon: 'spark',
+      color: 'rose',
+    },
+    {
+      key: 'how_to_use',
+      title: t('lottery.howToUse'),
+      text: howToUse,
+      icon: 'tool',
+      color: 'violet',
+    },
+    {
+      key: 'best_scene',
+      title: t('lottery.bestScene'),
+      text: bestScene,
+      icon: 'scene',
+      color: 'emerald',
+    },
+  ].filter((section) => section.text);
 
-        {targetPeople && (
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-base">👤</span>
-            </div>
-            <div className="flex-1">
-              <p className="text-xs font-medium text-amber-700 mb-1">{t('lottery.suitableFor')}</p>
-              <p className="text-sm text-gray-700 leading-relaxed">{targetPeople}</p>
-            </div>
-          </div>
-        )}
-
-        {sellingAngle && (
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-base">✨</span>
-            </div>
-            <div className="flex-1">
-              <p className="text-xs font-medium text-rose-700 mb-1">{t('lottery.whyGood')}</p>
-              <p className="text-sm text-gray-700 leading-relaxed">{sellingAngle}</p>
-            </div>
-          </div>
-        )}
-
-        {howToUse && (
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-base">🛠️</span>
-            </div>
-            <div className="flex-1">
-              <p className="text-xs font-medium text-violet-700 mb-1">{t('lottery.howToUse')}</p>
-              <p className="text-sm text-gray-700 leading-relaxed">{howToUse}</p>
-            </div>
-          </div>
-        )}
-      </div>
-    );
+  if (!aiUnderstanding || sections.length === 0) {
+    return null;
   }
 
-  return null;
+  const colorClasses: Record<string, { bubble: string; title: string }> = {
+    amber: { bubble: 'bg-amber-100 text-amber-700', title: 'text-amber-700' },
+    rose: { bubble: 'bg-rose-100 text-rose-700', title: 'text-rose-700' },
+    violet: { bubble: 'bg-violet-100 text-violet-700', title: 'text-violet-700' },
+    emerald: { bubble: 'bg-emerald-100 text-emerald-700', title: 'text-emerald-700' },
+  };
+
+  const iconText: Record<string, string> = {
+    user: '人',
+    spark: '优',
+    tool: '用',
+    scene: '景',
+  };
+
+  return (
+    <div className={cn(
+      'bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 rounded-2xl shadow-sm p-5 space-y-4 border border-amber-100/50',
+      className
+    )}>
+      {recommendedBadge && (
+        <div className="flex items-center justify-center">
+          <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-medium shadow-sm">
+            {recommendedBadge}
+          </span>
+        </div>
+      )}
+
+      {sections.map((section) => {
+        const colors = colorClasses[section.color];
+        return (
+          <div key={section.key} className="flex items-start gap-3">
+            <div className={cn('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold', colors.bubble)}>
+              <span>{iconText[section.icon]}</span>
+            </div>
+            <div className="flex-1">
+              <p className={cn('text-xs font-medium mb-1', colors.title)}>{section.title}</p>
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{section.text}</p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 };

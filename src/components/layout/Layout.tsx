@@ -27,6 +27,14 @@ export const Layout: React.FC<LayoutProps> = ({
   const { t } = useTranslation()
   const location = useLocation()
   const isHomeRoute = location.pathname === '/'
+  const isB2BExperienceRoute =
+    location.pathname === '/' ||
+    location.pathname.startsWith('/b2b') ||
+    location.pathname === '/profile'
+  const shouldShowB2BBottomNav =
+    isB2BExperienceRoute &&
+    !location.pathname.startsWith('/b2b/product/') &&
+    !location.pathname.startsWith('/b2b/checkout')
   
   // 新人礼物弹窗状态
   const [showNewUserGift, setShowNewUserGift] = useState(false)
@@ -177,7 +185,7 @@ export const Layout: React.FC<LayoutProps> = ({
     )}>
       {/* 弱网/离线状态提示横幅 */}
       <OfflineBanner />
-      {showHeader && !location.pathname.startsWith("/b2b") && (
+      {showHeader && !isB2BExperienceRoute && (
         <header className="bg-white/90 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
           <div className="max-w-md mx-auto px-4 py-2.5">
             <div className="flex items-center justify-between gap-3">
@@ -218,7 +226,7 @@ export const Layout: React.FC<LayoutProps> = ({
         {children}
       </main>
 
-      {showBottomNav && (location.pathname.startsWith("/b2b") ? <B2BBottomNavigation /> : <BottomNavigation />)}
+      {showBottomNav && (shouldShowB2BBottomNav ? <B2BBottomNavigation /> : <BottomNavigation />)}
       
       {/* 推荐浮动入口 - 仅在登录后显示 */}
       {isAuthenticated && <SpinFloatingButton spinCount={spinCount} />}

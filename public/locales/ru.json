@@ -2216,6 +2216,7 @@
     "orderStatusDelivering": "Доставка",
     "orderStatusDelivered": "Доставлено",
     "orderStatusPaid": "Оплачено",
-    "orderStatusCancelled": "Отменено"
+    "orderStatusCancelled": "Отменено",
+    "viewProductDetail": "Нажмите, чтобы посмотреть товар"
   }
 }

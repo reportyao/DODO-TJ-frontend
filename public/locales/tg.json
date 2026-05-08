@@ -2216,6 +2216,7 @@
     "orderStatusDelivering": "Интиқол",
     "orderStatusDelivered": "Расонида шуд",
     "orderStatusPaid": "Пардохт шуд",
-    "orderStatusCancelled": "Бекор карда шуд"
+    "orderStatusCancelled": "Бекор карда шуд",
+    "viewProductDetail": "Барои дидани тафсилоти мол зер кунед"
   }
 }

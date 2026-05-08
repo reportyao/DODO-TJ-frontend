@@ -67,8 +67,10 @@ export interface B2BProduct {
 
 export interface B2BProductDetail extends B2BProduct {
   description_i18n: { zh?: string; ru?: string; tg?: string };
+  details_i18n?: { zh?: string; ru?: string; tg?: string };
   specifications_i18n: { zh?: string; ru?: string; tg?: string };
   material_i18n: { zh?: string; ru?: string; tg?: string };
+  ai_understanding: any | null;
   barcode: string | null;
   status: string;
 }
@@ -219,6 +221,7 @@ export function useB2BProductDetail(productId: string) {
         id: p.product_id || p.id,
         name_i18n: p.name_i18n || {},
         description_i18n: p.description_i18n || {},
+        details_i18n: p.details_i18n || {},
         specifications_i18n: p.specifications_i18n || {},
         material_i18n: p.material_i18n || {},
         image_url: p.image_url || null,
@@ -229,6 +232,7 @@ export function useB2BProductDetail(productId: string) {
         unit_measure: p.unit_measure || '件',
         stock: p.stock || 0,
         sku: p.sku || null,
+        ai_understanding: p.ai_understanding || null,
         barcode: p.barcode || null,
         status: p.status || 'ACTIVE',
         category_name: null,

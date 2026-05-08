@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useB2BHomeFeed, useB2BSearch, useWholesalerProfile, B2BProduct, B2B_PAGE_SIZE } from '../hooks/useB2B';
 import { LazyImage } from '../components/LazyImage';
+import BannerCarousel from '../components/BannerCarousel';
+import { CategoryGrid } from '../components/home/CategoryGrid';
 import { cn } from '../lib/utils';
 
 /**
@@ -91,7 +93,7 @@ const B2BProductCard: React.FC<{
           </div>
         ) : (
           <div className="mt-1.5">
-            <span className="text-xs text-gray-400 italic">{t('b2b.applyWholesaler')}</span>
+            <span className="text-xs text-blue-600 font-medium">{t('b2b.viewProductDetail')}</span>
           </div>
         )}
 
@@ -122,13 +124,14 @@ export default function B2BHomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchInput, setSearchInput] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>();
 
   // 批发商权限检查
   const { data: wholesalerProfile } = useWholesalerProfile();
   const isApprovedWholesaler = wholesalerProfile?.status === 'approved';
 
-  // Data hooks - page 参数已正确传递给 useB2BHomeFeed
-  const { data: feedData, isLoading: feedLoading } = useB2BHomeFeed(page);
+  // Data hooks - page 和分类参数已正确传递给 useB2BHomeFeed，分类来源继续复用管理后台维护的 homepage_categories。
+  const { data: feedData, isLoading: feedLoading } = useB2BHomeFeed(page, selectedCategoryId);
   const { data: searchResults, isLoading: searchLoading } = useB2BSearch(searchQuery);
 
   const handleSearch = useCallback(() => {
@@ -145,6 +148,15 @@ export default function B2BHomePage() {
   const clearSearch = useCallback(() => {
     setSearchInput('');
     setSearchQuery('');
+    setIsSearching(false);
+  }, []);
+
+  const handleCategorySelect = useCallback((categoryId: string | undefined) => {
+    setSelectedCategoryId(categoryId);
+    setPage(0);
+    // 用户选择分类时退出搜索结果，避免分类菜单与商品列表不一致。
+    setSearchQuery('');
+    setSearchInput('');
     setIsSearching(false);
   }, []);
 
@@ -194,6 +206,21 @@ export default function B2BHomePage() {
           )}
         </div>
       </div>
+
+      {/* Banner 与分类菜单：保留原首页展示能力，数据来自 B2B 首页 RPC，分类继续与管理后台维护项一致。 */}
+      {!isSearching && (
+        <div className="pt-3">
+          <div className="px-3">
+            <BannerCarousel banners={feedData?.banners as any} />
+          </div>
+          <CategoryGrid
+            categories={(feedData?.categories || []) as any}
+            selectedId={selectedCategoryId}
+            onSelect={handleCategorySelect}
+            isLoading={feedLoading}
+          />
+        </div>
+      )}
 
       {/* Content */}
       <div className="px-3 pt-3">
