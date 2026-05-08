@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
         user_id: user.id,
         type: 'LUCKY_COIN',
         currency: 'POINTS',
-        balance: 0
+        balance: 0,
         frozen_balance: 0,
         total_deposits: 0,
         total_withdrawals: 0,
