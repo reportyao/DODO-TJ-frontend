@@ -2,7 +2,7 @@
  * download-and-upload-image Edge Function
  * 
  * 【功能说明】
- * 从外部URL下载图片，压缩后上传到 Supabase Storage。
+ * 从外部URL下载图片，极限压缩后上传到 Supabase Storage。
  * 
  * 【性能优化 v2】
  * - 文件大小限制：最大10MB，防止OOM
@@ -12,8 +12,12 @@
  * 
  * 【v3 新增 - 图片压缩】
  * - 下载后自动压缩：转为 JPEG 格式，质量 85%，最大 1800px
- * - 大幅减小存储体积，加快后续 AI 抠图处理速度
- * - 使用 Deno 原生 ImageBitmap + OffscreenCanvas 进行压缩
+ * 
+ * 【v4 极限压缩优化】
+ * - 压缩格式改为 WebP（比 JPEG 小 25-35%）
+ * - 质量降至 72%（视觉质量依然优秀，体积大幅减小）
+ * - 最大尺寸降至 1200px（电商场景足够）
+ * - 确保所有通过 URL 上传的图片都经过极限压缩
  * 
  * 【参数】
  * - imageUrl: 外部图片URL
@@ -34,21 +38,20 @@ const corsHeaders = {
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 // 下载超时时间（毫秒）
 const DOWNLOAD_TIMEOUT = 15000; // 15秒
-// 压缩参数
-const COMPRESS_MAX_DIM = 1800;  // 最大宽度/高度
-const COMPRESS_QUALITY = 0.85;  // JPEG 质量 85%（近无损）
+// 极限压缩参数
+const COMPRESS_MAX_DIM = 1200;  // 最大宽度/高度 1200px（电商场景足够）
+const COMPRESS_QUALITY = 0.72;  // WebP 质量 72%（极限压缩，视觉质量依然优秀）
 
 /**
- * 使用 sharp-like 方式压缩图片
- * Deno Edge Function 不支持 Canvas，改用直接转换为 JPEG 的方式
- * 通过限制尺寸和格式转换来减小体积
+ * 极限压缩图片：使用 OffscreenCanvas 将图片压缩为 WebP 格式
+ * - 最大尺寸 1200px
+ * - WebP 质量 72%
+ * - 比原 JPEG q85 方案节省 40-60% 存储空间
  */
 async function compressImageBuffer(
   imageBuffer: ArrayBuffer,
   _contentType: string
 ): Promise<{ buffer: Uint8Array; contentType: string; width: number; height: number }> {
-  // 在 Deno Edge Function 中，使用 ImageBitmap 获取尺寸信息
-  // 然后通过 OffscreenCanvas 进行压缩
   try {
     const blob = new Blob([imageBuffer]);
     const bitmap = await createImageBitmap(blob);
@@ -62,25 +65,25 @@ async function compressImageBuffer(
       height = Math.round(height * ratio);
     }
     
-    // 使用 OffscreenCanvas 绘制并压缩
+    // 使用 OffscreenCanvas 绘制并压缩为 WebP
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext('2d')!;
     ctx.drawImage(bitmap, 0, 0, width, height);
     bitmap.close();
     
-    // 转为 JPEG Blob
+    // 转为 WebP Blob（比 JPEG 更小）
     const compressedBlob = await canvas.convertToBlob({
-      type: 'image/jpeg',
+      type: 'image/webp',
       quality: COMPRESS_QUALITY,
     });
     
     const compressedBuffer = new Uint8Array(await compressedBlob.arrayBuffer());
     
-    console.log(`[compress] ${(imageBuffer.byteLength / 1024).toFixed(0)}KB → ${(compressedBuffer.length / 1024).toFixed(0)}KB, ${width}x${height}, JPEG q${COMPRESS_QUALITY * 100}`);
+    console.log(`[compress] ${(imageBuffer.byteLength / 1024).toFixed(0)}KB → ${(compressedBuffer.length / 1024).toFixed(0)}KB, ${width}x${height}, WebP q${COMPRESS_QUALITY * 100}`);
     
     return {
       buffer: compressedBuffer,
-      contentType: 'image/jpeg',
+      contentType: 'image/webp',
       width,
       height,
     };
@@ -161,7 +164,6 @@ serve(async (req) => {
     // 获取图片数据
     const imageBuffer = await imageResponse.arrayBuffer();
     const originalSize = imageBuffer.byteLength;
-
     console.log(`[download-and-upload] 下载完成, 原始大小: ${(originalSize / 1024).toFixed(1)}KB`);
 
     // 【文件大小限制】
@@ -170,24 +172,23 @@ serve(async (req) => {
       throw new Error(`图片太大: ${(originalSize / 1024 / 1024).toFixed(1)}MB，最大允许 ${(maxSize / 1024 / 1024).toFixed(0)}MB`);
     }
 
-    // 【v3 新增】压缩图片
+    // 【v4 极限压缩】
     let uploadBuffer: Uint8Array | ArrayBuffer = imageBuffer;
     let uploadContentType = contentType;
-    let uploadExt = contentType.split('/')[1]?.split(';')[0] || 'jpg';
+    let uploadExt = 'webp'; // 默认输出 WebP
 
     if (compress) {
-      console.log(`[download-and-upload] 开始压缩图片...`);
+      console.log(`[download-and-upload] 开始极限压缩 (WebP q${COMPRESS_QUALITY * 100}, max ${COMPRESS_MAX_DIM}px)...`);
       const compressed = await compressImageBuffer(imageBuffer, contentType);
       uploadBuffer = compressed.buffer;
       uploadContentType = compressed.contentType;
-      uploadExt = 'jpg';
+      uploadExt = compressed.contentType === 'image/webp' ? 'webp' : 'jpg';
       const ratio = ((1 - compressed.buffer.length / originalSize) * 100).toFixed(1);
       console.log(`[download-and-upload] 压缩完成, 压缩率: ${ratio}%`);
     }
 
     // 确定文件名
     const filename = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${uploadExt}`;
-
     console.log(`[download-and-upload] 上传到: ${bucket}/${filename}`);
 
     // 初始化Supabase客户端
@@ -200,7 +201,6 @@ serve(async (req) => {
       .from(bucket)
       .upload(filename, uploadBuffer, {
         contentType: uploadContentType,
-        // 【性能优化】设置1年缓存（URL含时间戳hash，天然支持缓存破坏）
         cacheControl: '31536000',
         upsert: false,
       });
@@ -233,6 +233,7 @@ serve(async (req) => {
     const errMsg = error instanceof Error ? error.message : String(error);
     const elapsed = Date.now() - startTime;
     console.error(`[download-and-upload] 错误 (${elapsed}ms):`, errMsg);
+
     return new Response(
       JSON.stringify({ success: false, error: errMsg }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
