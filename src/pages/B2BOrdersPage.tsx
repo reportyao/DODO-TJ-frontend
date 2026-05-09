@@ -209,7 +209,7 @@ export default function B2BOrdersPage() {
   };
 
   // 取消订单（仅处理中状态可取消）
-  // 直接通过 Supabase 数据库操作，同时回补库存
+  // 通过 b2b-orders Edge Function 执行取消，服务端负责权限校验和库存回补
   const handleCancelOrder = async (order: B2BOrder) => {
     const normalized = normalizeStatus(order.status);
     if (normalized !== 'processing') {
@@ -219,49 +219,17 @@ export default function B2BOrdersPage() {
 
     setCancellingOrder(order.id);
     try {
-      // 使用类型断言绕过表名类型检查（b2b表未在前端类型定义中生成）
-      const db = supabase as any;
+      const { data, error } = await supabase.functions.invoke('b2b-orders', {
+        method: 'POST',
+        body: {
+          action: 'cancel',
+          order_id: order.id,
+        },
+        headers: { 'x-session-token': sessionToken },
+      });
 
-      // 1. 获取订单明细以回补库存
-      const { data: items, error: itemsError } = await db
-        .from('b2b_order_items')
-        .select('product_id, quantity')
-        .eq('order_id', order.id);
-
-      if (itemsError) throw new Error(itemsError.message);
-
-      // 2. 回补库存
-      if (items && items.length > 0) {
-        for (const item of items as Array<{ product_id: string; quantity: number }>) {
-          const { data: product } = await db
-            .from('inventory_products')
-            .select('id, stock')
-            .eq('id', item.product_id)
-            .single();
-
-          if (product) {
-            await db
-              .from('inventory_products')
-              .update({
-                stock: Number(product.stock || 0) + Number(item.quantity || 0),
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', item.product_id);
-          }
-        }
-      }
-
-      // 3. 更新订单状态为已取消
-      const { error: updateError } = await db
-        .from('b2b_orders')
-        .update({
-          status: 'cancelled',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', order.id)
-        .eq('user_id', user?.id); // 安全：只能取消自己的订单
-
-      if (updateError) throw new Error(updateError.message);
+      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (!data?.success) throw new Error(data?.error || t('b2b.cancelFailed', '取消失败'));
 
       toast.success(t('b2b.orderCancelled', '订单已取消'));
       // 刷新订单列表

@@ -10,6 +10,7 @@
  * 【批发商端操作】
  *   - list:   获取我的订单列表（分页）
  *   - detail: 获取单个订单详情（含明细）
+ *   - cancel: 取消订单（仅 pending/processing 状态可取消，自动回补库存）
  *
  * 【管理后台操作】（需要 admin 认证）
  *   - admin_list:           获取所有订单列表
@@ -136,6 +137,102 @@ async function handleOrderDetail(userId: string, orderId: string) {
     },
   })
 }
+
+
+/**
+ * 批发商取消订单
+ * 仅允许取消 pending 或 processing 状态的订单，同时回补库存
+ */
+async function handleCancelOrder(userId: string, orderId: string) {
+  if (orderId === undefined || orderId === null || orderId === '') {
+    return jsonResponse({ success: false, error: '订单ID不能为空', error_code: 'ERR_PARAMS_MISSING' }, 400)
+  }
+
+  // 1. 查询订单，确认归属和状态
+  const { data: order, error: orderError } = await supabase
+    .from('b2b_orders')
+    .select('id, status, order_number, user_id')
+    .eq('id', orderId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (orderError || order === null || order === undefined) {
+    return jsonResponse({ success: false, error: '订单不存在', error_code: 'ERR_ORDER_NOT_FOUND' }, 404)
+  }
+
+  // 2. 仅允许取消 pending / processing 状态的订单
+  const cancellableStatuses = ['pending', 'processing']
+  if (!cancellableStatuses.includes(order.status)) {
+    return jsonResponse({
+      success: false,
+      error: '只能取消待处理或处理中的订单',
+      error_code: 'ERR_INVALID_STATUS',
+    }, 400)
+  }
+
+  // 3. 获取订单明细，用于回补库存
+  const { data: items, error: itemsError } = await supabase
+    .from('b2b_order_items')
+    .select('product_id, quantity')
+    .eq('order_id', orderId)
+
+  if (itemsError) {
+    return jsonResponse({ success: false, error: '获取订单明细失败', error_code: 'ERR_SERVER_ERROR' }, 500)
+  }
+
+  // 4. 回补库存（逐个商品加回）
+  if (items && items.length > 0) {
+    for (const item of items as Array<{ product_id: string; quantity: number }>) {
+      const { data: product } = await supabase
+        .from('inventory_products')
+        .select('id, stock')
+        .eq('id', item.product_id)
+        .maybeSingle()
+
+      if (product) {
+        const stockBefore = Number(product.stock || 0)
+        const stockAfter = stockBefore + Number(item.quantity || 0)
+
+        await supabase
+          .from('inventory_products')
+          .update({
+            stock: stockAfter,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', item.product_id)
+
+        // 写入库存变动日志（使用 ADJUSTMENT 类型，符合数据库约束）
+        await supabase.from('inventory_transactions').insert({
+          inventory_product_id: item.product_id,
+          transaction_type: 'ADJUSTMENT',
+          quantity: Number(item.quantity || 0),
+          stock_before: stockBefore,
+          stock_after: stockAfter,
+          related_order_id: orderId,
+          notes: 'B2B订单 ' + order.order_number + ' 取消，回补库存',
+        })
+      }
+    }
+  }
+
+  // 5. 更新订单状态为 cancelled
+  const { error: updateError } = await supabase
+    .from('b2b_orders')
+    .update({
+      status: 'cancelled',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', orderId)
+    .eq('user_id', userId)
+
+  if (updateError) {
+    console.error('[B2BOrders] 取消订单失败:', updateError)
+    return jsonResponse({ success: false, error: '取消订单失败', error_code: 'ERR_SERVER_ERROR' }, 500)
+  }
+
+  return jsonResponse({ success: true, message: '订单已取消' })
+}
+
 
 // ============================================================================
 // 管理后台操作
@@ -415,10 +512,12 @@ serve(async (req: Request) => {
         return await handleListOrders(userId, page || 1, page_size || 20)
       case 'detail':
         return await handleOrderDetail(userId, order_id || '')
+      case 'cancel':
+        return await handleCancelOrder(userId, order_id || '')
       default:
         return jsonResponse({
           success: false,
-          error: `无效的操作: ${action}。批发商支持: list, detail`,
+          error: `无效的操作: ${action}。批发商支持: list, detail, cancel`,
           error_code: 'ERR_INVALID_ACTION',
         }, 400)
     }
