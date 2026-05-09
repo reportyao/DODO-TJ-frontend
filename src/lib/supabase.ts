@@ -7,8 +7,12 @@ export type Lottery = Tables<'lotteries'>;
 
 
 const DEFAULT_SUPABASE_URL = 'https://qcrcgpwlfouqslokwbzl.supabase.co';
+// Supabase Edge Functions relay 和 PostgREST 都要求 apikey 为 JWT 格式。
+// publishable key (sb_publishable_*) 不是 JWT，会导致 relay 返回 401 UNAUTHORIZED_INVALID_JWT_FORMAT。
+// 因此必须使用 anon JWT 作为默认 API key。
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcmNncHdsZm91cXNsb2t3YnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzMzMzcsImV4cCI6MjA4OTUwOTMzN30.KFR8C1O0BnGWvR6GSCCq8opP2EljMwwOQrtn8snXqM0';
+// 保留 publishable key 仅作为参考，不再用作 API key
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_JpgolY81GRsD3WcHxw6NqA_updeRy1c';
-const LEGACY_SUPABASE_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcmNncHdsZm91cXNsb2t3YnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzMzMzcsImV4cCI6MjA4OTUwOTMzN30.KFR8C1O0BnGWvR6GSCCq8opP2EljMwwOQrtn8snXqM0';
 
 function normalizeEnvValue(value?: string): string | undefined {
   const normalized = value?.trim().replace(/^['"]|['"]$/g, '');
@@ -28,7 +32,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 }
 
 function isValidSupabaseApiKey(key: string): boolean {
-  if (key.startsWith('sb_publishable_')) {return true;}
+  // Supabase relay 要求 apikey 为 JWT 格式，publishable key 不可用于 Edge Functions 和 PostgREST
   if (!key.startsWith('eyJ')) {return false;}
 
   const payload = decodeJwtPayload(key);
@@ -39,25 +43,24 @@ function isValidSupabaseApiKey(key: string): boolean {
 }
 
 // Vite 只会默认暴露 VITE_ 前缀，但生产构建脚本和 Supabase 控制台常使用 NEXT_PUBLIC_ 命名。
-// 这里兼容两套命名，并优先使用 Supabase 新版 publishable key，避免旧 JWT anon key
-// 在项目密钥轮换后造成 PostgREST / Realtime 401 Invalid API key。
+// 必须使用 JWT 格式的 anon key，publishable key 不被 Supabase relay 接受。
 let supabaseUrl = normalizeEnvValue(
   import.meta.env.VITE_SUPABASE_URL ||
   import.meta.env.NEXT_PUBLIC_SUPABASE_URL
 ) || DEFAULT_SUPABASE_URL;
 
 let supabaseApiKey = normalizeEnvValue(
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||
   import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||
-  import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-) || DEFAULT_SUPABASE_PUBLISHABLE_KEY || LEGACY_SUPABASE_ANON_JWT;
+  import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+) || DEFAULT_SUPABASE_ANON_KEY;
 
 if (!isValidSupabaseApiKey(supabaseApiKey)) {
-  console.warn('[Supabase] Invalid Supabase API key detected, falling back to publishable key');
-  supabaseApiKey = DEFAULT_SUPABASE_PUBLISHABLE_KEY;
+  console.warn('[Supabase] Invalid Supabase API key detected, falling back to anon JWT key');
+  supabaseApiKey = DEFAULT_SUPABASE_ANON_KEY;
 }
 
 if (!supabaseUrl || !supabaseApiKey) {

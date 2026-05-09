@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { trackEvent } from '../hooks/useTrackEvent';
+import { ensureHttps } from '../lib/utils';
 import type { HomeFeedBanner } from '../types/homepage';
 
 /**
@@ -79,6 +80,12 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners: externalBanner
     [i18n.language]
   );
 
+  // 封装一个安全版本，自动将 HTTP 升级为 HTTPS
+  const getSafeImageUrl = useCallback(
+    (banner: Banner): string => ensureHttps(getLocalizedImageUrl(banner)),
+    [getLocalizedImageUrl]
+  );
+
   // 只预加载当前和下一张图片
   const preloadAdjacentImages = useCallback(
     (index: number) => {
@@ -97,11 +104,11 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners: externalBanner
         const img = new Image();
         const banner = banners[i];
         if (banner) {
-          img.src = getLocalizedImageUrl(banner);
+          img.src = getSafeImageUrl(banner);
         }
       });
     },
-    [banners, getLocalizedImageUrl]
+    [banners, getSafeImageUrl]
   );
 
   // 首次加载时预加载前两张图片
@@ -112,13 +119,13 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners: externalBanner
       const img = new Image();
       img.onload = () => setImagesLoaded(true);
       img.onerror = () => setImagesLoaded(true);
-      img.src = getLocalizedImageUrl(banners[0]);
+      img.src = getSafeImageUrl(banners[0]);
 
       // 2秒超时强制显示
       const timeout = setTimeout(() => setImagesLoaded(true), 2000);
       return () => clearTimeout(timeout);
     }
-  }, [banners, getLocalizedImageUrl, preloadAdjacentImages]);
+  }, [banners, getSafeImageUrl, preloadAdjacentImages]);
 
   // 语言变化时重置预加载状态
   useEffect(() => {
@@ -192,7 +199,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners: externalBanner
       {activeBannerIndices.map((index) => {
         const banner = banners[index];
         const isActive = index === currentIndex;
-        const imageUrl = getLocalizedImageUrl(banner);
+        const imageUrl = getSafeImageUrl(banner);
 
         return (
           <div

@@ -18,6 +18,7 @@ import { useSupabase } from '../contexts/SupabaseContext';
 import { useUser } from '../contexts/UserContext';
 import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper';
 import { staleTimes } from '../lib/react-query';
+import { ensureHttps } from '../lib/utils';
 
 // B2B 每页商品数量常量
 export const B2B_PAGE_SIZE = 20;
@@ -142,8 +143,8 @@ export function useB2BHomeFeed(page: number = 0, categoryId?: string) {
         return {
           id: d.product_id || item.item_id || d.id,
           name_i18n: d.name_i18n || {},
-          image_url: d.image_url || null,
-          image_urls: d.image_urls || null,
+          image_url: ensureHttps(d.image_url) || null,
+          image_urls: (d.image_urls || []).map((u: string) => ensureHttps(u)),
           wholesale_price: Number(d.wholesale_price) || 0,
           retail_price: d.retail_price ? Number(d.retail_price) : null,
           min_order_quantity: d.min_order_quantity || 1,
@@ -225,8 +226,8 @@ export function useB2BProductDetail(productId: string) {
         details_i18n: p.details_i18n || {},
         specifications_i18n: p.specifications_i18n || {},
         material_i18n: p.material_i18n || {},
-        image_url: p.image_url || null,
-        image_urls: p.image_urls || null,
+        image_url: ensureHttps(p.image_url) || null,
+        image_urls: (p.image_urls || []).map((u: string) => ensureHttps(u)),
         wholesale_price: Number(p.wholesale_price) || 0,
         retail_price: p.retail_price ? Number(p.retail_price) : null,
         min_order_quantity: p.min_order_quantity || 1,
@@ -265,8 +266,8 @@ export function useB2BSearch(keyword: string) {
       return rawProducts.map((d: any) => ({
         id: d.product_id || d.id,
         name_i18n: d.name_i18n || {},
-        image_url: d.image_url || null,
-        image_urls: d.image_urls || null,
+        image_url: ensureHttps(d.image_url) || null,
+        image_urls: (d.image_urls || []).map((u: string) => ensureHttps(u)),
         wholesale_price: Number(d.wholesale_price) || 0,
         retail_price: d.retail_price ? Number(d.retail_price) : null,
         min_order_quantity: d.min_order_quantity || 1,
@@ -305,7 +306,7 @@ export function useB2BCart() {
         product_id: item.product_id,
         quantity: item.quantity,
         product_name: item.product?.name || '',
-        product_image: item.product?.image_url || null,
+        product_image: ensureHttps(item.product?.image_url) || null,
         wholesale_price: Number(item.product?.wholesale_price) || 0,
         unit_measure: item.product?.unit_measure || '件',
         stock: item.product?.stock || 0,

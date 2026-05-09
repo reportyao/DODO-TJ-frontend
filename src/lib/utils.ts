@@ -5,6 +5,23 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * 将 HTTP 图片 URL 升级为 HTTPS，防止混合内容被浏览器阻止。
+ * 现代浏览器（Chrome 80+）会自动升级，但部分手机浏览器（如旧版 Android WebView、
+ * Telegram Mini App 内置浏览器）不支持自动升级，导致图片加载失败。
+ * 
+ * @param url 原始图片 URL
+ * @returns HTTPS 版本的 URL，如果输入为空则返回空字符串
+ */
+export function ensureHttps(url: string | null | undefined): string {
+  if (!url) return '';
+  // 将 http:// 开头的 URL 升级为 https://
+  if (url.startsWith('http://')) {
+    return url.replace('http://', 'https://');
+  }
+  return url;
+}
+
 // 货币格式化
 export function formatCurrency(currency: string, amount: number | undefined | null): string {
   const safeAmount = typeof amount === 'number' ? amount : 0;

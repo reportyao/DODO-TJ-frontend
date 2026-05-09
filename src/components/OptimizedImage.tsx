@@ -1,4 +1,5 @@
 import React, { useState, useCallback, CSSProperties } from 'react';
+import { ensureHttps } from '../lib/utils';
 
 interface OptimizedImageProps {
   src: string;
@@ -114,7 +115,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       )}
 
       <img
-        src={src}
+        src={ensureHttps(src)}
         alt={alt}
         srcSet={srcSet}
         sizes={sizes}

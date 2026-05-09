@@ -1,5 +1,6 @@
 import React, { useState, useCallback, CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ensureHttps } from '../lib/utils';
 
 interface LazyImageProps {
   src: string;
@@ -18,11 +19,11 @@ interface LazyImageProps {
 }
 
 /**
- * 图片组件 v5 - 移除自定义懒加载，回归浏览器原生 loading="lazy"
+ * 图片组件 v6 - 自动将 HTTP URL 升级为 HTTPS，防止混合内容被浏览器阻止
  *
- * 核心修复（v5）：
- * 1. 移除 IntersectionObserver 自定义懒加载逻辑，使用浏览器原生 loading="lazy"
- * 2. 移除 getOptimizedImageUrl 图片变换（之前 width*2 导致缩略图被放大）
+ * 核心修复（v6）：
+ * 1. 自动将 http:// 图片 URL 升级为 https://，修复新手机/Telegram Mini App 图片无法加载
+ * 2. 保持 v5 的浏览器原生 loading="lazy" 策略
  * 3. 容器不再强制设置 position:relative，由外部控制布局
  * 4. img 样式由外部 style 控制，组件只负责加载状态和错误处理
  *
@@ -116,10 +117,14 @@ export const LazyImage: React.FC<LazyImageProps> = ({
     bottom: 0,
   };
 
+  // 将 HTTP URL 升级为 HTTPS，防止混合内容被浏览器阻止
+  // 部分手机浏览器（旧版 Android WebView、Telegram Mini App）不会自动升级
+  const safeSrc = ensureHttps(src);
+
   return (
     <div className={containerClassName} style={containerStyle}>
       <img
-        src={src}
+        src={safeSrc}
         alt={alt}
         loading={priority === 'high' ? 'eager' : 'lazy'}
         decoding="async"

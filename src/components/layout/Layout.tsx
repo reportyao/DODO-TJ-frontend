@@ -27,9 +27,8 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // 不需要底部导航的页面：身份验证/商品详情/结算等。
   // 这些页面贴底都有自己的 CTA 按钮，再叠加全局导航会干扰转化。
+  // 登录/注册页面保留底部导航，方便用户切换页面
   const HIDDEN_NAV_PREFIXES = [
-    '/login',
-    '/register',
     '/forgot-password',
     '/reset-password',
     '/b2b/product/',
