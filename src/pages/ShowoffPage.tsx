@@ -412,7 +412,7 @@ const ShowoffPage: React.FC = () => {
             <picture>
               <source srcSet="/brand/empty_orders.webp" type="image/webp" />
               <img 
-                src="/brand/empty_orders.png" 
+                src="/brand/empty_orders.webp" 
                 alt="No posts"
                 className="w-32 h-32 mx-auto mb-4 opacity-80"
                 style={{ objectFit: 'contain' }}

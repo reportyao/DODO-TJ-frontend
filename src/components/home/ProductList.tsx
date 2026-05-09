@@ -218,7 +218,7 @@ export const ProductList: React.FC<ProductListProps> = ({
           <picture>
             <source srcSet="/brand/empty_cart.webp" type="image/webp" />
             <img 
-              src="/brand/empty_cart.png" 
+              src="/brand/empty_cart.webp" 
               alt="No items"
               className="w-32 h-32 mx-auto mb-3 opacity-80"
               style={{ objectFit: 'contain' }}

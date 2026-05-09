@@ -338,7 +338,7 @@ const OrderPage: React.FC = () => {
             <picture>
               <source srcSet="/brand/empty_orders.webp" type="image/webp" />
               <img 
-                src="/brand/empty_orders.png" 
+                src="/brand/empty_orders.webp" 
                 alt="No orders"
                 className="w-36 h-36 mx-auto mb-4 opacity-80"
                 style={{ objectFit: 'contain' }}

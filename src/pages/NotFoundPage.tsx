@@ -11,7 +11,7 @@ export default function NotFoundPage() {
       <picture>
         <source srcSet="/brand/empty_cart.webp" type="image/webp" />
         <img 
-          src="/brand/empty_cart.png" 
+          src="/brand/empty_cart.webp" 
           alt="Page not found"
           className="w-40 h-40 mb-4 opacity-80"
           style={{ objectFit: 'contain' }}

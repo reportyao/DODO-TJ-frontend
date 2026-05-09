@@ -122,7 +122,7 @@ const RegisterPage: React.FC = () => {
           <picture>
             <source srcSet="/dodo-logo.webp" type="image/webp" />
             <img 
-              src="/dodo-logo.png" 
+              src="/dodo-logo.webp" 
               alt="DODO Logo"
               className="w-24 h-24 mx-auto mb-3 drop-shadow-lg"
               style={{ objectFit: 'contain' }}

@@ -267,7 +267,7 @@ const MyTicketsPage: React.FC = () => {
             <picture>
               <source srcSet="/brand/empty_cart.webp" type="image/webp" />
               <img 
-                src="/brand/empty_cart.png" 
+                src="/brand/empty_cart.webp" 
                 alt="No tickets"
                 className="w-36 h-36 mx-auto mb-4 opacity-80"
                 style={{ objectFit: 'contain' }}

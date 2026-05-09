@@ -368,7 +368,7 @@ const WalletPage: React.FC = () => {
                   <picture>
                     <source srcSet="/brand/empty_wallet.webp" type="image/webp" />
                     <img 
-                      src="/brand/empty_wallet.png" 
+                      src="/brand/empty_wallet.webp" 
                       alt="No transactions"
                       className="w-32 h-32 mx-auto mb-3 opacity-80"
                       style={{ objectFit: 'contain' }}

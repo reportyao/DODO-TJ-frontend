@@ -76,7 +76,7 @@ export async function uploadImage(
     const shouldCompress =
       compress &&
       file.type.startsWith('image/') &&
-      file.size > 250 * 1024 &&
+      file.size > 100 * 1024 &&
       !file.type.includes('webp')
 
     // 尝试压缩图片（如果启用且是图片类型）
@@ -88,8 +88,8 @@ export async function uploadImage(
         
         // 【弱网自适应】根据网络状态调整压缩参数
         const networkQuality = getNetworkQuality()
-        const maxSizeMB = networkQuality === 'slow' ? 0.5 : 1  // 弱网时压缩到0.5MB
-        const maxDimension = networkQuality === 'slow' ? 1280 : 1920  // 弱网时降低分辨率
+        const maxSizeMB = 0.3  // 极限压缩: 最大300KB
+        const maxDimension = 1200  // 极限压缩: 最大1200px（电商场景足够）
         
         const compressedFile = await imageCompression(file, {
           maxSizeMB,

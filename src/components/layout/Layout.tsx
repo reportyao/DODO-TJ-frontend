@@ -101,7 +101,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 <picture>
                   <source srcSet="/dodo-logo.webp" type="image/webp" />
                   <img 
-                    src="/dodo-logo.png" 
+                    src="/dodo-logo.webp" 
                     alt="DODO Logo"
                     style={{ width: '36px', height: '36px', objectFit: 'contain', maxWidth: 'none' }}
                   />
