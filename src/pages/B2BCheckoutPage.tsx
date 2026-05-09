@@ -13,7 +13,7 @@
  * 路由: /b2b/checkout
  * 依赖: useB2BCart, useWholesalerProfile, b2b-checkout Edge Function
  */
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -53,11 +53,13 @@ export default function B2BCheckoutPage() {
   const [deliveryNote, setDeliveryNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [addressEditing, setAddressEditing] = useState(false);
-
+  const checkoutIdempotencyKeyRef = useRef<string | null>(null);
 
   // 初始化地址：优先使用批发商注册的配送地址；没有批发商资料时也允许用户手动填写。
   useEffect(() => {
-    if (profileLoading) return;
+    if (profileLoading) {
+      return;
+    }
 
     if (wholesalerProfile?.delivery_address && !deliveryAddress) {
       setDeliveryAddress(wholesalerProfile.delivery_address);
@@ -101,16 +103,27 @@ export default function B2BCheckoutPage() {
 
     setSubmitting(true);
     try {
+      if (!checkoutIdempotencyKeyRef.current) {
+        checkoutIdempotencyKeyRef.current = `b2b-checkout-${user.id}-${Date.now()}-${crypto.randomUUID()}`;
+      }
+
+      const idempotencyKey = checkoutIdempotencyKeyRef.current;
       const { data, error } = await supabase.functions.invoke('b2b-checkout', {
         method: 'POST',
         body: {
           delivery_address: deliveryAddress.trim(),
           delivery_note: deliveryNote.trim() || null,
+          idempotency_key: idempotencyKey,
         },
-        headers: { 'x-session-token': sessionToken },
+        headers: {
+          'x-session-token': sessionToken,
+          'Idempotency-Key': idempotencyKey,
+        },
       });
 
-      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (error) {
+        throw new Error(await extractEdgeFunctionError(error));
+      }
 
       if (data?.success) {
         const createdOrder = data.order || {};
@@ -120,6 +133,8 @@ export default function B2BCheckoutPage() {
 
         // 下单成功后进入订单列表页，而不是留在已清空的结算页。
         // 订单列表保留全局底部导航，并展示成功提示与新订单高亮，用户可以继续进货或查看订单状态。
+        checkoutIdempotencyKeyRef.current = null;
+
         navigate(`/b2b/orders?created=${encodeURIComponent(createdOrder.id || '')}`, {
           replace: true,
           state: {
@@ -136,8 +151,9 @@ export default function B2BCheckoutPage() {
       } else {
         throw new Error(data?.error || t('b2b.orderFailed', '下单失败'));
       }
-    } catch (err: any) {
-      toast.error(err.message || t('b2b.orderFailed', '下单失败，请重试'));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : t('b2b.orderFailed', '下单失败，请重试');
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
