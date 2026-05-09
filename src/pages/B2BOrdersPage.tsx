@@ -16,10 +16,10 @@
  * 路由: /b2b/orders
  * 依赖: b2b-orders Edge Function (POST action=list/detail/cancel)
  */
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeftIcon, ChevronDownIcon, ChevronUpIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSupabase } from '../contexts/SupabaseContext';
 import { useUser } from '../contexts/UserContext';
@@ -110,12 +110,20 @@ function normalizeStatus(dbStatus: string): string {
 export default function B2BOrdersPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { supabase } = useSupabase();
   const { user, sessionToken } = useUser();
   const queryClient = useQueryClient();
   const lang = i18n.language || 'ru';
+  const checkoutState = location.state as {
+    checkoutSuccess?: boolean;
+    order?: Partial<B2BOrder>;
+  } | null;
+  const createdOrderId = searchParams.get('created') || checkoutState?.order?.id || null;
+  const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(Boolean(checkoutState?.checkoutSuccess || createdOrderId));
   const [activeTab, setActiveTab] = useState<string>('all');
-  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(createdOrderId);
   const [orderDetails, setOrderDetails] = useState<Record<string, B2BOrderDetail>>({});
   const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
   const [cancellingOrder, setCancellingOrder] = useState<string | null>(null);
@@ -158,6 +166,20 @@ export default function B2BOrdersPage() {
     enabled: !!user?.id && !!sessionToken,
     staleTime: 1000 * 60 * 2,
   });
+
+
+  const createdOrder = useMemo(() => {
+    if (!createdOrderId) return null;
+    return orders?.find((order) => order.id === createdOrderId) || checkoutState?.order || null;
+  }, [checkoutState?.order, createdOrderId, orders]);
+
+  useEffect(() => {
+    if (!createdOrderId || !orders?.length) return;
+    const exists = orders.some((order) => order.id === createdOrderId);
+    if (exists) {
+      setExpandedOrder(createdOrderId);
+    }
+  }, [createdOrderId, orders]);
 
   // 获取订单详情（懒加载）
   const fetchOrderDetail = async (orderId: string) => {
@@ -272,6 +294,77 @@ export default function B2BOrdersPage() {
         <h1 className="text-base font-semibold text-gray-900">{t('b2b.myOrders', '我的订单')}</h1>
       </div>
 
+      {/* 下单成功回流提示 */}
+      {showCheckoutSuccess && (
+        <div className="px-4 pt-3">
+          <div className="rounded-2xl border border-green-100 bg-green-50 p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-green-100">
+                <CheckCircleIcon className="h-5 w-5 text-green-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-semibold text-gray-900">
+                      {t('b2b.orderSuccess', '下单成功！')}
+                    </h2>
+                    <p className="mt-1 text-xs leading-5 text-gray-600">
+                      {t('b2b.orderSubmittedWaiting', '订单已提交，等待配送')}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCheckoutSuccess(false);
+                      if (searchParams.has('created')) {
+                        const nextParams = new URLSearchParams(searchParams);
+                        nextParams.delete('created');
+                        setSearchParams(nextParams, { replace: true });
+                      }
+                    }}
+                    className="-mr-1 -mt-1 rounded-full px-2 py-1 text-xs font-medium text-green-700 active:bg-green-100"
+                  >
+                    {t('b2b.done', '完成')}
+                  </button>
+                </div>
+
+                {createdOrder && (
+                  <div className="mt-3 rounded-xl bg-white/80 p-3 text-xs text-gray-600">
+                    <div className="flex justify-between gap-3">
+                      <span>{t('b2b.orderNumber', '订单号')}</span>
+                      <span className="truncate font-mono text-gray-900">{createdOrder.order_number}</span>
+                    </div>
+                    <div className="mt-1.5 flex justify-between gap-3">
+                      <span>{t('b2b.orderAmount', '订单金额')}</span>
+                      <span className="font-semibold text-primary">TJS {Number(createdOrder.total_amount || 0).toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/b2b')}
+                    className="flex-1 rounded-xl border border-green-200 bg-white py-2 text-xs font-semibold text-green-700 active:bg-green-50"
+                  >
+                    {t('b2b.continueShopping', '继续进货')}
+                  </button>
+                  {createdOrderId && (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedOrder(createdOrderId)}
+                      className="flex-1 rounded-xl bg-primary py-2 text-xs font-semibold text-white active:bg-primary-dark"
+                    >
+                      {t('b2b.viewOrder', '查看订单')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Status Tabs */}
       <div className="bg-white border-b border-gray-100 px-2 py-2 overflow-x-auto">
         <div className="flex gap-1 min-w-max">
@@ -315,7 +408,13 @@ export default function B2BOrdersPage() {
             const canCancel = displayStatus === 'processing';
 
             return (
-              <div key={order.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div
+                key={order.id}
+                className={cn(
+                  'bg-white rounded-xl shadow-sm overflow-hidden transition-all',
+                  createdOrderId === order.id && 'ring-2 ring-primary/40 shadow-md'
+                )}
+              >
                 {/* Order Header */}
                 <div
                   className="px-4 py-3 flex items-center justify-between cursor-pointer active:bg-gray-50 transition-colors"

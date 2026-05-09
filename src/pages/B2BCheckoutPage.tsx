@@ -36,72 +36,6 @@ import { cn } from '../lib/utils';
 // ============================================================
 // 订单成功弹窗组件
 // ============================================================
-interface OrderSuccessModalProps {
-  isOpen: boolean;
-  orderNumber: string;
-  totalAmount: number;
-  onViewOrder: () => void;
-  onContinueShopping: () => void;
-}
-
-function OrderSuccessModal({ isOpen, orderNumber, totalAmount, onViewOrder, onContinueShopping }: OrderSuccessModalProps) {
-  const { t } = useTranslation();
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl p-6 mx-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-300">
-        {/* Success Icon */}
-        <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-            <CheckCircleIcon className="w-10 h-10 text-green-600" />
-          </div>
-        </div>
-
-        {/* Title */}
-        <h2 className="text-lg font-bold text-gray-900 text-center mb-1">
-          {t('b2b.orderSuccess') || '下单成功！'}
-        </h2>
-        <p className="text-sm text-gray-500 text-center mb-4">
-          {t('b2b.orderSubmittedWaiting') || '订单已提交，等待配送'}
-        </p>
-
-        {/* Order Info */}
-        <div className="bg-gray-50 rounded-xl p-3 mb-5 space-y-1.5">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">{t('b2b.orderNumber') || '订单号'}</span>
-            <span className="font-mono text-gray-900 text-xs">{orderNumber}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">{t('b2b.orderAmount') || '订单金额'}</span>
-            <span className="font-bold text-primary">TJS {totalAmount.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">{t('b2b.paymentMethod') || '支付方式'}</span>
-            <span className="text-gray-700">{t('b2b.codPayment') || '货到付款'}</span>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="space-y-2.5">
-          <button
-            onClick={onViewOrder}
-            className="w-full py-3 bg-primary text-white rounded-xl text-sm font-semibold active:bg-primary-dark transition-colors"
-          >
-            {t('b2b.viewOrder') || '查看订单'}
-          </button>
-          <button
-            onClick={onContinueShopping}
-            className="w-full py-3 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium active:bg-gray-50 transition-colors"
-          >
-            {t('b2b.continueShopping') || '继续进货'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ============================================================
 // 主页面组件
 // ============================================================
@@ -120,10 +54,6 @@ export default function B2BCheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [addressEditing, setAddressEditing] = useState(false);
 
-  // 订单成功弹窗状态
-  const [orderSuccess, setOrderSuccess] = useState(false);
-  const [successOrderNumber, setSuccessOrderNumber] = useState('');
-  const [successTotalAmount, setSuccessTotalAmount] = useState(0);
 
   // 初始化地址：优先使用批发商注册的配送地址；没有批发商资料时也允许用户手动填写。
   useEffect(() => {
@@ -183,12 +113,26 @@ export default function B2BCheckoutPage() {
       if (error) throw new Error(await extractEdgeFunctionError(error));
 
       if (data?.success) {
-        // 清空购物车缓存
+        const createdOrder = data.order || {};
+
+        // b2b-checkout 服务端已经完成购物车清空；这里仅触发缓存刷新，避免用户返回时看到旧购物车。
         clearCart.mutate();
-        // 显示成功弹窗
-        setSuccessOrderNumber(data.order?.order_number || '');
-        setSuccessTotalAmount(data.order?.total_amount || summary.totalAmount);
-        setOrderSuccess(true);
+
+        // 下单成功后进入订单列表页，而不是留在已清空的结算页。
+        // 订单列表保留全局底部导航，并展示成功提示与新订单高亮，用户可以继续进货或查看订单状态。
+        navigate(`/b2b/orders?created=${encodeURIComponent(createdOrder.id || '')}`, {
+          replace: true,
+          state: {
+            checkoutSuccess: true,
+            order: {
+              id: createdOrder.id,
+              order_number: createdOrder.order_number,
+              total_amount: createdOrder.total_amount ?? summary.totalAmount,
+              item_count: createdOrder.item_count ?? summary.totalItems,
+              total_quantity: createdOrder.total_quantity ?? summary.totalQuantity,
+            },
+          },
+        });
       } else {
         throw new Error(data?.error || t('b2b.orderFailed', '下单失败'));
       }
@@ -422,15 +366,6 @@ export default function B2BCheckoutPage() {
           </button>
         </div>
       </div>
-
-      {/* 订单成功弹窗 */}
-      <OrderSuccessModal
-        isOpen={orderSuccess}
-        orderNumber={successOrderNumber}
-        totalAmount={successTotalAmount}
-        onViewOrder={() => navigate('/b2b/orders')}
-        onContinueShopping={() => navigate('/b2b')}
-      />
     </div>
   );
 }
