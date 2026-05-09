@@ -296,7 +296,7 @@ export function useB2BCart() {
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
         method: 'POST',
         body: { action: 'get' },
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        headers: { 'x-session-token': sessionToken },
       });
       if (error) throw new Error(await extractEdgeFunctionError(error));
       // Edge Function 返回: { success, cart: [{cart_id, product_id, quantity, subtotal, product: {...}, is_available}], total_amount, item_count }
@@ -345,7 +345,7 @@ export function useB2BCartMutations() {
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
         method: 'POST',
         body: { action: 'add', product_id: productId, quantity },
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        headers: { 'x-session-token': sessionToken },
       });
       if (error) throw new Error(await extractEdgeFunctionError(error));
       return data;
@@ -363,7 +363,7 @@ export function useB2BCartMutations() {
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
         method: 'POST',
         body: { action: 'update', product_id: productId, quantity },
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        headers: { 'x-session-token': sessionToken },
       });
       if (error) throw new Error(await extractEdgeFunctionError(error));
       return data;
@@ -380,7 +380,7 @@ export function useB2BCartMutations() {
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
         method: 'POST',
         body: { action: 'remove', product_id: productId },
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        headers: { 'x-session-token': sessionToken },
       });
       if (error) throw new Error(await extractEdgeFunctionError(error));
       return data;
@@ -394,7 +394,7 @@ export function useB2BCartMutations() {
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
         method: 'POST',
         body: { action: 'clear' },
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        headers: { 'x-session-token': sessionToken },
       });
       if (error) throw new Error(await extractEdgeFunctionError(error));
       return data;

@@ -142,7 +142,7 @@ export default function B2BOrdersPage() {
           page: 1,
           page_size: 50,
         },
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        headers: { 'x-session-token': sessionToken },
       });
 
       if (error) throw new Error(await extractEdgeFunctionError(error));
@@ -172,7 +172,7 @@ export default function B2BOrdersPage() {
           action: 'detail',
           order_id: orderId,
         },
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        headers: { 'x-session-token': sessionToken },
       });
 
       if (error) throw new Error(await extractEdgeFunctionError(error));

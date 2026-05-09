@@ -177,7 +177,7 @@ export default function B2BCheckoutPage() {
           delivery_address: deliveryAddress.trim(),
           delivery_note: deliveryNote.trim() || null,
         },
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        headers: { 'x-session-token': sessionToken },
       });
 
       if (error) throw new Error(await extractEdgeFunctionError(error));

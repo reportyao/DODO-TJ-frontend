@@ -38,7 +38,7 @@ import { validateSessionWithUser } from '../_shared/auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer, x-session-token',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE, PATCH',
   'Access-Control-Max-Age': '86400',
   'Access-Control-Allow-Credentials': 'false',
@@ -347,8 +347,13 @@ serve(async (req: Request) => {
   }
 
   try {
+    // Supabase Edge Runtime 会在进入函数代码前把 Authorization 当作 Supabase JWT 校验。
+    // 本项目使用 user_sessions 表里的自定义会话令牌，因此客户端必须通过 x-session-token 传递，
+    // 让 Authorization 保持 supabase-js 默认的 anon JWT，避免 Relay 层直接返回 401。
+    // Authorization 仅作为 verify_jwt=false 环境下的旧版本兼容兜底。
+    const customSessionHeader = req.headers.get('x-session-token') ?? ''
     const authHeader = req.headers.get('Authorization') ?? ''
-    const sessionToken = authHeader.replace('Bearer ', '').trim()
+    const sessionToken = (customSessionHeader || authHeader.replace(/^Bearer\s+/i, '')).trim()
 
     if (!sessionToken) {
       return jsonResponse({ success: false, error: '未授权', error_code: 'ERR_MISSING_TOKEN' }, 401)

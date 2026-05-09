@@ -68,7 +68,7 @@ if (!supabaseUrl || !supabaseApiKey) {
 }
 
 // 导出配置供其他模块使用。
-// SUPABASE_ANON_KEY 保持旧名称以兼容既有手写 fetch 调用；实际值可能是新版 publishable key。
+// SUPABASE_ANON_KEY 保持旧名称以兼容既有手写 fetch 调用；实际值必须是 JWT 格式 anon key。
 export const SUPABASE_URL = supabaseUrl;
 export const SUPABASE_API_KEY = supabaseApiKey;
 export const SUPABASE_ANON_KEY = supabaseApiKey;
