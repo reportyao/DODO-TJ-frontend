@@ -42,25 +42,46 @@ interface B2BOrder {
   estimated_delivery_date: string | null;
   created_at: string;
   updated_at: string;
+  // P0-7 新增安全字段
+  display_status?: string;
+  fulfillment_status?: string;
+  display_financial_status?: string;
+  financial_status?: string;
+  receivable_total?: number;
+  paid_total?: number;
+  balance_due?: number;
 }
 
 interface B2BOrderDetail extends B2BOrder {
   delivery_note: string | null;
   payment_method: string;
-  admin_note: string | null;
-  confirmed_at: string | null;
   items: Array<{
     id: string;
     product_id: string;
     quantity: number;
     unit_price: number;
     subtotal: number;
+    // P0-7 新增结构化字段
+    product_name_zh?: string;
+    product_name_original?: string;
+    sku?: string;
+    image_url?: string;
+    unit_measure?: string;
+    display_item_status?: string;
+    // 兼容旧字段
     snapshot_data: {
       name?: string;
       name_i18n?: { zh?: string; ru?: string; tg?: string };
       image_url?: string;
       unit_measure?: string;
     } | null;
+  }>;
+  payments?: Array<{
+    id: string;
+    amount: number;
+    display_payment_method?: string;
+    display_status?: string;
+    created_at: string;
   }>;
 }
 
@@ -82,10 +103,16 @@ const STATUS_COLORS: Record<string, string> = {
  * 获取订单项的本地化商品名称
  */
 function getItemName(
-  snapshotData: { name?: string; name_i18n?: { zh?: string; ru?: string; tg?: string } } | null,
+  item: { product_name_zh?: string; product_name_original?: string; snapshot_data?: { name?: string; name_i18n?: { zh?: string; ru?: string; tg?: string } } | null },
   lang: string,
   productId: string
 ): string {
+  // P0-7: 优先使用结构化中文名
+  if (item.product_name_zh && lang === 'zh') return item.product_name_zh;
+  if (item.product_name_original) return item.product_name_original;
+  if (item.product_name_zh) return item.product_name_zh;
+  // 兼容旧 snapshot_data
+  const snapshotData = item.snapshot_data;
   if (!snapshotData) return `${productId.slice(0, 8)}`;
   if (snapshotData.name_i18n) {
     const i18n = snapshotData.name_i18n;
@@ -443,7 +470,7 @@ export default function B2BOrdersPage() {
                           {orderDetails[order.id].items?.map((item) => (
                             <div key={item.id} className="flex items-center justify-between text-xs">
                               <span className="text-gray-700 flex-1 truncate">
-                                {getItemName(item.snapshot_data, lang, item.product_id)}
+                                {getItemName(item, lang, item.product_id)}
                               </span>
                               <span className="text-gray-500 mx-2 flex-shrink-0">
                                 x{item.quantity}
@@ -466,10 +493,16 @@ export default function B2BOrdersPage() {
                               <span>{orderDetails[order.id].delivery_note}</span>
                             </div>
                           )}
-                          {orderDetails[order.id].admin_note && (
+                          {/* 付款信息 */}
+                          {orderDetails[order.id].display_financial_status && (
                             <div className="flex items-start gap-1">
-                              <span className="flex-shrink-0">💬</span>
-                              <span className="text-primary-dark">{orderDetails[order.id].admin_note}</span>
+                              <span className="flex-shrink-0">💰</span>
+                              <span className="text-primary-dark">{orderDetails[order.id].display_financial_status}</span>
+                              {orderDetails[order.id].balance_due != null && orderDetails[order.id].balance_due! > 0 && (
+                                <span className="text-red-500 ml-1">
+                                  ({t('b2b.balanceDue', '待付')}: TJS {Number(orderDetails[order.id].balance_due).toFixed(2)})
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>
