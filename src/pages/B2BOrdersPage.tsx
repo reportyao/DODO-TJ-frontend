@@ -5,13 +5,15 @@
  * - 展示批发商的历史订单
  * - 按状态筛选：全部 / 处理中 / 配送中 / 已送达 / 已取消
  * - 点击展开订单详情（懒加载明细）
- * - 处理中的订单支持取消
+ * - 可取消状态的订单支持取消
  * - 完整 i18n 支持
  *
- * 状态流转：
- *   下单 → 处理中(processing/pending) → 配送中(delivering) → 已送达(delivered)
- *                    ↓
- *               已取消(cancelled)  ← 用户主动取消（仅处理中可取消）
+ * 状态流转（基于后端 fulfillment_status 双轨状态机）：
+ *   下单 → pending → confirmed → picking → ready_to_ship → shipping → delivered
+ *                                    ↓
+ *                              cancelled（用户/管理员取消）
+ *
+ * 前端展示使用 Edge Function 返回的 display_status（中文映射）和 fulfillment_status（原始值）
  *
  * 路由: /b2b/orders
  * 依赖: b2b-orders Edge Function (POST action=list/detail/cancel)
@@ -42,11 +44,11 @@ interface B2BOrder {
   estimated_delivery_date: string | null;
   created_at: string;
   updated_at: string;
-  // P0-7 新增安全字段
-  display_status?: string;
-  fulfillment_status?: string;
-  display_financial_status?: string;
-  financial_status?: string;
+  // P0-7 新增安全字段（由 Edge Function toSafeOrder 返回）
+  display_status: string;
+  fulfillment_status: string;
+  display_financial_status: string;
+  financial_status: string;
   receivable_total?: number;
   paid_total?: number;
   balance_due?: number;
@@ -86,13 +88,46 @@ interface B2BOrderDetail extends B2BOrder {
 }
 
 // ============================================================
-// 状态配置 — 简化为4个有效状态
-// 数据库中 pending 和 processing 在前端统一显示为"处理中"
+// 状态配置
+// 使用 fulfillment_status 进行筛选，display_status 进行展示
 // ============================================================
 const STATUS_TABS = ['all', 'processing', 'delivering', 'delivered', 'cancelled'] as const;
 
+/**
+ * 将 fulfillment_status 映射为前端 Tab 分类
+ * 后端有 pending/confirmed/picking/shortage/ready_to_ship/shipping/delivered/cancelled 等精细状态
+ * 前端 Tab 归类为 4 个大类：processing / delivering / delivered / cancelled
+ */
+function mapFulfillmentToTab(fulfillmentStatus: string): string {
+  switch (fulfillmentStatus) {
+    case 'pending':
+    case 'confirmed':
+    case 'picking':
+    case 'shortage':
+    case 'ready_to_ship':
+      return 'processing';
+    case 'shipping':
+      return 'delivering';
+    case 'delivered':
+    case 'closed':
+      return 'delivered';
+    case 'cancelled':
+    case 'returned':
+      return 'cancelled';
+    default:
+      return 'processing';
+  }
+}
+
+/**
+ * 判断订单是否允许用户取消
+ * 基于后端 fulfillment_status，与 b2b_cancel_order_tx RPC 的校验逻辑一致
+ */
+function canUserCancel(fulfillmentStatus: string): boolean {
+  return ['pending', 'confirmed'].includes(fulfillmentStatus);
+}
+
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-primary/10 text-primary-dark',
   processing: 'bg-primary/10 text-primary-dark',
   delivering: 'bg-purple-100 text-purple-700',
   delivered: 'bg-green-100 text-green-700',
@@ -101,34 +136,28 @@ const STATUS_COLORS: Record<string, string> = {
 
 /**
  * 获取订单项的本地化商品名称
+ * 优先使用结构化字段，仅在缺失时降级到 snapshot_data
  */
 function getItemName(
   item: { product_name_zh?: string; product_name_original?: string; snapshot_data?: { name?: string; name_i18n?: { zh?: string; ru?: string; tg?: string } } | null },
   lang: string,
   productId: string
 ): string {
-  // P0-7: 优先使用结构化中文名
-  if (item.product_name_zh && lang === 'zh') return item.product_name_zh;
+  // 优先使用结构化字段
+  if (lang === 'zh' && item.product_name_zh) return item.product_name_zh;
   if (item.product_name_original) return item.product_name_original;
   if (item.product_name_zh) return item.product_name_zh;
-  // 兼容旧 snapshot_data
+
+  // 降级到旧 snapshot_data
   const snapshotData = item.snapshot_data;
-  if (!snapshotData) return `${productId.slice(0, 8)}`;
+  if (!snapshotData) return productId.slice(0, 8);
+
   if (snapshotData.name_i18n) {
     const i18n = snapshotData.name_i18n;
     return i18n[lang as keyof typeof i18n] || i18n.ru || i18n.zh || i18n.tg || snapshotData.name || productId.slice(0, 8);
   }
-  return snapshotData.name || productId.slice(0, 8);
-}
 
-/**
- * 将数据库状态映射为前端显示状态
- * pending 和 processing 统一显示为 processing
- */
-function normalizeStatus(dbStatus: string): string {
-  if (dbStatus === 'pending') return 'processing';
-  if (dbStatus === 'paid') return 'delivered'; // paid 也视为已完成
-  return dbStatus;
+  return snapshotData.name || productId.slice(0, 8);
 }
 
 // ============================================================
@@ -183,11 +212,11 @@ export default function B2BOrdersPage() {
       if (error) throw new Error(await extractEdgeFunctionError(error));
       const allOrders: B2BOrder[] = data?.orders || [];
 
-      // 客户端筛选状态（pending 和 processing 统一归类为 processing）
+      // 基于 fulfillment_status 进行 Tab 筛选
       if (activeTab === 'all') return allOrders;
       return allOrders.filter((o) => {
-        const normalized = normalizeStatus(o.status);
-        return normalized === activeTab;
+        const tabCategory = mapFulfillmentToTab(o.fulfillment_status || o.status);
+        return tabCategory === activeTab;
       });
     },
     enabled: !!user?.id && !!sessionToken,
@@ -235,11 +264,10 @@ export default function B2BOrdersPage() {
     }
   };
 
-  // 取消订单（仅处理中状态可取消）
-  // 通过 b2b-orders Edge Function 执行取消，服务端负责权限校验和库存回补
+  // 取消订单
+  // 基于 fulfillment_status 判断是否可取消，与后端 b2b_cancel_order_tx 校验一致
   const handleCancelOrder = async (order: B2BOrder) => {
-    const normalized = normalizeStatus(order.status);
-    if (normalized !== 'processing') {
+    if (!canUserCancel(order.fulfillment_status || order.status)) {
       toast.error(t('b2b.cannotCancelOrder', '只能取消处理中的订单'));
       return;
     }
@@ -399,8 +427,9 @@ export default function B2BOrdersPage() {
           </div>
         ) : (
           orders.map((order) => {
-            const displayStatus = normalizeStatus(order.status);
-            const canCancel = displayStatus === 'processing';
+            // 使用 Edge Function 返回的 display_status 展示，fulfillment_status 判断逻辑
+            const tabCategory = mapFulfillmentToTab(order.fulfillment_status || order.status);
+            const orderCanCancel = canUserCancel(order.fulfillment_status || order.status);
 
             return (
               <div
@@ -420,9 +449,9 @@ export default function B2BOrdersPage() {
                       <span className="text-xs text-gray-500 font-mono">{order.order_number}</span>
                       <span className={cn(
                         'text-[10px] font-medium px-2 py-0.5 rounded-full',
-                        STATUS_COLORS[displayStatus] || 'bg-gray-100 text-gray-600'
+                        STATUS_COLORS[tabCategory] || 'bg-gray-100 text-gray-600'
                       )}>
-                        {STATUS_LABELS[displayStatus] || displayStatus}
+                        {order.display_status || STATUS_LABELS[tabCategory] || tabCategory}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 mt-1">
@@ -507,8 +536,8 @@ export default function B2BOrdersPage() {
                           )}
                         </div>
 
-                        {/* Cancel Button - 仅处理中状态可取消 */}
-                        {canCancel && (
+                        {/* Cancel Button - 基于 fulfillment_status 判断 */}
+                        {orderCanCancel && (
                           <div className="border-t border-gray-200 pt-3 mt-3">
                             <button
                               onClick={(e) => {
