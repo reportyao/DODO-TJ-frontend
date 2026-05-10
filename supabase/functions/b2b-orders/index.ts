@@ -294,88 +294,28 @@ async function handleCancelOrder(userId: string, orderId: string) {
     return jsonResponse({ success: false, error: '订单ID不能为空', error_code: 'ERR_PARAMS_MISSING' }, 400)
   }
 
-  const { data: order, error: orderError } = await supabase
-    .from('b2b_orders')
-    .select('id, status, fulfillment_status, order_number, user_id')
-    .eq('id', orderId)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (orderError || order === null || order === undefined) {
-    return jsonResponse({ success: false, error: '订单不存在', error_code: 'ERR_ORDER_NOT_FOUND' }, 404)
-  }
-
-  const cancellableStatuses = ['pending', 'processing']
-  const cancellableFulfillment = ['pending', 'confirmed']
-  if (!cancellableStatuses.includes(order.status) && !cancellableFulfillment.includes(order.fulfillment_status || '')) {
-    return jsonResponse({
-      success: false,
-      error: '只能取消待处理或已确认的订单',
-      error_code: 'ERR_INVALID_STATUS',
-    }, 400)
-  }
-
-  const { data: items, error: itemsError } = await supabase
-    .from('b2b_order_items')
-    .select('product_id, quantity')
-    .eq('order_id', orderId)
-
-  if (itemsError) {
-    return jsonResponse({ success: false, error: '获取订单明细失败', error_code: 'ERR_SERVER_ERROR' }, 500)
-  }
-
-  if (items && items.length > 0) {
-    for (const item of items as Array<{ product_id: string; quantity: number }>) {
-      const { data: product } = await supabase
-        .from('inventory_products')
-        .select('id, stock')
-        .eq('id', item.product_id)
-        .maybeSingle()
-
-      if (product) {
-        const stockBefore = Number(product.stock || 0)
-        const stockAfter = stockBefore + Number(item.quantity || 0)
-
-        await supabase
-          .from('inventory_products')
-          .update({
-            stock: stockAfter,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', item.product_id)
-
-        await supabase.from('inventory_transactions').insert({
-          inventory_product_id: item.product_id,
-          transaction_type: 'ADJUSTMENT',
-          quantity: Number(item.quantity || 0),
-          stock_before: stockBefore,
-          stock_after: stockAfter,
-          related_order_id: orderId,
-          notes: 'B2B订单 ' + order.order_number + ' 用户取消，回补库存',
-        })
-      }
-    }
-  }
-
-  const { error: updateError } = await supabase
-    .from('b2b_orders')
-    .update({
-      status: 'cancelled',
-      fulfillment_status: 'cancelled',
-      updated_at: new Date().toISOString(),
+  // P0 Fix: 使用原子事务 RPC 替代非事务化多步写入
+  // 原实现存在数据不一致风险（库存回补与订单状态更新不在同一事务中）
+  const { data: result, error: rpcError } = await supabase
+    .rpc('b2b_cancel_order_tx', {
+      p_user_id: userId,
+      p_order_id: orderId,
+      p_reason: null,
     })
-    .eq('id', orderId)
-    .eq('user_id', userId)
 
-  if (updateError) {
-    console.error('[B2BOrders] 取消订单失败:', updateError)
+  if (rpcError) {
+    console.error('[B2BOrders] 取消订单 RPC 失败:', rpcError)
     return jsonResponse({ success: false, error: '取消订单失败', error_code: 'ERR_SERVER_ERROR' }, 500)
   }
 
-  await supabase
-    .from('b2b_order_items')
-    .update({ item_status: 'cancelled' })
-    .eq('order_id', orderId)
+  const rpcResult = result as Record<string, unknown>
+  if (!rpcResult?.success) {
+    const statusCode = rpcResult?.error_code === 'ERR_ORDER_NOT_FOUND' ? 404
+      : rpcResult?.error_code === 'ERR_INVALID_STATUS' ? 400
+      : rpcResult?.error_code === 'ERR_ORDER_LOCKED' ? 409
+      : 400
+    return jsonResponse(rpcResult, statusCode)
+  }
 
   return jsonResponse({ success: true, message: '订单已取消' })
 }
