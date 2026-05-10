@@ -407,7 +407,6 @@ function buildDirectUnderstandingPrompt(params: {
   return `你是一名服务于塔吉克斯坦电商平台的本地化商品文案专家。现在请基于同一份结构化商品事实，直接生成面向普通用户的${languageName}商品理解文案。
 
 商品名称：${params.productName}
-商品价格：${params.price} сомони
 结构化商品事实：${JSON.stringify(params.semanticFacts)}
 
 请只输出以下 JSON：
@@ -425,7 +424,8 @@ function buildDirectUnderstandingPrompt(params: {
 2. how_to_use 不能空泛，至少自然包含一种使用步骤、参数亮点或场景细节，重点帮助第一次接触这类商品的人快速理解怎么用。
 3. best_scene 必须是具体画面，不要抽象概括。
 4. recommended_badge 要短、顺口、适合做商品角标。${languageRules}
-7. 只输出 JSON，不要附加任何说明。`;
+7. 只输出 JSON，不要附加任何说明。
+8. 【严格禁止】所有字段的文案内容中，绝对不得出现具体价格数字（如"199 сомони"、"TJS 50"等），也不得出现任何货币单位（сомони、TJS、元、$等）。允许使用"价格实惠"、"性价比高"等模糊价值表述，但禁止任何具体金额数字。`;
 }
 
 async function generateDirectUnderstandingByLanguage(params: {
@@ -496,7 +496,6 @@ async function enrichAnalysisWithLocalizedUnderstanding(params: {
   const mergedPrompt = `你是一名服务于塔吉克斯坦电商平台的本地化商品文案专家。现在请基于结构化商品事实，同时生成塔吉克语、俄语和中文三种语言的商品理解文案。
 
 商品名称：${params.productName}
-商品价格：${params.price} сомони
 结构化商品事实：${JSON.stringify(semanticFacts)}
 
 请只输出以下 JSON：
@@ -534,7 +533,8 @@ async function enrichAnalysisWithLocalizedUnderstanding(params: {
 4. 三种语言基于同一事实，但必须分别写出符合该语言用户阅读习惯的自然表达，不能互相直译。
 5. how_to_use 不能空泛，至少包含一种使用步骤、参数亮点或场景细节。
 6. best_scene 必须是具体画面，不要抽象概括。
-7. 只输出 JSON，不要附加任何说明。`;
+7. 只输出 JSON，不要附加任何说明。
+8. 【严格禁止】所有字段的文案内容中，绝对不得出现具体价格数字（如"199 сомони"、"TJS 50"等），也不得出现任何货币单位（сомони、TJS、元、$等）。允许使用"价格实惠"、"性价比高"等模糊价值表述，但禁止任何具体金额数字。`;
 
   const { content: rawContent } = await callDashScopeWithFallback(
     params.apiKey,
@@ -750,8 +750,8 @@ async function callQwenPlus(
 
 请只输出JSON，不要添加任何其他文字说明。
 
-商品分析：${JSON.stringify(analysisJson)}
-售价：${price} сомони`;
+【严格禁止】所有文案字段中，绝对不得出现具体价格数字（如"199 сомони"、"TJS 50"等），也不得出现任何货币单位（сомони、TJS、元、$等）。允许使用"价格实惠"、"性价比高"等模糊价值表述，但禁止任何具体金额数字。
+商品分析：${JSON.stringify(analysisJson)}`;
 
   // 使用 TEXT_MODELS 降级链调用，v3.1: 关闭 thinking + 限制 max_tokens
   const { content: rawContent } = await callDashScopeWithFallback(
@@ -1125,7 +1125,7 @@ async function callQwenMarketingPlanner(
 
 Your plan must be returned as strict JSON, each item containing:
   - "ref_prompt": an English scene prompt (max 40 words) that will be sent to a background-generation model to create a BEAUTIFUL photorealistic lifestyle/studio scene for this product. Focus on camera, lighting, surface, color palette, mood, resolution. NEVER mention any text, letters, logo, watermark, labels, captions, words, or typography — the image must be completely text-free. Backgrounds must be beautiful, premium, varied (studio hero shot, cozy home lifestyle, natural outdoor, luxurious marble, seasonal festive, minimalist pastel, etc.) and NOT ugly/generic.
-  - "ru_caption": ONE short Russian marketing headline (2 to 7 words, <= 40 characters). It must be perfectly spelled Russian (Cyrillic only, NO Chinese/English/emoji, NO transliteration), grammatically correct, natural for Tajik/Russian-speaking shoppers, and describe a single selling point, feature, or product story (e.g. "Тёплая куртка на зиму", "Мягкая и лёгкая ткань", "Подарок для всей семьи", "Цена всего 199 сомони"). Do NOT use brand names you are not sure about. Do NOT promise medical effects. Prefer concrete benefits.
+  - "ru_caption": ONE short Russian marketing headline (2 to 7 words, <= 40 characters). It must be perfectly spelled Russian (Cyrillic only, NO Chinese/English/emoji, NO transliteration), grammatically correct, natural for Tajik/Russian-speaking shoppers, and describe a single selling point, feature, or product story (e.g. "Тёплая куртка на зиму", "Мягкая и лёгкая ткань", "Подарок для всей семьи", "Удобно для всей семьи"). Do NOT use brand names you are not sure about. Do NOT promise medical effects. Do NOT include any specific price numbers or currency units (сомони, TJS, etc.). Prefer concrete benefits.
   - "text_theme": "light" if the caption should be WHITE text on a dark gradient overlay (use when the planned background is light/bright/pastel so white text needs a dark scrim), or "dark" if the caption should be BLACK text on a light gradient overlay (use when background is dark/moody). Choose consistently with your ref_prompt background.
   - "caption_position": "top" | "center" | "bottom" — where the caption is placed so it does NOT cover the product itself.
 
@@ -1139,7 +1139,6 @@ Product analysis: ${JSON.stringify(analysisJson).slice(0, 4000)}${copywriting ? 
 Russian title (for reference, do not copy verbatim): ${copywriting?.title_ru || ""}
 Russian selling bullets (for reference): ${JSON.stringify(copywriting?.bullets_ru || [])}` : ""}
 Product name: ${productName}
-Price: ${price} сомони
 
 JSON schema to output:
 {

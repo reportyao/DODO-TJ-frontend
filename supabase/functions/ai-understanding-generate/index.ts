@@ -359,9 +359,8 @@ function buildSemanticFactsPrompt(params: {
   desc: string;
   specs: string;
   material: string;
-  price: number;
 }) {
-  const { name, desc, specs, material, price } = params;
+  const { name, desc, specs, material } = params;
   return `你是一名面向塔吉克斯坦电商业务的商品理解专家。请抽取一份"语言无关、可复用、可审计"的结构化商品事实，为后续生成塔吉克语和俄语用户文案提供统一依据。
 
 【商品信息】
@@ -369,7 +368,6 @@ function buildSemanticFactsPrompt(params: {
 - 描述：${desc || "未提供"}
 - 规格：${specs || "未提供"}
 - 材质：${material || "未提供"}
-- 价格：${price} сомони
 
 请只输出以下 JSON：
 {
@@ -393,7 +391,8 @@ function buildSemanticFactsPrompt(params: {
 2. 这是事实层，不要写营销文案，不要写多语言。
 3. usage_steps、usage_tips、parameter_highlights 必须尽量具体。
 4. local_context_signals 必须贴近塔吉克斯坦真实生活。
-5. 信息不足时基于图片做谨慎推断，避免明显夸大。`;
+5. 信息不足时基于图片做谨慎推断，避免明显夸大。
+6. 【严格禁止】任何字段中不得出现具体价格数字（如"199 сомони"、"TJS 50"等），也不得出现任何货币单位（сомони、TJS、元、$等）。允许使用"价格实惠"、"性价比高"等模糊表述，但禁止任何具体金额数字。`;
 }
 
 async function generateSemanticFacts(params: {
@@ -403,10 +402,9 @@ async function generateSemanticFacts(params: {
   desc: string;
   specs: string;
   material: string;
-  price: number;
 }): Promise<{ semanticFacts: SemanticFacts; modelUsed: string }> {
-  const { apiKey, imageUrls, name, desc, specs, material, price } = params;
-  const prompt = buildSemanticFactsPrompt({ name, desc, specs, material, price });
+  const { apiKey, imageUrls, name, desc, specs, material } = params;
+  const prompt = buildSemanticFactsPrompt({ name, desc, specs, material });
 
   if (imageUrls.length > 0) {
     // 【关键性能优化】只用首图。多图收益边际递减，但耗时与 token 几乎线性增长。
@@ -447,7 +445,6 @@ async function generateUnifiedLocalizedUnderstanding(params: {
   desc: string;
   specs: string;
   material: string;
-  price: number;
 }) {
   const prompt = `你是一名服务于塔吉克斯坦电商平台的本地化商品文案专家。请基于结构化商品事实，一次性输出塔吉克语、俄语和中文三套商品理解文案。
 
@@ -456,7 +453,6 @@ async function generateUnifiedLocalizedUnderstanding(params: {
 - 描述：${params.desc || "未提供"}
 - 规格：${params.specs || "未提供"}
 - 材质：${params.material || "未提供"}
-- 价格：${params.price} сомони
 
 【结构化商品事实】
 ${JSON.stringify(params.semanticFacts, null, 2)}
@@ -474,9 +470,10 @@ ${JSON.stringify(params.semanticFacts, null, 2)}
 3. zh 仅用于后台辅助理解。
 4. how_to_use 至少自然包含一种使用步骤、参数亮点或场景细节。
 5. best_scene 必须是具体画面，不要抽象概括。
-6. recommended_badge 短而顺口，适合做角标。
+6. recommended_badge 短而顺口，适合做角标，不得含价格信息。
 7. 只输出 JSON，不要附加说明。
-8. 控制每个字段长度，单字段不超过 120 字。`;
+8. 控制每个字段长度，单字段不超过 120 字。
+9. 【严格禁止】所有字段的文案内容中，绝对不得出现具体价格数字（如"199 сомони"、"TJS 50"等），也不得出现任何货币单位（сомони、TJS、元、$等）。允许使用"价格实惠"、"性价比高"、"经济实用"等模糊价值表述，但禁止任何具体金额数字。`;
 
   const { payload, modelUsed } = await callDashscopeWithFallback({
     apiKey: params.apiKey,
@@ -558,7 +555,6 @@ async function runJob(
       product.material_i18n?.zh ||
       product.material ||
       "";
-    const price = Number(product.original_price) || 0;
     const imageUrls: string[] =
       product.image_urls || (product.image_url ? [product.image_url] : []);
 
@@ -578,7 +574,6 @@ async function runJob(
       desc,
       specs,
       material,
-      price,
     });
 
     console.log(
@@ -597,7 +592,6 @@ async function runJob(
       desc,
       specs,
       material,
-      price,
     });
 
     const understandingData = buildLocalizedUnderstanding({
