@@ -31,7 +31,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const HIDDEN_NAV_PREFIXES = [
     '/forgot-password',
     '/reset-password',
-    '/b2b/product/',
+    '/b2b/product',
     '/b2b/checkout',
   ]
   const isHiddenNavRoute = HIDDEN_NAV_PREFIXES.some((p) =>
