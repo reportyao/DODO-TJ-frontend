@@ -5,15 +5,15 @@
  * 功能：
  * - 商品网格展示（批发价、起批量、库存状态）
  * - 搜索框（调用 rpc_b2b_search_products）
- * - 分页加载
+ * - 异步滚动加载
  * - 点击商品跳转详情页
  * - 非批发商用户隐藏价格信息
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { useB2BHomeFeed, useB2BSearch, useWholesalerProfile, B2BProduct, B2B_PAGE_SIZE } from '../hooks/useB2B';
+import { useB2BHomeFeedInfinite, useB2BSearch, useWholesalerProfile, B2BProduct } from '../hooks/useB2B';
 import { LazyImage } from '../components/LazyImage';
 import BannerCarousel from '../components/BannerCarousel';
 import { CategoryGrid } from '../components/home/CategoryGrid';
@@ -120,7 +120,6 @@ export default function B2BHomePage() {
   const navigate = useNavigate();
   const lang = i18n.language || 'ru';
 
-  const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchInput, setSearchInput] = useState('');
@@ -130,9 +129,16 @@ export default function B2BHomePage() {
   const { data: wholesalerProfile } = useWholesalerProfile();
   const isApprovedWholesaler = wholesalerProfile?.status === 'approved';
 
-  // Data hooks - page 和分类参数已正确传递给 useB2BHomeFeed，分类来源继续复用管理后台维护的 homepage_categories。
-  const { data: feedData, isLoading: feedLoading } = useB2BHomeFeed(page, selectedCategoryId);
+  // Data hooks - 首页不再展示分页控件，而是按页异步追加加载，分类来源继续复用管理后台维护的 homepage_categories。
+  const {
+    data: feedData,
+    isLoading: feedLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useB2BHomeFeedInfinite(selectedCategoryId);
   const { data: searchResults, isLoading: searchLoading } = useB2BSearch(searchQuery);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const handleSearch = useCallback(() => {
     const trimmed = searchInput.trim();
@@ -153,7 +159,6 @@ export default function B2BHomePage() {
 
   const handleCategorySelect = useCallback((categoryId: string | undefined) => {
     setSelectedCategoryId(categoryId);
-    setPage(0);
     // 用户选择分类时退出搜索结果，避免分类菜单与商品列表不一致。
     setSearchQuery('');
     setSearchInput('');
@@ -164,11 +169,34 @@ export default function B2BHomePage() {
     navigate(`/b2b/product/${productId}`);
   };
 
+  const firstFeedPage = feedData?.pages?.[0];
+  const feedProducts = useMemo(
+    () => feedData?.pages.flatMap((pageData) => pageData.products) || [],
+    [feedData]
+  );
+
+  useEffect(() => {
+    if (isSearching || !hasNextPage || isFetchingNextPage) return;
+    const node = loadMoreRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '240px 0px' }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [isSearching, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   // Determine which products to display
-  const products = isSearching ? (searchResults || []) : (feedData?.products || []);
-  const totalProducts = isSearching ? (searchResults?.length || 0) : (feedData?.total || 0);
+  const products = isSearching ? (searchResults || []) : feedProducts;
+  const totalProducts = isSearching ? (searchResults?.length || 0) : (firstFeedPage?.total || feedProducts.length);
   const isLoading = isSearching ? searchLoading : feedLoading;
-  const totalPages = Math.max(1, Math.ceil(totalProducts / B2B_PAGE_SIZE));
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -211,14 +239,14 @@ export default function B2BHomePage() {
       {!isSearching && (
         <div className="pt-3">
           <div className="px-3">
-            <BannerCarousel banners={feedData?.banners as any} />
+            <BannerCarousel banners={firstFeedPage?.banners as any} />
           </div>
-          <CategoryGrid
-            categories={(feedData?.categories || []) as any}
-            selectedId={selectedCategoryId}
-            onSelect={handleCategorySelect}
-            isLoading={feedLoading}
-          />
+            <CategoryGrid
+              categories={(firstFeedPage?.categories || []) as any}
+              selectedId={selectedCategoryId}
+              onSelect={handleCategorySelect}
+              isLoading={feedLoading}
+            />
         </div>
       )}
 
@@ -249,26 +277,21 @@ export default function B2BHomePage() {
               ))}
             </div>
 
-            {/* Pagination (only for non-search) */}
-            {!isSearching && totalPages > 1 && (
-              <div className="flex items-center justify-center gap-3 mt-6 mb-4">
-                <button
-                  onClick={() => setPage(p => Math.max(0, p - 1))}
-                  disabled={page === 0 || feedLoading}
-                  className="px-4 py-2 text-sm border rounded-lg disabled:opacity-40"
-                >
-                  ←
-                </button>
-                <span className="text-sm text-gray-500">
-                  {page + 1} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                  disabled={page >= totalPages - 1 || feedLoading}
-                  className="px-4 py-2 text-sm border rounded-lg disabled:opacity-40"
-                >
-                  →
-                </button>
+            {/* Async load sentinel (only for non-search) */}
+            {!isSearching && (
+              <div ref={loadMoreRef} className="flex items-center justify-center mt-6 mb-4 min-h-10">
+                {isFetchingNextPage ? (
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                ) : hasNextPage ? (
+                  <button
+                    onClick={() => fetchNextPage()}
+                    className="px-4 py-2 text-sm text-gray-600 bg-white border rounded-lg"
+                  >
+                    {t('common.loadMore') || 'Load more'}
+                  </button>
+                ) : totalProducts > 0 ? (
+                  <span className="text-xs text-gray-400">{t('common.noMore') || 'No more products'}</span>
+                ) : null}
               </div>
             )}
           </>

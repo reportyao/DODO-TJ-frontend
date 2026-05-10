@@ -12,7 +12,7 @@
  * 注意：B2B 表和 RPC 函数是新增的，尚未在 src/types/supabase.ts 自动生成类型中注册。
  * 因此这里使用 (supabase as any) 进行类型断言。后续运行 supabase gen types 后可移除。
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useSupabase } from '../contexts/SupabaseContext';
 import { useUser } from '../contexts/UserContext';
@@ -29,6 +29,7 @@ export const B2B_PAGE_SIZE = 20;
 export const b2bQueryKeys = {
   wholesalerProfile: (userId: string) => ['b2b', 'wholesaler-profile', userId] as const,
   homeFeed: (page: number, lang: string, categoryId?: string) => ['b2b', 'home-feed', page, lang, categoryId || 'all'] as const,
+  homeFeedInfinite: (lang: string, categoryId?: string) => ['b2b', 'home-feed-infinite', lang, categoryId || 'all'] as const,
   productDetail: (productId: string) => ['b2b', 'product-detail', productId] as const,
   search: (keyword: string) => ['b2b', 'search', keyword] as const,
   cart: (userId: string) => ['b2b', 'cart', userId] as const,
@@ -198,6 +199,90 @@ export function useB2BHomeFeed(page: number = 0, categoryId?: string) {
     },
     staleTime: staleTimes.list,
     placeholderData: (prev: any) => prev,
+  });
+}
+
+/**
+ * 获取 B2B 首页商品列表（异步滚动追加）。
+ *
+ * 首页不再向用户暴露分页按钮，但仍按页向后端请求，避免一次性拉取过多商品影响首屏性能。
+ */
+export function useB2BHomeFeedInfinite(categoryId?: string) {
+  const { supabase } = useSupabase();
+  const { i18n } = useTranslation();
+  const lang = i18n.language || 'ru';
+
+  return useInfiniteQuery<{ products: B2BProduct[]; total: number; banners?: any[]; categories?: any[] }, Error, { pages: { products: B2BProduct[]; total: number; banners?: any[]; categories?: any[] }[]; pageParams: number[] }, ReturnType<typeof b2bQueryKeys.homeFeedInfinite>, number>({
+    queryKey: b2bQueryKeys.homeFeedInfinite(lang, categoryId),
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const safePage = Math.max(0, Number.isFinite(pageParam) ? Math.floor(pageParam) : 0);
+      const offset = safePage * B2B_PAGE_SIZE;
+
+      const normalizeProducts = (rawProducts: any[]): B2BProduct[] => rawProducts.map((item: any) => {
+        const d = item?.data ? item.data : item;
+        return {
+          id: d.product_id || item.item_id || d.id,
+          name_i18n: d.name_i18n || {},
+          image_url: ensureHttps(d.image_url) || null,
+          image_urls: (d.image_urls || []).map((u: string) => ensureHttps(u)),
+          wholesale_price: Number(d.wholesale_price) || 0,
+          retail_price: d.retail_price ? Number(d.retail_price) : null,
+          min_order_quantity: d.min_order_quantity || 1,
+          unit_measure: d.unit_measure || '件',
+          stock: d.stock || 0,
+          sku: d.sku || null,
+          category_name: d.category_name || null,
+        };
+      }).filter((product: B2BProduct) => Boolean(product.id));
+
+      const parseResult = (payload: any) => typeof payload === 'string' ? JSON.parse(payload) : payload;
+
+      const { data, error } = await (supabase as any).rpc('rpc_get_b2b_home_feed', {
+        p_lang: lang,
+        p_limit: B2B_PAGE_SIZE,
+        p_category_id: categoryId || null,
+        p_offset: offset,
+      });
+
+      if (!error) {
+        const result = parseResult(data);
+        const products = normalizeProducts(result?.products || []);
+        return {
+          products,
+          total: result?.total_count ?? result?.total ?? products.length,
+          banners: result?.banners || [],
+          categories: result?.categories || [],
+        };
+      }
+
+      const shouldFallback = /p_offset|schema cache|function .*not found|Could not find/i.test(error.message || '');
+      if (!shouldFallback) throw new Error(error.message);
+
+      const fallbackLimit = Math.max(200, (safePage + 1) * B2B_PAGE_SIZE);
+      const { data: fallbackData, error: fallbackError } = await (supabase as any).rpc('rpc_get_b2b_home_feed', {
+        p_lang: lang,
+        p_limit: fallbackLimit,
+        p_category_id: categoryId || null,
+      });
+      if (fallbackError) throw new Error(fallbackError.message);
+
+      const fallbackResult = parseResult(fallbackData);
+      const allProducts = normalizeProducts(fallbackResult?.products || []);
+      return {
+        products: allProducts.slice(offset, offset + B2B_PAGE_SIZE),
+        total: fallbackResult?.total_count ?? fallbackResult?.total ?? allProducts.length,
+        banners: fallbackResult?.banners || [],
+        categories: fallbackResult?.categories || [],
+      };
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, page) => sum + page.products.length, 0);
+      const total = lastPage.total || loaded;
+      if (lastPage.products.length < B2B_PAGE_SIZE || loaded >= total) return undefined;
+      return allPages.length;
+    },
+    staleTime: staleTimes.list,
   });
 }
 
