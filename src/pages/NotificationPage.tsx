@@ -591,10 +591,20 @@ const NotificationPage: React.FC = () => {
   }, [filterNotifications]);
 
   // 实时订阅：新通知插入时自动刷新列表
+  // 使用 useRef 跟踪 channel 实例，确保先移除旧 channel 再创建新 channel
+  // 避免同名 channel 在已 subscribed 状态下再次调用 .on() 导致报错
+  const notifChannelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
   useEffect(() => {
     if (!user?.id) return;
+
+    // 先清理旧 channel（如果存在）
+    if (notifChannelRef.current) {
+      supabase.removeChannel(notifChannelRef.current);
+      notifChannelRef.current = null;
+    }
+
     const channel = supabase
-      .channel(`notifications-${user.id}`)
+      .channel(`notifications-page-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -609,8 +619,14 @@ const NotificationPage: React.FC = () => {
         }
       )
       .subscribe();
+
+    notifChannelRef.current = channel;
+
     return () => {
-      supabase.removeChannel(channel);
+      if (notifChannelRef.current) {
+        supabase.removeChannel(notifChannelRef.current);
+        notifChannelRef.current = null;
+      }
     };
   }, [user?.id, supabase, fetchNotifications]);
 
