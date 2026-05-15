@@ -2227,7 +2227,9 @@
     "cancelling": "Отмена...",
     "orderCancelled": "Заказ отменён",
     "cancelFailed": "Ошибка отмены",
-    "cannotCancelOrder": "Можно отменить только в обработке"
+    "cannotCancelOrder": "Можно отменить только в обработке",
+    "realtime": "Онлайн",
+    "balanceDue": "К оплате"
   },
   "wholesaler": {
     "applyTitle": "Стать оптовиком",

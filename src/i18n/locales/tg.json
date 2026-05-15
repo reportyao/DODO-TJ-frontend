@@ -2227,7 +2227,9 @@
     "cancelling": "Бекор...",
     "orderCancelled": "Фармоиш бекор шуд",
     "cancelFailed": "Хатои бекор",
-    "cannotCancelOrder": "Танҳо дар коркард бекор мешавад"
+    "cannotCancelOrder": "Танҳо дар коркард бекор мешавад",
+    "realtime": "Бевосита",
+    "balanceDue": "Боқимонда"
   },
   "wholesaler": {
     "applyTitle": "Яклухтфурӯш шавед",

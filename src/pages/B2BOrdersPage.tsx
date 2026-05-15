@@ -18,13 +18,14 @@
  * 路由: /b2b/orders
  * 依赖: b2b-orders Edge Function (POST action=list/detail/cancel)
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeftIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, XCircleIcon, BellAlertIcon } from '@heroicons/react/24/outline';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSupabase } from '../contexts/SupabaseContext';
 import { useUser } from '../contexts/UserContext';
+import { useB2BOrderRealtime, B2BOrderUpdate, B2BNotification } from '../hooks/useB2BOrderRealtime';
 import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -184,6 +185,49 @@ export default function B2BOrdersPage() {
   const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
   const [cancellingOrder, setCancellingOrder] = useState<string | null>(null);
 
+  // ============================================================
+  // 实时订阅：订单状态变更自动刷新 + 通知推送
+  // ============================================================
+  const handleOrderUpdate = useCallback((order: B2BOrderUpdate) => {
+    // 订单状态变更时自动刷新列表
+    queryClient.invalidateQueries({ queryKey: ['b2b', 'orders'] });
+    // 如果当前展开的订单被更新，也刷新详情
+    if (expandedOrder === order.id) {
+      setOrderDetails((prev) => {
+        const updated = { ...prev };
+        delete updated[order.id]; // 清除缓存，下次展开时重新加载
+        return updated;
+      });
+    }
+  }, [queryClient, expandedOrder]);
+
+  const handleNotification = useCallback((notification: B2BNotification) => {
+    // 根据当前语言选择通知文案
+    const title = notification.title_i18n?.[lang] || notification.title || '';
+    const message = notification.message_i18n?.[lang] || notification.content || '';
+
+    // 根据通知类型选择 toast 样式
+    const type = notification.type;
+    if (type === 'B2B_ORDER_CANCELLED') {
+      toast.error(`${title}\n${message}`, { duration: 5000, icon: '❌' });
+    } else if (type === 'B2B_ORDER_DELIVERED') {
+      toast.success(`${title}\n${message}`, { duration: 5000, icon: '✅' });
+    } else if (type === 'B2B_ORDER_SHIPPING') {
+      toast.success(`${title}\n${message}`, { duration: 5000, icon: '🚚' });
+    } else if (type === 'B2B_PAYMENT_CONFIRMED') {
+      toast.success(`${title}\n${message}`, { duration: 5000, icon: '💰' });
+    } else {
+      toast(`${title}\n${message}`, { duration: 4000, icon: '📦' });
+    }
+  }, [lang]);
+
+  const { isSubscribed } = useB2BOrderRealtime({
+    userId: user?.id || null,
+    enabled: !!user?.id,
+    onOrderUpdate: handleOrderUpdate,
+    onNotification: handleNotification,
+  });
+
   // i18n 状态标签映射
   const STATUS_LABELS: Record<string, string> = {
     all: t('b2b.orderStatusAll', '全部'),
@@ -315,6 +359,13 @@ export default function B2BOrdersPage() {
           <ArrowLeftIcon className="w-5 h-5 text-gray-700" />
         </button>
         <h1 className="text-base font-semibold text-gray-900">{t('b2b.myOrders', '我的订单')}</h1>
+        {/* 实时连接状态指示器 */}
+        {isSubscribed && (
+          <span className="ml-auto flex items-center gap-1 text-[10px] text-green-600">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            {t('b2b.realtime', '实时')}
+          </span>
+        )}
       </div>
 
       {/* 下单成功回流提示 */}

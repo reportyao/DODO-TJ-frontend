@@ -2227,7 +2227,9 @@
     "cancelling": "取消中...",
     "orderCancelled": "订单已取消",
     "cancelFailed": "取消失败",
-    "cannotCancelOrder": "只能取消处理中的订单"
+    "cannotCancelOrder": "只能取消处理中的订单",
+    "realtime": "实时",
+    "balanceDue": "待付"
   },
   "wholesaler": {
     "applyTitle": "申请批发商",

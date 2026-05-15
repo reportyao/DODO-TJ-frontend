@@ -590,6 +590,30 @@ const NotificationPage: React.FC = () => {
     filterNotifications();
   }, [filterNotifications]);
 
+  // 实时订阅：新通知插入时自动刷新列表
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          // 新通知到达时自动刷新列表
+          fetchNotifications();
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, supabase, fetchNotifications]);
+
   const markAsRead = async (notificationId: string) => {
     try {
       // 只有 notifications 表的数据才能标记为已读
@@ -695,6 +719,18 @@ const NotificationPage: React.FC = () => {
         return <QrCodeIcon className={`${iconClass} text-orange-600`} />;
       case 'PICKUP_VERIFIED':
         return <CheckIcon className={`${iconClass} text-green-600`} />;
+      case 'B2B_ORDER_CONFIRMED':
+      case 'B2B_ORDER_PICKING':
+      case 'B2B_ORDER_READY':
+        return <ShoppingBagIcon className={`${iconClass} text-primary`} />;
+      case 'B2B_ORDER_SHIPPING':
+        return <TruckIcon className={`${iconClass} text-purple-600`} />;
+      case 'B2B_ORDER_DELIVERED':
+        return <CheckIcon className={`${iconClass} text-green-600`} />;
+      case 'B2B_ORDER_CANCELLED':
+        return <ExclamationTriangleIcon className={`${iconClass} text-red-600`} />;
+      case 'B2B_PAYMENT_CONFIRMED':
+        return <BanknotesIcon className={`${iconClass} text-green-600`} />;
       default:
         return <BellIcon className={`${iconClass} text-gray-600`} />;
     }
@@ -748,6 +784,18 @@ const NotificationPage: React.FC = () => {
       case 'PICKUP_CODE_GENERATED':
         return 'bg-orange-50';
       case 'PICKUP_VERIFIED':
+        return 'bg-green-50';
+      case 'B2B_ORDER_CONFIRMED':
+      case 'B2B_ORDER_PICKING':
+      case 'B2B_ORDER_READY':
+        return 'bg-blue-50';
+      case 'B2B_ORDER_SHIPPING':
+        return 'bg-purple-50';
+      case 'B2B_ORDER_DELIVERED':
+        return 'bg-green-50';
+      case 'B2B_ORDER_CANCELLED':
+        return 'bg-red-50';
+      case 'B2B_PAYMENT_CONFIRMED':
         return 'bg-green-50';
       default:
         return 'bg-gray-50';
