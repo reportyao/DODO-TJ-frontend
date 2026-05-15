@@ -161,7 +161,7 @@ async function handleAddToCart(userId: string, productId: string, quantity: numb
   // 验证商品是否存在且有效
   const { data: product, error: productError } = await supabase
     .from('inventory_products')
-    .select('id, name, status, stock, min_order_quantity')
+    .select('id, name, status, stock, min_order_quantity, wholesale_price')
     .eq('id', productId)
     .maybeSingle()
 
@@ -171,6 +171,11 @@ async function handleAddToCart(userId: string, productId: string, quantity: numb
 
   if (!isActiveProduct(product.status)) {
     return jsonResponse({ success: false, error: '商品已下架', error_code: 'ERR_PRODUCT_NOT_FOUND' }, 400)
+  }
+
+  // 校验批发价是否有效（防止价格为0的商品进入购物车导致结算失败）
+  if (!product.wholesale_price || product.wholesale_price <= 0) {
+    return jsonResponse({ success: false, error: '该商品批发价未设置，暂时无法购买', error_code: 'ERR_INVALID_PRICE' }, 400)
   }
 
   // 校验最小起订量（添加时就提示，避免结算时才报错）
