@@ -24,6 +24,7 @@ import {
 } from '@heroicons/react/24/solid'
 import { useB2BCart } from '../../hooks/useB2B'
 import { useUser } from '../../contexts/UserContext'
+import { useUnreadNotifications } from '../../hooks/useUnreadNotifications'
 import { cn } from '../../lib/utils'
 
 export const BottomNavigation: React.FC = () => {
@@ -36,6 +37,8 @@ export const BottomNavigation: React.FC = () => {
   // 仅在已登录场景下读取购物车数量，避免未登录时无谓的网络请求
   const { data: cartItems } = useB2BCart()
   const cartCount = isAuthenticated ? (cartItems?.length || 0) : 0
+  // 未读通知计数
+  const { totalUnread } = useUnreadNotifications()
 
   const navigation = [
     {
@@ -57,7 +60,7 @@ export const BottomNavigation: React.FC = () => {
       path: '/profile',
       icon: UserIcon,
       activeIcon: UserIconSolid,
-      badge: 0,
+      badge: isAuthenticated ? totalUnread : 0,
     },
   ]
 

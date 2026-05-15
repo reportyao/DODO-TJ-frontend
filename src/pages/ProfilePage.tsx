@@ -23,11 +23,13 @@ import { copyToClipboard } from '../lib/utils'
 import toast from 'react-hot-toast'
 import { triggerInstallPrompt, isInstalled } from '../utils/pwaUtils'
 import { useWholesalerProfile } from '../hooks/useB2B'
+import { useUnreadNotifications } from '../hooks/useUnreadNotifications'
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation()
   const { user, logout } = useUser()
   const navigate = useNavigate()
+  const { totalUnread, orderUnread } = useUnreadNotifications()
 
   const [isPageLoading, setIsPageLoading] = useState(true)
 
@@ -130,8 +132,9 @@ const ProfilePage: React.FC = () => {
       subtitle: t('profile.viewOrders'),
       action: () => navigate('/b2b/orders'),
       highlight: false,
-      badge: undefined,
-      badgeColor: '',
+      badge: orderUnread > 0 ? String(orderUnread) : undefined,
+      badgeColor: 'bg-red-500 text-white',
+      dot: orderUnread > 0,
     },
   ]
 
@@ -154,6 +157,7 @@ const ProfilePage: React.FC = () => {
       title: t('nav.notifications'),
       subtitle: t('profile.viewNotifications'),
       action: () => navigate('/notifications'),
+      unreadCount: totalUnread,
     },
   ]
 
@@ -284,12 +288,17 @@ const ProfilePage: React.FC = () => {
               className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
             >
               <div className="flex items-center space-x-3">
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                <div className={`relative w-11 h-11 rounded-xl flex items-center justify-center ${
                   item.highlight
                     ? 'bg-gradient-to-br from-primary to-primary-dark'
                     : 'bg-gradient-to-br from-amber-100 to-amber-200'
                 }`}>
                   <item.Icon className={`w-5 h-5 ${item.highlight ? 'text-white' : 'text-primary-dark'}`} />
+                  {(item as any).dot && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                      {orderUnread > 99 ? '99+' : orderUnread}
+                    </span>
+                  )}
                 </div>
                 <div className="text-left">
                   <div className="flex items-center space-x-2 flex-wrap gap-1">
@@ -324,8 +333,13 @@ const ProfilePage: React.FC = () => {
               className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
             >
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                <div className="relative w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
                   <item.Icon className="w-5 h-5 text-gray-600" />
+                  {(item as any).unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                      {(item as any).unreadCount > 99 ? '99+' : (item as any).unreadCount}
+                    </span>
+                  )}
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-medium text-gray-900">{item.title}</p>
