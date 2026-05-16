@@ -48,6 +48,7 @@ interface CheckoutRequest {
   delivery_address?: string | null
   delivery_note?: string | null
   idempotency_key?: string | null
+  selected_gift_product_id?: string | null
 }
 
 interface CheckoutRpcResponse {
@@ -126,8 +127,12 @@ function mapErrorStatus(errorCode?: string): number {
     case 'ERR_MIN_ORDER_QUANTITY':
     case 'ERR_INVALID_PRICE':
       return 400
+    case 'ERR_GIFT_NOT_ELIGIBLE':
+    case 'ERR_GIFT_UNAVAILABLE':
+      return 400
     case 'ERR_OUT_OF_STOCK':
     case 'ERR_PRODUCT_UNAVAILABLE':
+    case 'ERR_GIFT_OUT_OF_STOCK':
     case 'ERR_IDEMPOTENCY_CONFLICT':
       return 409
     default:
@@ -183,6 +188,7 @@ serve(async (req: Request) => {
       user_id: userId,
       delivery_address: deliveryAddress,
       delivery_note: deliveryNote,
+      selected_gift_product_id: body.selected_gift_product_id || null,
     }))
     const sessionTokenHash = await sha256Hex(sessionToken)
 
@@ -193,6 +199,7 @@ serve(async (req: Request) => {
       p_idempotency_key: idempotencyKey,
       p_request_hash: requestHash,
       p_session_token_hash: sessionTokenHash,
+      p_selected_gift_product_id: body.selected_gift_product_id || null,
     })
 
     if (rpcError) {

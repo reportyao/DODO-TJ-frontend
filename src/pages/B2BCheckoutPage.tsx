@@ -25,13 +25,18 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
-import { useB2BCart, useWholesalerProfile, useB2BCartMutations } from '../hooks/useB2B';
+import { useB2BCart, useWholesalerProfile, useB2BCartMutations, getLatestGiftWithPurchaseState, GiftProductOption } from '../hooks/useB2B';
 import { useUser } from '../contexts/UserContext';
 import { useSupabase } from '../contexts/SupabaseContext';
 import { extractEdgeFunctionError } from '../utils/edgeFunctionHelper';
 import { LazyImage } from '../components/LazyImage';
 import toast from 'react-hot-toast';
 import { cn } from '../lib/utils';
+
+function getGiftProductName(item: GiftProductOption, lang = 'ru'): string {
+  const name = item.name_i18n?.[lang] || item.name_i18n?.ru || item.name_i18n?.zh || item.name_i18n?.tg;
+  return name || item.product_name || '赠品';
+}
 
 // ============================================================
 // 订单成功弹窗组件
@@ -47,6 +52,12 @@ export default function B2BCheckoutPage() {
   const { data: cartItems, isLoading: cartLoading } = useB2BCart();
   const { data: wholesalerProfile, isLoading: profileLoading } = useWholesalerProfile();
   const { clearCart } = useB2BCartMutations();
+  const giftWithPurchase = getLatestGiftWithPurchaseState();
+  const selectedGift = useMemo<GiftProductOption | null>(() => {
+    if (!giftWithPurchase?.eligible) return null;
+    const selectedGiftProductId = localStorage.getItem('b2b_selected_gift_product_id');
+    return giftWithPurchase.gift_products.find((gift) => gift.product_id === selectedGiftProductId) || null;
+  }, [giftWithPurchase]);
 
   // 表单状态
   const [deliveryAddress, setDeliveryAddress] = useState('');
@@ -113,6 +124,7 @@ export default function B2BCheckoutPage() {
         body: {
           delivery_address: deliveryAddress.trim(),
           delivery_note: deliveryNote.trim() || null,
+          selected_gift_product_id: selectedGift?.product_id || null,
           idempotency_key: idempotencyKey,
         },
         headers: {
@@ -143,8 +155,9 @@ export default function B2BCheckoutPage() {
               id: createdOrder.id,
               order_number: createdOrder.order_number,
               total_amount: createdOrder.total_amount ?? summary.totalAmount,
-              item_count: createdOrder.item_count ?? summary.totalItems,
-              total_quantity: createdOrder.total_quantity ?? summary.totalQuantity,
+              item_count: createdOrder.item_count ?? (summary.totalItems + (selectedGift ? 1 : 0)),
+              total_quantity: createdOrder.total_quantity ?? (summary.totalQuantity + (selectedGift ? selectedGift.gift_quantity : 0)),
+              gift: createdOrder.gift || (selectedGift ? { product_id: selectedGift.product_id, quantity: selectedGift.gift_quantity } : null),
             },
           },
         });
@@ -285,6 +298,31 @@ export default function B2BCheckoutPage() {
                 </div>
               </div>
             ))}
+            {selectedGift && (
+              <div className="px-4 py-3 flex gap-3 bg-amber-50/60">
+                <div className="w-12 h-12 rounded-lg overflow-hidden bg-amber-100 flex-shrink-0">
+                  {selectedGift.image_url ? (
+                    <LazyImage
+                      src={selectedGift.image_url}
+                      alt={getGiftProductName(selectedGift)}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-amber-500 text-lg">🎁</div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-white">赠品</span>
+                    <h4 className="text-sm text-gray-900 line-clamp-1">{getGiftProductName(selectedGift)}</h4>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-xs text-gray-500">满额赠送 × {selectedGift.gift_quantity}{selectedGift.unit_measure || '件'}</span>
+                    <span className="text-sm font-semibold text-amber-600">TJS 0.00</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -350,7 +388,7 @@ export default function B2BCheckoutPage() {
           <div className="flex items-center justify-between mb-3">
             <div className="space-y-0.5">
               <div className="text-xs text-gray-500">
-                {t('b2b.orderItemTypes', '共')} {summary.totalItems} {t('b2b.orderItemTypes', '种')}，{summary.totalQuantity} {t('b2b.orderItemPieces', '件')}
+                {t('b2b.orderItemTypes', '共')} {summary.totalItems + (selectedGift ? 1 : 0)} {t('b2b.orderItemTypes', '种')}，{summary.totalQuantity + (selectedGift ? selectedGift.gift_quantity : 0)} {t('b2b.orderItemPieces', '件')}
               </div>
               <div className="flex items-baseline gap-1">
                 <span className="text-xs text-gray-500">{t('b2b.totalAmount', '合计')}:</span>

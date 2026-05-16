@@ -77,6 +77,36 @@ export interface B2BProductDetail extends B2BProduct {
   status: string;
 }
 
+export interface GiftProductOption {
+  product_id: string;
+  product_name?: string;
+  name_i18n?: Record<string, string> | null;
+  image_url?: string | null;
+  sku?: string | null;
+  unit_measure?: string | null;
+  stock?: number;
+  gift_quantity: number;
+  sort_order?: number;
+}
+
+export interface GiftWithPurchaseState {
+  eligible: boolean;
+  threshold_amount?: number;
+  rule_id?: string | null;
+  rule_name?: string | null;
+  description?: string | null;
+  max_gift_items?: number;
+  remaining_amount: number;
+  progress: number;
+  gift_products: GiftProductOption[];
+}
+
+let latestGiftWithPurchaseState: GiftWithPurchaseState | null = null;
+
+export function getLatestGiftWithPurchaseState(): GiftWithPurchaseState | null {
+  return latestGiftWithPurchaseState;
+}
+
 export interface CartItem {
   id: string;
   product_id: string;
@@ -377,14 +407,21 @@ export function useB2BCart() {
   return useQuery<CartItem[]>({
     queryKey: b2bQueryKeys.cart(user?.id || ''),
     queryFn: async () => {
-      if (!user?.id || !sessionToken) return [];
+      if (!user?.id || !sessionToken) {
+        latestGiftWithPurchaseState = null;
+        return [];
+      }
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
         method: 'POST',
         body: { action: 'get' },
         headers: { 'x-session-token': sessionToken },
       });
-      if (error) throw new Error(await extractEdgeFunctionError(error));
-      // Edge Function 返回: { success, cart: [{cart_id, product_id, quantity, subtotal, product: {...}, is_available}], total_amount, item_count }
+      if (error) {
+        latestGiftWithPurchaseState = null;
+        throw new Error(await extractEdgeFunctionError(error));
+      }
+      latestGiftWithPurchaseState = data?.gift_with_purchase || null;
+      // Edge Function 返回: { success, cart: [{cart_id, product_id, quantity, subtotal, product: {...}, is_available}], total_amount, item_count, gift_with_purchase }
       const rawCart = data?.cart || [];
       return rawCart.map((item: any) => ({
         id: item.cart_id,

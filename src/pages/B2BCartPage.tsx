@@ -20,14 +20,21 @@ import {
   MinusIcon,
   PlusIcon,
   ShoppingCartIcon,
+  GiftIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
-import { useB2BCart, useB2BCartMutations, CartItem } from '../hooks/useB2B';
+import { useB2BCart, useB2BCartMutations, CartItem, getLatestGiftWithPurchaseState, GiftProductOption } from '../hooks/useB2B';
 import { LazyImage } from '../components/LazyImage';
 import toast from 'react-hot-toast';
 
 /**
  * 获取购物车商品的本地化名称
  */
+function getGiftProductName(item: GiftProductOption, lang: string): string {
+  const name = item.name_i18n?.[lang] || item.name_i18n?.ru || item.name_i18n?.zh || item.name_i18n?.tg;
+  return name || item.product_name || '赠品';
+}
+
 function getCartItemName(item: CartItem, lang: string): string {
   if (item.name_i18n) {
     const name = item.name_i18n[lang as keyof typeof item.name_i18n]
@@ -45,11 +52,32 @@ export default function B2BCartPage() {
   const lang = i18n.language || 'ru';
   const { data: cartItems, isLoading } = useB2BCart();
   const { updateItem, removeItem, clearCart } = useB2BCartMutations();
+  const giftWithPurchase = getLatestGiftWithPurchaseState();
+  const [selectedGiftProductId, setSelectedGiftProductId] = React.useState<string | null>(() => localStorage.getItem('b2b_selected_gift_product_id'));
 
   // 汇总计算
   const totalAmount = cartItems?.reduce((sum, item) => sum + item.wholesale_price * item.quantity, 0) || 0;
   const totalItems = cartItems?.reduce((sum, item) => sum + item.quantity, 0) || 0;
   const productCount = cartItems?.length || 0;
+
+  React.useEffect(() => {
+    if (!giftWithPurchase?.eligible) {
+      localStorage.removeItem('b2b_selected_gift_product_id');
+      setSelectedGiftProductId(null);
+      return;
+    }
+    const stillAvailable = giftWithPurchase.gift_products.some((gift) => gift.product_id === selectedGiftProductId);
+    if (!stillAvailable) {
+      const fallback = giftWithPurchase.gift_products[0]?.product_id || null;
+      setSelectedGiftProductId(fallback);
+      if (fallback) localStorage.setItem('b2b_selected_gift_product_id', fallback);
+    }
+  }, [giftWithPurchase?.eligible, giftWithPurchase?.rule_id, giftWithPurchase?.gift_products, selectedGiftProductId]);
+
+  const handleSelectGift = (productId: string) => {
+    setSelectedGiftProductId(productId);
+    localStorage.setItem('b2b_selected_gift_product_id', productId);
+  };
 
   // 修改数量（遵守 min_order_quantity 约束）
   const handleQuantityChange = async (item: CartItem, newQuantity: number) => {
@@ -232,6 +260,61 @@ export default function B2BCartPage() {
           );
         })}
       </div>
+
+
+      {/* Gift With Purchase */}
+      {giftWithPurchase && (
+        <div className="px-4 pt-3">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-amber-100">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+                  <GiftIcon className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-gray-900">满额赠送</div>
+                  <div className="text-xs text-gray-500">{giftWithPurchase.rule_name || '批发专享赠品'}</div>
+                </div>
+              </div>
+              {giftWithPurchase.eligible ? (
+                <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">已达成</span>
+              ) : (
+                <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-1 rounded-full">还差 TJS {giftWithPurchase.remaining_amount.toFixed(2)}</span>
+              )}
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-3">
+              <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${Math.min(giftWithPurchase.progress, 100)}%` }} />
+            </div>
+            {giftWithPurchase.eligible && giftWithPurchase.gift_products.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-xs text-gray-500">请选择 1 件赠品，结算时系统会再次校验金额与库存。</div>
+                {giftWithPurchase.gift_products.map((gift) => {
+                  const active = selectedGiftProductId === gift.product_id;
+                  return (
+                    <button
+                      key={gift.product_id}
+                      type="button"
+                      onClick={() => handleSelectGift(gift.product_id)}
+                      className={`w-full flex items-center gap-3 p-2 rounded-lg border text-left transition-colors ${active ? 'border-amber-500 bg-amber-50' : 'border-gray-100 hover:border-amber-200'}`}
+                    >
+                      <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                        {gift.image_url ? <LazyImage src={gift.image_url} alt={getGiftProductName(gift, lang)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="w-full h-full flex items-center justify-center text-gray-300">🎁</div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 line-clamp-1">{getGiftProductName(gift, lang)}</div>
+                        <div className="text-xs text-gray-500">赠送 {gift.gift_quantity} {gift.unit_measure || '件'} · 库存 {gift.stock ?? '-'}</div>
+                      </div>
+                      {active && <CheckCircleIcon className="w-5 h-5 text-amber-600" />}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-500">购物车商品金额达到 TJS {Number(giftWithPurchase.threshold_amount || 0).toFixed(2)} 后可选择赠品。</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Bottom Checkout Bar - 定位在底部导航栏上方 */}
       <div className="fixed left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-40" style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}>

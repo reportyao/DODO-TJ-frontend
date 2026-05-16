@@ -72,6 +72,99 @@ function isActiveProduct(status: string | null | undefined): boolean {
 /**
  * 获取购物车列表（含商品详情和小计）
  */
+
+async function getGiftWithPurchaseState(totalAmount: number) {
+  const nowIso = new Date().toISOString()
+  const { data: rules, error: rulesError } = await supabase
+    .from('b2b_gift_rules')
+    .select('id, name, description, threshold_amount, max_gift_items, starts_at, ends_at, sort_order, created_at')
+    .eq('is_active', true)
+    .lte('threshold_amount', totalAmount)
+    .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
+    .or(`ends_at.is.null,ends_at.gte.${nowIso}`)
+    .order('threshold_amount', { ascending: false })
+    .order('sort_order', { ascending: true })
+    .limit(1)
+
+  if (rulesError) {
+    console.error('[B2BCart] 查询满额赠送规则失败:', rulesError)
+  }
+
+  const { data: nextRules } = await supabase
+    .from('b2b_gift_rules')
+    .select('id, name, threshold_amount')
+    .eq('is_active', true)
+    .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
+    .or(`ends_at.is.null,ends_at.gte.${nowIso}`)
+    .gte('threshold_amount', totalAmount)
+    .order('threshold_amount', { ascending: true })
+    .limit(1)
+
+  const selectedRule = rules?.[0] || null
+  const nextRule = selectedRule || nextRules?.[0] || null
+  const threshold = Number(nextRule?.threshold_amount || selectedRule?.threshold_amount || 0)
+  const remainingAmount = selectedRule ? 0 : Math.max(threshold - totalAmount, 0)
+  const progress = threshold > 0 ? Math.min(100, Math.round((totalAmount / threshold) * 100)) : 0
+
+  let giftProducts: any[] = []
+  if (selectedRule) {
+    const { data: links, error: linkError } = await supabase
+      .from('b2b_gift_rule_products')
+      .select('product_id, gift_quantity, sort_order')
+      .eq('rule_id', selectedRule.id)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+
+    if (linkError) {
+      console.error('[B2BCart] 查询赠品池失败:', linkError)
+    }
+
+    const productIds = (links || []).map((item: any) => item.product_id).filter(Boolean)
+    if (productIds.length > 0) {
+      const { data: products, error: productError } = await supabase
+        .from('inventory_products')
+        .select('id, name, name_i18n, image_url, sku, unit_measure, stock, status')
+        .in('id', productIds)
+        .eq('status', 'ACTIVE')
+
+      if (productError) {
+        console.error('[B2BCart] 查询赠品商品失败:', productError)
+      }
+
+      const productMap = new Map((products || []).map((p: any) => [p.id, p]))
+      giftProducts = (links || [])
+        .map((link: any) => {
+          const product = productMap.get(link.product_id)
+          if (!product || Number(product.stock || 0) < Number(link.gift_quantity || 1)) return null
+          return {
+            product_id: link.product_id,
+            product_name: product.name,
+            name_i18n: product.name_i18n,
+            image_url: product.image_url,
+            sku: product.sku,
+            unit_measure: product.unit_measure,
+            stock: product.stock,
+            gift_quantity: Number(link.gift_quantity || 1),
+            sort_order: link.sort_order,
+          }
+        })
+        .filter(Boolean)
+    }
+  }
+
+  return {
+    eligible: Boolean(selectedRule && giftProducts.length > 0),
+    threshold_amount: Number(selectedRule?.threshold_amount || nextRule?.threshold_amount || 0),
+    rule_id: selectedRule?.id || null,
+    rule_name: selectedRule?.name || nextRule?.name || null,
+    description: selectedRule?.description || null,
+    max_gift_items: Number(selectedRule?.max_gift_items || 1),
+    remaining_amount: remainingAmount,
+    progress,
+    gift_products: giftProducts,
+  }
+}
+
 async function handleGetCart(userId: string) {
   // 获取购物车项
   const { data: cartItems, error: cartError } = await supabase
@@ -85,7 +178,8 @@ async function handleGetCart(userId: string) {
   }
 
   if (!cartItems || cartItems.length === 0) {
-    return jsonResponse({ success: true, cart: [], total_amount: 0, item_count: 0 })
+    const giftWithPurchase = await getGiftWithPurchaseState(0)
+    return jsonResponse({ success: true, cart: [], total_amount: 0, item_count: 0, gift_with_purchase: giftWithPurchase })
   }
 
   // 批量获取商品详情
@@ -138,11 +232,14 @@ async function handleGetCart(userId: string) {
     }
   })
 
+  const giftWithPurchase = await getGiftWithPurchaseState(totalAmount)
+
   return jsonResponse({
     success: true,
     cart,
     total_amount: totalAmount,
     item_count: cart.length,
+    gift_with_purchase: giftWithPurchase,
   })
 }
 
