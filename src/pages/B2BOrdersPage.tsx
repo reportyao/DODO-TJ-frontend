@@ -64,6 +64,8 @@ interface B2BOrderDetail extends B2BOrder {
     quantity: number;
     unit_price: number;
     subtotal: number;
+    is_gift?: boolean;
+    gift_rule_id?: string | null;
     // P0-7 新增结构化字段
     product_name_zh?: string;
     product_name_original?: string;
@@ -548,15 +550,20 @@ export default function B2BOrdersPage() {
                         {/* Items */}
                         <div className="space-y-2 mb-3">
                           {orderDetails[order.id].items?.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between text-xs">
-                              <span className="text-gray-700 flex-1 truncate">
+                            <div key={item.id} className={cn('flex items-center justify-between gap-2 text-xs', item.is_gift && 'rounded-lg bg-amber-50 px-2 py-1.5')}>
+                              <span className="min-w-0 flex-1 truncate text-gray-700">
+                                {item.is_gift && (
+                                  <span className="mr-1 inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                                    {t('b2b.giftItemBadge', '赠品')}
+                                  </span>
+                                )}
                                 {getItemName(item, lang, item.product_id)}
                               </span>
-                              <span className="text-gray-500 mx-2 flex-shrink-0">
+                              <span className="flex-shrink-0 text-gray-500">
                                 x{item.quantity}
                               </span>
-                              <span className="text-gray-900 font-medium flex-shrink-0">
-                                TJS {Number(item.subtotal).toFixed(2)}
+                              <span className={cn('flex-shrink-0 font-medium', item.is_gift ? 'text-amber-700' : 'text-gray-900')}>
+                                {item.is_gift ? t('b2b.freeGiftPrice', '免费') : `TJS ${Number(item.subtotal).toFixed(2)}`}
                               </span>
                             </div>
                           ))}

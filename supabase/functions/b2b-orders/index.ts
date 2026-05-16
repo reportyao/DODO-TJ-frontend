@@ -148,6 +148,8 @@ function toSafeOrderItem(item: Record<string, unknown>): Record<string, unknown>
     unit_price: item.unit_price,
     quantity: item.quantity,
     subtotal: item.subtotal,
+    is_gift: Boolean(item.is_gift),
+    gift_rule_id: item.gift_rule_id || null,
     ordered_quantity: item.ordered_quantity || item.quantity,
     delivered_quantity: item.delivered_quantity || 0,
     returned_quantity: item.returned_quantity || 0,
@@ -255,7 +257,7 @@ async function handleOrderDetail(userId: string, orderId: string) {
 
   const { data: items, error: itemsError } = await supabase
     .from('b2b_order_items')
-    .select('id, product_id, quantity, unit_price, subtotal, snapshot_data, product_name_zh, product_name_original, sku, image_url, specifications_zh, unit_measure, ordered_quantity, delivered_quantity, returned_quantity, shortage_quantity, item_status, created_at')
+    .select('id, product_id, quantity, unit_price, subtotal, is_gift, gift_rule_id, snapshot_data, product_name_zh, product_name_original, sku, image_url, specifications_zh, unit_measure, ordered_quantity, delivered_quantity, returned_quantity, shortage_quantity, item_status, created_at')
     .eq('order_id', orderId)
     .order('created_at', { ascending: true })
 

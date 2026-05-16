@@ -2229,7 +2229,9 @@
     "cancelFailed": "Ошибка отмены",
     "cannotCancelOrder": "Можно отменить только в обработке",
     "realtime": "Онлайн",
-    "balanceDue": "К оплате"
+    "balanceDue": "К оплате",
+    "giftItemBadge": "Подарок",
+    "freeGiftPrice": "Бесплатно"
   },
   "wholesaler": {
     "applyTitle": "Стать оптовиком",

@@ -2229,7 +2229,9 @@
     "cancelFailed": "Хатои бекор",
     "cannotCancelOrder": "Танҳо дар коркард бекор мешавад",
     "realtime": "Бевосита",
-    "balanceDue": "Боқимонда"
+    "balanceDue": "Боқимонда",
+    "giftItemBadge": "Тӯҳфа",
+    "freeGiftPrice": "Ройгон"
   },
   "wholesaler": {
     "applyTitle": "Яклухтфурӯш шавед",

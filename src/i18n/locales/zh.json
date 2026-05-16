@@ -2229,7 +2229,9 @@
     "cancelFailed": "取消失败",
     "cannotCancelOrder": "只能取消处理中的订单",
     "realtime": "实时",
-    "balanceDue": "待付"
+    "balanceDue": "待付",
+    "giftItemBadge": "赠品",
+    "freeGiftPrice": "免费"
   },
   "wholesaler": {
     "applyTitle": "申请批发商",
