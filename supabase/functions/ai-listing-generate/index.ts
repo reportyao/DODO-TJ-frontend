@@ -55,6 +55,36 @@ const TEXT_MODELS   = ["qwen3.6-plus", "qwen3-max", "qwen-max"] as const;
 /** 运行时记录每个步骤实际使用的模型，用于写入 model_used 元数据 */
 const modelTrace: Record<string, string> = {};
 
+
+// ============================================================
+// 商品分类配置：与 homepage_categories 表同步，用于 AI 自动分类
+// ============================================================
+type ProductCategory = {
+  id: string;
+  code: string;
+  zh: string;
+  ru: string;
+  keywords: string[];
+};
+
+type CategorySuggestion = {
+  category_code: string;
+  category_id: string | null;
+  category_name: string;
+  confidence: "high" | "medium" | "low";
+};
+
+const PRODUCT_CATEGORIES: ProductCategory[] = [
+  { id: "3b7c7e38-93a3-455f-b26b-e85f29369cab", code: "daily_goods",    zh: "日用百货", ru: "Товары для дома",   keywords: ["日用", "百货", "清洁", "家居", "厨具", "收纳", "卫浴", "洗涤", "拖把", "扫帚", "垃圾桶", "毛巾", "床品", "被子", "枕头", "窗帘", "地毯"] },
+  { id: "4ea4c06e-a30a-4b2f-a147-b1a163026a13", code: "home_appliance",  zh: "家用电器", ru: "Бытовая техника",  keywords: ["电器", "家电", "冰箱", "洗衣机", "空调", "电视", "风扇", "电热", "烤箱", "微波炉", "吸尘器", "电饭锅", "热水器", "加湿器", "空气净化", "电动"] },
+  { id: "d176a10f-d316-4ea7-972b-ca331442acdc", code: "food_kitchen",    zh: "食品厨房", ru: "Продукты и кухня", keywords: ["食品", "厨房", "零食", "饮料", "调料", "茶", "咖啡", "锅", "碗", "盘", "筷子", "刀", "砧板", "烹饪", "烘焙", "食材", "干货", "坚果"] },
+  { id: "c5c14ea4-5db1-41d5-8390-768c43ac4e9e", code: "personal_care",   zh: "个护美妆", ru: "Личная гигиена",   keywords: ["护肤", "美妆", "化妆", "洗发", "护发", "沐浴", "香水", "面膜", "口红", "眼影", "粉底", "防晒", "牙刷", "牙膏", "剃须", "美容", "个护", "卫生"] },
+  { id: "d2381d98-4bef-4e77-977f-3acfb1b5d3ff", code: "clothing_bags",   zh: "服饰箱包", ru: "Одежда и сумки",   keywords: ["服装", "衣服", "裤子", "裙子", "外套", "夹克", "羽绒", "毛衣", "T恤", "衬衫", "鞋", "靴子", "包", "背包", "钱包", "手提包", "帽子", "围巾", "手套", "袜子", "内衣", "泳衣"] },
+  { id: "c199ef35-3727-420f-aaab-d05289e4fcdc", code: "digital_tech",    zh: "数码科技", ru: "Цифровая техника", keywords: ["数码", "手机", "电脑", "平板", "耳机", "音响", "相机", "充电", "数据线", "键盘", "鼠标", "显示器", "路由器", "USB", "蓝牙", "智能", "摄像头", "打印机"] },
+  { id: "924736ce-ec09-427a-bd9f-5b91f4fe2910", code: "mother_baby",     zh: "母婴亲子", ru: "Мать и ребёнок",   keywords: ["母婴", "婴儿", "宝宝", "儿童", "玩具", "奶粉", "尿布", "纸尿裤", "童装", "童鞋", "学步", "奶瓶", "孕妇", "推车", "安全座椅", "积木", "早教"] },
+  { id: "6badf771-bd90-476a-9e07-9dc8c6313e27", code: "sports_outdoor",  zh: "运动户外", ru: "Спорт и отдых",    keywords: ["运动", "户外", "健身", "跑步", "瑜伽", "球", "骑行", "登山", "露营", "帐篷", "钓鱼", "泳镜", "运动鞋", "运动服", "哑铃", "跳绳", "滑板"] },
+];
+
 /**
  * 判断错误是否属于"额度耗尽 / 模型不可用"，应触发降级
  * - HTTP 429: 限流或额度用完
@@ -261,6 +291,125 @@ type SemanticFacts = {
   trust_signals: string[];
   badge_candidates: string[];
 };
+
+function normalizeCategoryText(value: unknown): string {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+}
+
+function findKnownCategory(value: unknown): ProductCategory | null {
+  const normalized = normalizeCategoryText(value);
+  if (!normalized) {return null;}
+
+  return PRODUCT_CATEGORIES.find((cat) => {
+    const candidates = [cat.id, cat.code, cat.zh, cat.ru].map(normalizeCategoryText);
+    return candidates.includes(normalized) || candidates.some((candidate) => candidate && normalized.includes(candidate));
+  }) || null;
+}
+
+function toCategorySuggestion(
+  category: ProductCategory,
+  confidence: CategorySuggestion["confidence"]
+): CategorySuggestion {
+  return {
+    category_code: category.code,
+    category_id: category.id,
+    category_name: category.zh,
+    confidence,
+  };
+}
+
+async function autoDetectCategory(params: {
+  apiKey: string;
+  semanticFacts: Partial<SemanticFacts> | null | undefined;
+  productName: string;
+  categoryHint?: string;
+}): Promise<CategorySuggestion> {
+  const hintedCategory = findKnownCategory(params.categoryHint);
+  if (hintedCategory) {
+    console.log(`[AutoCategory] 使用前端已选分类: ${hintedCategory.zh} (${hintedCategory.code})`);
+    return toCategorySuggestion(hintedCategory, "high");
+  }
+
+  const facts = params.semanticFacts || {};
+  const productType = facts.product_type || "";
+  const coreFunction = facts.core_function || "";
+  const usageScenarios = Array.isArray(facts.usage_scenarios) ? facts.usage_scenarios.join(" ") : "";
+  const targetUserTraits = Array.isArray(facts.target_user_traits) ? facts.target_user_traits.join(" ") : "";
+  const localContextSignals = Array.isArray(facts.local_context_signals) ? facts.local_context_signals.join(" ") : "";
+  const parameterHighlights = Array.isArray(facts.parameter_highlights) ? facts.parameter_highlights.join(" ") : "";
+  const combinedText = `${params.productName} ${productType} ${coreFunction} ${usageScenarios} ${targetUserTraits} ${localContextSignals} ${parameterHighlights}`.toLowerCase();
+
+  let bestMatch: ProductCategory | null = null;
+  let bestScore = 0;
+  for (const cat of PRODUCT_CATEGORIES) {
+    let score = 0;
+    for (const keyword of cat.keywords) {
+      if (combinedText.includes(keyword.toLowerCase())) {
+        score += 1;
+      }
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = cat;
+    }
+  }
+
+  if (bestMatch && bestScore >= 2) {
+    console.log(`[AutoCategory] 关键词匹配: ${bestMatch.zh} (score=${bestScore})`);
+    return toCategorySuggestion(bestMatch, "high");
+  }
+
+  const categoryList = PRODUCT_CATEGORIES
+    .map((cat) => `- ${cat.code}: ${cat.zh}（${cat.ru}）`)
+    .join("\n");
+  const prompt = `你是一名电商商品分类专家。请根据商品图片理解结果和商品基础信息，从给定分类列表中选择最合适的一个分类。
+
+商品名称：${params.productName || "未提供"}
+商品类型：${productType || "未提供"}
+核心功能：${coreFunction || "未提供"}
+使用场景：${usageScenarios || "未提供"}
+目标用户：${targetUserTraits || "未提供"}
+参数亮点：${parameterHighlights || "未提供"}
+
+可选分类（code: 中文名）：
+${categoryList}
+
+请只输出最合适的分类 code（例如 daily_goods、clothing_bags），不要输出任何解释、JSON 或其它文本。`;
+
+  try {
+    const { content } = await callDashScopeWithFallback(
+      params.apiKey,
+      TEXT_MODELS,
+      [{ role: "user", content: prompt }],
+      0.1,
+      "AutoCategory",
+      { enableThinking: false, maxTokens: 50 }
+    );
+    const rawCode = content.trim().toLowerCase().replace(/[^a-z_]/g, "");
+    const matched = PRODUCT_CATEGORIES.find((cat) => cat.code === rawCode);
+    if (matched) {
+      console.log(`[AutoCategory] AI 推荐分类: ${matched.zh} (${matched.code})`);
+      return toCategorySuggestion(matched, "medium");
+    }
+    if (bestMatch) {
+      console.warn(`[AutoCategory] AI 返回无效 code="${rawCode}"，降级到关键词最佳匹配: ${bestMatch.zh}`);
+      return toCategorySuggestion(bestMatch, "low");
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.warn(`[AutoCategory] AI 分类识别失败（非致命）: ${errMsg}`);
+    if (bestMatch) {
+      return toCategorySuggestion(bestMatch, "low");
+    }
+  }
+
+  console.warn("[AutoCategory] 无法识别分类，使用默认分类: 日用百货");
+  return toCategorySuggestion(PRODUCT_CATEGORIES[0], "low");
+}
+
 
 function cleanAIText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -1805,6 +1954,14 @@ serve(async (req) => {
 
         const analysisResult = normalizedAnalysis;
 
+        // ---- Step A2: 基于 AI 商品理解自动推荐分类（用于前端自动选择并创建 product_categories 关联）----
+        const suggestedCategory = await autoDetectCategory({
+          apiKey: dashscopeApiKey,
+          semanticFacts: analysisResult?.semantic_facts || analysisResult?.ai_understanding?.semantic_facts,
+          productName: product_name,
+          categoryHint: category || "",
+        });
+
         // ---- v3.0: 并行执行 Step B（文案）+ Step C（抠图）+ Step D（海报规划）----
         // Step B 和 Step C 互不依赖，可以并行
         // Step D 只需要 analysisResult，不需要 segmentedUrl，也可以并行
@@ -1994,6 +2151,7 @@ serve(async (req) => {
             enqueued_images: 0,
             original_images: image_urls,
             material_guess: analysisResult.material_guess || null,
+            suggested_category: suggestedCategory,
             analysis: analysisResult,
           };
           await updateListingTask("partial", {
@@ -2019,6 +2177,7 @@ serve(async (req) => {
             segmented_image: segmentedUrl,
             original_images: image_urls,
             material_guess: analysisResult.material_guess || null,
+            suggested_category: suggestedCategory,
             analysis: analysisResult,
           };
           await updateListingTask("partial", {
@@ -2045,6 +2204,7 @@ serve(async (req) => {
             segmented_image: segmentedUrl,
             original_images: image_urls,
             material_guess: analysisResult.material_guess || null,
+            suggested_category: suggestedCategory,
             analysis: analysisResult,
           };
           await updateListingTask("processing_images", {
