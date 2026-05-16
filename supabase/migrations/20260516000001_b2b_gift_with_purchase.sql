@@ -51,8 +51,15 @@ DECLARE
 BEGIN
   SELECT pg_get_functiondef('public.admin_query(text,text,text,jsonb,text,boolean,integer,integer,text,boolean)'::regprocedure) INTO v_def;
   IF v_def IS NOT NULL AND v_def NOT LIKE '%b2b_gift_rules%' THEN
-    v_def := replace(v_def, $q$'b2b_credit_events',$q$, $q$'b2b_credit_events',
-    'b2b_gift_rules', 'b2b_gift_rule_products',$q$);
+    IF v_def LIKE '%''b2b_order_items''%' THEN
+      v_def := replace(v_def, '''b2b_order_items''', '''b2b_order_items'', ''b2b_gift_rules'', ''b2b_gift_rule_products''');
+    ELSIF v_def LIKE '%''b2b_orders''%' THEN
+      v_def := replace(v_def, '''b2b_orders''', '''b2b_orders'', ''b2b_gift_rules'', ''b2b_gift_rule_products''');
+    ELSIF v_def LIKE '%''inventory_products''%' THEN
+      v_def := replace(v_def, '''inventory_products''', '''inventory_products'', ''b2b_gift_rules'', ''b2b_gift_rule_products''');
+    ELSE
+      RAISE EXCEPTION 'admin_query whitelist anchor not found';
+    END IF;
     EXECUTE v_def;
   END IF;
 EXCEPTION WHEN undefined_function THEN
@@ -65,8 +72,15 @@ DECLARE
 BEGIN
   SELECT pg_get_functiondef('public.admin_count(text,text,jsonb,text)'::regprocedure) INTO v_def;
   IF v_def IS NOT NULL AND v_def NOT LIKE '%b2b_gift_rules%' THEN
-    v_def := replace(v_def, $q$'b2b_credit_events',$q$, $q$'b2b_credit_events',
-    'b2b_gift_rules', 'b2b_gift_rule_products',$q$);
+    IF v_def LIKE '%''b2b_order_items''%' THEN
+      v_def := replace(v_def, '''b2b_order_items''', '''b2b_order_items'', ''b2b_gift_rules'', ''b2b_gift_rule_products''');
+    ELSIF v_def LIKE '%''b2b_orders''%' THEN
+      v_def := replace(v_def, '''b2b_orders''', '''b2b_orders'', ''b2b_gift_rules'', ''b2b_gift_rule_products''');
+    ELSIF v_def LIKE '%''inventory_products''%' THEN
+      v_def := replace(v_def, '''inventory_products''', '''inventory_products'', ''b2b_gift_rules'', ''b2b_gift_rule_products''');
+    ELSE
+      RAISE EXCEPTION 'admin_count whitelist anchor not found';
+    END IF;
     EXECUTE v_def;
   END IF;
 EXCEPTION WHEN undefined_function THEN
@@ -80,8 +94,15 @@ BEGIN
   -- 当前管理端写入RPC在 20260406_fix_admin_mutate_array_upsert.sql 中为7参数版本。
   SELECT pg_get_functiondef('public.admin_mutate(text,text,text,jsonb,jsonb,text,text)'::regprocedure) INTO v_def;
   IF v_def IS NOT NULL AND v_def NOT LIKE '%b2b_gift_rules%' THEN
-    v_def := replace(v_def, $q$'b2b_credit_events',$q$, $q$'b2b_credit_events',
-    'b2b_gift_rules', 'b2b_gift_rule_products',$q$);
+    IF v_def LIKE '%''b2b_order_items''%' THEN
+      v_def := replace(v_def, '''b2b_order_items''', '''b2b_order_items'', ''b2b_gift_rules'', ''b2b_gift_rule_products''');
+    ELSIF v_def LIKE '%''b2b_orders''%' THEN
+      v_def := replace(v_def, '''b2b_orders''', '''b2b_orders'', ''b2b_gift_rules'', ''b2b_gift_rule_products''');
+    ELSIF v_def LIKE '%''inventory_products''%' THEN
+      v_def := replace(v_def, '''inventory_products''', '''inventory_products'', ''b2b_gift_rules'', ''b2b_gift_rule_products''');
+    ELSE
+      RAISE EXCEPTION 'admin_mutate whitelist anchor not found';
+    END IF;
     EXECUTE v_def;
   END IF;
 EXCEPTION WHEN undefined_function THEN
