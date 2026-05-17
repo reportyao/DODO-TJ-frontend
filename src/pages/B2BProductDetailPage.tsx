@@ -6,7 +6,7 @@
  * - 商品图片轮播
  * - 批发价展示（已移除建议零售价）
  * - 起批量、库存、规格信息
- * - 数量选择器（步进为 min_order_quantity）
+ * - 数量选择器（步进为 min_order_quantity）+ 快选框（10/50/100/200）+ 直接输入
  * - 加入进货单（橘黄色主题，已移除立即进货按钮）
  */
 import React, { useState } from 'react';
@@ -28,6 +28,9 @@ function getLocalized(i18n: { zh?: string; ru?: string; tg?: string } | null | u
   return i18n[lang as keyof typeof i18n] || i18n.ru || i18n.zh || i18n.tg || fallback;
 }
 
+/** 快选数量选项 */
+const QUICK_QTY_OPTIONS = [10, 50, 100, 200];
+
 export default function B2BProductDetailPage() {
   const { productId } = useParams<{ productId: string }>();
   const { t, i18n } = useTranslation();
@@ -41,6 +44,8 @@ export default function B2BProductDetailPage() {
   const { data: wholesalerProfile } = useWholesalerProfile();
   const [quantity, setQuantity] = useState<number>(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isEditingQty, setIsEditingQty] = useState(false);
+  const [editQtyValue, setEditQtyValue] = useState('');
 
   // Initialize quantity when product loads
   React.useEffect(() => {
@@ -101,6 +106,33 @@ export default function B2BProductDetailPage() {
     });
   };
 
+  const handleQuickQty = (qty: number) => {
+    const finalQty = Math.max(qty, minQty);
+    if (finalQty > product.stock) {
+      toast.error(t('b2b.outOfStock'));
+      return;
+    }
+    setQuantity(finalQty);
+  };
+
+  const handleStartEditQty = () => {
+    setIsEditingQty(true);
+    setEditQtyValue(String(quantity));
+  };
+
+  const handleConfirmEditQty = () => {
+    setIsEditingQty(false);
+    const val = parseInt(editQtyValue, 10);
+    if (isNaN(val) || val <= 0) return;
+    const finalQty = Math.max(val, minQty);
+    if (finalQty > product.stock) {
+      toast.error(t('b2b.outOfStock'));
+      setQuantity(Math.min(product.stock, finalQty));
+      return;
+    }
+    setQuantity(finalQty);
+  };
+
   const validatePurchase = () => {
     if (!user) {
       toast.error(t('b2b.pleaseLogin'));
@@ -129,7 +161,7 @@ export default function B2BProductDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-24">
+    <div className="min-h-screen bg-white pb-36">
       {/* Top Bar */}
       <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="p-1">
@@ -239,25 +271,63 @@ export default function B2BProductDetailPage() {
         )}
       </div>
 
-      {/* Bottom Action Bar - 仅保留加入进货单按钮，使用橘黄色主题色 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 z-50 safe-area-bottom">
-        <div className="flex items-center gap-3">
-          {/* Quantity Selector */}
+      {/* Bottom Action Bar - 两行布局：第一行快选，第二行数量+加购 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 z-50 safe-area-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+        {/* Row 1: Quick Quantity Chips */}
+        <div className="flex items-center gap-2 pt-2.5 pb-1.5">
+          <span className="text-[11px] text-gray-400 flex-shrink-0">{t('b2b.quickQty') || '快选'}:</span>
+          <div className="flex items-center gap-1.5 flex-1 overflow-x-auto">
+            {QUICK_QTY_OPTIONS.map((qty) => (
+              <button
+                key={qty}
+                onClick={() => handleQuickQty(qty)}
+                className={cn(
+                  'px-3 py-1 text-xs rounded-full border transition-all flex-shrink-0',
+                  quantity === qty
+                    ? 'bg-primary/10 border-primary text-primary font-bold'
+                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-primary/50 active:bg-primary/5'
+                )}
+              >
+                {qty}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* Row 2: Quantity Selector + Subtotal + Add to Cart */}
+        <div className="flex items-center gap-3 pb-3">
+          {/* Quantity Selector with direct input */}
           <div className="flex items-center border rounded-lg overflow-hidden">
             <button
               onClick={handleDecrease}
               disabled={quantity <= minQty}
-              className="px-3 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-30"
+              className="px-2.5 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-30"
             >
               <MinusIcon className="w-4 h-4" />
             </button>
-            <span className="px-3 py-2 text-sm font-bold min-w-[3rem] text-center border-x">
-              {quantity}
-            </span>
+            {isEditingQty ? (
+              <input
+                type="number"
+                value={editQtyValue}
+                onChange={(e) => setEditQtyValue(e.target.value)}
+                onBlur={handleConfirmEditQty}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmEditQty(); }}
+                autoFocus
+                className="w-14 py-2 text-sm font-bold text-center border-x outline-none focus:bg-amber-50"
+                min={minQty}
+                max={product.stock}
+              />
+            ) : (
+              <button
+                onClick={handleStartEditQty}
+                className="px-3 py-2 text-sm font-bold min-w-[3rem] text-center border-x hover:bg-amber-50 transition-colors cursor-text"
+              >
+                {quantity}
+              </button>
+            )}
             <button
               onClick={handleIncrease}
               disabled={quantity + minQty > product.stock}
-              className="px-3 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-30"
+              className="px-2.5 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-30"
             >
               <PlusIcon className="w-4 h-4" />
             </button>

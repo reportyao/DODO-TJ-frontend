@@ -5,6 +5,8 @@
  * 功能：
  * - 展示购物车商品列表
  * - 修改数量 / 删除商品（遵守 min_order_quantity 约束）
+ * - 快选数量（10/50/100/200）+ 直接输入
+ * - 满额赠送提示置顶在商品列表上方
  * - 显示合计金额和商品数
  * - 点击"去结算"跳转到 B2BCheckoutPage
  *
@@ -46,6 +48,9 @@ function getCartItemName(item: CartItem, lang: string): string {
   return item.product_name || '商品';
 }
 
+/** 快选数量选项 */
+const QUICK_QTY_OPTIONS = [10, 50, 100, 200];
+
 export default function B2BCartPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -54,6 +59,9 @@ export default function B2BCartPage() {
   const { updateItem, removeItem, clearCart } = useB2BCartMutations();
   const giftWithPurchase = getLatestGiftWithPurchaseState();
   const [selectedGiftProductId, setSelectedGiftProductId] = React.useState<string | null>(() => localStorage.getItem('b2b_selected_gift_product_id'));
+  // 用于直接输入数量的编辑状态
+  const [editingItemId, setEditingItemId] = React.useState<string | null>(null);
+  const [editingValue, setEditingValue] = React.useState<string>('');
 
   // 汇总计算
   const totalAmount = cartItems?.reduce((sum, item) => sum + item.wholesale_price * item.quantity, 0) || 0;
@@ -97,6 +105,35 @@ export default function B2BCartPage() {
     } catch (err: any) {
       toast.error(err.message || (t('b2b.operationFailed') || '操作失败'));
     }
+  };
+
+  // 快选数量
+  const handleQuickQty = async (item: CartItem, qty: number) => {
+    const minOrderQty = item.min_order_quantity || 1;
+    const finalQty = Math.max(qty, minOrderQty);
+    if (finalQty > item.stock) {
+      toast.error(t('b2b.outOfStock') || '库存不足');
+      return;
+    }
+    try {
+      await updateItem.mutateAsync({ productId: item.product_id, quantity: finalQty });
+    } catch (err: any) {
+      toast.error(err.message || (t('b2b.operationFailed') || '操作失败'));
+    }
+  };
+
+  // 开始编辑数量
+  const handleStartEdit = (item: CartItem) => {
+    setEditingItemId(item.product_id);
+    setEditingValue(String(item.quantity));
+  };
+
+  // 确认编辑数量
+  const handleConfirmEdit = async (item: CartItem) => {
+    const val = parseInt(editingValue, 10);
+    setEditingItemId(null);
+    if (isNaN(val) || val <= 0) return;
+    await handleQuantityChange(item, val);
   };
 
   // 删除商品
@@ -177,10 +214,81 @@ export default function B2BCartPage() {
         </button>
       </div>
 
+      {/* Gift With Purchase - 置顶在商品列表上方 */}
+      {giftWithPurchase && (
+        <div className="px-4 pt-3">
+          <div className={`rounded-xl p-4 shadow-sm border-2 ${
+            giftWithPurchase.eligible
+              ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-300'
+              : 'bg-gradient-to-r from-amber-50/80 to-yellow-50/80 border-amber-200'
+          }`}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                  giftWithPurchase.eligible
+                    ? 'bg-amber-200 text-amber-700'
+                    : 'bg-amber-100 text-amber-600'
+                }`}>
+                  <GiftIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-gray-900">{t('b2b.giftWithPurchase')}</div>
+                  <div className="text-xs text-gray-600">{giftWithPurchase.rule_name_i18n?.[lang] || giftWithPurchase.rule_name || t('b2b.giftWholesaleExclusive')}</div>
+                </div>
+              </div>
+              {giftWithPurchase.eligible ? (
+                <span className="text-xs font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-full border border-green-200">{t('b2b.giftEligible')}</span>
+              ) : (
+                <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-200">{t('b2b.giftRemainingAmount', { amount: giftWithPurchase.remaining_amount.toFixed(2) })}</span>
+              )}
+            </div>
+            {/* Progress bar */}
+            <div className="h-2.5 bg-white/70 rounded-full overflow-hidden mb-3 border border-amber-100">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  giftWithPurchase.eligible
+                    ? 'bg-gradient-to-r from-green-400 to-green-500'
+                    : 'bg-gradient-to-r from-amber-400 to-orange-400'
+                }`}
+                style={{ width: `${Math.min(giftWithPurchase.progress, 100)}%` }}
+              />
+            </div>
+            {giftWithPurchase.eligible && giftWithPurchase.gift_products.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-xs text-gray-600 font-medium">{t('b2b.giftSelectHint')}</div>
+                {giftWithPurchase.gift_products.map((gift) => {
+                  const active = selectedGiftProductId === gift.product_id;
+                  return (
+                    <button
+                      key={gift.product_id}
+                      type="button"
+                      onClick={() => handleSelectGift(gift.product_id)}
+                      className={`w-full flex items-center gap-3 p-2.5 rounded-lg border-2 text-left transition-all ${active ? 'border-amber-500 bg-white shadow-sm' : 'border-transparent bg-white/60 hover:border-amber-200'}`}
+                    >
+                      <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                        {gift.image_url ? <LazyImage src={gift.image_url} alt={getGiftProductName(gift, lang)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="w-full h-full flex items-center justify-center text-gray-300">🎁</div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 line-clamp-1">{getGiftProductName(gift, lang)}</div>
+                        <div className="text-xs text-gray-500">{t('b2b.giftQuantityLabel', { quantity: gift.gift_quantity, unit: gift.unit_measure || t('b2b.orderItemPieces') })} · {t('b2b.giftStockLabel', { stock: gift.stock ?? '-' })}</div>
+                      </div>
+                      {active && <CheckCircleIcon className="w-5 h-5 text-amber-600" />}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : !giftWithPurchase.eligible && (
+              <div className="text-xs text-gray-600">{t('b2b.giftThresholdHint', { amount: Number(giftWithPurchase.threshold_amount || 0).toFixed(2) })}</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Cart Items */}
       <div className="px-4 pt-3 space-y-2.5">
         {cartItems.map((item) => {
           const minQty = item.min_order_quantity || 1;
+          const isEditing = editingItemId === item.product_id;
           return (
             <div key={item.id} className="bg-white rounded-xl p-3 shadow-sm">
               <div className="flex gap-3">
@@ -207,7 +315,7 @@ export default function B2BCartPage() {
 
                   {/* Quantity Controls & Actions */}
                   <div className="flex items-center justify-between mt-2">
-                    {/* Quantity Stepper - 步进为 min_order_quantity */}
+                    {/* Quantity Stepper + Direct Input */}
                     <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
                       <button
                         onClick={() => handleQuantityChange(item, item.quantity - minQty)}
@@ -216,9 +324,26 @@ export default function B2BCartPage() {
                       >
                         <MinusIcon className="w-3.5 h-3.5" />
                       </button>
-                      <span className="px-3 py-1.5 text-xs font-bold min-w-[2.5rem] text-center border-x border-gray-200 bg-gray-50">
-                        {item.quantity}
-                      </span>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          value={editingValue}
+                          onChange={(e) => setEditingValue(e.target.value)}
+                          onBlur={() => handleConfirmEdit(item)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmEdit(item); }}
+                          autoFocus
+                          className="w-14 py-1.5 text-xs font-bold text-center border-x border-gray-200 bg-white outline-none focus:bg-amber-50"
+                          min={minQty}
+                          max={item.stock}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => handleStartEdit(item)}
+                          className="px-3 py-1.5 text-xs font-bold min-w-[2.5rem] text-center border-x border-gray-200 bg-gray-50 hover:bg-amber-50 transition-colors cursor-text"
+                        >
+                          {item.quantity}
+                        </button>
+                      )}
                       <button
                         onClick={() => handleQuantityChange(item, item.quantity + minQty)}
                         disabled={item.quantity + minQty > item.stock || updateItem.isPending || removeItem.isPending}
@@ -242,6 +367,24 @@ export default function B2BCartPage() {
                     </div>
                   </div>
 
+                  {/* Quick Quantity Chips */}
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                    {QUICK_QTY_OPTIONS.map((qty) => (
+                      <button
+                        key={qty}
+                        onClick={() => handleQuickQty(item, qty)}
+                        disabled={updateItem.isPending || removeItem.isPending}
+                        className={`px-2 py-0.5 text-[11px] rounded-md border transition-all ${
+                          item.quantity === qty
+                            ? 'bg-primary/10 border-primary text-primary font-bold'
+                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-primary/50 hover:text-primary'
+                        } disabled:opacity-30`}
+                      >
+                        {qty}
+                      </button>
+                    ))}
+                  </div>
+
                   {/* Stock Warning */}
                   {item.stock <= 10 && (
                     <div className="text-[10px] text-orange-500 mt-1">
@@ -260,61 +403,6 @@ export default function B2BCartPage() {
           );
         })}
       </div>
-
-
-      {/* Gift With Purchase */}
-      {giftWithPurchase && (
-        <div className="px-4 pt-3">
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-amber-100">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
-                  <GiftIcon className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-gray-900">{t('b2b.giftWithPurchase')}</div>
-                  <div className="text-xs text-gray-500">{giftWithPurchase.rule_name_i18n?.[lang] || giftWithPurchase.rule_name || t('b2b.giftWholesaleExclusive')}</div>
-                </div>
-              </div>
-              {giftWithPurchase.eligible ? (
-                <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">{t('b2b.giftEligible')}</span>
-              ) : (
-                <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-1 rounded-full">{t('b2b.giftRemainingAmount', { amount: giftWithPurchase.remaining_amount.toFixed(2) })}</span>
-              )}
-            </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-3">
-              <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${Math.min(giftWithPurchase.progress, 100)}%` }} />
-            </div>
-            {giftWithPurchase.eligible && giftWithPurchase.gift_products.length > 0 ? (
-              <div className="space-y-2">
-                <div className="text-xs text-gray-500">{t('b2b.giftSelectHint')}</div>
-                {giftWithPurchase.gift_products.map((gift) => {
-                  const active = selectedGiftProductId === gift.product_id;
-                  return (
-                    <button
-                      key={gift.product_id}
-                      type="button"
-                      onClick={() => handleSelectGift(gift.product_id)}
-                      className={`w-full flex items-center gap-3 p-2 rounded-lg border text-left transition-colors ${active ? 'border-amber-500 bg-amber-50' : 'border-gray-100 hover:border-amber-200'}`}
-                    >
-                      <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-                        {gift.image_url ? <LazyImage src={gift.image_url} alt={getGiftProductName(gift, lang)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="w-full h-full flex items-center justify-center text-gray-300">🎁</div>}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900 line-clamp-1">{getGiftProductName(gift, lang)}</div>
-                        <div className="text-xs text-gray-500">{t('b2b.giftQuantityLabel', { quantity: gift.gift_quantity, unit: gift.unit_measure || t('b2b.orderItemPieces') })} · {t('b2b.giftStockLabel', { stock: gift.stock ?? '-' })}</div>
-                      </div>
-                      {active && <CheckCircleIcon className="w-5 h-5 text-amber-600" />}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-xs text-gray-500">{t('b2b.giftThresholdHint', { amount: Number(giftWithPurchase.threshold_amount || 0).toFixed(2) })}</div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Bottom Checkout Bar - 定位在底部导航栏上方 */}
       <div className="fixed left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-40" style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}>

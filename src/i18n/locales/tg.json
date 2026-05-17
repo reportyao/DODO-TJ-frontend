@@ -2242,7 +2242,8 @@
     "giftStockLabel": "Мавҷуд {{stock}}",
     "giftBadge": "Тӯҳфа",
     "giftFreeLabel": "Тӯҳфа барои харид",
-    "giftRuleName": "Акция «Тӯҳфа барои харид»"
+    "giftRuleName": "Акция «Тӯҳфа барои харид»",
+    "quickQty": "Интихоби зуд"
   },
   "wholesaler": {
     "applyTitle": "Яклухтфурӯш шавед",

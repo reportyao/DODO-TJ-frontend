@@ -2242,7 +2242,8 @@
     "giftStockLabel": "库存 {{stock}}",
     "giftBadge": "赠品",
     "giftFreeLabel": "满额赠送",
-    "giftRuleName": "满额赠送活动"
+    "giftRuleName": "满额赠送活动",
+    "quickQty": "快选"
   },
   "wholesaler": {
     "applyTitle": "申请批发商",

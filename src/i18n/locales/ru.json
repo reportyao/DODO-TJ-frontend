@@ -2242,7 +2242,8 @@
     "giftStockLabel": "В наличии {{stock}}",
     "giftBadge": "Подарок",
     "giftFreeLabel": "Подарок за покупку",
-    "giftRuleName": "Акция «Подарок за покупку»"
+    "giftRuleName": "Акция «Подарок за покупку»",
+    "quickQty": "Быстрый выбор"
   },
   "wholesaler": {
     "applyTitle": "Стать оптовиком",
