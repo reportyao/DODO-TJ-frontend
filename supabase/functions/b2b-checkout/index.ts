@@ -48,7 +48,7 @@ interface CheckoutRequest {
   delivery_address?: string | null
   delivery_note?: string | null
   idempotency_key?: string | null
-  selected_gift_product_id?: string | null
+  selected_gift_product_ids?: string[] | null
 }
 
 interface CheckoutRpcResponse {
@@ -184,14 +184,13 @@ serve(async (req: Request) => {
     }
 
     const idempotencyKey = normalizeIdempotencyKey(req, body)
-    const requestHash = await sha256Hex(JSON.stringify({
+        const requestHash = await sha256Hex(JSON.stringify({
       user_id: userId,
       delivery_address: deliveryAddress,
       delivery_note: deliveryNote,
-      selected_gift_product_id: body.selected_gift_product_id || null,
+      selected_gift_product_ids: body.selected_gift_product_ids || null,
     }))
     const sessionTokenHash = await sha256Hex(sessionToken)
-
     const { data: rpcData, error: rpcError } = await supabase.rpc('b2b_create_order_from_cart_tx', {
       p_user_id: userId,
       p_delivery_address: deliveryAddress,
@@ -199,7 +198,7 @@ serve(async (req: Request) => {
       p_idempotency_key: idempotencyKey,
       p_request_hash: requestHash,
       p_session_token_hash: sessionTokenHash,
-      p_selected_gift_product_id: body.selected_gift_product_id || null,
+      p_selected_gift_product_ids: body.selected_gift_product_ids || null,
     })
 
     if (rpcError) {

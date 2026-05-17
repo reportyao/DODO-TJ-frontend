@@ -90,18 +90,28 @@ export interface GiftProductOption {
   sort_order?: number;
 }
 
-export interface GiftWithPurchaseState {
-  eligible: boolean;
-  threshold_amount?: number;
-  rule_id?: string | null;
-  rule_name?: string | null;
-  rule_name_i18n?: Record<string, string> | null;
-  description?: string | null;
-  description_i18n?: Record<string, string> | null;
-  max_gift_items?: number;
-  remaining_amount: number;
-  progress: number;
+export interface GiftRuleState {
+  rule_id: string;
+  rule_name: string;
+  rule_name_i18n: Record<string, string>;
+  description: string;
+  description_i18n: Record<string, string>;
+  threshold_amount: number;
+  max_gift_items: number;
   gift_products: GiftProductOption[];
+}
+
+export interface GiftWithPurchaseState {
+  eligible_count: number;
+  rules: GiftRuleState[];
+  next_goal: {
+    rule_id: string;
+    rule_name: string;
+    rule_name_i18n: Record<string, string>;
+    threshold_amount: number;
+    remaining_amount: number;
+    progress: number;
+  } | null;
 }
 
 let latestGiftWithPurchaseState: GiftWithPurchaseState | null = null;

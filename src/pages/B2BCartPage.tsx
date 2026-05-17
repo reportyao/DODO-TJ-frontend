@@ -1,437 +1,360 @@
-/**
- * B2B 进货单（购物车）页面
- * Phase 5: 前端交易链路
- *
- * 功能：
- * - 展示购物车商品列表
- * - 修改数量 / 删除商品（遵守 min_order_quantity 约束）
- * - 快选数量（10/50/100/200）+ 直接输入
- * - 满额赠送提示置顶在商品列表上方
- * - 显示合计金额和商品数
- * - 点击"去结算"跳转到 B2BCheckoutPage
- *
- * 路由: /b2b/cart
- * 依赖: useB2BCart, useB2BCartMutations
- */
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  ArrowLeftIcon,
   TrashIcon,
-  MinusIcon,
+  ShoppingBagIcon,
+  ChevronRightIcon,
+  ArrowLeftIcon,
   PlusIcon,
-  ShoppingCartIcon,
+  MinusIcon,
   GiftIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
-import { useB2BCart, useB2BCartMutations, CartItem, getLatestGiftWithPurchaseState, GiftProductOption } from '../hooks/useB2B';
+import { useB2BCart, useB2BCartMutations, GiftProductOption, GiftRuleState } from '../hooks/useB2B';
+import { useUser } from '../contexts/UserContext';
 import { LazyImage } from '../components/LazyImage';
+import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
 
-/**
- * 获取购物车商品的本地化名称
- */
-function getGiftProductName(item: GiftProductOption, lang: string): string {
+function getGiftProductNameFn(item: GiftProductOption, lang = 'ru'): string {
   const name = item.name_i18n?.[lang] || item.name_i18n?.ru || item.name_i18n?.zh || item.name_i18n?.tg;
   return name || item.product_name || '';
 }
 
-function getCartItemName(item: CartItem, lang: string): string {
-  if (item.name_i18n) {
-    const name = item.name_i18n[lang as keyof typeof item.name_i18n]
-      || item.name_i18n.ru
-      || item.name_i18n.zh
-      || item.name_i18n.tg;
-    if (name) return name;
-  }
-  return item.product_name || '商品';
-}
-
-/** 快选数量选项 */
-const QUICK_QTY_OPTIONS = [10, 50, 100, 200];
-
 export default function B2BCartPage() {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
   const lang = i18n.language || 'ru';
-  const { data: cartItems, isLoading } = useB2BCart();
+  const navigate = useNavigate();
+  const { user } = useUser();
+  const { data: cartData, isLoading } = useB2BCart();
   const { updateItem, removeItem, clearCart } = useB2BCartMutations();
-  const giftWithPurchase = getLatestGiftWithPurchaseState();
-  const [selectedGiftProductId, setSelectedGiftProductId] = React.useState<string | null>(() => localStorage.getItem('b2b_selected_gift_product_id'));
-  // 用于直接输入数量的编辑状态
-  const [editingItemId, setEditingItemId] = React.useState<string | null>(null);
-  const [editingValue, setEditingValue] = React.useState<string>('');
 
-  // 汇总计算
-  const totalAmount = cartItems?.reduce((sum, item) => sum + item.wholesale_price * item.quantity, 0) || 0;
-  const totalItems = cartItems?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-  const productCount = cartItems?.length || 0;
+  // 多档位赠品选择状态：Record<rule_id, product_id>
+  const [selectedGifts, setSelectedGifts] = useState<Record<string, string>>({});
 
-  React.useEffect(() => {
-    if (!giftWithPurchase?.eligible) {
-      localStorage.removeItem('b2b_selected_gift_product_id');
-      setSelectedGiftProductId(null);
+  // 从 localStorage 初始化已选赠品
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('b2b_selected_gift_ids');
+      if (saved) {
+        setSelectedGifts(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error('Failed to load selected gifts', e);
+    }
+  }, []);
+
+  // 持久化已选赠品
+  useEffect(() => {
+    localStorage.setItem('b2b_selected_gift_ids', JSON.stringify(selectedGifts));
+  }, [selectedGifts]);
+
+  const cartItems = cartData?.items || [];
+  const summary = cartData?.summary || { total_quantity: 0, total_amount: 0 };
+  const giftState = cartData?.gift_with_purchase;
+
+  const handleUpdateQuantity = (productId: string, newQty: number, stock: number, minQty: number) => {
+    if (newQty > stock) {
+      toast.error(t('b2b.outOfStock', '库存不足'));
       return;
     }
-    const stillAvailable = giftWithPurchase.gift_products.some((gift) => gift.product_id === selectedGiftProductId);
-    if (!stillAvailable) {
-      const fallback = giftWithPurchase.gift_products[0]?.product_id || null;
-      setSelectedGiftProductId(fallback);
-      if (fallback) localStorage.setItem('b2b_selected_gift_product_id', fallback);
-    }
-  }, [giftWithPurchase?.eligible, giftWithPurchase?.rule_id, giftWithPurchase?.gift_products, selectedGiftProductId]);
-
-  const handleSelectGift = (productId: string) => {
-    setSelectedGiftProductId(productId);
-    localStorage.setItem('b2b_selected_gift_product_id', productId);
-  };
-
-  // 修改数量（遵守 min_order_quantity 约束）
-  const handleQuantityChange = async (item: CartItem, newQuantity: number) => {
-    const minOrderQty = item.min_order_quantity || 1;
-    try {
-      if (newQuantity < minOrderQty) {
-        // 如果减少到低于最小起批量，则移除商品
-        await removeItem.mutateAsync(item.product_id);
-        toast.success(t('b2b.removed') || '已移除');
-        return;
-      }
-      if (newQuantity > item.stock) {
-        toast.error(t('b2b.outOfStock') || '库存不足');
-        return;
-      }
-      await updateItem.mutateAsync({ productId: item.product_id, quantity: newQuantity });
-    } catch (err: any) {
-      toast.error(err.message || (t('b2b.operationFailed') || '操作失败'));
-    }
-  };
-
-  // 快选数量
-  const handleQuickQty = async (item: CartItem, qty: number) => {
-    const minOrderQty = item.min_order_quantity || 1;
-    const finalQty = Math.max(qty, minOrderQty);
-    if (finalQty > item.stock) {
-      toast.error(t('b2b.outOfStock') || '库存不足');
+    if (newQty < minQty && newQty !== 0) {
+      toast.error(t('b2b.minOrderQuantity', '未达到起订量'));
       return;
     }
-    try {
-      await updateItem.mutateAsync({ productId: item.product_id, quantity: finalQty });
-    } catch (err: any) {
-      toast.error(err.message || (t('b2b.operationFailed') || '操作失败'));
-    }
+    updateItem.mutate({ productId, quantity: newQty });
   };
 
-  // 开始编辑数量
-  const handleStartEdit = (item: CartItem) => {
-    setEditingItemId(item.product_id);
-    setEditingValue(String(item.quantity));
+  const handleSelectGift = (ruleId: string, productId: string) => {
+    setSelectedGifts(prev => ({
+      ...prev,
+      [ruleId]: productId
+    }));
   };
 
-  // 确认编辑数量
-  const handleConfirmEdit = async (item: CartItem) => {
-    const val = parseInt(editingValue, 10);
-    setEditingItemId(null);
-    if (isNaN(val) || val <= 0) return;
-    await handleQuantityChange(item, val);
-  };
-
-  // 删除商品
-  const handleRemove = async (productId: string) => {
-    try {
-      await removeItem.mutateAsync(productId);
-      toast.success(t('b2b.removed') || '已移除');
-    } catch (err: any) {
-      toast.error(err.message || (t('b2b.operationFailed') || '删除失败'));
-    }
-  };
-
-  // 清空购物车
-  const handleClearCart = () => {
-    if (!cartItems || cartItems.length === 0) return;
-    if (confirm(t('b2b.confirmClearCart') || '确定清空进货单？')) {
-      clearCart.mutate();
-    }
-  };
-
-  // Loading 状态
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  // 空购物车
-  if (!cartItems || cartItems.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="sticky top-0 z-40 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-1 -ml-1">
-            <ArrowLeftIcon className="w-5 h-5 text-gray-700" />
-          </button>
-          <h1 className="text-base font-semibold text-gray-900">{t('b2b.cart')}</h1>
-        </div>
-        {/* Empty State */}
-        <div className="flex flex-col items-center justify-center pt-24 px-6">
-          <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-            <ShoppingCartIcon className="w-10 h-10 text-gray-300" />
-          </div>
-          <h2 className="text-lg font-semibold text-gray-700 mb-2">{t('b2b.cartEmpty')}</h2>
-          <p className="text-sm text-gray-400 mb-6 text-center">{t('b2b.goShoppingHint') || '去进货大厅挑选商品吧'}</p>
-          <button
-            onClick={() => navigate('/b2b')}
-            className="px-8 py-2.5 bg-primary text-white rounded-xl text-sm font-medium active:bg-primary-dark"
-          >
-            {t('b2b.goShopping') || '去进货'}
-          </button>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-44">
+    <div className="min-h-screen bg-gray-50 pb-32">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+      <div className="sticky top-0 z-30 bg-white border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-1 -ml-1">
-            <ArrowLeftIcon className="w-5 h-5 text-gray-700" />
+          <button onClick={() => navigate(-1)} className="p-1">
+            <ArrowLeftIcon className="w-6 h-6" />
           </button>
-          <h1 className="text-base font-semibold text-gray-900">
-            {t('b2b.cart')}
-            <span className="text-xs font-normal text-gray-400 ml-1.5">({productCount})</span>
-          </h1>
+          <h1 className="text-lg font-bold">{t('b2b.cart', '购物车')} ({summary.total_quantity})</h1>
         </div>
-        {/* Clear Cart Button */}
-        <button
-          onClick={handleClearCart}
-          className="text-xs text-red-500 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors"
-        >
-          {t('b2b.clearCart') || '清空'}
-        </button>
+        {cartItems.length > 0 && (
+          <button 
+            onClick={() => {
+              if (window.confirm(t('b2b.confirmClearCart', '确定要清空购物车吗？'))) {
+                clearCart.mutate();
+                setSelectedGifts({});
+              }
+            }}
+            className="text-sm text-gray-500"
+          >
+            {t('b2b.clear', '清空')}
+          </button>
+        )}
       </div>
 
-      {/* Gift With Purchase - 置顶在商品列表上方 */}
-      {giftWithPurchase && (
-        <div className="px-4 pt-3">
-          <div className={`rounded-xl p-4 shadow-sm border-2 ${
-            giftWithPurchase.eligible
-              ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-300'
-              : 'bg-gradient-to-r from-amber-50/80 to-yellow-50/80 border-amber-200'
-          }`}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
-                  giftWithPurchase.eligible
-                    ? 'bg-amber-200 text-amber-700'
-                    : 'bg-amber-100 text-amber-600'
-                }`}>
-                  <GiftIcon className="w-5 h-5" />
+      <div className="max-w-2xl mx-auto p-4 space-y-4">
+        {/* 满额赠送置顶提示 (叠加模式) */}
+        {giftState && (
+          <div className="bg-white rounded-2xl p-5 border-2 border-orange-100 shadow-sm overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-orange-50 rounded-full -mr-12 -mt-12 opacity-50" />
+            
+            <div className="flex items-start gap-4 relative z-10">
+              <div className="bg-gradient-to-br from-orange-400 to-red-500 p-3 rounded-2xl shadow-lg shadow-orange-100">
+                <GiftIcon className="w-7 h-7 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-lg font-bold text-gray-900">{t('b2b.giftWithPurchase', '满额送礼物')}</h3>
+                  {giftState.eligible_count > 0 && (
+                    <span className="bg-green-100 text-green-700 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 animate-pulse">
+                      <CheckCircleIcon className="w-3.5 h-3.5" />
+                      {t('b2b.eligible', '已达标')} x{giftState.eligible_count}
+                    </span>
+                  )}
                 </div>
+
+                {/* 下一个目标的进度 */}
+                {giftState.next_goal ? (
+                  <div className="mt-3">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-600 font-medium">
+                        {lang === 'zh' 
+                          ? `再买 TJS ${giftState.next_goal.remaining_amount.toFixed(2)} 即可多得一份礼物`
+                          : i18n.language === 'ru'
+                            ? `Добавьте еще TJS ${giftState.next_goal.remaining_amount.toFixed(2)} для еще одного подарка`
+                            : `Боз TJS ${giftState.next_goal.remaining_amount.toFixed(2)} илова кунед барои тӯҳфаи дигар`
+                        }
+                      </span>
+                      <span className="text-orange-600 font-bold">{giftState.next_goal.progress}%</span>
+                    </div>
+                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden border border-gray-50 shadow-inner">
+                      <div 
+                        className={cn(
+                          "h-full transition-all duration-1000 ease-out rounded-full",
+                          giftState.next_goal.progress >= 100 ? "bg-gradient-to-r from-green-400 to-green-500" : "bg-gradient-to-r from-orange-400 to-orange-500"
+                        )}
+                        style={{ width: `${giftState.next_goal.progress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2 italic">
+                      {giftState.next_goal.rule_name_i18n?.[lang] || giftState.next_goal.rule_name}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-green-600 font-medium mt-2">
+                    {t('b2b.allGiftsUnlocked', '恭喜！您已解锁所有档位的赠品。')}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 购物车为空 */}
+        {cartItems.length === 0 && !isLoading && (
+          <div className="py-20 text-center space-y-4">
+            <div className="bg-gray-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
+              <ShoppingBagIcon className="w-10 h-10 text-gray-400" />
+            </div>
+            <p className="text-gray-500">{t('b2b.cartEmpty', '购物车空空如也')}</p>
+            <Link to="/b2b" className="inline-block bg-orange-500 text-white px-8 py-3 rounded-full font-bold shadow-lg shadow-orange-100">
+              {t('b2b.goToShop', '去逛逛')}
+            </Link>
+          </div>
+        )}
+
+        {/* 商品列表 */}
+        <div className="space-y-3">
+          {cartItems.map((item) => (
+            <div key={item.id} className="bg-white rounded-2xl p-4 flex gap-4 shadow-sm border border-gray-100 group">
+              <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-50">
+                <LazyImage src={item.product_image} alt={item.product_name} className="w-full h-full object-cover" />
+              </div>
+              <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                 <div>
-                  <div className="text-sm font-bold text-gray-900">{t('b2b.giftWithPurchase')}</div>
-                  <div className="text-xs text-gray-600">{giftWithPurchase.rule_name_i18n?.[lang] || giftWithPurchase.rule_name || t('b2b.giftWholesaleExclusive')}</div>
+                  <div className="flex justify-between items-start gap-2">
+                    <h3 className="font-bold text-gray-900 line-clamp-2 text-sm leading-snug">
+                      {item.name_i18n?.[lang] || item.product_name}
+                    </h3>
+                    <button onClick={() => removeItem.mutate(item.product_id)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-orange-600 font-bold text-base">TJS {item.wholesale_price.toFixed(2)}</span>
+                    <span className="text-xs text-gray-400">/{item.unit_measure}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-100 shadow-sm">
+                    <button 
+                      onClick={() => handleUpdateQuantity(item.product_id, item.quantity - 1, item.stock, item.min_order_quantity)}
+                      className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-gray-600"
+                    >
+                      <MinusIcon className="w-4 h-4" />
+                    </button>
+                    <input 
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val)) handleUpdateQuantity(item.product_id, val, item.stock, item.min_order_quantity);
+                      }}
+                      className="w-12 text-center bg-transparent font-bold text-sm focus:outline-none"
+                    />
+                    <button 
+                      onClick={() => handleUpdateQuantity(item.product_id, item.quantity + 1, item.stock, item.min_order_quantity)}
+                      className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-orange-600"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs text-gray-400 block mb-0.5">{t('b2b.subtotal', '小计')}</span>
+                    <span className="font-bold text-gray-900 text-sm">TJS {item.subtotal.toFixed(2)}</span>
+                  </div>
+                </div>
+                
+                {/* 数量快选框 */}
+                <div className="flex gap-1.5 mt-3 overflow-x-auto no-scrollbar py-1">
+                  {[10, 50, 100, 200].map(qty => (
+                    <button
+                      key={qty}
+                      onClick={() => handleUpdateQuantity(item.product_id, qty, item.stock, item.min_order_quantity)}
+                      className={cn(
+                        "flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold transition-all border",
+                        item.quantity === qty 
+                          ? "bg-orange-500 text-white border-orange-500 shadow-sm" 
+                          : "bg-white text-gray-500 border-gray-200 hover:border-orange-200"
+                      )}
+                    >
+                      {qty}
+                    </button>
+                  ))}
+                  <span className="text-[10px] text-gray-300 flex items-center ml-1">{t('b2b.quickQty', '快选')}</span>
                 </div>
               </div>
-              {giftWithPurchase.eligible ? (
-                <span className="text-xs font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-full border border-green-200">{t('b2b.giftEligible')}</span>
-              ) : (
-                <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-200">{t('b2b.giftRemainingAmount', { amount: giftWithPurchase.remaining_amount.toFixed(2) })}</span>
-              )}
             </div>
-            {/* Progress bar */}
-            <div className="h-2.5 bg-white/70 rounded-full overflow-hidden mb-3 border border-amber-100">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  giftWithPurchase.eligible
-                    ? 'bg-gradient-to-r from-green-400 to-green-500'
-                    : 'bg-gradient-to-r from-amber-400 to-orange-400'
-                }`}
-                style={{ width: `${Math.min(giftWithPurchase.progress, 100)}%` }}
-              />
+          ))}
+        </div>
+
+        {/* 满额赠送选择区域 (多档位叠加) */}
+        {giftState && giftState.rules && giftState.rules.length > 0 && (
+          <div className="space-y-4 pt-4">
+            <div className="flex items-center gap-2 px-1">
+              <div className="w-1 h-5 bg-orange-500 rounded-full" />
+              <h2 className="text-lg font-bold text-gray-900">{t('b2b.chooseYourGifts', '选择您的赠品')}</h2>
             </div>
-            {giftWithPurchase.eligible && giftWithPurchase.gift_products.length > 0 ? (
-              <div className="space-y-2">
-                <div className="text-xs text-gray-600 font-medium">{t('b2b.giftSelectHint')}</div>
-                {giftWithPurchase.gift_products.map((gift) => {
-                  const active = selectedGiftProductId === gift.product_id;
-                  return (
+            
+            {giftState.rules.map((rule: GiftRuleState) => (
+              <div key={rule.rule_id} className="bg-white rounded-2xl p-4 shadow-sm border border-orange-100">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="font-bold text-gray-900">{rule.rule_name_i18n?.[lang] || rule.rule_name}</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">{rule.description_i18n?.[lang] || rule.description}</p>
+                  </div>
+                  <span className="text-[10px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold">
+                    {t('b2b.minAmount', '满')} TJS {rule.threshold_amount}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2">
+                  {rule.gift_products.map((gift) => (
                     <button
                       key={gift.product_id}
-                      type="button"
-                      onClick={() => handleSelectGift(gift.product_id)}
-                      className={`w-full flex items-center gap-3 p-2.5 rounded-lg border-2 text-left transition-all ${active ? 'border-amber-500 bg-white shadow-sm' : 'border-transparent bg-white/60 hover:border-amber-200'}`}
+                      onClick={() => handleSelectGift(rule.rule_id, gift.product_id)}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left group relative",
+                        selectedGifts[rule.rule_id] === gift.product_id
+                          ? "border-orange-500 bg-orange-50/30"
+                          : "border-gray-50 bg-gray-50/50 hover:border-orange-200"
+                      )}
                     >
-                      <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-                        {gift.image_url ? <LazyImage src={gift.image_url} alt={getGiftProductName(gift, lang)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="w-full h-full flex items-center justify-center text-gray-300">🎁</div>}
+                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-white border border-gray-100 flex-shrink-0">
+                        <LazyImage src={gift.image_url} alt={gift.product_name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900 line-clamp-1">{getGiftProductName(gift, lang)}</div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {gift.wholesale_price ? (
-                            <span className="text-[11px] text-gray-400 line-through decoration-gray-300">TJS {Number(gift.wholesale_price).toFixed(2)}</span>
-                          ) : null}
-                          <span className="text-[11px] font-medium text-green-600">{t('b2b.freeGiftPrice')}</span>
+                        <h4 className="font-bold text-gray-900 text-sm truncate">
+                          {getGiftProductNameFn(gift, lang)}
+                        </h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-gray-400">{t('b2b.giftItemBadge', '赠品')} {gift.gift_quantity} {gift.unit_measure || t('b2b.unitPiece', '件')}</span>
+                          <span className="text-[10px] text-gray-300">|</span>
+                          <span className="text-xs text-gray-400">{t('b2b.inStock', '库存')} {gift.stock}</span>
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5">{t('b2b.giftQuantityLabel', { quantity: gift.gift_quantity, unit: gift.unit_measure || t('b2b.orderItemPieces') })} · {t('b2b.giftStockLabel', { stock: gift.stock ?? '-' })}</div>
+                        {/* 价格展示：原价删除线 + 免费标签 */}
+                        <div className="flex items-center gap-2 mt-1.5">
+                          {gift.wholesale_price && gift.wholesale_price > 0 && (
+                            <span className="text-[10px] text-gray-400 line-through decoration-gray-300">TJS {gift.wholesale_price.toFixed(2)}</span>
+                          )}
+                          <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                            {t('b2b.freeGiftPrice', '免费')}
+                          </span>
+                        </div>
                       </div>
-                      {active && <CheckCircleIcon className="w-5 h-5 text-amber-600" />}
+                      <div className={cn(
+                        "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                        selectedGifts[rule.rule_id] === gift.product_id
+                          ? "border-orange-500 bg-orange-500 text-white"
+                          : "border-gray-200 bg-white"
+                      )}>
+                        {selectedGifts[rule.rule_id] === gift.product_id && <CheckCircleIcon className="w-5 h-5" />}
+                      </div>
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            ) : !giftWithPurchase.eligible && (
-              <div className="text-xs text-gray-600">{t('b2b.giftThresholdHint', { amount: Number(giftWithPurchase.threshold_amount || 0).toFixed(2) })}</div>
-            )}
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Footer / Checkout Bar */}
+      {cartItems.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-lg border-t pb-safe">
+          <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+            <div className="flex flex-col">
+              <span className="text-xs text-gray-500">{t('b2b.totalAmount', '总计')}</span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl font-black text-orange-600">TJS {summary.total_amount.toFixed(2)}</span>
+              </div>
+            </div>
+            <button 
+              onClick={() => {
+                // 检查是否所有达标规则都选了赠品
+                if (giftState && giftState.rules.length > 0) {
+                  const unselectedRules = giftState.rules.filter(r => !selectedGifts[r.rule_id]);
+                  if (unselectedRules.length > 0) {
+                    if (!window.confirm(t('b2b.confirmNoGift', '您还有赠品未选择，确定要直接结算吗？'))) {
+                      return;
+                    }
+                  }
+                }
+                navigate('/b2b/checkout');
+              }}
+              className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white h-14 rounded-2xl font-bold text-lg shadow-xl shadow-orange-100 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+            >
+              {t('b2b.checkout', '去结算')}
+              <ChevronRightIcon className="w-5 h-5" />
+            </button>
           </div>
         </div>
       )}
-
-      {/* Cart Items */}
-      <div className="px-4 pt-3 space-y-2.5">
-        {cartItems.map((item) => {
-          const minQty = item.min_order_quantity || 1;
-          const isEditing = editingItemId === item.product_id;
-          return (
-            <div key={item.id} className="bg-white rounded-xl p-3 shadow-sm">
-              <div className="flex gap-3">
-                {/* Product Image */}
-                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                  {item.product_image ? (
-                    <LazyImage
-                      src={item.product_image}
-                      alt={getCartItemName(item, lang)}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-xl">📦</div>
-                  )}
-                </div>
-
-                {/* Product Info */}
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-medium text-gray-900 line-clamp-1">{getCartItemName(item, lang)}</h4>
-                  <div className="text-sm font-bold text-primary mt-0.5">
-                    TJS {Number(item.wholesale_price).toFixed(2)}
-                    <span className="text-xs text-gray-400 font-normal ml-1">/{item.unit_measure}</span>
-                  </div>
-
-                  {/* Quantity Controls & Actions */}
-                  <div className="flex items-center justify-between mt-2">
-                    {/* Quantity Stepper + Direct Input */}
-                    <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
-                      <button
-                        onClick={() => handleQuantityChange(item, item.quantity - minQty)}
-                        disabled={updateItem.isPending || removeItem.isPending}
-                        className="px-2.5 py-1.5 text-gray-500 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <MinusIcon className="w-3.5 h-3.5" />
-                      </button>
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          value={editingValue}
-                          onChange={(e) => setEditingValue(e.target.value)}
-                          onBlur={() => handleConfirmEdit(item)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmEdit(item); }}
-                          autoFocus
-                          className="w-14 py-1.5 text-xs font-bold text-center border-x border-gray-200 bg-white outline-none focus:bg-amber-50"
-                          min={minQty}
-                          max={item.stock}
-                        />
-                      ) : (
-                        <button
-                          onClick={() => handleStartEdit(item)}
-                          className="px-3 py-1.5 text-xs font-bold min-w-[2.5rem] text-center border-x border-gray-200 bg-gray-50 hover:bg-amber-50 transition-colors cursor-text"
-                        >
-                          {item.quantity}
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleQuantityChange(item, item.quantity + minQty)}
-                        disabled={item.quantity + minQty > item.stock || updateItem.isPending || removeItem.isPending}
-                        className="px-2.5 py-1.5 text-gray-500 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <PlusIcon className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {/* Subtotal & Delete */}
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-sm font-semibold text-gray-900">
-                        TJS {(item.wholesale_price * item.quantity).toFixed(2)}
-                      </span>
-                      <button
-                        onClick={() => handleRemove(item.product_id)}
-                        className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Quick Quantity Chips */}
-                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                    {QUICK_QTY_OPTIONS.map((qty) => (
-                      <button
-                        key={qty}
-                        onClick={() => handleQuickQty(item, qty)}
-                        disabled={updateItem.isPending || removeItem.isPending}
-                        className={`px-2 py-0.5 text-[11px] rounded-md border transition-all ${
-                          item.quantity === qty
-                            ? 'bg-primary/10 border-primary text-primary font-bold'
-                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-primary/50 hover:text-primary'
-                        } disabled:opacity-30`}
-                      >
-                        {qty}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Stock Warning */}
-                  {item.stock <= 10 && (
-                    <div className="text-[10px] text-orange-500 mt-1">
-                      {t('b2b.stockLow') || '仅剩'} {item.stock} {item.unit_measure}
-                    </div>
-                  )}
-                  {/* Unavailable Warning */}
-                  {!item.is_available && (
-                    <div className="text-[10px] text-red-500 mt-1">
-                      {t('b2b.productUnavailable') || '商品已下架'}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Bottom Checkout Bar - 定位在底部导航栏上方 */}
-      <div className="fixed left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-40" style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}>
-        <div className="px-4 py-3 flex items-center justify-between">
-          {/* Summary */}
-          <div>
-            <div className="text-xs text-gray-500">
-              {productCount} {t('b2b.orderItemTypes') || '种'} · {totalItems} {t('b2b.orderItemPieces') || '件'}
-            </div>
-            <div className="flex items-baseline gap-0.5">
-              <span className="text-xs text-gray-500">{t('b2b.totalAmount') || '合计'}</span>
-              <span className="text-lg font-bold text-primary">TJS {totalAmount.toFixed(2)}</span>
-            </div>
-          </div>
-          {/* Checkout Button - Navigate to dedicated checkout page */}
-          <button
-            onClick={() => navigate('/b2b/checkout')}
-            className="px-8 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold active:bg-primary-dark shadow-lg shadow-primary/20 transition-all"
-          >
-            {t('b2b.checkout') || '去结算'}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
