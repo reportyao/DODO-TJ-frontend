@@ -33,9 +33,9 @@ import { LazyImage } from '../components/LazyImage';
 import toast from 'react-hot-toast';
 import { cn } from '../lib/utils';
 
-function getGiftProductName(item: GiftProductOption, lang = 'ru'): string {
+function getGiftProductNameFn(item: GiftProductOption, lang = 'ru'): string {
   const name = item.name_i18n?.[lang] || item.name_i18n?.ru || item.name_i18n?.zh || item.name_i18n?.tg;
-  return name || item.product_name || '赠品';
+  return name || item.product_name || '';
 }
 
 // ============================================================
@@ -45,7 +45,8 @@ function getGiftProductName(item: GiftProductOption, lang = 'ru'): string {
 // 主页面组件
 // ============================================================
 export default function B2BCheckoutPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language || 'ru';
   const navigate = useNavigate();
   const { user, sessionToken } = useUser();
   const { supabase } = useSupabase();
@@ -304,7 +305,7 @@ export default function B2BCheckoutPage() {
                   {selectedGift.image_url ? (
                     <LazyImage
                       src={selectedGift.image_url}
-                      alt={getGiftProductName(selectedGift)}
+                      alt={getGiftProductNameFn(selectedGift, lang)}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   ) : (
@@ -313,12 +314,12 @@ export default function B2BCheckoutPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-white">赠品</span>
-                    <h4 className="text-sm text-gray-900 line-clamp-1">{getGiftProductName(selectedGift)}</h4>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-white">{t('b2b.giftBadge')}</span>
+                    <h4 className="text-sm text-gray-900 line-clamp-1">{getGiftProductNameFn(selectedGift, lang) || t('b2b.giftBadge')}</h4>
                   </div>
                   <div className="flex items-center justify-between mt-1">
-                    <span className="text-xs text-gray-500">满额赠送 × {selectedGift.gift_quantity}{selectedGift.unit_measure || '件'}</span>
-                    <span className="text-sm font-semibold text-amber-600">TJS 0.00</span>
+                    <span className="text-xs text-gray-500">{t('b2b.giftFreeLabel')} × {selectedGift.gift_quantity}{selectedGift.unit_measure || t('b2b.orderItemPieces')}</span>
+                    <span className="text-sm font-semibold text-amber-600">{t('b2b.freeGiftPrice')}</span>
                   </div>
                 </div>
               </div>

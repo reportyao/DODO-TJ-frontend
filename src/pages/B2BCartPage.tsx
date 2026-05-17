@@ -32,7 +32,7 @@ import toast from 'react-hot-toast';
  */
 function getGiftProductName(item: GiftProductOption, lang: string): string {
   const name = item.name_i18n?.[lang] || item.name_i18n?.ru || item.name_i18n?.zh || item.name_i18n?.tg;
-  return name || item.product_name || '赠品';
+  return name || item.product_name || '';
 }
 
 function getCartItemName(item: CartItem, lang: string): string {
@@ -272,14 +272,14 @@ export default function B2BCartPage() {
                   <GiftIcon className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-gray-900">满额赠送</div>
-                  <div className="text-xs text-gray-500">{giftWithPurchase.rule_name || '批发专享赠品'}</div>
+                  <div className="text-sm font-semibold text-gray-900">{t('b2b.giftWithPurchase')}</div>
+                  <div className="text-xs text-gray-500">{giftWithPurchase.rule_name_i18n?.[lang] || giftWithPurchase.rule_name || t('b2b.giftWholesaleExclusive')}</div>
                 </div>
               </div>
               {giftWithPurchase.eligible ? (
-                <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">已达成</span>
+                <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">{t('b2b.giftEligible')}</span>
               ) : (
-                <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-1 rounded-full">还差 TJS {giftWithPurchase.remaining_amount.toFixed(2)}</span>
+                <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-1 rounded-full">{t('b2b.giftRemainingAmount', { amount: giftWithPurchase.remaining_amount.toFixed(2) })}</span>
               )}
             </div>
             <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-3">
@@ -287,7 +287,7 @@ export default function B2BCartPage() {
             </div>
             {giftWithPurchase.eligible && giftWithPurchase.gift_products.length > 0 ? (
               <div className="space-y-2">
-                <div className="text-xs text-gray-500">请选择 1 件赠品，结算时系统会再次校验金额与库存。</div>
+                <div className="text-xs text-gray-500">{t('b2b.giftSelectHint')}</div>
                 {giftWithPurchase.gift_products.map((gift) => {
                   const active = selectedGiftProductId === gift.product_id;
                   return (
@@ -302,7 +302,7 @@ export default function B2BCartPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-gray-900 line-clamp-1">{getGiftProductName(gift, lang)}</div>
-                        <div className="text-xs text-gray-500">赠送 {gift.gift_quantity} {gift.unit_measure || '件'} · 库存 {gift.stock ?? '-'}</div>
+                        <div className="text-xs text-gray-500">{t('b2b.giftQuantityLabel', { quantity: gift.gift_quantity, unit: gift.unit_measure || t('b2b.orderItemPieces') })} · {t('b2b.giftStockLabel', { stock: gift.stock ?? '-' })}</div>
                       </div>
                       {active && <CheckCircleIcon className="w-5 h-5 text-amber-600" />}
                     </button>
@@ -310,7 +310,7 @@ export default function B2BCartPage() {
                 })}
               </div>
             ) : (
-              <div className="text-xs text-gray-500">购物车商品金额达到 TJS {Number(giftWithPurchase.threshold_amount || 0).toFixed(2)} 后可选择赠品。</div>
+              <div className="text-xs text-gray-500">{t('b2b.giftThresholdHint', { amount: Number(giftWithPurchase.threshold_amount || 0).toFixed(2) })}</div>
             )}
           </div>
         </div>

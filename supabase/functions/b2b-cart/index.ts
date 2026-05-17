@@ -77,7 +77,7 @@ async function getGiftWithPurchaseState(totalAmount: number) {
   const nowIso = new Date().toISOString()
   const { data: rules, error: rulesError } = await supabase
     .from('b2b_gift_rules')
-    .select('id, name, description, threshold_amount, max_gift_items, starts_at, ends_at, sort_order, created_at')
+    .select('id, name, name_i18n, description, description_i18n, threshold_amount, max_gift_items, starts_at, ends_at, sort_order, created_at')
     .eq('is_active', true)
     .lte('threshold_amount', totalAmount)
     .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
@@ -92,7 +92,7 @@ async function getGiftWithPurchaseState(totalAmount: number) {
 
   const { data: nextRules } = await supabase
     .from('b2b_gift_rules')
-    .select('id, name, threshold_amount')
+    .select('id, name, name_i18n, threshold_amount')
     .eq('is_active', true)
     .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
     .or(`ends_at.is.null,ends_at.gte.${nowIso}`)
@@ -157,7 +157,9 @@ async function getGiftWithPurchaseState(totalAmount: number) {
     threshold_amount: Number(selectedRule?.threshold_amount || nextRule?.threshold_amount || 0),
     rule_id: selectedRule?.id || null,
     rule_name: selectedRule?.name || nextRule?.name || null,
+    rule_name_i18n: selectedRule?.name_i18n || nextRule?.name_i18n || null,
     description: selectedRule?.description || null,
+    description_i18n: selectedRule?.description_i18n || null,
     max_gift_items: Number(selectedRule?.max_gift_items || 1),
     remaining_amount: remainingAmount,
     progress,

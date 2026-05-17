@@ -2231,7 +2231,18 @@
     "realtime": "Онлайн",
     "balanceDue": "К оплате",
     "giftItemBadge": "Подарок",
-    "freeGiftPrice": "Бесплатно"
+    "freeGiftPrice": "Бесплатно",
+    "giftWithPurchase": "Подарок за покупку",
+    "giftWholesaleExclusive": "Эксклюзивный подарок для оптовиков",
+    "giftEligible": "Достигнуто",
+    "giftRemainingAmount": "Осталось TJS {{amount}}",
+    "giftSelectHint": "Выберите 1 подарок. Сумма и наличие будут проверены при оформлении.",
+    "giftQuantityLabel": "Подарок {{quantity}} {{unit}}",
+    "giftThresholdHint": "Добавьте товаров на сумму TJS {{amount}} для получения подарка.",
+    "giftStockLabel": "В наличии {{stock}}",
+    "giftBadge": "Подарок",
+    "giftFreeLabel": "Подарок за покупку",
+    "giftRuleName": "Акция «Подарок за покупку»"
   },
   "wholesaler": {
     "applyTitle": "Стать оптовиком",

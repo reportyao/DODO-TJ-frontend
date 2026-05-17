@@ -2231,7 +2231,18 @@
     "realtime": "Бевосита",
     "balanceDue": "Боқимонда",
     "giftItemBadge": "Тӯҳфа",
-    "freeGiftPrice": "Ройгон"
+    "freeGiftPrice": "Ройгон",
+    "giftWithPurchase": "Тӯҳфа барои харид",
+    "giftWholesaleExclusive": "Тӯҳфаи махсус барои яклухтфурӯшон",
+    "giftEligible": "Ба даст омад",
+    "giftRemainingAmount": "Боқӣ TJS {{amount}}",
+    "giftSelectHint": "1 тӯҳфа интихоб кунед. Маблағ ва мавҷудият ҳангоми пардохт тафтиш мешавад.",
+    "giftQuantityLabel": "Тӯҳфа {{quantity}} {{unit}}",
+    "giftThresholdHint": "Маҳсулот ба маблағи TJS {{amount}} илова кунед, то тӯҳфа гиред.",
+    "giftStockLabel": "Мавҷуд {{stock}}",
+    "giftBadge": "Тӯҳфа",
+    "giftFreeLabel": "Тӯҳфа барои харид",
+    "giftRuleName": "Акция «Тӯҳфа барои харид»"
   },
   "wholesaler": {
     "applyTitle": "Яклухтфурӯш шавед",

@@ -94,7 +94,9 @@ export interface GiftWithPurchaseState {
   threshold_amount?: number;
   rule_id?: string | null;
   rule_name?: string | null;
+  rule_name_i18n?: Record<string, string> | null;
   description?: string | null;
+  description_i18n?: Record<string, string> | null;
   max_gift_items?: number;
   remaining_amount: number;
   progress: number;

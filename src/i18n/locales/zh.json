@@ -2231,7 +2231,18 @@
     "realtime": "实时",
     "balanceDue": "待付",
     "giftItemBadge": "赠品",
-    "freeGiftPrice": "免费"
+    "freeGiftPrice": "免费",
+    "giftWithPurchase": "满额赠送",
+    "giftWholesaleExclusive": "批发专享赠品",
+    "giftEligible": "已达成",
+    "giftRemainingAmount": "还差 TJS {{amount}}",
+    "giftSelectHint": "请选择 1 件赠品，结算时系统会再次校验金额与库存。",
+    "giftQuantityLabel": "赠送 {{quantity}} {{unit}}",
+    "giftThresholdHint": "购物车商品金额达到 TJS {{amount}} 后可选择赠品。",
+    "giftStockLabel": "库存 {{stock}}",
+    "giftBadge": "赠品",
+    "giftFreeLabel": "满额赠送",
+    "giftRuleName": "满额赠送活动"
   },
   "wholesaler": {
     "applyTitle": "申请批发商",
