@@ -82,12 +82,12 @@ const B2BProductCard: React.FC<{
         {showPrice ? (
           <div className="mt-1.5 flex items-baseline gap-1.5">
             <span className="text-base font-bold text-primary-dark">
-              {Number(product.wholesale_price).toFixed(0)}
+              {Number(product.wholesale_price).toFixed(2)}
             </span>
             <span className="text-xs text-gray-400">TJS</span>
             {product.retail_price && (
               <span className="text-xs text-gray-400 line-through ml-auto">
-                {Number(product.retail_price).toFixed(0)}
+                {Number(product.retail_price).toFixed(2)}
               </span>
             )}
           </div>
