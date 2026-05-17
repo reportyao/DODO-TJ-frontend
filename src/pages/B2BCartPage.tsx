@@ -270,7 +270,13 @@ export default function B2BCartPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-gray-900 line-clamp-1">{getGiftProductName(gift, lang)}</div>
-                        <div className="text-xs text-gray-500">{t('b2b.giftQuantityLabel', { quantity: gift.gift_quantity, unit: gift.unit_measure || t('b2b.orderItemPieces') })} · {t('b2b.giftStockLabel', { stock: gift.stock ?? '-' })}</div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {gift.wholesale_price ? (
+                            <span className="text-[11px] text-gray-400 line-through decoration-gray-300">TJS {Number(gift.wholesale_price).toFixed(2)}</span>
+                          ) : null}
+                          <span className="text-[11px] font-medium text-green-600">{t('b2b.freeGiftPrice')}</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">{t('b2b.giftQuantityLabel', { quantity: gift.gift_quantity, unit: gift.unit_measure || t('b2b.orderItemPieces') })} · {t('b2b.giftStockLabel', { stock: gift.stock ?? '-' })}</div>
                       </div>
                       {active && <CheckCircleIcon className="w-5 h-5 text-amber-600" />}
                     </button>

@@ -85,6 +85,7 @@ export interface GiftProductOption {
   sku?: string | null;
   unit_measure?: string | null;
   stock?: number;
+  wholesale_price?: number;
   gift_quantity: number;
   sort_order?: number;
 }

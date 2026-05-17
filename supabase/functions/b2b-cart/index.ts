@@ -123,7 +123,7 @@ async function getGiftWithPurchaseState(totalAmount: number) {
     if (productIds.length > 0) {
       const { data: products, error: productError } = await supabase
         .from('inventory_products')
-        .select('id, name, name_i18n, image_url, sku, unit_measure, stock, status')
+        .select('id, name, name_i18n, image_url, sku, unit_measure, stock, status, wholesale_price')
         .in('id', productIds)
         .eq('status', 'ACTIVE')
 
@@ -144,6 +144,7 @@ async function getGiftWithPurchaseState(totalAmount: number) {
             sku: product.sku,
             unit_measure: product.unit_measure,
             stock: product.stock,
+            wholesale_price: product.wholesale_price || 0,
             gift_quantity: Number(link.gift_quantity || 1),
             sort_order: link.sort_order,
           }
