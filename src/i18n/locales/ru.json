@@ -2243,7 +2243,12 @@
     "giftBadge": "Подарок",
     "giftFreeLabel": "Подарок за покупку",
     "giftRuleName": "Акция «Подарок за покупку»",
-    "quickQty": "Быстрый выбор"
+    "quickQty": "Быстрый выбор",
+    "eligible": "Достигнуто",
+    "chooseYourGifts": "Выберите ваши подарки",
+    "allGiftsUnlocked": "Поздравляем! Вы разблокировали все уровни подарков.",
+    "confirmNoGift": "Вы ещё не выбрали подарок. Продолжить оформление?",
+    "minAmount": "От"
   },
   "wholesaler": {
     "applyTitle": "Стать оптовиком",

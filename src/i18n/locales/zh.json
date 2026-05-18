@@ -2243,7 +2243,12 @@
     "giftBadge": "赠品",
     "giftFreeLabel": "满额赠送",
     "giftRuleName": "满额赠送活动",
-    "quickQty": "快选"
+    "quickQty": "快选",
+    "eligible": "已达标",
+    "chooseYourGifts": "选择您的赠品",
+    "allGiftsUnlocked": "恭喜！您已解锁所有档位的赠品。",
+    "confirmNoGift": "您还有赠品未选择，确定要直接结算吗？",
+    "minAmount": "满"
   },
   "wholesaler": {
     "applyTitle": "申请批发商",

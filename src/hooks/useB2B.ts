@@ -127,12 +127,26 @@ export interface CartItem {
   product_name: string;
   product_image: string | null;
   wholesale_price: number;
+  retail_price: number | null;
   unit_measure: string;
   stock: number;
   min_order_quantity: number;
   name_i18n: { zh?: string; ru?: string; tg?: string };
   subtotal: number;
   is_available: boolean;
+  currency: string;
+}
+
+export interface CartSummary {
+  total_quantity: number;
+  total_amount: number;
+  currency: string;
+}
+
+export interface CartData {
+  items: CartItem[];
+  summary: CartSummary;
+  gift_with_purchase: GiftWithPurchaseState | null;
 }
 
 // ============================================================
@@ -411,18 +425,23 @@ export function useB2BSearch(keyword: string) {
 }
 
 /**
- * 获取购物车
+ * 获取购物车（返回完整购物车数据，含赠品状态）
  */
 export function useB2BCart() {
   const { supabase } = useSupabase();
   const { user, sessionToken } = useUser();
 
-  return useQuery<CartItem[]>({
+  return useQuery<CartData>({
     queryKey: b2bQueryKeys.cart(user?.id || ''),
     queryFn: async () => {
+      const emptyCart: CartData = {
+        items: [],
+        summary: { total_quantity: 0, total_amount: 0, currency: 'TJS' },
+        gift_with_purchase: null,
+      };
       if (!user?.id || !sessionToken) {
         latestGiftWithPurchaseState = null;
-        return [];
+        return emptyCart;
       }
       const { data, error } = await supabase.functions.invoke('b2b-cart', {
         method: 'POST',
@@ -433,23 +452,30 @@ export function useB2BCart() {
         latestGiftWithPurchaseState = null;
         throw new Error(await extractEdgeFunctionError(error));
       }
+      // Edge Function 返回: { items: [{id, product_id, quantity, subtotal, product_name, product_image, ...}], summary: {...}, gift_with_purchase: {...} }
       latestGiftWithPurchaseState = data?.gift_with_purchase || null;
-      // Edge Function 返回: { success, cart: [{cart_id, product_id, quantity, subtotal, product: {...}, is_available}], total_amount, item_count, gift_with_purchase }
-      const rawCart = data?.cart || [];
-      return rawCart.map((item: any) => ({
-        id: item.cart_id,
+      const rawItems: any[] = data?.items || [];
+      const items: CartItem[] = rawItems.map((item: any) => ({
+        id: item.id,
         product_id: item.product_id,
         quantity: item.quantity,
-        product_name: item.product?.name || '',
-        product_image: ensureHttps(item.product?.image_url) || null,
-        wholesale_price: Number(item.product?.wholesale_price) || 0,
-        unit_measure: item.product?.unit_measure || '件',
-        stock: item.product?.stock || 0,
-        min_order_quantity: item.product?.min_order_quantity || 1,
-        name_i18n: item.product?.name_i18n || {},
-        subtotal: item.subtotal || 0,
+        product_name: item.product_name || '',
+        product_image: ensureHttps(item.product_image) || null,
+        wholesale_price: Number(item.wholesale_price) || 0,
+        retail_price: item.retail_price ? Number(item.retail_price) : null,
+        unit_measure: item.unit_measure || '件',
+        stock: item.stock || 0,
+        min_order_quantity: item.min_order_quantity || 1,
+        name_i18n: item.name_i18n || {},
+        subtotal: Number(item.subtotal) || 0,
         is_available: item.is_available ?? true,
-      })) as CartItem[];
+        currency: item.currency || 'TJS',
+      }));
+      return {
+        items,
+        summary: data?.summary || { total_quantity: 0, total_amount: 0, currency: 'TJS' },
+        gift_with_purchase: data?.gift_with_purchase || null,
+      };
     },
     enabled: !!user?.id && !!sessionToken,
     staleTime: staleTimes.realtime,

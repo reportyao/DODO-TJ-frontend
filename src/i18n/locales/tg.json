@@ -2243,7 +2243,12 @@
     "giftBadge": "Тӯҳфа",
     "giftFreeLabel": "Тӯҳфа барои харид",
     "giftRuleName": "Акция «Тӯҳфа барои харид»",
-    "quickQty": "Интихоби зуд"
+    "quickQty": "Интихоби зуд",
+    "eligible": "Ба даст омад",
+    "chooseYourGifts": "Тӯҳфаҳои худро интихоб кунед",
+    "allGiftsUnlocked": "Табрик! Шумо ҳамаи сатҳҳои тӯҳфаро кушодед.",
+    "confirmNoGift": "Шумо ҳанӯз тӯҳфа интихоб накардед. Идома диҳед?",
+    "minAmount": "Аз"
   },
   "wholesaler": {
     "applyTitle": "Яклухтфурӯш шавед",

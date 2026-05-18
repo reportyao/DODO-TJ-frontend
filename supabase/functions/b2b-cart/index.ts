@@ -4,7 +4,8 @@ import { validateSessionWithUser } from '../_shared/auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 }
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
@@ -15,16 +16,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 // 工具函数
 // ============================================================================
 
-function safeNumber(val: any): number {
-  const parsed = typeof val === 'string' ? parseFloat(val) : val
-  return typeof parsed === 'number' && !isNaN(parsed) ? parsed : 0
-}
-
-function safeInt(val: any): number {
-  const parsed = parseInt(String(val))
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : 0
-}
-
 function isActiveProduct(status: string | null | undefined): boolean {
   return String(status || '').toUpperCase() === 'ACTIVE'
 }
@@ -34,9 +25,9 @@ function isActiveProduct(status: string | null | undefined): boolean {
 // ============================================================================
 
 /**
- * 获取购物车列表（含商品详情和小计）
+ * 计算满额赠送状态（累计叠加模式）
+ * 返回所有已达标规则列表，以及下一个目标进度
  */
-
 async function getGiftWithPurchaseState(totalAmount: number) {
   const nowIso = new Date().toISOString()
 
@@ -55,8 +46,8 @@ async function getGiftWithPurchaseState(totalAmount: number) {
   }
 
   const rules = allActiveRules || []
-  
-  // 2. 区分已达标规则和未达标规则
+
+  // 2. 区分已达标规则和未达标规则（累计叠加模式：所有达标规则都生效）
   const eligibleRules = rules.filter(r => Number(r.threshold_amount) <= totalAmount)
   const pendingRules = rules.filter(r => Number(r.threshold_amount) > totalAmount)
   const nextRule = pendingRules[0] || null
@@ -146,7 +137,7 @@ async function getGiftWithPurchaseState(totalAmount: number) {
 async function handleGetCart(userId: string) {
   // 1. 获取购物车项
   const { data: cartItems, error: cartError } = await supabase
-    .from('b2b_cart_items')
+    .from('shopping_carts')
     .select('id, product_id, quantity')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
@@ -154,7 +145,7 @@ async function handleGetCart(userId: string) {
   if (cartError) throw cartError
 
   if (!cartItems || cartItems.length === 0) {
-    return { items: [], summary: { total_quantity: 0, total_amount: 0 }, gift_with_purchase: null }
+    return { items: [], summary: { total_quantity: 0, total_amount: 0, currency: 'TJS' }, gift_with_purchase: null }
   }
 
   // 2. 获取商品详情
@@ -175,7 +166,7 @@ async function handleGetCart(userId: string) {
   const items = cartItems.map(item => {
     const product = productMap.get(item.product_id)
     const subtotal = product ? product.wholesale_price * item.quantity : 0
-    
+
     if (product && isActiveProduct(product.status)) {
       totalAmount += subtotal
       totalQuantity += item.quantity
@@ -199,7 +190,7 @@ async function handleGetCart(userId: string) {
     }
   })
 
-  // 4. 计算满额赠送状态
+  // 4. 计算满额赠送状态（累计叠加模式）
   const giftWithPurchase = await getGiftWithPurchaseState(totalAmount)
 
   return {
@@ -213,10 +204,57 @@ async function handleGetCart(userId: string) {
   }
 }
 
+/**
+ * 添加商品到购物车（如已存在则累加数量）
+ */
+async function handleAddItem(userId: string, productId: string, quantity: number) {
+  if (!productId || quantity <= 0) throw new Error('参数无效')
+
+  // 检查库存
+  const { data: product } = await supabase
+    .from('inventory_products')
+    .select('stock, min_order_quantity, status')
+    .eq('id', productId)
+    .single()
+
+  if (!product) throw new Error('商品不存在')
+  if (!isActiveProduct(product.status)) throw new Error('商品已下架')
+
+  const minQty = product.min_order_quantity || 1
+
+  // 获取当前购物车中该商品的数量
+  const { data: existing } = await supabase
+    .from('shopping_carts')
+    .select('id, quantity')
+    .eq('user_id', userId)
+    .eq('product_id', productId)
+    .maybeSingle()
+
+  const newQuantity = (existing?.quantity || 0) + quantity
+  const finalQuantity = Math.max(newQuantity, minQty)
+
+  if (product.stock < finalQuantity) throw new Error('库存不足')
+
+  const { error } = await supabase
+    .from('shopping_carts')
+    .upsert({
+      user_id: userId,
+      product_id: productId,
+      quantity: finalQuantity,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,product_id' })
+
+  if (error) throw error
+  return await handleGetCart(userId)
+}
+
+/**
+ * 更新购物车中商品的绝对数量（用于步进器）
+ */
 async function handleUpdateQuantity(userId: string, productId: string, quantity: number) {
   if (quantity <= 0) {
     const { error } = await supabase
-      .from('b2b_cart_items')
+      .from('shopping_carts')
       .delete()
       .eq('user_id', userId)
       .eq('product_id', productId)
@@ -233,14 +271,14 @@ async function handleUpdateQuantity(userId: string, productId: string, quantity:
     if (product.stock < quantity) throw new Error('库存不足')
 
     const { error } = await supabase
-      .from('b2b_cart_items')
+      .from('shopping_carts')
       .upsert({
         user_id: userId,
         product_id: productId,
         quantity: Math.max(quantity, product.min_order_quantity || 1),
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id,product_id' })
-    
+
     if (error) throw error
   }
 
@@ -249,7 +287,7 @@ async function handleUpdateQuantity(userId: string, productId: string, quantity:
 
 async function handleRemoveItem(userId: string, productId: string) {
   const { error } = await supabase
-    .from('b2b_cart_items')
+    .from('shopping_carts')
     .delete()
     .eq('user_id', userId)
     .eq('product_id', productId)
@@ -260,12 +298,12 @@ async function handleRemoveItem(userId: string, productId: string) {
 
 async function handleClearCart(userId: string) {
   const { error } = await supabase
-    .from('b2b_cart_items')
+    .from('shopping_carts')
     .delete()
     .eq('user_id', userId)
 
   if (error) throw error
-  return { items: [], summary: { total_quantity: 0, total_amount: 0 }, gift_with_purchase: null }
+  return { items: [], summary: { total_quantity: 0, total_amount: 0, currency: 'TJS' }, gift_with_purchase: null }
 }
 
 // ============================================================================
@@ -278,29 +316,40 @@ serve(async (req) => {
   }
 
   try {
-    const { user, error: authError } = await validateSessionWithUser(req)
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized', details: authError }), {
+    // 从 x-session-token 或 Authorization 头中获取 session token
+    const customSessionHeader = req.headers.get('x-session-token') ?? ''
+    const authHeader = req.headers.get('Authorization') ?? ''
+    const sessionToken = (customSessionHeader || authHeader.replace(/^Bearer\s+/i, '')).trim()
+
+    if (!sessionToken) {
+      return new Response(JSON.stringify({ error: 'Unauthorized', error_code: 'ERR_MISSING_TOKEN' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const { action, ...params } = await req.json()
+    const { userId } = await validateSessionWithUser(supabase, sessionToken)
+
+    const body = await req.json()
+    const { action, ...params } = body
 
     let result
     switch (action) {
       case 'get':
-        result = await handleGetCart(user.id)
+        result = await handleGetCart(userId)
         break
+      case 'add':
+        result = await handleAddItem(userId, params.product_id, params.quantity || 1)
+        break
+      case 'update':
       case 'update_quantity':
-        result = await handleUpdateQuantity(user.id, params.product_id, params.quantity)
+        result = await handleUpdateQuantity(userId, params.product_id, params.quantity)
         break
       case 'remove':
-        result = await handleRemoveItem(user.id, params.product_id)
+        result = await handleRemoveItem(userId, params.product_id)
         break
       case 'clear':
-        result = await handleClearCart(user.id)
+        result = await handleClearCart(userId)
         break
       default:
         throw new Error(`Unknown action: ${action}`)
@@ -311,8 +360,9 @@ serve(async (req) => {
     })
   } catch (error: any) {
     console.error('[B2BCart] Error:', error)
+    const status = error.message?.includes('Unauthorized') || error.message?.includes('未授权') ? 401 : 400
     return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
+      status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }

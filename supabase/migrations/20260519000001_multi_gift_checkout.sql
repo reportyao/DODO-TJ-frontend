@@ -290,7 +290,7 @@ BEGIN
   ) VALUES (
     v_order_number, p_user_id, v_total_amount, v_total_amount, 0,
     0, 0, v_effective_item_count, v_effective_total_quantity,
-    'pending', 'unfulfilled', 'credit', 'unpaid', 'authorized',
+    'pending', 'pending', 'cod', 'pending', 'unpaid',
     'unreconciled', p_delivery_address, v_effective_note,
     v_customer_snapshot,
     CASE WHEN v_has_idempotency THEN p_idempotency_key ELSE NULL END,
@@ -395,7 +395,7 @@ BEGIN
       );
 
       INSERT INTO public.inventory_transactions(inventory_product_id, transaction_type, quantity, stock_before, stock_after, related_order_id, notes)
-      VALUES (v_gift_pid, 'B2B_GIFT', -v_gift_quantity, v_gift_stock_before, v_gift_stock_after, v_order_id, 'B2B赠品');
+      VALUES (v_gift_pid, 'B2B_SALE', -v_gift_quantity, v_gift_stock_before, v_gift_stock_after, v_order_id, 'B2B赠品');
     END LOOP;
   END IF;
 
@@ -414,3 +414,10 @@ BEGIN
   RETURN v_response;
 END;
 $$;
+
+
+-- 授予执行权限
+GRANT EXECUTE ON FUNCTION public.b2b_create_order_from_cart_tx(uuid, text, text, text, text, text, uuid[]) TO anon, authenticated;
+
+COMMENT ON FUNCTION public.b2b_create_order_from_cart_tx(uuid, text, text, text, text, text, uuid[]) IS
+'B2B 事务化下单 RPC（多赠品累计叠加模式 v3）。支持 p_selected_gift_product_ids 数组参数，每个赠品独立校验其所属规则是否已达标。';

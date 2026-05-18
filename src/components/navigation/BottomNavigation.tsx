@@ -35,8 +35,8 @@ export const BottomNavigation: React.FC = () => {
   const clickTimerRef = useRef<NodeJS.Timeout | null>(null)
   const { isAuthenticated } = useUser()
   // 仅在已登录场景下读取购物车数量，避免未登录时无谓的网络请求
-  const { data: cartItems } = useB2BCart()
-  const cartCount = isAuthenticated ? (cartItems?.length || 0) : 0
+  const { data: cartData } = useB2BCart()
+  const cartCount = isAuthenticated ? (cartData?.items?.length || 0) : 0
   // 未读通知计数
   const { totalUnread } = useUnreadNotifications()
 
