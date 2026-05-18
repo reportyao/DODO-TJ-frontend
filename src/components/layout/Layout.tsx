@@ -33,6 +33,7 @@ export const Layout: React.FC<LayoutProps> = ({
     '/reset-password',
     '/b2b/product',
     '/b2b/checkout',
+    '/b2b/cart',
   ]
   const isHiddenNavRoute = HIDDEN_NAV_PREFIXES.some((p) =>
     location.pathname === p || location.pathname.startsWith(p + '/'),
